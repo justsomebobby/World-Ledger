@@ -1,0 +1,8 @@
+{
+  "similarNameSet": {
+    "target": "rusted iron key",
+    "confusers": ["iron keyring", "iron dagger", "silver key", "rusted coin"]
+  },
+  "verbs": ["take", "grab", "pick up", "collect", "loot", "retrieve"],
+  "negations": ["not the keyring", "leave the dagger", "except the coin"]
+}

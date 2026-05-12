@@ -1,0 +1,68 @@
+[
+  {
+    "name": "Script loads and creates AIDRPG through input",
+    "suite": "smoke",
+    "description": "Confirms the script loads, the input hook runs, and state.aidrpg exists.",
+    "steps": [
+      { "hook": "input", "text": "I look around." }
+    ],
+    "assertions": [
+      { "type": "exists", "path": "AIDRPG" },
+      { "type": "exists", "path": "state.aidrpg" },
+      { "type": "equals", "path": "state.aidrpg.meta.currentTurn", "expected": 1 },
+      { "type": "validHookReturn" }
+    ],
+    "whyItMatters": "If this fails, no later system testing is meaningful.",
+    "patchHint": "Inspect the Library shell and CoreState initialization."
+  },
+  {
+    "name": "Context hook returns text",
+    "suite": "smoke",
+    "description": "Confirms context building can run after a normal input.",
+    "steps": [
+      { "hook": "input", "text": "I inspect the stone room." },
+      { "hook": "context", "text": "The player is in a stone room." }
+    ],
+    "assertions": [
+      { "type": "validHookReturn" },
+      { "type": "exists", "path": "state.aidrpg.cache" }
+    ],
+    "whyItMatters": "Context is the immediate AI-facing truth layer. If this breaks, the AI cannot see current state properly.",
+    "patchHint": "Inspect ContextPacketSystem.buildContext and cache initialization."
+  },
+  {
+    "name": "Output hook runs without crashing",
+    "suite": "smoke",
+    "description": "Confirms output processing can run on normal prose.",
+    "steps": [
+      { "hook": "input", "text": "I search the guard." },
+      { "hook": "output", "text": "You search the guard and find nothing unusual." }
+    ],
+    "assertions": [
+      { "type": "validHookReturn" },
+      { "type": "exists", "path": "state.aidrpg.logs" }
+    ],
+    "whyItMatters": "Most persistent consequences are handled in Output. Output crashes make gameplay unsafe.",
+    "patchHint": "Inspect Output processing order and any newly added processOutput methods."
+  },
+  {
+    "name": "Debug commands do not crash",
+    "suite": "smoke",
+    "description": "Confirms core debug commands return readable text.",
+    "steps": [
+      { "hook": "debug", "text": "/sheet", "captureDebug": true },
+      { "hook": "debug", "text": "/inventory", "captureDebug": true },
+      { "hook": "debug", "text": "/time", "captureDebug": true },
+      { "hook": "debug", "text": "/questlog", "captureDebug": true }
+    ],
+    "assertions": [
+      { "type": "validHookReturn" },
+      { "type": "exists", "path": "state.aidrpg.player" },
+      { "type": "exists", "path": "state.aidrpg.items" },
+      { "type": "exists", "path": "state.aidrpg.time" },
+      { "type": "exists", "path": "state.aidrpg.quests" }
+    ],
+    "whyItMatters": "Debug commands are how the tester and user inspect the system while building.",
+    "patchHint": "Inspect AdminDebugSystem and the specific formatter that failed."
+  }
+]

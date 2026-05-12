@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Starter full-flow: loot, injury, time, actor mention",
+    "suite": "integration",
+    "description": "Runs a realistic multi-system turn. Starter version checks for crashes and broad state creation; later versions add exact ownership/time/actor assertions.",
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I search the dead guard, take his rusted iron key, bandage my wounded arm, and hurry toward the old chapel before sunset."
+      },
+      {
+        "hook": "context",
+        "text": "The player stands near a fallen guard on the road to the old chapel."
+      },
+      {
+        "hook": "output",
+        "text": "You find a rusted iron key in the guard's pouch. Your arm still aches, but the bandage slows the bleeding. The road to the chapel takes thirty minutes. Mira follows, clearly uneasy."
+      },
+      {
+        "hook": "debug",
+        "text": "/sheet",
+        "captureDebug": true
+      },
+      {
+        "hook": "debug",
+        "text": "/inventory",
+        "captureDebug": true
+      },
+      {
+        "hook": "debug",
+        "text": "/time",
+        "captureDebug": true
+      }
+    ],
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "state.aidrpg.player"
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.items"
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.time"
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.actors"
+      }
+    ],
+    "whyItMatters": "The whole engine must survive realistic turns where several systems may need to work together.",
+    "patchHint": "If this fails, inspect the first subsystem named in the state diff and runtime error."
+  }
+]

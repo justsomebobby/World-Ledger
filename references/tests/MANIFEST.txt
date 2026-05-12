@@ -1,0 +1,36 @@
+WorldLedger uploaded files package
+
+Upload references listed: 30
+Unique available filenames included: 28
+Duplicate uploaded filenames: WorldLedgerV0.15.txt x2, WorldLedgerV0.10.txt x2
+Note: duplicate uploads with the exact same filename expose one final /mnt/data path under that name.
+
+Included files:
+01. WorldLedgerV0.3.txt | 101847 bytes | sha256=7201045dd9ce7bdb917c7fb1c89ece14dbdc68198587ddae51ae949c6944cff0
+02. WorldLedgerV0.5.txt | 139959 bytes | sha256=1d522bd84cc5ba4ea24322ac943034fb8fff520b750e161737f131306f1c7dc8
+03. WorldLedgerV0.6.txt | 162316 bytes | sha256=f41bd20d6cb912cc42574dfca8d999e1620ad5ffc26d21e39c6d6e2f0aa0db7d
+04. WorldLedgerV0.7.txt | 183746 bytes | sha256=05dbea931487c5b8abbafa075ff7dea338a0fb4a2f9b06d7dbfba99984eb8e9c
+05. WorldLedgerV0.8.txt | 207347 bytes | sha256=93cab93330586e2d483f79422f341ad0974f94ab91d99755ea91d20e7f303248
+06. WorldLedgerV0.10.txt | 257776 bytes | sha256=474bced34028523472624ba88c1336fb0b99caa3794d30a6dba0c7beefc06bd2
+07. WorldLedgerV0.14.txt | 368919 bytes | sha256=bc6b8d35ce8b099d8f29d082e63dbb932cbfb862012ce3625100ea5e512e5cc5
+08. WorldLedgerV0.15.txt | 426374 bytes | sha256=6fd7001d1763a6d6aa2aca73a9871f5b0e2ab118743a844e70d83de4bcbdc053
+09. WorldLedgerV0.15.2.txt | 490512 bytes | sha256=a98554a82879c69c57f04a51a5bd3a3cf3460a8ca15181431ba53e312cc220f6
+10. WorldLedgerV0.15.3.txt | 499131 bytes | sha256=a750b4c99cc837b3444df76b6322ab4874ea3ef713abf245963710faaa71e55b
+11. WorldLedgerV0.17.txt | 565143 bytes | sha256=c176eedb1aa8241a6d1a7c40284e71607217b8ec0f77df6e69e1dcedb1bcfabe
+12. WorldLedgerV0.18.0.txt | 613558 bytes | sha256=20962e5f5dcdef5813b65c76216f3aa94c4f71d8f72482c1cb5dace2f41902b1
+13. WorldLedgerV0.18.1.txt | 657717 bytes | sha256=01a539b3d87982b26e0ed3c1b537db24d650968db3eb0a24b052343dec41fa6c
+14. WorldLedgerV0.18.4.txt | 862948 bytes | sha256=6bde68fbf8edf1b25b58bf3559a5f8f45ed89cb4d295f54043bb304e390c574a
+15. WorldLedgerV0.18.5_PC06_ability_depth.txt | 914264 bytes | sha256=33158802bb5d0951fd083564ec484c8a7b74680213df87b60fab32f394800524
+16. WorldLedgerV0.18.7.txt | 1060375 bytes | sha256=c1c27f33defd49e93f9897eded78a2d68f82053e7327390b90a59479ca32b993
+17. WorldLedgerV0.18.9.txt | 1177907 bytes | sha256=d99988270a3fc2cd1c9a4158ec1aefdfd94ff29e42e41a52bebc67156cfab33b
+18. WorldLedgerV0.18.10.txt | 1231562 bytes | sha256=cf3e72bc256c965e4a1f69d2c4e95cfe6a0617b3bcabe98b11c0b20128c914a6
+19. WorldLedgerV0.18.14.txt | 1504288 bytes | sha256=0f1ac00f5861cb021664739fc8636fbb068664f97fcdb0ebf5d67dc173ab4a51
+20. WorldLedgerV0.18.15.txt | 1570657 bytes | sha256=6660c45b04b42d579754f010f6219477b385472ea3eddb96c51f547bdb7bb0b1
+21. WorldLedgerV0.18.23.txt | 2135769 bytes | sha256=7838fd38cdb8cac464ced0da586c13cfc2251c62a49534c9e681b430b510f237
+22. WorldLedgerV0.18.24.txt | 2171078 bytes | sha256=fba004be2063fa43c1dfad64491ab99b97e0beb9a83bc90d4467c5e5a87a6308
+23. WorldLedgerV0.18.25.txt | 2218052 bytes | sha256=67f23f26e1c18582c7974c85afeefb1a7b504ff3d55c2040957d539cee157c10
+24. WorldLedgerV0.18.26_FINAL_PLAYABLE_CANDIDATE_DEWRAPPED.txt | 2232529 bytes | sha256=7eff22af56a422c01b36650dab837d6ca6e72f1c7da5f48166deb26b489a2408
+25. WorldLedgerV0.18.27_FINAL_PLAYABLE_SOURCE_RECONCILED.txt | 2234648 bytes | sha256=0049a9fb3cbeab0e9388ee267dabe84326f2cfbdf17c5aca14b79b440617fc3f
+26. WorldLedgerV0.18.28_FINAL_PLAYABLE_SOURCE_CLEANED.txt | 2231291 bytes | sha256=e196dfe854030fc9b82d87f9569d4319f12545337b77f34f4d1626ff55cf0239
+27. AIDRPG_Final_Build_Planning_Package_v1_4_23_REPAIRED_FINAL_WITH_PRODUCTION_CHUNKS_01_TO_25.zip | 4062883 bytes | sha256=aff617b7be3b129d76c19674d5e86f6e42052ba59eeb8156631850af6713c256
+28. Pasted Text.txt 14.txt | 22594 bytes | sha256=0fc5369a752aee9a80e3ae70a097478f5d886f347fee1bc4cd94fd9e044a3083

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Inventory debug output has clean shell",
+    "suite": "inventory",
+    "description": "Checks that /inventory can display the current inventory structure cleanly.",
+    "steps": [
+      { "hook": "debug", "text": "/inventory", "captureDebug": true }
+    ],
+    "assertions": [
+      { "type": "containsText", "path": "lastReturn.text", "expected": "[AIDRPG /inventory]" },
+      { "type": "exists", "path": "state.aidrpg.items" }
+    ],
+    "whyItMatters": "If debug inventory fails, deeper inventory bugs are harder to diagnose.",
+    "patchHint": "Inspect AdminDebugSystem.formatInventory and InventorySystem.init."
+  }
+]

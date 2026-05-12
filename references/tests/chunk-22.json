@@ -1,0 +1,17 @@
+{
+  "chunk": 22,
+  "system": "ActorProfileSystem",
+  "claims": [
+    "actor profile initialization",
+    "actor output processing",
+    "context packet support"
+  ],
+  "mustNotBreak": [
+    "debug_commands",
+    "turn_engine_duplicate_protection",
+    "inventory_debug",
+    "context_generation"
+  ],
+  "generateVariations": false,
+  "note": "Starter manifest. Add future chunk manifests as new chunks are added."
+}

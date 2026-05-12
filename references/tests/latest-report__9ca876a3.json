@@ -1,0 +1,1552 @@
+[
+  {
+    "name": "AI Dungeon Story Card API / add duplicate returns false and uses entry field",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The tester must emulate AI Dungeon addStoryCard(keys, entry, type) closely enough to catch CardSync mistakes.",
+    "expectedOutcome": "addStoryCard returns a numeric index, duplicate keys return false, and storyCards expose entry/keys/type.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "first": 0,
+          "duplicate": false,
+          "length": 1,
+          "firstEntry": "A goblin guard blocks the hall.",
+          "firstKeys": "goblin,guard",
+          "firstType": "character"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.first",
+        "expected": 0,
+        "passed": true,
+        "actual": 0
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.duplicate",
+        "expected": false,
+        "passed": true,
+        "actual": false
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.length",
+        "expected": 1,
+        "passed": true,
+        "actual": 1
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardApi.firstEntry",
+        "expected": "goblin guard",
+        "passed": true,
+        "actual": "A goblin guard blocks the hall."
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardApi.firstKeys",
+        "expected": "goblin",
+        "passed": true,
+        "actual": "goblin,guard"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.firstType",
+        "expected": "character",
+        "passed": true,
+        "actual": "character"
+      },
+      {
+        "type": "storyCardsHaveEntryFields",
+        "passed": true,
+        "actual": {
+          "count": 1,
+          "bad": []
+        }
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "first": 0,
+          "duplicate": false,
+          "length": 1,
+          "firstEntry": "A goblin guard blocks the hall.",
+          "firstKeys": "goblin,guard",
+          "firstType": "character"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 157
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [
+      {
+        "op": "addStoryCard",
+        "index": 0,
+        "card": {
+          "id": 0,
+          "keys": "goblin,guard",
+          "entry": "A goblin guard blocks the hall.",
+          "value": "A goblin guard blocks the hall.",
+          "type": "character"
+        },
+        "result": 0
+      },
+      {
+        "op": "addStoryCard",
+        "keys": "goblin,guard",
+        "entry": "Duplicate should not be added.",
+        "type": "character",
+        "result": false,
+        "reason": "duplicate_keys"
+      }
+    ],
+    "lastReturn": {
+      "first": 0,
+      "duplicate": false,
+      "length": 1,
+      "firstEntry": "A goblin guard blocks the hall.",
+      "firstKeys": "goblin,guard",
+      "firstType": "character"
+    }
+  },
+  {
+    "name": "AI Dungeon Story Card API / update and remove by numeric index",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The tester must catch CardSync code that assumes object/id patch behavior instead of numeric index update/remove.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "updated": true,
+          "updatedEntry": "New entry after update.",
+          "updatedKeys": "new key",
+          "removed": true,
+          "length": 0
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.updated",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardUpdate.updatedEntry",
+        "expected": "New entry",
+        "passed": true,
+        "actual": "New entry after update."
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardUpdate.updatedKeys",
+        "expected": "new key",
+        "passed": true,
+        "actual": "new key"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.removed",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.length",
+        "expected": 0,
+        "passed": true,
+        "actual": 0
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "updated": true,
+          "updatedEntry": "New entry after update.",
+          "updatedKeys": "new key",
+          "removed": true,
+          "length": 0
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 129
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [
+      {
+        "op": "addStoryCard",
+        "index": 0,
+        "card": {
+          "id": 0,
+          "keys": "old key",
+          "entry": "Old entry.",
+          "value": "Old entry.",
+          "type": "item"
+        },
+        "result": 0
+      },
+      {
+        "op": "updateStoryCard",
+        "index": 0,
+        "legacy": false,
+        "card": {
+          "id": 0,
+          "keys": "new key",
+          "entry": "New entry after update.",
+          "value": "New entry after update.",
+          "type": "item"
+        },
+        "result": true
+      },
+      {
+        "op": "removeStoryCard",
+        "index": 0,
+        "legacy": false,
+        "removed": {
+          "id": 0,
+          "keys": "new key",
+          "entry": "New entry after update.",
+          "value": "New entry after update.",
+          "type": "item"
+        },
+        "result": true
+      }
+    ],
+    "lastReturn": {
+      "updated": true,
+      "updatedEntry": "New entry after update.",
+      "updatedKeys": "new key",
+      "removed": true,
+      "length": 0
+    }
+  },
+  {
+    "name": "AI Dungeon Story Card API / missing update and remove throw",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Missing card updates/removals should be surfaced as errors in tests rather than silently succeeding.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "update": "throw",
+          "remove": "throw"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardMissing.update",
+        "expected": "throw",
+        "passed": true,
+        "actual": "throw"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardMissing.remove",
+        "expected": "throw",
+        "passed": true,
+        "actual": "throw"
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "update": "throw",
+          "remove": "throw"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 58
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "update": "throw",
+      "remove": "throw"
+    }
+  },
+  {
+    "name": "Wrapper compatibility / standard Input Context Output wrappers return valid { text }",
+    "suite": "wrapper-compat",
+    "expectedSystem": "Hook wrapper compatibility",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Even without uploaded hook tabs, the canonical thin wrapper shape should call the Library handlers cleanly.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "inputOk": true,
+          "contextOk": true,
+          "outputOk": true,
+          "noStop": true,
+          "outputText": "You wait without anything important changing."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.inputOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.contextOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.outputOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.noStop",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "containsText",
+        "path": "state.__wrapperCompat.outputText",
+        "expected": "wait",
+        "passed": true,
+        "actual": "You wait without anything important changing."
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "inputOk": true,
+          "contextOk": true,
+          "outputOk": true,
+          "noStop": true,
+          "outputText": "You wait without anything important changing."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 33
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 5969
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 33
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "inputOk": true,
+      "contextOk": true,
+      "outputOk": true,
+      "noStop": true,
+      "outputText": "You wait without anything important changing."
+    }
+  },
+  {
+    "name": "Sandbox guard / no obvious Node browser network APIs in Library source",
+    "suite": "sandbox-guards",
+    "expectedSystem": "Runtime sandbox safety",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The Library should not depend on Node/browser APIs that AI Dungeon may not expose.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "/sheet",
+        "returnValue": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: chunk22-actorprofiles\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nSpecies: human\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "sourceMatchesNone",
+        "expected": [
+          "\\brequire\\s*\\(",
+          "\\bprocess\\s*\\.",
+          "\\bfs\\s*\\.",
+          "\\bfetch\\s*\\(",
+          "XMLHttpRequest",
+          "localStorage",
+          "\\bdocument\\s*\\.",
+          "\\bwindow\\s*\\.",
+          "\\beval\\s*\\("
+        ],
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: chunk22-actorprofiles\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nSpecies: human\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: chunk22-actorprofiles\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nSpecies: human\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "/sheet",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 4316
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "/sheet",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/sheet",
+        "text": "[AIDRPG /sheet]\nBuild Stage: chunk22-actorprofiles\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nSpecies: human\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "[AIDRPG /sheet]\nBuild Stage: chunk22-actorprofiles\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nSpecies: human\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+    }
+  },
+  {
+    "name": "Sandbox guard / repeated context calls remain under runtime and size budgets",
+    "suite": "sandbox-guards",
+    "expectedSystem": "ContextPacketSystem / runtime budget",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Context building must remain bounded when history and story cards are crowded.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "output",
+        "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.",
+        "returnValue": {
+          "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown | Facts: smoke, poison\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:00\n\nContinue under heavy context pressure."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure again.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown | Facts: smoke, poison\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:00\n\nContinue under heavy context pressure again."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure a third time.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown | Facts: smoke, poison\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:00\n\nContinue under heavy context pressure a third time."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 239
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 6646
+      },
+      {
+        "type": "storyCardCountAtMost",
+        "expected": 200,
+        "passed": true,
+        "actual": 90
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "output",
+            "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+            "durationMs": 17
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure.",
+            "durationMs": 0
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure again.",
+            "durationMs": 1
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure a third time.",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown | Facts: smoke, poison\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:00\n\nContinue under heavy context pressure a third time."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "output",
+            "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+            "durationMs": 17
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure.",
+            "durationMs": 0
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure again.",
+            "durationMs": 1
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure a third time.",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 6646
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "output",
+        "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+        "durationMs": 17
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure.",
+        "durationMs": 0
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure again.",
+        "durationMs": 1
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure a third time.",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nScene: unknown place | Type: unknown | Facts: smoke, poison\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:00\n\nContinue under heavy context pressure a third time."
+    }
+  },
+  {
+    "name": "Final compatibility / command mention and story text do not execute slash commands",
+    "suite": "ai-dungeon-final",
+    "expectedSystem": "Action-mode semantics",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Speech/story mentions of slash commands must not execute debug commands.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I say, \"/sheet\" out loud to Mira.",
+        "returnValue": {
+          "text": "I say, \"/sheet\" out loud to Mira."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "Mira looks confused when you say slash sheet, but no debug panel appears.",
+        "returnValue": {
+          "text": "Mira looks confused when you say slash sheet, but no debug panel appears."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after the spoken command.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified | Matchup: even | Pressure: low\nTime: Day 1 | 08:08\n\nContinue after the spoken command."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "notContainsText",
+        "path": "lastReturn.text",
+        "expected": "[AIDRPG /sheet]",
+        "passed": true,
+        "actual": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified | Matchup: even | Pressure: low\nTime: Day 1 | 08:08\n\nContinue after the spoken command."
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified | Matchup: even | Pressure: low\nTime: Day 1 | 08:08\n\nContinue after the spoken command."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "I say, \"/sheet\" out loud to Mira.",
+            "durationMs": 4
+          },
+          {
+            "hook": "output",
+            "text": "Mira looks confused when you say slash sheet, but no debug panel appears.",
+            "durationMs": 5
+          },
+          {
+            "hook": "context",
+            "text": "Continue after the spoken command.",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 7444
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I say, \"/sheet\" out loud to Mira.",
+        "durationMs": 4
+      },
+      {
+        "hook": "output",
+        "text": "Mira looks confused when you say slash sheet, but no debug panel appears.",
+        "durationMs": 5
+      },
+      {
+        "hook": "context",
+        "text": "Continue after the spoken command.",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified | Matchup: even | Pressure: low\nTime: Day 1 | 08:08\n\nContinue after the spoken command."
+    }
+  },
+  {
+    "name": "Final compatibility / output memory timing does not assume same-action memory effect",
+    "suite": "ai-dungeon-final",
+    "expectedSystem": "ContextPacketSystem / InventorySystem",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Important output-derived state should appear in the next Context hook rather than relying on same-output memory changes.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I search the fallen acolyte for the black sigil key.",
+        "returnValue": {
+          "text": "I search the fallen acolyte for the black sigil key."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "You find a black sigil key and put it in your pouch.",
+        "returnValue": {
+          "text": "You find a black sigil key and put it in your pouch."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "The sealed door waits ahead.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "lastReturnContainsAny",
+        "expected": [
+          "key",
+          "sigil",
+          "pouch",
+          "inventory"
+        ],
+        "passed": false,
+        "actual": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 193
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "I search the fallen acolyte for the black sigil key.",
+            "durationMs": 2
+          },
+          {
+            "hook": "output",
+            "text": "You find a black sigil key and put it in your pouch.",
+            "durationMs": 7
+          },
+          {
+            "hook": "context",
+            "text": "The sealed door waits ahead.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 8312
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg",
+        "after": {
+          "type": "object",
+          "keyCount": 14,
+          "keys": [
+            "meta",
+            "player",
+            "build",
+            "abilities",
+            "items",
+            "actors",
+            "world",
+            "time",
+            "reputation",
+            "quests",
+            "pending",
+            "cards",
+            "cache",
+            "logs"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.seed",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.meta.lastAppliedOutputHash",
+        "before": "",
+        "after": "905521844"
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.abilities",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.items",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "item_1_1",
+            "item_1_2"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.actors",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.entities",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.routes",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.cards",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.xp",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.player.levelState.totalXp",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history.recentGains",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            {
+              "turn": 1,
+              "amount": 2,
+              "source": "exploration",
+              "note": "inspect"
+            }
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm.lastSource",
+        "before": "",
+        "after": "exploration"
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "before": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "before": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "unproven"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "unproven"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "positioning_first"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "positioning_first"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stamina_leaning"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stamina_leaning"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "generalist_bias"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "generalist_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "before": {
+          "type": "array",
+          "length": 3,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "generalist"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 3,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "generalist"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationState",
+        "after": {
+          "type": "object",
+          "keyCount": 11,
+          "keys": [
+            "profileTags",
+            "profileSourceTags",
+            "currentTargetTags",
+            "currentEnvironmentTags",
+            "currentSituationTags",
+            "recentAssessments",
+            "currentEdge",
+            "currentPressure",
+            "currentSummary",
+            "noveltyActive",
+            "lastAssessmentTurn"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.byId.item_1_1",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "id",
+            "displayName",
+            "baseType",
+            "descriptors",
+            "materialTags",
+            "quality",
+            "condition",
+            "slot",
+            "stackable",
+            "quantity",
+            "stats",
+            "ownership",
+            "notes"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.byId.item_1_2",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "id",
+            "displayName",
+            "baseType",
+            "descriptors",
+            "materialTags",
+            "quality",
+            "condition",
+            "slot",
+            "stackable",
+            "quantity",
+            "stats",
+            "ownership",
+            "notes"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "item_1_1",
+            "item_1_2"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.pendingNormalization",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.byId",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.bySceneKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.localIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.pendingGeneration",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.recentUpdates",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.sightingsByKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.time.current.minute",
+        "before": 0,
+        "after": 5
+      },
+      {
+        "path": "state.aidrpg.time.elapsed.totalHours",
+        "before": 0,
+        "after": 8.08
+      },
+      {
+        "path": "state.aidrpg.time.timeline.recentEvents",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            {
+              "day": 1,
+              "hour": 8,
+              "minute": 5,
+              "note": "inspection",
+              "minutesAdvanced": 5
+            }
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.time.pendingAdvance",
+        "before": {
+          "type": "object",
+          "keyCount": 6,
+          "keys": [
+            "kind",
+            "minutes",
+            "destinationHint",
+            "startLocationRef",
+            "createdTurn",
+            "note"
+          ]
+        },
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I search the fallen acolyte for the black sigil key.",
+        "durationMs": 2
+      },
+      {
+        "hook": "output",
+        "text": "You find a black sigil key and put it in your pouch.",
+        "durationMs": 7
+      },
+      {
+        "hook": "context",
+        "text": "The sealed door waits ahead.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+    }
+  }
+]

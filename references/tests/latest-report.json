@@ -1,0 +1,2147 @@
+[
+  {
+    "name": "Script loads and creates AIDRPG through input",
+    "suite": "smoke",
+    "expectedSystem": "",
+    "description": "Confirms the script loads, the input hook runs, and state.aidrpg exists.",
+    "whyItMatters": "If this fails, no later system testing is meaningful.",
+    "patchHint": "Inspect the Library shell and CoreState initialization.",
+    "severity": "",
+    "maturity": "UNLABELED",
+    "intendedFunction": "",
+    "expectedOutcome": "",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I look around.",
+        "returnValue": {
+          "text": "I look around."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "AIDRPG",
+        "passed": true,
+        "actual": {
+          "__shellReady": true,
+          "VERSION": "1.3.4-production",
+          "BUILD_STAGE": "AIDRPG-v1.3.4-final-release",
+          "CoreState": {
+            "SCHEMA_VERSION": 1
+          },
+          "TurnEngine": {},
+          "OperationGuard": {},
+          "Utils": {},
+          "RuntimeGate": {},
+          "AdminDebugSystem": {
+            "__aidrpg114DominanceCommandWrapped": true,
+            "__aidrpg114DominanceSheetWrapped": true,
+            "__aidrpg115MatchupCommandWrapped": true,
+            "__aidrpg116WorldStructureCommandWrapped": true,
+            "__aidrpg117Commands": true,
+            "__aidrpg127TimeFormat": true
+          },
+          "PlayerSystem": {
+            "__aidrpg114DominanceWrapped": true,
+            "__aidrpg117CleanTall": true
+          },
+          "BuildIdentitySystem": {
+            "__aidrpg114DominanceWrapped": true
+          },
+          "StatBenchmarkSystem": {
+            "__aidrpg114DominanceWrapped": true
+          },
+          "ActorThreatProfileSystem": {},
+          "IntentParser": {
+            "__aidrpg117CleanIntent": true
+          },
+          "ProgressionSystem": {},
+          "InventorySystem": {
+            "__aidrpg116InvFix": true,
+            "__aidrpg116FinalInvFix": true,
+            "__aidrpg117CleanInv": true,
+            "__aidrpg117InvNegClean": true,
+            "__aidrpg118FinalInv": true,
+            "__aidrpg118NegHardening": true,
+            "__aidrpg118FinalCleanInv": true,
+            "__aidrpg127InventoryHardening": true,
+            "__aidrpg130InventoryRootFix": true,
+            "__aidrpg131InventoryNegation": true
+          },
+          "SceneStateSystem": {},
+          "WorldEntitySystem": {
+            "__aidrpg116WorldStructureWrapped": true
+          },
+          "TimeTravelSystem": {
+            "__aidrpg116TimeFix": true,
+            "__aidrpg116FinalTimeFix": true,
+            "__aidrpg117CleanTime": true,
+            "__aidrpg117RouteMemoryClean": true,
+            "__aidrpg118FixedDur": true
+          },
+          "AbilitySystem": {},
+          "PersistentTraitSystem": {
+            "__aidrpg116PoisonFix": true,
+            "__aidrpg118Poison": true,
+            "__aidrpg118PoisonHardening": true
+          },
+          "ConsequenceParser": {},
+          "ValidationSystem": {
+            "__aidrpg115MatchupWrapped": true
+          },
+          "SpecializationSystem": {},
+          "ActorProfileSystem": {
+            "__aidrpg115MatchupWrapped": true
+          },
+          "ReputationSystem": {},
+          "QuestLogSystem": {},
+          "CardSyncSystem": {
+            "__aidrpg118FinalCards": true,
+            "__aidrpg118FinalDedupe2": true
+          },
+          "ContextPacketSystem": {
+            "__aidrpg114DominanceWrapped": true,
+            "__aidrpg115MatchupActorWrapped": true,
+            "__aidrpg116WorldStructureMapWrapped": true,
+            "__aidrpg117NoIdLeak": true
+          },
+          "MajorActorMemorySystem": {},
+          "__betaPatchInstalled": true,
+          "BetaFinalPatch": {},
+          "__beta2PatchInstalled": true,
+          "Beta2ConflictPatch": {},
+          "__beta2HotfixInstalled": true,
+          "__beta3PatchInstalled": true,
+          "Beta3FinalPatch": {},
+          "__finalStoryCardDefaultsInstalled": true,
+          "FinalStoryCardDefaults": {},
+          "__v108FromSourceHotfixInstalled": true,
+          "V108FromSourceHotfix": {},
+          "__rpgStartFinalHotfixInstalled": true,
+          "RPGStartFinalHotfix": {},
+          "__rpgStart1RefinementPatchInstalled": true,
+          "RPGStart1RefinementPatch": {
+            "documentHeads": [
+              "tablet",
+              "plaque",
+              "codex",
+              "tome",
+              "blueprint",
+              "deed",
+              "charter",
+              "license"
+            ],
+            "documentAliases": [
+              "stone tablet",
+              "clay tablet",
+              "rune tablet",
+              "slate tablet",
+              "ancient tablet",
+              "bronze plaque",
+              "stone plaque",
+              "folded blueprint",
+              "property deed",
+              "guild charter",
+              "merchant license"
+            ],
+            "passiveRows": [
+              {
+                "phrase": "fire resistance",
+                "category": "resistance",
+                "domain": "fire",
+                "remove": [
+                  "burned",
+                  "burning"
+                ]
+              },
+              {
+                "phrase": "cold resistance",
+                "category": "resistance",
+                "domain": "cold",
+                "remove": [
+                  "chilled",
+                  "frozen"
+                ]
+              },
+              {
+                "phrase": "poison tolerance",
+                "category": "adaptation",
+                "domain": "poison tolerance",
+                "remove": [
+                  "poisoned",
+                  "poison"
+                ]
+              },
+              {
+                "phrase": "iron stomach",
+                "category": "adaptation",
+                "domain": "iron stomach",
+                "remove": []
+              },
+              {
+                "phrase": "pain tolerance",
+                "category": "adaptation",
+                "domain": "pain tolerance",
+                "remove": []
+              },
+              {
+                "phrase": "night vision",
+                "category": "adaptation",
+                "domain": "night vision",
+                "remove": [
+                  "blinded"
+                ]
+              },
+              {
+                "phrase": "quick reflexes",
+                "category": "adaptation",
+                "domain": "quick reflexes",
+                "remove": []
+              },
+              {
+                "phrase": "mana sensitivity",
+                "category": "sensitivity",
+                "domain": "mana",
+                "remove": []
+              }
+            ]
+          },
+          "__rpgStart1PassiveMemoryMicrofixInstalled": true,
+          "__rpgStart1PassiveWrapperOrderFixInstalled": true,
+          "__rpgStartFinalPassiveFreedomPatchInstalled": true,
+          "__aidrpg113Chunk3CleanPassHotfixInstalled": true,
+          "PlayerBuildDominanceSystem": {},
+          "__aidrpg115Chunk5MatchupGuardInstalled": true,
+          "MatchupContextSystem": {},
+          "WorldStructureSystem": {
+            "MAX_NODES": 120,
+            "MAX_EDGES": 180,
+            "__aidrpg116CleanPass": true,
+            "__aidrpg116DedupWrapped": true,
+            "__aidrpg116DetailFix": true,
+            "__aidrpg117CleanupWrapped": true,
+            "__aidrpg117CleanWS": true
+          },
+          "__aidrpg116WSInitWrapped": true,
+          "__aidrpg117InvNegClean": true,
+          "PreAuditSystem": {},
+          "__aidrpg118PreAudit": true,
+          "__aidrpg118MergeMem": true,
+          "FinalAuditSystem": {},
+          "__aidrpg118FinalCleanpass": true,
+          "__aidrpg118FinalCleanpassB": true,
+          "__aidrpg118FinalCleanpassC": true,
+          "__aidrpg118AtrocityD": true,
+          "FinalHardening2": {},
+          "__aidrpg118FinalHardening2": true,
+          "__aidrpg118FinalHardening3": true,
+          "__aidrpg118PronounDeepClean": true,
+          "__aidrpg118FixedRelease": true,
+          "__aidrpg118FinalUltraPlay": true,
+          "__aidrpg118FinalUltraTime2": true,
+          "__aidrpg118UltraItem2": true,
+          "__aidrpg118UltraNeg2": true,
+          "__aidrpg118SlipFast": true,
+          "__aidrpg118LastTime": true,
+          "__aidrpg118LastSlip": true,
+          "__aidrpg118YearTop": true,
+          "__aidrpg118FinalCleanup3": true,
+          "__aidrpg118FinalCleanup4": true,
+          "__aidrpg118ClaimCoinsFix": true,
+          "__aidrpg118FinalFast5": true,
+          "__aidrpg118GolemFast6": true,
+          "__aidrpg118SlimeSoothing7": true,
+          "__aidrpg118AbsoluteFinal8": true,
+          "__aidrpg118CardCap9": true,
+          "__aidrpg118StoryTotalCap10": true,
+          "__aidrpg118ContextNoId11": true,
+          "__aidrpg125FinalRelease": true,
+          "__aidrpg126FinalRelease": true,
+          "__aidrpg127FinalRelease": true,
+          "__aidrpg128FinalRelease": true,
+          "__aidrpg130FinalRelease": true,
+          "__aidrpg131FinalRelease": true,
+          "__aidrpg131AgeFinal": true,
+          "__aidrpg131AgeGlobalFinal": true,
+          "DenialGate": {},
+          "__aidrpg132SharedDenialGate": true,
+          "__aidrpg132DeniedObjectFinal": true,
+          "__aidrpg133Gate": true,
+          "__aidrpg133NameRepair": true,
+          "__aidrpg133NameFallback": true,
+          "__aidrpg134FinalPolish": true,
+          "__aidrpg134StrictEmberContext": true
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg",
+        "passed": true,
+        "actual": {
+          "meta": {
+            "version": 1,
+            "createdAtTurn": 0,
+            "currentTurn": 1,
+            "currentHook": "",
+            "mode": "normal",
+            "seed": 0,
+            "lastAppliedOutputHash": "",
+            "debug": false,
+            "dirty": {
+              "player": false,
+              "abilities": [],
+              "items": [],
+              "actors": [],
+              "entities": [],
+              "routes": [],
+              "reputation": false,
+              "quests": false,
+              "time": false,
+              "cards": []
+            }
+          },
+          "player": {
+            "id": "player",
+            "name": "",
+            "species": "human",
+            "age": 0,
+            "titles": [],
+            "history": {
+              "majorEvents": [],
+              "timeSkips": []
+            },
+            "levelState": {
+              "level": 1,
+              "xp": 0,
+              "xpToNext": 100,
+              "totalXp": 0,
+              "growthClass": "standard",
+              "history": {
+                "recentGains": []
+              },
+              "antiFarm": {
+                "lastSource": "",
+                "repeatCount": 0
+              },
+              "lastGainTurn": 0
+            },
+            "stats": {
+              "hp": 100,
+              "maxHp": 100,
+              "mp": 20,
+              "maxMp": 20,
+              "ep": 50,
+              "maxEp": 50,
+              "atk": 5,
+              "def": 5,
+              "spd": 5,
+              "intl": 5,
+              "lck": 5
+            },
+            "derived": {
+              "combatPressure": 6,
+              "mobility": 7,
+              "threatRating": 21,
+              "statBenchmark": {
+                "level": 1,
+                "role": "dungeon",
+                "band": "baseline",
+                "expectedStats": {
+                  "atk": 5,
+                  "def": 5,
+                  "spd": 5,
+                  "intl": 5,
+                  "lck": 5
+                },
+                "expectedResources": {
+                  "maxHp": 100,
+                  "maxMp": 20,
+                  "maxEp": 50
+                },
+                "gap": {
+                  "atk": 0,
+                  "def": 0,
+                  "spd": 0,
+                  "intl": 0,
+                  "lck": 0
+                },
+                "statGrades": {
+                  "atk": "near",
+                  "def": "near",
+                  "spd": "near",
+                  "intl": "near",
+                  "lck": "near"
+                },
+                "primaryStats": [],
+                "weakStats": [],
+                "note": "Benchmarks describe average stat spread for this level/profile; they do not decide victory alone."
+              },
+              "buildDominance": {
+                "level": 1,
+                "levelBand": "baseline",
+                "benchmarkRole": "dungeon",
+                "actualPrimaryStats": [
+                  "atk",
+                  "def",
+                  "spd"
+                ],
+                "primaryStats": [
+                  "atk",
+                  "def",
+                  "spd"
+                ],
+                "weakStats": [],
+                "resourceLean": "mixed_resource",
+                "combatStyle": "direct_force",
+                "magicStyle": "mundane_or_unproven",
+                "defenseStyle": "fragile",
+                "mobilityStyle": "ordinary_or_slow",
+                "domainTags": [
+                  "none_confirmed"
+                ],
+                "vulnerabilityNotes": [
+                  "physical_impact_danger"
+                ],
+                "dominanceTags": [
+                  "primary_atk",
+                  "primary_def",
+                  "primary_spd",
+                  "force_identity",
+                  "scale_baseline"
+                ],
+                "benchmarkGap": {
+                  "atk": 0,
+                  "def": 0,
+                  "spd": 0,
+                  "intl": 0,
+                  "lck": 0
+                },
+                "note": "Build profile preserves strengths and weaknesses; it does not decide combat outcomes by itself."
+              }
+            },
+            "body": {
+              "limbs": {
+                "leftArm": "present",
+                "rightArm": "present",
+                "leftLeg": "present",
+                "rightLeg": "present"
+              },
+              "injuries": [],
+              "scars": [],
+              "mutations": [],
+              "speciesTraits": [],
+              "bodyTags": []
+            },
+            "conditions": {
+              "active": [],
+              "permanent": [],
+              "vulnerabilities": [],
+              "immunities": []
+            },
+            "appearance": {
+              "visibleTraits": [],
+              "outfitSummary": "",
+              "silhouetteTags": []
+            },
+            "locationRef": "",
+            "sceneRef": "",
+            "traitState": {
+              "byId": {},
+              "byKey": {},
+              "allIds": [],
+              "conditionIds": [],
+              "traitIds": [],
+              "resistanceTags": [],
+              "immunityTags": [],
+              "vulnerabilityTags": [],
+              "adaptationTags": [],
+              "sensitivityTags": [],
+              "exposureByDomain": {},
+              "growthHooks": [],
+              "recentEvents": []
+            }
+          },
+          "build": {
+            "originTags": [
+              "species:human",
+              "baseline_mortal",
+              "adaptable",
+              "novice"
+            ],
+            "combatTags": [
+              "direct_force",
+              "unproven"
+            ],
+            "methodTags": [
+              "positioning_first"
+            ],
+            "resourceTags": [
+              "stamina_leaning"
+            ],
+            "defenseTags": [
+              "evasive"
+            ],
+            "specializationTags": [
+              "generalist_bias"
+            ],
+            "temperamentTags": [
+              "stable"
+            ],
+            "styleTags": [
+              "offensive"
+            ],
+            "archetypeSummary": [
+              "force-leaning",
+              "stamina-leaning",
+              "generalist"
+            ],
+            "masteryNotes": [],
+            "matchupProfile": {
+              "strongAgainst": [],
+              "weakAgainst": [],
+              "unfamiliarAgainst": [
+                "unknown_styles"
+              ]
+            },
+            "specializationState": {
+              "profileTags": [],
+              "profileSourceTags": [],
+              "currentTargetTags": [],
+              "currentEnvironmentTags": [],
+              "currentSituationTags": [],
+              "recentAssessments": [],
+              "currentEdge": "none",
+              "currentPressure": "none",
+              "currentSummary": "",
+              "noveltyActive": false,
+              "lastAssessmentTurn": 0
+            }
+          },
+          "abilities": {
+            "byId": {},
+            "byKey": {},
+            "allIds": [],
+            "skillIds": [],
+            "talentIds": [],
+            "passiveIds": [],
+            "recentEvents": []
+          },
+          "items": {
+            "byId": {},
+            "ownership": {
+              "player": [],
+              "storage": {},
+              "actors": {}
+            },
+            "equipment": {
+              "mainHand": null,
+              "offHand": null,
+              "head": null,
+              "body": null,
+              "hands": null,
+              "legs": null,
+              "feet": null,
+              "accessory1": null,
+              "accessory2": null
+            },
+            "currency": {
+              "byType": {
+                "copper": 0,
+                "silver": 0,
+                "gold": 0
+              }
+            },
+            "pendingNormalization": []
+          },
+          "actors": {
+            "threatSettings": {
+              "version": 1
+            },
+            "byId": {},
+            "bySceneKey": {},
+            "allIds": [],
+            "localIds": [],
+            "pendingGeneration": [],
+            "recentUpdates": [],
+            "sightingsByKey": {},
+            "majorMemory": {
+              "byActorId": {},
+              "activeIds": [],
+              "recentEvents": [],
+              "config": {
+                "maxMajorActors": 12,
+                "maxGoals": 6,
+                "maxGrudges": 6,
+                "maxNotes": 8,
+                "maxEvents": 40,
+                "activationSightings": 5
+              }
+            }
+          },
+          "world": {
+            "currentScene": {
+              "sceneRef": "",
+              "displayName": "",
+              "sceneType": "unknown",
+              "entityRef": "",
+              "parentLocationRef": "",
+              "lastChangedTurn": 0,
+              "localEntityIds": [],
+              "localActorIds": [],
+              "localHazards": [],
+              "localExits": [],
+              "conditionTags": [],
+              "localEntitiesById": {},
+              "localActorsById": {},
+              "sceneHintLabel": "",
+              "sceneHintStrength": 0,
+              "sceneHintTurn": 0,
+              "pendingSceneLabel": "",
+              "pendingSceneStrength": 0,
+              "pendingSceneCount": 0,
+              "pendingSceneTurn": 0,
+              "sceneConfidence": 0
+            },
+            "locationsById": {},
+            "entitiesById": {},
+            "factionsById": {},
+            "routesById": {},
+            "mapMemory": {
+              "namedLocationsById": {},
+              "dungeonLayoutsById": {},
+              "goalBindingsById": {},
+              "recentMapEvents": [],
+              "currentDungeonId": "",
+              "lastDungeonRoomId": ""
+            },
+            "activeEncounter": {
+              "enemyLabel": "",
+              "totalCount": 0,
+              "remainingCount": 0,
+              "resolved": false,
+              "recentEvents": []
+            }
+          },
+          "time": {
+            "current": {
+              "day": 1,
+              "hour": 8,
+              "minute": 0,
+              "season": "",
+              "weather": ""
+            },
+            "elapsed": {
+              "totalHours": 0
+            },
+            "timeline": {
+              "recentEvents": []
+            },
+            "routes": {
+              "knownTravelTimes": {},
+              "baseTravelTimes": {},
+              "recentRouteEvents": []
+            },
+            "pendingAdvance": {
+              "kind": "inspection",
+              "minutes": 5,
+              "destinationHint": "",
+              "startLocationRef": "",
+              "createdTurn": 1,
+              "note": "inspection"
+            },
+            "contradictionFlags": []
+          },
+          "reputation": {
+            "bySubject": {},
+            "recentChanges": [],
+            "rumors": [],
+            "titles": [],
+            "pendingReports": [],
+            "tracking": {
+              "primarySubjectId": "",
+              "summaryDirty": false
+            },
+            "lastChangedTurn": 0
+          },
+          "quests": {
+            "active": [],
+            "archived": [],
+            "recentUpdates": [],
+            "tracking": {
+              "primaryQuestId": "",
+              "summaryDirty": false,
+              "lastChangedTurn": 0
+            }
+          },
+          "pending": {
+            "abilityCandidate": null,
+            "outputCandidates": [],
+            "unresolvedConsequences": [],
+            "lastConsequenceParse": {},
+            "validatedConsequences": [],
+            "tentativeConsequences": [],
+            "ignoredConsequences": [],
+            "validationSummary": {},
+            "turnScratch": {
+              "turnNumber": 1,
+              "inputHash": "3661461510",
+              "outputHash": "",
+              "duplicateOutput": false,
+              "lastHookStarted": "input",
+              "lastHookEnded": "input"
+            },
+            "recentHookTrace": [
+              {
+                "hook": "input",
+                "turn": 1,
+                "hash": "3661461510"
+              }
+            ],
+            "operationGuard": {
+              "recentKeys": [],
+              "currentTurn": 1,
+              "maxKeys": 240,
+              "keepTurns": 6
+            },
+            "inputIntent": {
+              "primaryType": "inspect",
+              "confidence": 0.95,
+              "alternates": [],
+              "targetHint": "surroundings",
+              "weaponHint": "",
+              "styleHint": "",
+              "abilityHint": "",
+              "itemHint": "",
+              "destinationHint": "",
+              "trainingHint": "",
+              "environmentHint": "",
+              "tags": [
+                "intent:inspect",
+                "observational"
+              ],
+              "rawText": "I look around."
+            },
+            "__aidrpg132": {
+              "turn": 1,
+              "inputHash": "3661461510",
+              "itemCandidates": [],
+              "abilityCandidates": [],
+              "preInputAbilityNorms": {}
+            }
+          },
+          "cards": {
+            "config": {
+              "namespacePrefix": "SYS:AIDRPG",
+              "liveWrites": true,
+              "strictCardSync": true,
+              "cardSafeMode": false,
+              "maxWritesPerTurn": 14,
+              "maxCardTextChars": 1400,
+              "maxQueueSize": 80,
+              "autoBootstrapCards": true,
+              "autoUpdateSummaryCards": true,
+              "bootstrapCardVersion": "1.0.7-final"
+            },
+            "index": {
+              "byNamespace": {},
+              "byCardId": {},
+              "lastRefreshedTurn": 0
+            },
+            "dirtyQueue": [],
+            "pendingWrites": [],
+            "recentOperations": [],
+            "dryRunLog": [],
+            "duplicateRefs": [],
+            "lastWriteHashes": {},
+            "lastSyncTurn": 0,
+            "finalDefaults": {
+              "bootstrapped": false,
+              "lastBootstrapTurn": -1,
+              "lastSummarySyncTurn": -1,
+              "cursor": 0
+            }
+          },
+          "cache": {
+            "visibleCarrySummary": "",
+            "sceneSummary": "",
+            "localEntityIds": [],
+            "localActorIds": [],
+            "lastSceneHash": "",
+            "timeSummary": ""
+          },
+          "logs": {
+            "recentEvents": [],
+            "recentParses": [],
+            "recentErrors": [],
+            "quarantine": [],
+            "migrationHistory": []
+          }
+        }
+      },
+      {
+        "type": "equals",
+        "path": "state.aidrpg.meta.currentTurn",
+        "expected": 1,
+        "passed": true,
+        "actual": 1
+      },
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "I look around."
+        }
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I look around.",
+        "durationMs": 19
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "I look around."
+    }
+  },
+  {
+    "name": "Context hook returns text",
+    "suite": "smoke",
+    "expectedSystem": "",
+    "description": "Confirms context building can run after a normal input.",
+    "whyItMatters": "Context is the immediate AI-facing truth layer. If this breaks, the AI cannot see current state properly.",
+    "patchHint": "Inspect ContextPacketSystem.buildContext and cache initialization.",
+    "severity": "",
+    "maturity": "UNLABELED",
+    "intendedFunction": "",
+    "expectedOutcome": "",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I inspect the stone room.",
+        "returnValue": {
+          "text": "I inspect the stone room."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "The player is in a stone room.",
+        "returnValue": {
+          "text": "Current truth: Player: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Injuries: none | Outfit: unspecified | Build Profile: L1 baseline dungeon | Primary atk/def/spd | Weak none_flagged | direct_force/fragile | Resource mixed_resource. Time: Day 1 | 08:00 Scene: unknown place | Type: unknown The player is in a stone room."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "Current truth: Player: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Injuries: none | Outfit: unspecified | Build Profile: L1 baseline dungeon | Primary atk/def/spd | Weak none_flagged | direct_force/fragile | Resource mixed_resource. Time: Day 1 | 08:00 Scene: unknown place | Type: unknown The player is in a stone room."
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.cache",
+        "passed": true,
+        "actual": {
+          "visibleCarrySummary": "nothing notable visible",
+          "sceneSummary": "",
+          "localEntityIds": [],
+          "localActorIds": [],
+          "lastSceneHash": "",
+          "timeSummary": "",
+          "priorityPacket": "",
+          "scenePacket": "Scene: unknown place | Type: unknown",
+          "playerPacket": "Player: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Injuries: none | Outfit: unspecified | Build Profile: L1 baseline dungeon | Primary atk/def/spd | Weak none_flagged | direct_force/fragile | Resource mixed_resource.",
+          "timePacket": "Time: Day 1 | 08:00",
+          "actorPacket": "",
+          "reputationPacket": "",
+          "questPacket": "",
+          "worldPacket": "",
+          "mapPacket": "",
+          "recentEventPacket": "",
+          "contextPacket": "Current truth:\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Injuries: none | Outfit: unspecified | Build Profile: L1 baseline dungeon | Primary atk/def/spd | Weak none_flagged | direct_force/fragile | Resource mixed_resource.\nTime: Day 1 | 08:00\nScene: unknown place | Type: unknown",
+          "packetMode": "normal"
+        }
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I inspect the stone room.",
+        "durationMs": 5
+      },
+      {
+        "hook": "context",
+        "text": "The player is in a stone room.",
+        "durationMs": 9
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth: Player: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Injuries: none | Outfit: unspecified | Build Profile: L1 baseline dungeon | Primary atk/def/spd | Weak none_flagged | direct_force/fragile | Resource mixed_resource. Time: Day 1 | 08:00 Scene: unknown place | Type: unknown The player is in a stone room."
+    }
+  },
+  {
+    "name": "Output hook runs without crashing",
+    "suite": "smoke",
+    "expectedSystem": "",
+    "description": "Confirms output processing can run on normal prose.",
+    "whyItMatters": "Most persistent consequences are handled in Output. Output crashes make gameplay unsafe.",
+    "patchHint": "Inspect Output processing order and any newly added processOutput methods.",
+    "severity": "",
+    "maturity": "UNLABELED",
+    "intendedFunction": "",
+    "expectedOutcome": "",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I search the guard.",
+        "returnValue": {
+          "text": "I search the guard."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "You search the guard and find nothing unusual.",
+        "returnValue": {
+          "text": "You search the guard and find nothing unusual."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "You search the guard and find nothing unusual."
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.logs",
+        "passed": true,
+        "actual": {
+          "recentEvents": [
+            {
+              "turn": 1,
+              "hook": "output",
+              "message": "No acquisition granted from negated/search-empty wording."
+            }
+          ],
+          "recentParses": [],
+          "recentErrors": [],
+          "quarantine": [],
+          "migrationHistory": []
+        }
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I search the guard.",
+        "durationMs": 3
+      },
+      {
+        "hook": "output",
+        "text": "You search the guard and find nothing unusual.",
+        "durationMs": 36
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "You search the guard and find nothing unusual."
+    }
+  },
+  {
+    "name": "Debug commands do not crash",
+    "suite": "smoke",
+    "expectedSystem": "",
+    "description": "Confirms core debug commands return readable text.",
+    "whyItMatters": "Debug commands are how the tester and user inspect the system while building.",
+    "patchHint": "Inspect AdminDebugSystem and the specific formatter that failed.",
+    "severity": "",
+    "maturity": "UNLABELED",
+    "intendedFunction": "",
+    "expectedOutcome": "",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "debug",
+        "text": "/sheet",
+        "returnValue": {
+          "text": "[AIDRPG /sheet] Build Stage: AIDRPG-v1.3.4-final-release Current Turn: 1 Debug: off Name: (unset) Age: (unknown) Species: human Titles: none Level: 1 XP: 0 / 100 HP: 100 / 100 MP: 20 / 20 EP: 50 / 50 ATK: 5 DEF: 5 SPD: 5 INT: 5 LCK: 5 Scale Band: baseline Benchmark Role: dungeon Benchmark Avg Stats: ATK 5, DEF 5, SPD 5, INT 5, LCK 5 Benchmark Gap: ATK +0, DEF +0, SPD +0, INT +0, LCK +0 Above Benchmark: none Below Benchmark: none Player Location Ref: (none) Player Scene Ref: (none) Scene Name: (none) Scene Type: unknown Scene Parent Location: (none) Scene Parent Ref: (none) Visible Traits: none Outfit Summary: (none) Injuries: none Mutations: none Active Conditions: none Permanent Conditions: none\n\nBuild Dominance Profile:\nBuild Role: dungeon\nDominant Build Stats: atk, def, spd\nWeak Build Stats: none\nResource Lean: mixed_resource\nCombat/Defense Style: direct_force / fragile\nMobility/Magic Style: ordinary_or_slow / mundane_or_unproven\nDomains: none_confirmed\nBuild Vulnerabilities: physical_impact_danger\n"
+        }
+      },
+      {
+        "hook": "debug",
+        "text": "/inventory",
+        "returnValue": {
+          "text": "[AIDRPG /inventory]\nOwned Item IDs: 0\nOwned Items: none\n\nEquipped:\nmainHand: (empty)\noffHand: (empty)\nhead: (empty)\nbody: (empty)\nhands: (empty)\nlegs: (empty)\nfeet: (empty)\naccessory1: (empty)\naccessory2: (empty)\n\nCurrency - copper: 0\nCurrency - silver: 0\nCurrency - gold: 0\n"
+        }
+      },
+      {
+        "hook": "debug",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 0\nSeason: (unset)\nWeather: (unset)\n\nElapsed Hours: 0\nKnown Route Times: 0\nContradiction Flags: none\n"
+        }
+      },
+      {
+        "hook": "debug",
+        "text": "/questlog",
+        "returnValue": {
+          "text": "[AIDRPG /questlog]\nPrimary Quest ID: (none)\nActive Quests: 0\n- none\n\nArchived Quests: 0\n"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "[AIDRPG /questlog]\nPrimary Quest ID: (none)\nActive Quests: 0\n- none\n\nArchived Quests: 0\n"
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.player",
+        "passed": true,
+        "actual": {
+          "id": "player",
+          "name": "",
+          "species": "human",
+          "age": 0,
+          "titles": [],
+          "history": {
+            "majorEvents": [],
+            "timeSkips": []
+          },
+          "levelState": {
+            "level": 1,
+            "xp": 0,
+            "xpToNext": 100,
+            "totalXp": 0,
+            "growthClass": "standard",
+            "history": {
+              "recentGains": []
+            },
+            "antiFarm": {
+              "lastSource": "",
+              "repeatCount": 0
+            },
+            "lastGainTurn": 0
+          },
+          "stats": {
+            "hp": 100,
+            "maxHp": 100,
+            "mp": 20,
+            "maxMp": 20,
+            "ep": 50,
+            "maxEp": 50,
+            "atk": 5,
+            "def": 5,
+            "spd": 5,
+            "intl": 5,
+            "lck": 5
+          },
+          "derived": {
+            "combatPressure": 6,
+            "mobility": 7,
+            "threatRating": 21,
+            "statBenchmark": {
+              "level": 1,
+              "role": "dungeon",
+              "band": "baseline",
+              "expectedStats": {
+                "atk": 5,
+                "def": 5,
+                "spd": 5,
+                "intl": 5,
+                "lck": 5
+              },
+              "expectedResources": {
+                "maxHp": 100,
+                "maxMp": 20,
+                "maxEp": 50
+              },
+              "gap": {
+                "atk": 0,
+                "def": 0,
+                "spd": 0,
+                "intl": 0,
+                "lck": 0
+              },
+              "statGrades": {
+                "atk": "near",
+                "def": "near",
+                "spd": "near",
+                "intl": "near",
+                "lck": "near"
+              },
+              "primaryStats": [],
+              "weakStats": [],
+              "note": "Benchmarks describe average stat spread for this level/profile; they do not decide victory alone."
+            },
+            "buildDominance": {
+              "level": 1,
+              "levelBand": "baseline",
+              "benchmarkRole": "dungeon",
+              "actualPrimaryStats": [
+                "atk",
+                "def",
+                "spd"
+              ],
+              "primaryStats": [
+                "atk",
+                "def",
+                "spd"
+              ],
+              "weakStats": [],
+              "resourceLean": "mixed_resource",
+              "combatStyle": "direct_force",
+              "magicStyle": "mundane_or_unproven",
+              "defenseStyle": "fragile",
+              "mobilityStyle": "ordinary_or_slow",
+              "domainTags": [
+                "none_confirmed"
+              ],
+              "vulnerabilityNotes": [
+                "physical_impact_danger"
+              ],
+              "dominanceTags": [
+                "primary_atk",
+                "primary_def",
+                "primary_spd",
+                "force_identity",
+                "scale_baseline"
+              ],
+              "benchmarkGap": {
+                "atk": 0,
+                "def": 0,
+                "spd": 0,
+                "intl": 0,
+                "lck": 0
+              },
+              "note": "Build profile preserves strengths and weaknesses; it does not decide combat outcomes by itself."
+            }
+          },
+          "body": {
+            "limbs": {
+              "leftArm": "present",
+              "rightArm": "present",
+              "leftLeg": "present",
+              "rightLeg": "present"
+            },
+            "injuries": [],
+            "scars": [],
+            "mutations": [],
+            "speciesTraits": [],
+            "bodyTags": []
+          },
+          "conditions": {
+            "active": [],
+            "permanent": [],
+            "vulnerabilities": [],
+            "immunities": []
+          },
+          "appearance": {
+            "visibleTraits": [],
+            "outfitSummary": "",
+            "silhouetteTags": []
+          },
+          "locationRef": "",
+          "sceneRef": "",
+          "traitState": {
+            "byId": {},
+            "byKey": {},
+            "allIds": [],
+            "conditionIds": [],
+            "traitIds": [],
+            "resistanceTags": [],
+            "immunityTags": [],
+            "vulnerabilityTags": [],
+            "adaptationTags": [],
+            "sensitivityTags": [],
+            "exposureByDomain": {},
+            "growthHooks": [],
+            "recentEvents": []
+          }
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.items",
+        "passed": true,
+        "actual": {
+          "byId": {},
+          "ownership": {
+            "player": [],
+            "storage": {},
+            "actors": {}
+          },
+          "equipment": {
+            "mainHand": null,
+            "offHand": null,
+            "head": null,
+            "body": null,
+            "hands": null,
+            "legs": null,
+            "feet": null,
+            "accessory1": null,
+            "accessory2": null
+          },
+          "currency": {
+            "byType": {
+              "copper": 0,
+              "silver": 0,
+              "gold": 0
+            }
+          },
+          "pendingNormalization": []
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.time",
+        "passed": true,
+        "actual": {
+          "current": {
+            "day": 1,
+            "hour": 8,
+            "minute": 0,
+            "season": "",
+            "weather": ""
+          },
+          "elapsed": {
+            "totalHours": 0
+          },
+          "timeline": {
+            "recentEvents": []
+          },
+          "routes": {
+            "knownTravelTimes": {},
+            "baseTravelTimes": {},
+            "recentRouteEvents": []
+          },
+          "pendingAdvance": null,
+          "contradictionFlags": []
+        }
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg.quests",
+        "passed": true,
+        "actual": {
+          "active": [],
+          "archived": [],
+          "recentUpdates": [],
+          "tracking": {
+            "primaryQuestId": "",
+            "summaryDirty": false,
+            "lastChangedTurn": 0
+          }
+        }
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "debug",
+        "text": "/sheet",
+        "durationMs": 2
+      },
+      {
+        "hook": "debug",
+        "text": "/inventory",
+        "durationMs": 2
+      },
+      {
+        "hook": "debug",
+        "text": "/time",
+        "durationMs": 3
+      },
+      {
+        "hook": "debug",
+        "text": "/questlog",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/sheet",
+        "text": "[AIDRPG /sheet] Build Stage: AIDRPG-v1.3.4-final-release Current Turn: 1 Debug: off Name: (unset) Age: (unknown) Species: human Titles: none Level: 1 XP: 0 / 100 HP: 100 / 100 MP: 20 / 20 EP: 50 / 50 ATK: 5 DEF: 5 SPD: 5 INT: 5 LCK: 5 Scale Band: baseline Benchmark Role: dungeon Benchmark Avg Stats: ATK 5, DEF 5, SPD 5, INT 5, LCK 5 Benchmark Gap: ATK +0, DEF +0, SPD +0, INT +0, LCK +0 Above Benchmark: none Below Benchmark: none Player Location Ref: (none) Player Scene Ref: (none) Scene Name: (none) Scene Type: unknown Scene Parent Location: (none) Scene Parent Ref: (none) Visible Traits: none Outfit Summary: (none) Injuries: none Mutations: none Active Conditions: none Permanent Conditions: none\n\nBuild Dominance Profile:\nBuild Role: dungeon\nDominant Build Stats: atk, def, spd\nWeak Build Stats: none\nResource Lean: mixed_resource\nCombat/Defense Style: direct_force / fragile\nMobility/Magic Style: ordinary_or_slow / mundane_or_unproven\nDomains: none_confirmed\nBuild Vulnerabilities: physical_impact_danger\n"
+      },
+      {
+        "command": "/inventory",
+        "text": "[AIDRPG /inventory]\nOwned Item IDs: 0\nOwned Items: none\n\nEquipped:\nmainHand: (empty)\noffHand: (empty)\nhead: (empty)\nbody: (empty)\nhands: (empty)\nlegs: (empty)\nfeet: (empty)\naccessory1: (empty)\naccessory2: (empty)\n\nCurrency - copper: 0\nCurrency - silver: 0\nCurrency - gold: 0\n"
+      },
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 0\nSeason: (unset)\nWeather: (unset)\n\nElapsed Hours: 0\nKnown Route Times: 0\nContradiction Flags: none\n"
+      },
+      {
+        "command": "/questlog",
+        "text": "[AIDRPG /questlog]\nPrimary Quest ID: (none)\nActive Quests: 0\n- none\n\nArchived Quests: 0\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "[AIDRPG /questlog]\nPrimary Quest ID: (none)\nActive Quests: 0\n- none\n\nArchived Quests: 0\n"
+    }
+  },
+  {
+    "name": "Smoke: AIDRPG shell loads and input hook initializes state",
+    "suite": "smoke",
+    "expectedSystem": "",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "",
+    "severity": "Medium",
+    "maturity": "UNLABELED",
+    "intendedFunction": "Confirm the whole script can be loaded and called like AI Dungeon calls it.",
+    "expectedOutcome": "",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I look around.",
+        "returnValue": {
+          "text": "I look around."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "exists",
+        "path": "AIDRPG",
+        "passed": true,
+        "actual": {
+          "__shellReady": true,
+          "VERSION": "1.3.4-production",
+          "BUILD_STAGE": "AIDRPG-v1.3.4-final-release",
+          "CoreState": {
+            "SCHEMA_VERSION": 1
+          },
+          "TurnEngine": {},
+          "OperationGuard": {},
+          "Utils": {},
+          "RuntimeGate": {},
+          "AdminDebugSystem": {
+            "__aidrpg114DominanceCommandWrapped": true,
+            "__aidrpg114DominanceSheetWrapped": true,
+            "__aidrpg115MatchupCommandWrapped": true,
+            "__aidrpg116WorldStructureCommandWrapped": true,
+            "__aidrpg117Commands": true,
+            "__aidrpg127TimeFormat": true
+          },
+          "PlayerSystem": {
+            "__aidrpg114DominanceWrapped": true,
+            "__aidrpg117CleanTall": true
+          },
+          "BuildIdentitySystem": {
+            "__aidrpg114DominanceWrapped": true
+          },
+          "StatBenchmarkSystem": {
+            "__aidrpg114DominanceWrapped": true
+          },
+          "ActorThreatProfileSystem": {},
+          "IntentParser": {
+            "__aidrpg117CleanIntent": true
+          },
+          "ProgressionSystem": {},
+          "InventorySystem": {
+            "__aidrpg116InvFix": true,
+            "__aidrpg116FinalInvFix": true,
+            "__aidrpg117CleanInv": true,
+            "__aidrpg117InvNegClean": true,
+            "__aidrpg118FinalInv": true,
+            "__aidrpg118NegHardening": true,
+            "__aidrpg118FinalCleanInv": true,
+            "__aidrpg127InventoryHardening": true,
+            "__aidrpg130InventoryRootFix": true,
+            "__aidrpg131InventoryNegation": true
+          },
+          "SceneStateSystem": {},
+          "WorldEntitySystem": {
+            "__aidrpg116WorldStructureWrapped": true
+          },
+          "TimeTravelSystem": {
+            "__aidrpg116TimeFix": true,
+            "__aidrpg116FinalTimeFix": true,
+            "__aidrpg117CleanTime": true,
+            "__aidrpg117RouteMemoryClean": true,
+            "__aidrpg118FixedDur": true
+          },
+          "AbilitySystem": {},
+          "PersistentTraitSystem": {
+            "__aidrpg116PoisonFix": true,
+            "__aidrpg118Poison": true,
+            "__aidrpg118PoisonHardening": true
+          },
+          "ConsequenceParser": {},
+          "ValidationSystem": {
+            "__aidrpg115MatchupWrapped": true
+          },
+          "SpecializationSystem": {},
+          "ActorProfileSystem": {
+            "__aidrpg115MatchupWrapped": true
+          },
+          "ReputationSystem": {},
+          "QuestLogSystem": {},
+          "CardSyncSystem": {
+            "__aidrpg118FinalCards": true,
+            "__aidrpg118FinalDedupe2": true
+          },
+          "ContextPacketSystem": {
+            "__aidrpg114DominanceWrapped": true,
+            "__aidrpg115MatchupActorWrapped": true,
+            "__aidrpg116WorldStructureMapWrapped": true,
+            "__aidrpg117NoIdLeak": true
+          },
+          "MajorActorMemorySystem": {},
+          "__betaPatchInstalled": true,
+          "BetaFinalPatch": {},
+          "__beta2PatchInstalled": true,
+          "Beta2ConflictPatch": {},
+          "__beta2HotfixInstalled": true,
+          "__beta3PatchInstalled": true,
+          "Beta3FinalPatch": {},
+          "__finalStoryCardDefaultsInstalled": true,
+          "FinalStoryCardDefaults": {},
+          "__v108FromSourceHotfixInstalled": true,
+          "V108FromSourceHotfix": {},
+          "__rpgStartFinalHotfixInstalled": true,
+          "RPGStartFinalHotfix": {},
+          "__rpgStart1RefinementPatchInstalled": true,
+          "RPGStart1RefinementPatch": {
+            "documentHeads": [
+              "tablet",
+              "plaque",
+              "codex",
+              "tome",
+              "blueprint",
+              "deed",
+              "charter",
+              "license"
+            ],
+            "documentAliases": [
+              "stone tablet",
+              "clay tablet",
+              "rune tablet",
+              "slate tablet",
+              "ancient tablet",
+              "bronze plaque",
+              "stone plaque",
+              "folded blueprint",
+              "property deed",
+              "guild charter",
+              "merchant license"
+            ],
+            "passiveRows": [
+              {
+                "phrase": "fire resistance",
+                "category": "resistance",
+                "domain": "fire",
+                "remove": [
+                  "burned",
+                  "burning"
+                ]
+              },
+              {
+                "phrase": "cold resistance",
+                "category": "resistance",
+                "domain": "cold",
+                "remove": [
+                  "chilled",
+                  "frozen"
+                ]
+              },
+              {
+                "phrase": "poison tolerance",
+                "category": "adaptation",
+                "domain": "poison tolerance",
+                "remove": [
+                  "poisoned",
+                  "poison"
+                ]
+              },
+              {
+                "phrase": "iron stomach",
+                "category": "adaptation",
+                "domain": "iron stomach",
+                "remove": []
+              },
+              {
+                "phrase": "pain tolerance",
+                "category": "adaptation",
+                "domain": "pain tolerance",
+                "remove": []
+              },
+              {
+                "phrase": "night vision",
+                "category": "adaptation",
+                "domain": "night vision",
+                "remove": [
+                  "blinded"
+                ]
+              },
+              {
+                "phrase": "quick reflexes",
+                "category": "adaptation",
+                "domain": "quick reflexes",
+                "remove": []
+              },
+              {
+                "phrase": "mana sensitivity",
+                "category": "sensitivity",
+                "domain": "mana",
+                "remove": []
+              }
+            ]
+          },
+          "__rpgStart1PassiveMemoryMicrofixInstalled": true,
+          "__rpgStart1PassiveWrapperOrderFixInstalled": true,
+          "__rpgStartFinalPassiveFreedomPatchInstalled": true,
+          "__aidrpg113Chunk3CleanPassHotfixInstalled": true,
+          "PlayerBuildDominanceSystem": {},
+          "__aidrpg115Chunk5MatchupGuardInstalled": true,
+          "MatchupContextSystem": {},
+          "WorldStructureSystem": {
+            "MAX_NODES": 120,
+            "MAX_EDGES": 180,
+            "__aidrpg116CleanPass": true,
+            "__aidrpg116DedupWrapped": true,
+            "__aidrpg116DetailFix": true,
+            "__aidrpg117CleanupWrapped": true,
+            "__aidrpg117CleanWS": true
+          },
+          "__aidrpg116WSInitWrapped": true,
+          "__aidrpg117InvNegClean": true,
+          "PreAuditSystem": {},
+          "__aidrpg118PreAudit": true,
+          "__aidrpg118MergeMem": true,
+          "FinalAuditSystem": {},
+          "__aidrpg118FinalCleanpass": true,
+          "__aidrpg118FinalCleanpassB": true,
+          "__aidrpg118FinalCleanpassC": true,
+          "__aidrpg118AtrocityD": true,
+          "FinalHardening2": {},
+          "__aidrpg118FinalHardening2": true,
+          "__aidrpg118FinalHardening3": true,
+          "__aidrpg118PronounDeepClean": true,
+          "__aidrpg118FixedRelease": true,
+          "__aidrpg118FinalUltraPlay": true,
+          "__aidrpg118FinalUltraTime2": true,
+          "__aidrpg118UltraItem2": true,
+          "__aidrpg118UltraNeg2": true,
+          "__aidrpg118SlipFast": true,
+          "__aidrpg118LastTime": true,
+          "__aidrpg118LastSlip": true,
+          "__aidrpg118YearTop": true,
+          "__aidrpg118FinalCleanup3": true,
+          "__aidrpg118FinalCleanup4": true,
+          "__aidrpg118ClaimCoinsFix": true,
+          "__aidrpg118FinalFast5": true,
+          "__aidrpg118GolemFast6": true,
+          "__aidrpg118SlimeSoothing7": true,
+          "__aidrpg118AbsoluteFinal8": true,
+          "__aidrpg118CardCap9": true,
+          "__aidrpg118StoryTotalCap10": true,
+          "__aidrpg118ContextNoId11": true,
+          "__aidrpg125FinalRelease": true,
+          "__aidrpg126FinalRelease": true,
+          "__aidrpg127FinalRelease": true,
+          "__aidrpg128FinalRelease": true,
+          "__aidrpg130FinalRelease": true,
+          "__aidrpg131FinalRelease": true,
+          "__aidrpg131AgeFinal": true,
+          "__aidrpg131AgeGlobalFinal": true,
+          "DenialGate": {},
+          "__aidrpg132SharedDenialGate": true,
+          "__aidrpg132DeniedObjectFinal": true,
+          "__aidrpg133Gate": true,
+          "__aidrpg133NameRepair": true,
+          "__aidrpg133NameFallback": true,
+          "__aidrpg134FinalPolish": true,
+          "__aidrpg134StrictEmberContext": true
+        }
+      },
+      {
+        "type": "functionExists",
+        "expected": "onInput",
+        "passed": true,
+        "actual": "function"
+      },
+      {
+        "type": "functionExists",
+        "expected": "onContext",
+        "passed": true,
+        "actual": "function"
+      },
+      {
+        "type": "functionExists",
+        "expected": "onOutput",
+        "passed": true,
+        "actual": "function"
+      },
+      {
+        "type": "exists",
+        "path": "state.aidrpg",
+        "passed": true,
+        "actual": {
+          "meta": {
+            "version": 1,
+            "createdAtTurn": 0,
+            "currentTurn": 1,
+            "currentHook": "",
+            "mode": "normal",
+            "seed": 0,
+            "lastAppliedOutputHash": "",
+            "debug": false,
+            "dirty": {
+              "player": false,
+              "abilities": [],
+              "items": [],
+              "actors": [],
+              "entities": [],
+              "routes": [],
+              "reputation": false,
+              "quests": false,
+              "time": false,
+              "cards": []
+            }
+          },
+          "player": {
+            "id": "player",
+            "name": "",
+            "species": "human",
+            "age": 0,
+            "titles": [],
+            "history": {
+              "majorEvents": [],
+              "timeSkips": []
+            },
+            "levelState": {
+              "level": 1,
+              "xp": 0,
+              "xpToNext": 100,
+              "totalXp": 0,
+              "growthClass": "standard",
+              "history": {
+                "recentGains": []
+              },
+              "antiFarm": {
+                "lastSource": "",
+                "repeatCount": 0
+              },
+              "lastGainTurn": 0
+            },
+            "stats": {
+              "hp": 100,
+              "maxHp": 100,
+              "mp": 20,
+              "maxMp": 20,
+              "ep": 50,
+              "maxEp": 50,
+              "atk": 5,
+              "def": 5,
+              "spd": 5,
+              "intl": 5,
+              "lck": 5
+            },
+            "derived": {
+              "combatPressure": 6,
+              "mobility": 7,
+              "threatRating": 21,
+              "statBenchmark": {
+                "level": 1,
+                "role": "dungeon",
+                "band": "baseline",
+                "expectedStats": {
+                  "atk": 5,
+                  "def": 5,
+                  "spd": 5,
+                  "intl": 5,
+                  "lck": 5
+                },
+                "expectedResources": {
+                  "maxHp": 100,
+                  "maxMp": 20,
+                  "maxEp": 50
+                },
+                "gap": {
+                  "atk": 0,
+                  "def": 0,
+                  "spd": 0,
+                  "intl": 0,
+                  "lck": 0
+                },
+                "statGrades": {
+                  "atk": "near",
+                  "def": "near",
+                  "spd": "near",
+                  "intl": "near",
+                  "lck": "near"
+                },
+                "primaryStats": [],
+                "weakStats": [],
+                "note": "Benchmarks describe average stat spread for this level/profile; they do not decide victory alone."
+              },
+              "buildDominance": {
+                "level": 1,
+                "levelBand": "baseline",
+                "benchmarkRole": "dungeon",
+                "actualPrimaryStats": [
+                  "atk",
+                  "def",
+                  "spd"
+                ],
+                "primaryStats": [
+                  "atk",
+                  "def",
+                  "spd"
+                ],
+                "weakStats": [],
+                "resourceLean": "mixed_resource",
+                "combatStyle": "direct_force",
+                "magicStyle": "mundane_or_unproven",
+                "defenseStyle": "fragile",
+                "mobilityStyle": "ordinary_or_slow",
+                "domainTags": [
+                  "none_confirmed"
+                ],
+                "vulnerabilityNotes": [
+                  "physical_impact_danger"
+                ],
+                "dominanceTags": [
+                  "primary_atk",
+                  "primary_def",
+                  "primary_spd",
+                  "force_identity",
+                  "scale_baseline"
+                ],
+                "benchmarkGap": {
+                  "atk": 0,
+                  "def": 0,
+                  "spd": 0,
+                  "intl": 0,
+                  "lck": 0
+                },
+                "note": "Build profile preserves strengths and weaknesses; it does not decide combat outcomes by itself."
+              }
+            },
+            "body": {
+              "limbs": {
+                "leftArm": "present",
+                "rightArm": "present",
+                "leftLeg": "present",
+                "rightLeg": "present"
+              },
+              "injuries": [],
+              "scars": [],
+              "mutations": [],
+              "speciesTraits": [],
+              "bodyTags": []
+            },
+            "conditions": {
+              "active": [],
+              "permanent": [],
+              "vulnerabilities": [],
+              "immunities": []
+            },
+            "appearance": {
+              "visibleTraits": [],
+              "outfitSummary": "",
+              "silhouetteTags": []
+            },
+            "locationRef": "",
+            "sceneRef": "",
+            "traitState": {
+              "byId": {},
+              "byKey": {},
+              "allIds": [],
+              "conditionIds": [],
+              "traitIds": [],
+              "resistanceTags": [],
+              "immunityTags": [],
+              "vulnerabilityTags": [],
+              "adaptationTags": [],
+              "sensitivityTags": [],
+              "exposureByDomain": {},
+              "growthHooks": [],
+              "recentEvents": []
+            }
+          },
+          "build": {
+            "originTags": [
+              "species:human",
+              "baseline_mortal",
+              "adaptable",
+              "novice"
+            ],
+            "combatTags": [
+              "direct_force",
+              "unproven"
+            ],
+            "methodTags": [
+              "positioning_first"
+            ],
+            "resourceTags": [
+              "stamina_leaning"
+            ],
+            "defenseTags": [
+              "evasive"
+            ],
+            "specializationTags": [
+              "generalist_bias"
+            ],
+            "temperamentTags": [
+              "stable"
+            ],
+            "styleTags": [
+              "offensive"
+            ],
+            "archetypeSummary": [
+              "force-leaning",
+              "stamina-leaning",
+              "generalist"
+            ],
+            "masteryNotes": [],
+            "matchupProfile": {
+              "strongAgainst": [],
+              "weakAgainst": [],
+              "unfamiliarAgainst": [
+                "unknown_styles"
+              ]
+            },
+            "specializationState": {
+              "profileTags": [],
+              "profileSourceTags": [],
+              "currentTargetTags": [],
+              "currentEnvironmentTags": [],
+              "currentSituationTags": [],
+              "recentAssessments": [],
+              "currentEdge": "none",
+              "currentPressure": "none",
+              "currentSummary": "",
+              "noveltyActive": false,
+              "lastAssessmentTurn": 0
+            }
+          },
+          "abilities": {
+            "byId": {},
+            "byKey": {},
+            "allIds": [],
+            "skillIds": [],
+            "talentIds": [],
+            "passiveIds": [],
+            "recentEvents": []
+          },
+          "items": {
+            "byId": {},
+            "ownership": {
+              "player": [],
+              "storage": {},
+              "actors": {}
+            },
+            "equipment": {
+              "mainHand": null,
+              "offHand": null,
+              "head": null,
+              "body": null,
+              "hands": null,
+              "legs": null,
+              "feet": null,
+              "accessory1": null,
+              "accessory2": null
+            },
+            "currency": {
+              "byType": {
+                "copper": 0,
+                "silver": 0,
+                "gold": 0
+              }
+            },
+            "pendingNormalization": []
+          },
+          "actors": {
+            "threatSettings": {
+              "version": 1
+            },
+            "byId": {},
+            "bySceneKey": {},
+            "allIds": [],
+            "localIds": [],
+            "pendingGeneration": [],
+            "recentUpdates": [],
+            "sightingsByKey": {},
+            "majorMemory": {
+              "byActorId": {},
+              "activeIds": [],
+              "recentEvents": [],
+              "config": {
+                "maxMajorActors": 12,
+                "maxGoals": 6,
+                "maxGrudges": 6,
+                "maxNotes": 8,
+                "maxEvents": 40,
+                "activationSightings": 5
+              }
+            }
+          },
+          "world": {
+            "currentScene": {
+              "sceneRef": "",
+              "displayName": "",
+              "sceneType": "unknown",
+              "entityRef": "",
+              "parentLocationRef": "",
+              "lastChangedTurn": 0,
+              "localEntityIds": [],
+              "localActorIds": [],
+              "localHazards": [],
+              "localExits": [],
+              "conditionTags": [],
+              "localEntitiesById": {},
+              "localActorsById": {},
+              "sceneHintLabel": "",
+              "sceneHintStrength": 0,
+              "sceneHintTurn": 0,
+              "pendingSceneLabel": "",
+              "pendingSceneStrength": 0,
+              "pendingSceneCount": 0,
+              "pendingSceneTurn": 0,
+              "sceneConfidence": 0
+            },
+            "locationsById": {},
+            "entitiesById": {},
+            "factionsById": {},
+            "routesById": {},
+            "mapMemory": {
+              "namedLocationsById": {},
+              "dungeonLayoutsById": {},
+              "goalBindingsById": {},
+              "recentMapEvents": [],
+              "currentDungeonId": "",
+              "lastDungeonRoomId": ""
+            },
+            "activeEncounter": {
+              "enemyLabel": "",
+              "totalCount": 0,
+              "remainingCount": 0,
+              "resolved": false,
+              "recentEvents": []
+            }
+          },
+          "time": {
+            "current": {
+              "day": 1,
+              "hour": 8,
+              "minute": 0,
+              "season": "",
+              "weather": ""
+            },
+            "elapsed": {
+              "totalHours": 0
+            },
+            "timeline": {
+              "recentEvents": []
+            },
+            "routes": {
+              "knownTravelTimes": {},
+              "baseTravelTimes": {},
+              "recentRouteEvents": []
+            },
+            "pendingAdvance": {
+              "kind": "inspection",
+              "minutes": 5,
+              "destinationHint": "",
+              "startLocationRef": "",
+              "createdTurn": 1,
+              "note": "inspection"
+            },
+            "contradictionFlags": []
+          },
+          "reputation": {
+            "bySubject": {},
+            "recentChanges": [],
+            "rumors": [],
+            "titles": [],
+            "pendingReports": [],
+            "tracking": {
+              "primarySubjectId": "",
+              "summaryDirty": false
+            },
+            "lastChangedTurn": 0
+          },
+          "quests": {
+            "active": [],
+            "archived": [],
+            "recentUpdates": [],
+            "tracking": {
+              "primaryQuestId": "",
+              "summaryDirty": false,
+              "lastChangedTurn": 0
+            }
+          },
+          "pending": {
+            "abilityCandidate": null,
+            "outputCandidates": [],
+            "unresolvedConsequences": [],
+            "lastConsequenceParse": {},
+            "validatedConsequences": [],
+            "tentativeConsequences": [],
+            "ignoredConsequences": [],
+            "validationSummary": {},
+            "turnScratch": {
+              "turnNumber": 1,
+              "inputHash": "3661461510",
+              "outputHash": "",
+              "duplicateOutput": false,
+              "lastHookStarted": "input",
+              "lastHookEnded": "input"
+            },
+            "recentHookTrace": [
+              {
+                "hook": "input",
+                "turn": 1,
+                "hash": "3661461510"
+              }
+            ],
+            "operationGuard": {
+              "recentKeys": [],
+              "currentTurn": 1,
+              "maxKeys": 240,
+              "keepTurns": 6
+            },
+            "inputIntent": {
+              "primaryType": "inspect",
+              "confidence": 0.95,
+              "alternates": [],
+              "targetHint": "surroundings",
+              "weaponHint": "",
+              "styleHint": "",
+              "abilityHint": "",
+              "itemHint": "",
+              "destinationHint": "",
+              "trainingHint": "",
+              "environmentHint": "",
+              "tags": [
+                "intent:inspect",
+                "observational"
+              ],
+              "rawText": "I look around."
+            },
+            "__aidrpg132": {
+              "turn": 1,
+              "inputHash": "3661461510",
+              "itemCandidates": [],
+              "abilityCandidates": [],
+              "preInputAbilityNorms": {}
+            }
+          },
+          "cards": {
+            "config": {
+              "namespacePrefix": "SYS:AIDRPG",
+              "liveWrites": true,
+              "strictCardSync": true,
+              "cardSafeMode": false,
+              "maxWritesPerTurn": 14,
+              "maxCardTextChars": 1400,
+              "maxQueueSize": 80,
+              "autoBootstrapCards": true,
+              "autoUpdateSummaryCards": true,
+              "bootstrapCardVersion": "1.0.7-final"
+            },
+            "index": {
+              "byNamespace": {},
+              "byCardId": {},
+              "lastRefreshedTurn": 0
+            },
+            "dirtyQueue": [],
+            "pendingWrites": [],
+            "recentOperations": [],
+            "dryRunLog": [],
+            "duplicateRefs": [],
+            "lastWriteHashes": {},
+            "lastSyncTurn": 0,
+            "finalDefaults": {
+              "bootstrapped": false,
+              "lastBootstrapTurn": -1,
+              "lastSummarySyncTurn": -1,
+              "cursor": 0
+            }
+          },
+          "cache": {
+            "visibleCarrySummary": "",
+            "sceneSummary": "",
+            "localEntityIds": [],
+            "localActorIds": [],
+            "lastSceneHash": "",
+            "timeSummary": ""
+          },
+          "logs": {
+            "recentEvents": [],
+            "recentParses": [],
+            "recentErrors": [],
+            "quarantine": [],
+            "migrationHistory": []
+          }
+        }
+      },
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "I look around."
+        }
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I look around.",
+        "durationMs": 3
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "I look around."
+    }
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Context output remains under starter budget",
+    "suite": "context",
+    "description": "Checks that context generation returns text and is not enormous in a simple case.",
+    "steps": [
+      { "hook": "input", "text": "I look around the quiet room." },
+      { "hook": "context", "text": "The player stands in a quiet room." }
+    ],
+    "assertions": [
+      { "type": "validHookReturn" },
+      { "type": "contextUnderBudget", "path": "text", "limit": 12000 }
+    ],
+    "whyItMatters": "Context overfill causes AI Dungeon to lose important facts.",
+    "patchHint": "Inspect ContextPacketSystem.buildContext and packet length controls."
+  }
+]

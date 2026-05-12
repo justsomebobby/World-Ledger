@@ -1,0 +1,423 @@
+{
+  "target": "c25u1.txt",
+  "total": 142,
+  "passed": 97,
+  "failed": 45,
+  "byGroup": {
+    "actor-basic": {
+      "tested": 13,
+      "passed": 5,
+      "failed": 8
+    },
+    "actor-seq": {
+      "tested": 10,
+      "passed": 8,
+      "failed": 2
+    },
+    "cardsync-regression": {
+      "tested": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "healing": {
+      "tested": 8,
+      "passed": 5,
+      "failed": 3
+    },
+    "injury-status": {
+      "tested": 15,
+      "passed": 5,
+      "failed": 10
+    },
+    "inventory-context": {
+      "tested": 10,
+      "passed": 0,
+      "failed": 10
+    },
+    "inventory-negative": {
+      "tested": 30,
+      "passed": 23,
+      "failed": 7
+    },
+    "inventory-positive": {
+      "tested": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    "quest-regression": {
+      "tested": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "reputation-regression": {
+      "tested": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    "scene": {
+      "tested": 12,
+      "passed": 7,
+      "failed": 5
+    },
+    "survival": {
+      "tested": 11,
+      "passed": 11,
+      "failed": 0
+    }
+  },
+  "failures": [
+    {
+      "group": "actor-basic",
+      "name": "High Priestess Selene",
+      "status": "fail",
+      "expected": "High Priestess Selene",
+      "error": "missing High Priestess Selene byActorId | actor_1_1 | actorId | actor_1_1 | name | Priestess Selene | createdTurn | 1 | lastSeenTurn | 1 | lastUpdatedTurn | 1 | relationshipStance | neutral | goals | grudges | attitudeNotes | longTermNotes | recentEvents | activation | reason | named_major_actor | activationCount | 1 | activeIds | actor_1_1 | recentEvents | turn | 1 | kind | activated | actorId | actor_1_1 | name | Priestess Selene | text | named_major_actor | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 14
+    },
+    {
+      "group": "actor-basic",
+      "name": "Archmage Corvin",
+      "status": "fail",
+      "expected": "Archmage Corvin",
+      "error": "missing Archmage Corvin byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 12
+    },
+    {
+      "group": "actor-basic",
+      "name": "Queen Maera",
+      "status": "fail",
+      "expected": "Queen Maera",
+      "error": "missing Queen Maera byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 11
+    },
+    {
+      "group": "actor-basic",
+      "name": "Sergeant Bram",
+      "status": "fail",
+      "expected": "Sergeant Bram",
+      "error": "missing Sergeant Bram byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 16
+    },
+    {
+      "group": "actor-basic",
+      "name": "General Korr",
+      "status": "fail",
+      "expected": "General Korr",
+      "error": "missing General Korr byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 10
+    },
+    {
+      "group": "actor-basic",
+      "name": "Mira",
+      "status": "fail",
+      "expected": "Mira",
+      "error": "missing Mira byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 11
+    },
+    {
+      "group": "actor-basic",
+      "name": "Talla",
+      "status": "fail",
+      "expected": "Talla",
+      "error": "missing Talla byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 10
+    },
+    {
+      "group": "actor-basic",
+      "name": "Seren",
+      "status": "fail",
+      "expected": "Seren",
+      "error": "missing Seren byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 12
+    },
+    {
+      "group": "actor-seq",
+      "name": "fear",
+      "status": "fail",
+      "expected": "General Korr,fear",
+      "error": "missing General Korr byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 16
+    },
+    {
+      "group": "actor-seq",
+      "name": "alliance",
+      "status": "fail",
+      "expected": "Queen Maera,alliance",
+      "error": "missing Queen Maera byActorId | activeIds | recentEvents | config | maxMajorActors | 12 | maxGoals | 6 | maxGrudges | 6 | maxNotes | 8 | maxEvents | 40 | activationSightings | 5",
+      "ms": 16
+    },
+    {
+      "group": "healing",
+      "name": "I chug the little heal bottle.",
+      "status": "fail",
+      "expected": "rib present",
+      "error": "missing recovery active | injuries | hp | 100 | ep | 50",
+      "ms": 13
+    },
+    {
+      "group": "healing",
+      "name": "I drink the healing potion.",
+      "status": "fail",
+      "expected": "cut present",
+      "error": "missing recovery active | injuries | hp | 100 | ep | 50",
+      "ms": 18
+    },
+    {
+      "group": "healing",
+      "name": "I rest by the fire.",
+      "status": "fail",
+      "expected": "fatigued absent",
+      "error": "still present active | fatigued | injuries | hp | 100 | ep | 13",
+      "ms": 17
+    },
+    {
+      "group": "injury-status",
+      "name": "I touch the cult flame.",
+      "status": "fail",
+      "expected": "burn",
+      "error": "missing burn state=active | injuries | hp | 100 | ep | 50",
+      "ms": 11
+    },
+    {
+      "group": "injury-status",
+      "name": "I get shocked by the ward.",
+      "status": "fail",
+      "expected": "numb/shock/lightning",
+      "error": "missing numb/shock/lightning state=active | injuries | hp | 100 | ep | 50",
+      "ms": 11
+    },
+    {
+      "group": "injury-status",
+      "name": "I fall onto the rocks.",
+      "status": "fail",
+      "expected": "rib/crack",
+      "error": "missing rib/crack state=active | injuries | hp | 100 | ep | 50",
+      "ms": 13
+    },
+    {
+      "group": "injury-status",
+      "name": "I breathe the green mist.",
+      "status": "fail",
+      "expected": "poison/toxic/choke",
+      "error": "missing poison/toxic/choke state=active | injuries | hp | 100 | ep | 50",
+      "ms": 11
+    },
+    {
+      "group": "injury-status",
+      "name": "I step into freezing water.",
+      "status": "fail",
+      "expected": "cold/numb",
+      "error": "missing cold/numb state=active | injuries | hp | 100 | ep | 50",
+      "ms": 13
+    },
+    {
+      "group": "injury-status",
+      "name": "I am slashed.",
+      "status": "fail",
+      "expected": "gash/bleeding/thigh",
+      "error": "missing gash/bleeding/thigh state=active | injuries | hp | 100 | ep | 50",
+      "ms": 14
+    },
+    {
+      "group": "injury-status",
+      "name": "I am hit by the club.",
+      "status": "fail",
+      "expected": "bruise/shoulder",
+      "error": "missing bruise/shoulder state=active | injuries | hp | 100 | ep | 50",
+      "ms": 11
+    },
+    {
+      "group": "injury-status",
+      "name": "I breathe smoke.",
+      "status": "fail",
+      "expected": "smoke/cough",
+      "error": "missing smoke/cough state=active | injuries | hp | 100 | ep | 50",
+      "ms": 12
+    },
+    {
+      "group": "injury-status",
+      "name": "I am scratched by claws.",
+      "status": "fail",
+      "expected": "scratch/cheek/bleeding",
+      "error": "missing scratch/cheek/bleeding state=active | injuries | hp | 100 | ep | 50",
+      "ms": 19
+    },
+    {
+      "group": "injury-status",
+      "name": "I stumble into acid.",
+      "status": "fail",
+      "expected": "acid/burn",
+      "error": "missing acid/burn state=active | injuries | hp | 100 | ep | 50",
+      "ms": 11
+    },
+    {
+      "group": "inventory-context",
+      "name": "black sigil key",
+      "status": "fail",
+      "expected": "black sigil key",
+      "error": "context missing black sigil key; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:05\n\ncontinue.; items=black sigil key, it in your pouch",
+      "ms": 97
+    },
+    {
+      "group": "inventory-context",
+      "name": "rusted iron key",
+      "status": "fail",
+      "expected": "rusted iron key",
+      "error": "context missing rusted iron key; context=current truth:\nscene: unknown place | type: unknown | facts: up\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=rusted iron key",
+      "ms": 44
+    },
+    {
+      "group": "inventory-context",
+      "name": "brass lantern",
+      "status": "fail",
+      "expected": "brass lantern",
+      "error": "context missing brass lantern; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:08\n\ncontinue.; items=brass lantern",
+      "ms": 14
+    },
+    {
+      "group": "inventory-context",
+      "name": "old map",
+      "status": "fail",
+      "expected": "old map",
+      "error": "context missing old map; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=old map",
+      "ms": 14
+    },
+    {
+      "group": "inventory-context",
+      "name": "coil of rope",
+      "status": "fail",
+      "expected": "coil of rope",
+      "error": "context missing coil of rope; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=coil of rope",
+      "ms": 13
+    },
+    {
+      "group": "inventory-context",
+      "name": "leather gloves",
+      "status": "fail",
+      "expected": "leather gloves",
+      "error": "context missing leather gloves; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=leather gloves, them in your pack",
+      "ms": 15
+    },
+    {
+      "group": "inventory-context",
+      "name": "torch",
+      "status": "fail",
+      "expected": "torch",
+      "error": "context missing torch; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=coins, torch",
+      "ms": 14
+    },
+    {
+      "group": "inventory-context",
+      "name": "iron dagger",
+      "status": "fail",
+      "expected": "iron dagger",
+      "error": "context missing iron dagger; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=iron dagger",
+      "ms": 21
+    },
+    {
+      "group": "inventory-context",
+      "name": "silver ring",
+      "status": "fail",
+      "expected": "silver ring",
+      "error": "context missing silver ring; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\n\ncontinue.; items=silver ring",
+      "ms": 13
+    },
+    {
+      "group": "inventory-context",
+      "name": "small healing potion",
+      "status": "fail",
+      "expected": "small healing potion",
+      "error": "context missing small healing potion; context=current truth:\nscene: unknown place | type: unknown\nplayer: lvl 1 | human | hp 100/100 | mp 20/20 | ep 50/50 | cond: none | outfit: unspecified\ntime: day 1 | 08:04\nnearby actors: local_actor_merchant [humanoid] lvl 1-3\n\ncontinue.; items=small healing potion",
+      "ms": 18
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I almost grab the rusted iron key, but I stop. / You stop before taking the rusted iron key.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: rusted iron key"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I decide not to take the silver ring. / You leave the silver ring where it is.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: silver ring"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I refuse the offered potion. / The merchant offers you a small healing potion, but you refuse it.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: small healing potion"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I nearly pick up the map. / You nearly pick up the old map, but stop yourself.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: map"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I do not accept the dagger. / Someone offers you an iron dagger, but you do not accept it.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: iron dagger"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I almost collect coins. / You almost collect coins, then leave them scattered.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: coins"
+    },
+    {
+      "group": "inventory-negative",
+      "name": "I reject the gloves. / You are offered leather gloves, but reject them.",
+      "status": "fail",
+      "expected": "no inventory",
+      "error": "unexpected items: leather gloves"
+    },
+    {
+      "group": "scene",
+      "name": "sanctum",
+      "status": "fail",
+      "expected": "sanctum",
+      "error": "scene={\"sceneRef\":\"\",\"displayName\":\"\",\"sceneType\":\"unknown\",\"entityRef\":\"\",\"parentLocationRef\":\"\",\"lastChangedTurn\":0,\"localEntityIds\":[],\"localActorIds\":[],\"localHazards\":[],\"localExits\":[\"door\"],\"conditionTags\":[],\"localEntitiesById\":{},\"localActorsById\":{},\"sceneHintLabel\":\"\",\"sceneHintStrength\":0,\"sceneHintTurn\":0,\"pendingSceneLabel\":\"\",\"pendingSceneStrength\":0,\"pendingSceneCount\":0,\"pendingSceneTurn\":0,\"sceneConfidence\":0}",
+      "ms": 88
+    },
+    {
+      "group": "scene",
+      "name": "chamber",
+      "status": "fail",
+      "expected": "chamber",
+      "error": "scene={\"sceneRef\":\"\",\"displayName\":\"\",\"sceneType\":\"unknown\",\"entityRef\":\"\",\"parentLocationRef\":\"\",\"lastChangedTurn\":0,\"localEntityIds\":[],\"localActorIds\":[],\"localHazards\":[],\"localExits\":[\"door\"],\"conditionTags\":[],\"localEntitiesById\":{},\"localActorsById\":{},\"sceneHintLabel\":\"\",\"sceneHintStrength\":0,\"sceneHintTurn\":0,\"pendingSceneLabel\":\"\",\"pendingSceneStrength\":0,\"pendingSceneCount\":0,\"pendingSceneTurn\":0,\"sceneConfidence\":0}",
+      "ms": 36
+    },
+    {
+      "group": "scene",
+      "name": "crypt",
+      "status": "fail",
+      "expected": "crypt",
+      "error": "scene={\"sceneRef\":\"scene_chapel\",\"displayName\":\"chapel\",\"sceneType\":\"scene\",\"entityRef\":\"entity_chapel\",\"parentLocationRef\":\"\",\"lastChangedTurn\":1,\"localEntityIds\":[],\"localActorIds\":[],\"localHazards\":[],\"localExits\":[],\"conditionTags\":[],\"localEntitiesById\":{},\"localActorsById\":{},\"sceneHintLabel\":\"chapel\",\"sceneHintStrength\":3,\"sceneHintTurn\":1,\"pendingSceneLabel\":\"\",\"pendingSceneStrength\":0,\"pendingSceneCount\":0,\"pendingSceneTurn\":0,\"sceneConfidence\":3}",
+      "ms": 14
+    },
+    {
+      "group": "scene",
+      "name": "barrow sanctum",
+      "status": "fail",
+      "expected": "barrow sanctum",
+      "error": "scene={\"sceneRef\":\"\",\"displayName\":\"\",\"sceneType\":\"unknown\",\"entityRef\":\"\",\"parentLocationRef\":\"\",\"lastChangedTurn\":0,\"localEntityIds\":[],\"localActorIds\":[],\"localHazards\":[\"fire\"],\"localExits\":[],\"conditionTags\":[\"cold\"],\"localEntitiesById\":{},\"localActorsById\":{},\"sceneHintLabel\":\"\",\"sceneHintStrength\":0,\"sceneHintTurn\":0,\"pendingSceneLabel\":\"\",\"pendingSceneStrength\":0,\"pendingSceneCount\":0,\"pendingSceneTurn\":0,\"sceneConfidence\":0}",
+      "ms": 15
+    },
+    {
+      "group": "scene",
+      "name": "shrine",
+      "status": "fail",
+      "expected": "shrine",
+      "error": "scene={\"sceneRef\":\"\",\"displayName\":\"\",\"sceneType\":\"unknown\",\"entityRef\":\"\",\"parentLocationRef\":\"\",\"lastChangedTurn\":0,\"localEntityIds\":[],\"localActorIds\":[],\"localHazards\":[],\"localExits\":[],\"conditionTags\":[],\"localEntitiesById\":{},\"localActorsById\":{},\"sceneHintLabel\":\"\",\"sceneHintStrength\":0,\"sceneHintTurn\":0,\"pendingSceneLabel\":\"\",\"pendingSceneStrength\":0,\"pendingSceneCount\":0,\"pendingSceneTurn\":0,\"sceneConfidence\":0}",
+      "ms": 11
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+00_V1_1_Core_Card_System_Outcome_Spec.md
+01_Old_AIDRPG_Card_Patch_Salvage_Map.md
+02_Card_Templates_Player_Facing.md
+03_Generated_Card_Eligibility_Rules.md
+04_Manual_Card_Edit_and_Profile_Import_Policy.md
+05_Card_Audit_and_ReleaseCheck_Gates.md
+06_Chunk_01_Acceptance_Report.md
+07_Source_Intake_and_GitHub_Reference_Plan.md
+README_CHUNK_01.md

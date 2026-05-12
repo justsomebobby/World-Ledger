@@ -1,0 +1,31 @@
+[
+  {
+    "name": "CoreState repairs missing top-level containers",
+    "suite": "core-state",
+    "description": "Seeds malformed partial state, then checks that CoreState restores the top-level shape.",
+    "initialState": {
+      "aidrpg": {
+        "meta": { "dirty": { "items": "bad" } },
+        "player": null,
+        "items": null
+      }
+    },
+    "steps": [
+      { "hook": "input", "text": "I wait." }
+    ],
+    "assertions": [
+      { "type": "exists", "path": "state.aidrpg.meta" },
+      { "type": "exists", "path": "state.aidrpg.player" },
+      { "type": "exists", "path": "state.aidrpg.build" },
+      { "type": "exists", "path": "state.aidrpg.abilities" },
+      { "type": "exists", "path": "state.aidrpg.items" },
+      { "type": "exists", "path": "state.aidrpg.actors" },
+      { "type": "exists", "path": "state.aidrpg.world" },
+      { "type": "exists", "path": "state.aidrpg.time" },
+      { "type": "exists", "path": "state.aidrpg.quests" },
+      { "type": "exists", "path": "state.aidrpg.logs" }
+    ],
+    "whyItMatters": "Chunk upgrades and AI Dungeon state weirdness can leave old saves partially malformed. The script must self-repair safely.",
+    "patchHint": "Inspect CoreState.ensureTopLevelShape and subsystem init methods."
+  }
+]

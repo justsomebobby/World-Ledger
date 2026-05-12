@@ -1,0 +1,653 @@
+[
+  {
+    "name": "Final compatibility / output memory timing does not assume same-action memory effect",
+    "suite": "ai-dungeon-final",
+    "expectedSystem": "ContextPacketSystem / InventorySystem",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Important output-derived state should appear in the next Context hook rather than relying on same-output memory changes.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "I search the fallen acolyte for the black sigil key.",
+        "returnValue": {
+          "text": "I search the fallen acolyte for the black sigil key."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "You find a black sigil key and put it in your pouch.",
+        "returnValue": {
+          "text": "You find a black sigil key and put it in your pouch."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "The sealed door waits ahead.",
+        "returnValue": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "lastReturnContainsAny",
+        "expected": [
+          "key",
+          "sigil",
+          "pouch",
+          "inventory"
+        ],
+        "passed": false,
+        "actual": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 193
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "I search the fallen acolyte for the black sigil key.",
+            "durationMs": 2
+          },
+          {
+            "hook": "output",
+            "text": "You find a black sigil key and put it in your pouch.",
+            "durationMs": 7
+          },
+          {
+            "hook": "context",
+            "text": "The sealed door waits ahead.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 8312
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg",
+        "after": {
+          "type": "object",
+          "keyCount": 14,
+          "keys": [
+            "meta",
+            "player",
+            "build",
+            "abilities",
+            "items",
+            "actors",
+            "world",
+            "time",
+            "reputation",
+            "quests",
+            "pending",
+            "cards",
+            "cache",
+            "logs"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.seed",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.meta.lastAppliedOutputHash",
+        "before": "",
+        "after": "905521844"
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.abilities",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.items",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "item_1_1",
+            "item_1_2"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.actors",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.entities",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.routes",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.meta.dirty.cards",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.xp",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.player.levelState.totalXp",
+        "before": 0,
+        "after": 2
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history.recentGains",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            {
+              "turn": 1,
+              "amount": 2,
+              "source": "exploration",
+              "note": "inspect"
+            }
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm.lastSource",
+        "before": "",
+        "after": "exploration"
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "before": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "before": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "unproven"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "unproven"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "positioning_first"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "positioning_first"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stamina_leaning"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stamina_leaning"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "generalist_bias"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "generalist_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "before": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "before": {
+          "type": "array",
+          "length": 3,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "generalist"
+          ]
+        },
+        "after": {
+          "type": "array",
+          "length": 3,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "generalist"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationState",
+        "after": {
+          "type": "object",
+          "keyCount": 11,
+          "keys": [
+            "profileTags",
+            "profileSourceTags",
+            "currentTargetTags",
+            "currentEnvironmentTags",
+            "currentSituationTags",
+            "recentAssessments",
+            "currentEdge",
+            "currentPressure",
+            "currentSummary",
+            "noveltyActive",
+            "lastAssessmentTurn"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.byId.item_1_1",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "id",
+            "displayName",
+            "baseType",
+            "descriptors",
+            "materialTags",
+            "quality",
+            "condition",
+            "slot",
+            "stackable",
+            "quantity",
+            "stats",
+            "ownership",
+            "notes"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.byId.item_1_2",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "id",
+            "displayName",
+            "baseType",
+            "descriptors",
+            "materialTags",
+            "quality",
+            "condition",
+            "slot",
+            "stackable",
+            "quantity",
+            "stats",
+            "ownership",
+            "notes"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "item_1_1",
+            "item_1_2"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.items.pendingNormalization",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.byId",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.bySceneKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.localIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.pendingGeneration",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.recentUpdates",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.actors.sightingsByKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.time.current.minute",
+        "before": 0,
+        "after": 5
+      },
+      {
+        "path": "state.aidrpg.time.elapsed.totalHours",
+        "before": 0,
+        "after": 8.08
+      },
+      {
+        "path": "state.aidrpg.time.timeline.recentEvents",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            {
+              "day": 1,
+              "hour": 8,
+              "minute": 5,
+              "note": "inspection",
+              "minutesAdvanced": 5
+            }
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.time.pendingAdvance",
+        "before": {
+          "type": "object",
+          "keyCount": 6,
+          "keys": [
+            "kind",
+            "minutes",
+            "destinationHint",
+            "startLocationRef",
+            "createdTurn",
+            "note"
+          ]
+        },
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "I search the fallen acolyte for the black sigil key.",
+        "durationMs": 2
+      },
+      {
+        "hook": "output",
+        "text": "You find a black sigil key and put it in your pouch.",
+        "durationMs": 7
+      },
+      {
+        "hook": "context",
+        "text": "The sealed door waits ahead.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nScene: unknown place | Type: unknown\nPlayer: Lvl 1 | human | HP 100/100 | MP 20/20 | EP 50/50 | Cond: none | Outfit: unspecified\nTime: Day 1 | 08:05\n\nThe sealed door waits ahead."
+    }
+  }
+]

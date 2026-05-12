@@ -1,0 +1,44 @@
+[
+  {
+    "name": "IntentParser detects loot intent",
+    "suite": "intent",
+    "description": "Checks that natural pickup phrasing becomes loot intent.",
+    "steps": [
+      { "hook": "input", "text": "I pick up the rusted iron key." }
+    ],
+    "assertions": [
+      { "type": "equals", "path": "state.aidrpg.pending.inputIntent.primaryType", "expected": "loot" },
+      { "type": "containsText", "path": "state.aidrpg.pending.inputIntent.itemHint", "expected": "rusted iron key" }
+    ],
+    "whyItMatters": "If input intent is wrong, later inventory and consequence systems start from bad assumptions.",
+    "patchHint": "Inspect IntentParser.scoreActionFamilies and extractItem."
+  },
+  {
+    "name": "IntentParser detects travel intent",
+    "suite": "intent",
+    "description": "Checks that natural travel phrasing becomes travel intent and destination is extracted.",
+    "steps": [
+      { "hook": "input", "text": "I head to the ruined chapel before sunset." }
+    ],
+    "assertions": [
+      { "type": "equals", "path": "state.aidrpg.pending.inputIntent.primaryType", "expected": "travel" },
+      { "type": "containsText", "path": "state.aidrpg.pending.inputIntent.destinationHint", "expected": "ruined chapel" }
+    ],
+    "whyItMatters": "Travel intent affects scene and time systems. Wrong intent can cause scene jumps or missed route timing.",
+    "patchHint": "Inspect IntentParser travel scoring and extractDestination."
+  },
+  {
+    "name": "IntentParser detects quoted speech as talk",
+    "suite": "intent",
+    "description": "Checks that quoted speech is treated as social/talk input.",
+    "steps": [
+      { "hook": "input", "text": "I ask Mira, \"What did you see?\"" }
+    ],
+    "assertions": [
+      { "type": "equals", "path": "state.aidrpg.pending.inputIntent.primaryType", "expected": "talk" },
+      { "type": "anyStringContains", "path": "state.aidrpg.pending.inputIntent.tags", "expected": "quoted_speech" }
+    ],
+    "whyItMatters": "Actor and reputation logic often depends on recognizing speech instead of generic interaction.",
+    "patchHint": "Inspect IntentParser speech scoring and tag generation."
+  }
+]

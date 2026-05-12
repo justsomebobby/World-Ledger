@@ -1,0 +1,20 @@
+const { createRuntime } = require('./runtime/fake-aid-runtime');
+const path=require('path');
+const rt=createRuntime({state:{},info:{actionCount:0},history:[],storyCards:[],memory:{}});
+rt.loadScript(path.join(process.cwd(),'aidrpg-script.js'));
+function run(h,t){let r=rt.runHook(h,t); console.log('---',h,t,'\n',r&&r.text&&r.text.slice(0,200)); rt.addHistory(h==='input'?'do':'story',t); return r;}
+run('input','/sheet');
+run('input','I train Ember Ward to shield allies from heat.');
+console.log('intent', JSON.stringify(rt.context.state.aidrpg.pending.inputIntent,null,2));
+console.log('abilityCandidate', JSON.stringify(rt.context.state.aidrpg.pending.abilityCandidate,null,2));
+run('output','You practice Ember Ward, shaping heat away from allies as a defensive fire ward.');
+console.log('abilities after train', JSON.stringify(rt.context.state.aidrpg.abilities,null,2).slice(0,5000));
+run('input','I use Ember Ward to shield Mira from the forge heat.');
+console.log('intent2', JSON.stringify(rt.context.state.aidrpg.pending.inputIntent,null,2));
+console.log('abilityCandidate2', JSON.stringify(rt.context.state.aidrpg.pending.abilityCandidate,null,2));
+run('output','Ember Ward flickers around Mira and redirects the forge heat away from her.');
+console.log('abilities after use', JSON.stringify(rt.context.state.aidrpg.abilities,null,2).slice(0,5000));
+run('input','I look around.');
+run('output','The echoing lesson makes you feel like you learned a new skill called Moonblade.');
+console.log('abilities after raw learn', JSON.stringify(rt.context.state.aidrpg.abilities,null,2).slice(0,5000));
+run('input','/sheet');

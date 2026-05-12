@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Regression placeholder: similar item names should be tested",
+    "suite": "regressions",
+    "description": "Starter placeholder for the known wrong-item pickup risk. This test currently verifies no crash; later it should assert exact chosen item once resolver tracing is exposed.",
+    "steps": [
+      { "hook": "input", "text": "I take the rusted iron key, not the keyring." },
+      { "hook": "output", "text": "You take the rusted iron key and leave the iron keyring behind." },
+      { "hook": "debug", "text": "/inventory", "captureDebug": true }
+    ],
+    "assertions": [
+      { "type": "exists", "path": "state.aidrpg.items" },
+      { "type": "validHookReturn" }
+    ],
+    "whyItMatters": "This is the type of hidden issue manual gameplay found before. It should become an exact permanent regression once the item resolver exposes enough state.",
+    "patchHint": "Future patch area: InventorySystem candidate scoring, exact phrase priority, and negation handling."
+  }
+]

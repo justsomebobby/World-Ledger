@@ -1,0 +1,215 @@
+Custom deep checks: 6/14 passed
+FAIL - race stat growth - elf
+  - race produces distinct stat profile vs every other tested race: {"race stat growth - elf":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - orc":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - giant":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - fire elemental":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd
+FAIL - race stat growth - orc
+  - race produces distinct stat profile vs every other tested race: {"race stat growth - elf":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - orc":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - giant":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - fire elemental":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd
+FAIL - race stat growth - giant
+  - race produces distinct stat profile vs every other tested race: {"race stat growth - elf":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - orc":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - giant":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - fire elemental":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd
+FAIL - race stat growth - fire elemental
+  - race produces distinct stat profile vs every other tested race: {"race stat growth - elf":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - orc":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - giant":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - fire elemental":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd
+FAIL - race stat growth - human
+  - race produces distinct stat profile vs every other tested race: {"race stat growth - elf":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - orc":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - giant":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd":5,"intl":5,"lck":5},"race stat growth - fire elemental":{"hp":110,"maxHp":110,"mp":22,"maxMp":22,"ep":54,"maxEp":54,"atk":6,"def":5,"spd
+PASS - long time skip ages mortal player
+FAIL - ability variation derived card mirror - Ember Dome
+  - CardSync/Story Card mirror mentions ability variation details: config
+namespaceprefix
+sys:aidrpg
+livewrites
+false
+strictcardsync
+true
+cardsafemode
+true
+maxwritesperturn
+2
+maxcardtextchars
+1200
+maxqueuesize
+80
+index
+bynamespace
+bycardid
+lastrefreshedturn
+2
+dirtyqueue
+pendingwrites
+turn
+1
+kind
+add
+namespace
+sys:aidrpg:player:summary
+title
+sys:aidrpg:player:summary | player summary
+hash
+3065973726
+turn
+1
+kind
+add
+namespace
+sys:aidrpg:time:summary
+title
+sys:aidrpg:time:summary | time summary
+hash
+4107755066
+recentoperations
+turn
+1
+action
+safeaddcard
+namespace
+s
+FAIL - unnamed slime named Puddle becomes actor memory
+  - Puddle/slime stored as memorable actor: aidrpg
+meta
+version
+1
+createdatturn
+0
+currentturn
+2
+currenthook
+
+mode
+normal
+seed
+0
+lastappliedoutputhash
+2367501199
+debug
+false
+dirty
+player
+false
+abilities
+items
+actors
+entities
+routes
+reputation
+false
+quests
+false
+time
+false
+cards
+player
+id
+player
+name
+
+species
+human
+age
+0
+titles
+history
+majorevents
+timeskips
+levelstate
+level
+1
+xp
+2
+xptonext
+100
+totalxp
+2
+growthclass
+standard
+history
+recentgains
+turn
+1
+amount
+2
+source
+exploration
+note
+travel
+antifarm
+lastsource
+exploration
+repeatcount
+0
+lastg
+FAIL - named ring keeps title and magical function
+  - ring name, base type, and function retained: aidrpg
+meta
+version
+1
+createdatturn
+0
+currentturn
+2
+currenthook
+
+mode
+normal
+seed
+1
+lastappliedoutputhash
+2520093883
+debug
+false
+dirty
+player
+false
+abilities
+items
+actors
+entities
+routes
+reputation
+false
+quests
+false
+time
+false
+cards
+player
+id
+player
+name
+
+species
+human
+age
+0
+titles
+history
+majorevents
+timeskips
+levelstate
+level
+1
+xp
+1
+xptonext
+100
+totalxp
+1
+growthclass
+standard
+history
+recentgains
+turn
+1
+amount
+1
+source
+logistics
+note
+equip
+antifarm
+lastsource
+logistics
+repeatcount
+0
+lastgaintu
+PASS - enemy group count exactness with reinforcements
+PASS - enemy group count prevents premature completion
+PASS - hidden deed waits for report before reputation
+PASS - route time direct symmetry and contradiction flag
+PASS - elemental long time skip records nonhuman aging exception
