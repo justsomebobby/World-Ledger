@@ -1,0 +1,138 @@
+{
+  "summary": {
+    "pass": 6,
+    "fail": 0
+  },
+  "probes": [
+    {
+      "id": "R3D-PROBE-TRAINING-XP",
+      "status": "PASS",
+      "label": "training grants bounded XP/domain evidence",
+      "detail": {
+        "xp": 6,
+        "domains": {
+          "swordsmanship": 6
+        }
+      }
+    },
+    {
+      "id": "R3D-PROBE-THIRD-PERSON-NO-XP",
+      "status": "PASS",
+      "label": "third-person XP/effort does not grant player XP",
+      "detail": {
+        "xp": 0
+      }
+    },
+    {
+      "id": "R3D-PROBE-FAILED-SUMMON-NO-XP",
+      "status": "PASS",
+      "label": "failed summon overreach does not grant XP/summons",
+      "detail": {
+        "xp": 0,
+        "summons": []
+      }
+    },
+    {
+      "id": "R3D-PROBE-SUMMON-COMMAND-XP",
+      "status": "PASS",
+      "label": "summon-command contribution routes to player XP/domain evidence",
+      "detail": {
+        "xp": 12,
+        "domains": {
+          "general": 6,
+          "summoning": 6
+        },
+        "efforts": [
+          {
+            "turn": 0,
+            "effortKind": "training",
+            "lane": "level",
+            "amount": 6,
+            "rawAmount": 6,
+            "domains": [
+              "general"
+            ],
+            "reason": "validated_effort_training",
+            "activityKey": "effort_training_general",
+            "budgetRisk": "low",
+            "key": "output_097d801a_98f3e66b_progression_xp_candidate_effort_reward_training_f52528c"
+          },
+          {
+            "turn": 0,
+            "effortKind": "summon_command",
+            "lane": "ability",
+            "amount": 6,
+            "rawAmount": 6,
+            "domains": [
+              "summoning"
+            ],
+            "reason": "validated_effort_summon_command",
+            "activityKey": "effort_summon_command_summoning",
+            "budgetRisk": "low",
+            "key": "output_097d801a_98f3e66b_progression_xp_candidate_effort_reward_summon_command_f"
+          }
+        ]
+      }
+    },
+    {
+      "id": "R3D-PROBE-DEBUG-NO-XP",
+      "status": "PASS",
+      "label": "debug/example XP bait denied",
+      "detail": {
+        "xp": 0
+      }
+    },
+    {
+      "id": "R3D-PROBE-VARIED-STORY-LEVELS",
+      "status": "PASS",
+      "label": "varied action-heavy story can level up without explicit XP text",
+      "detail": {
+        "level": 2,
+        "xp": 150,
+        "levelUps": [
+          {
+            "turn": 0,
+            "oldLevel": 1,
+            "newLevel": 2,
+            "spentLevelXp": 100,
+            "remainingLevelXp": 1,
+            "nextThreshold": 150,
+            "growth": {
+              "hpCap": 6,
+              "mpCap": 2,
+              "epCap": 3,
+              "statGrowth": {
+                "atk": 0,
+                "def": 0,
+                "spd": 0,
+                "int": 1,
+                "lck": 0
+              }
+            },
+            "reason": "validated_effort_labor_crafting",
+            "key": "output_0cce6c97_8469024a_progression_xp_candidate_effort_reward_labor_crafting_a"
+          }
+        ],
+        "domains": {
+          "swordsmanship": 12,
+          "defense": 2,
+          "general": 43,
+          "alchemy": 4,
+          "research": 13,
+          "combat": 18,
+          "crafting": 5,
+          "survival": 5,
+          "persuasion": 7,
+          "social-influence": 7,
+          "slime-control": 16,
+          "summoning": 6,
+          "spearmanship": 8,
+          "shieldcraft": 8,
+          "mana-surgery": 9,
+          "magic": 9,
+          "manual-labor": 15
+        }
+      }
+    }
+  ]
+}

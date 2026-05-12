@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Turn counter increments on input and hook clears",
+    "suite": "turn-engine",
+    "description": "Checks basic hook lifecycle bookkeeping.",
+    "steps": [
+      { "hook": "input", "text": "I look around." },
+      { "hook": "context", "text": "Context here." },
+      { "hook": "output", "text": "You look around." }
+    ],
+    "assertions": [
+      { "type": "equals", "path": "state.aidrpg.meta.currentTurn", "expected": 1 },
+      { "type": "equals", "path": "state.aidrpg.meta.currentHook", "expected": "" },
+      { "type": "exists", "path": "state.aidrpg.pending.recentHookTrace" }
+    ],
+    "whyItMatters": "Many systems depend on correct turn/hook tracking for duplicate protection and per-turn scratch data.",
+    "patchHint": "Inspect TurnEngine.beginHook and TurnEngine.endHook."
+  },
+  {
+    "name": "Duplicate output is detected",
+    "suite": "turn-engine",
+    "description": "Runs the same output twice and checks that the second one is flagged as duplicate.",
+    "steps": [
+      { "hook": "input", "text": "I travel to the chapel." },
+      { "hook": "output", "text": "The walk to the chapel takes thirty minutes." },
+      { "hook": "output", "text": "The walk to the chapel takes thirty minutes." }
+    ],
+    "assertions": [
+      { "type": "equals", "path": "state.aidrpg.pending.turnScratch.duplicateOutput", "expected": true }
+    ],
+    "whyItMatters": "AI Dungeon retries or erase/continue behavior can replay output. Side effects must not double-apply.",
+    "patchHint": "If duplicateOutput is true but state still double-changed, downstream systems must check TurnEngine.isDuplicateCurrentOutput before committing side effects."
+  }
+]

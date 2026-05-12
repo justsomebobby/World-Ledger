@@ -1,0 +1,72 @@
+{
+  "pass": 9,
+  "fail": 0,
+  "checks": [
+    {
+      "id": "STATIC-R3D-001",
+      "status": "PASS",
+      "label": "file under 16 MB",
+      "detail": "1468086"
+    },
+    {
+      "id": "STATIC-R3D-002",
+      "status": "PASS",
+      "label": "FeatureDefaults has no duplicate keys",
+      "detail": ""
+    },
+    {
+      "id": "STATIC-R3D-003",
+      "status": "PASS",
+      "label": "single AI Dungeon hook bindings",
+      "detail": "{'WL.onInput =': 1, 'WL.onContext =': 1, 'WL.onOutput =': 1, 'WL.EffortRewardResolver object assignment': 1, 'detectEffortRewardCandidates method': 1, 'EffortRewardReducer handler': 0, 'build100ar3dcheck renderer': 1, 'effortReward100AR3DEnabled default': 1}"
+    },
+    {
+      "id": "STATIC-R3D-004",
+      "status": "PASS",
+      "label": "single EffortRewardResolver owner object",
+      "detail": "1"
+    },
+    {
+      "id": "STATIC-R3D-005",
+      "status": "PASS",
+      "label": "single EventScanner effort reward entry point",
+      "detail": "1"
+    },
+    {
+      "id": "STATIC-R3D-006",
+      "status": "PASS",
+      "label": "no EffortRewardReducer authority added",
+      "detail": "0"
+    },
+    {
+      "id": "STATIC-R3D-007",
+      "status": "PASS",
+      "label": "unreachable legacy direct progression mutation block removed",
+      "detail": ""
+    },
+    {
+      "id": "STATIC-R3D-008",
+      "status": "PASS",
+      "label": "schema/default/init effortRewards path present",
+      "detail": ""
+    },
+    {
+      "id": "STATIC-R3D-009",
+      "status": "PASS",
+      "label": "organic phrase \"at your command\" is not blocked by command-word false positive",
+      "detail": ""
+    }
+  ],
+  "critical_counts": {
+    "WL.onInput =": 1,
+    "WL.onContext =": 1,
+    "WL.onOutput =": 1,
+    "WL.EffortRewardResolver object assignment": 1,
+    "detectEffortRewardCandidates method": 1,
+    "EffortRewardReducer handler": 0,
+    "build100ar3dcheck renderer": 1,
+    "effortReward100AR3DEnabled default": 1
+  },
+  "feature_duplicate_keys": [],
+  "sha256": "8ad7e728555a864093bd771fb168602ccc6e3afd63a9179b39345895098d51cb"
+}

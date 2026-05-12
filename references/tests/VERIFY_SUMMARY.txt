@@ -1,0 +1,12 @@
+WorldLedger current planning resource verification
+Input upload references selected: 35
+Missing selected inputs: 0
+Unique included resource files before manifests: 284
+Exact duplicate content skipped: 209
+Uploaded archives processed: 7
+
+ZIP policy:
+- Loose source/reference files are organized by planning purpose.
+- Uploaded ZIP archives are extracted into 08_EXTRACTED_UPLOAD_ARCHIVES.
+- Exact duplicate content is kept once and recorded in DUPLICATES_SKIPPED.csv.
+- Original archive SHA-256 hashes are recorded in ORIGINAL_ARCHIVE_INVENTORY.csv.

@@ -1,0 +1,8 @@
+WorldLedger core-first resource verification
+Source package: WorldLedger_current_planning_resource_DEDUPED_ORGANIZED.zip
+Source package integrity: PASS
+Authoritative current uploads found: 5
+Unique staged files before final zipping: 295
+Exact duplicate content skipped: 5
+
+This package intentionally preserves older/salvage/test materials while separating them from active core authority.

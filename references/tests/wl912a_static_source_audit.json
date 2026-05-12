@@ -1,0 +1,111 @@
+{
+  "source": "/mnt/data/WorldLedger_CleanCore_Build9_12A_LoreWorldBibleAuthorityImportLayer.txt",
+  "sha256": "036712bb50ee8e28b8595e71be2d7814db0b337938223419262809b0d3500e10",
+  "size_bytes": 1213509,
+  "results": [
+    {
+      "name": "oldOutput wrapper",
+      "pass": true,
+      "matches": 0,
+      "sample_lines": []
+    },
+    {
+      "name": "oldInput wrapper",
+      "pass": true,
+      "matches": 0,
+      "sample_lines": []
+    },
+    {
+      "name": "oldContext wrapper",
+      "pass": true,
+      "matches": 0,
+      "sample_lines": []
+    },
+    {
+      "name": "acceptance rowsFor reassignment",
+      "pass": true,
+      "matches": 0,
+      "sample_lines": []
+    },
+    {
+      "name": "fake pass phrases",
+      "pass": true,
+      "matches": 0,
+      "sample_lines": []
+    },
+    {
+      "name": "WL.onInput assignments",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "WL.onContext assignments",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "WL.onOutput assignments",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "Runtime.handleInput occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "Runtime.handleContext occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "Runtime.handleOutput occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "EventScanner.scanOutput occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "CanonValidator.validateAll occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "ReducerRegistry.applyAcceptedBatch occurrences",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "LoreAuthoritySystem objects",
+      "pass": true,
+      "count": 1,
+      "expected": 1
+    },
+    {
+      "name": "LoreAuthorityReducer handlers",
+      "pass": true,
+      "count": 4
+    },
+    {
+      "name": "/build912acheck PASS",
+      "pass": true
+    },
+    {
+      "name": "/fullacceptancecheck PASS",
+      "pass": true
+    }
+  ],
+  "overall_pass": true
+}

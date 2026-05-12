@@ -1,0 +1,120 @@
+[
+  {
+    "name": "Wrapper compatibility / standard Input Context Output wrappers return valid { text }",
+    "suite": "wrapper-compat",
+    "expectedSystem": "Hook wrapper compatibility",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Even without uploaded hook tabs, the canonical thin wrapper shape should call the Library handlers cleanly.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "inputOk": true,
+          "contextOk": true,
+          "outputOk": true,
+          "noStop": true,
+          "outputText": "You wait without anything important changing."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.inputOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.contextOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.outputOk",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__wrapperCompat.noStop",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "containsText",
+        "path": "state.__wrapperCompat.outputText",
+        "expected": "wait",
+        "passed": true,
+        "actual": "You wait without anything important changing."
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "inputOk": true,
+          "contextOk": true,
+          "outputOk": true,
+          "noStop": true,
+          "outputText": "You wait without anything important changing."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 78
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 6695
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 78
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "inputOk": true,
+      "contextOk": true,
+      "outputOk": true,
+      "noStop": true,
+      "outputText": "You wait without anything important changing."
+    }
+  }
+]

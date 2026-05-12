@@ -1,0 +1,114 @@
+{
+  "commands": {
+    "/build912acheck": {
+      "pass": 7,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build911ccheck": {
+      "pass": 7,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build911bcheck": {
+      "pass": 7,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build911acheck": {
+      "pass": 7,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build910dcheck": {
+      "pass": 5,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build910ccheck": {
+      "pass": 9,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build910bcheck": {
+      "pass": 11,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build910acheck": {
+      "pass": 12,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build99dcheck": {
+      "pass": 9,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build99ccheck": {
+      "pass": 10,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build99bcheck": {
+      "pass": 9,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/build99acheck": {
+      "pass": 11,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/sourceaudit": {
+      "pass": 165,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/schemaaudit": {
+      "pass": 43,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    },
+    "/fullacceptancecheck": {
+      "pass": 757,
+      "warn": 0,
+      "blocked": 0,
+      "fail": 0,
+      "status": "PASS"
+    }
+  },
+  "summary": {},
+  "targeted": {
+    "pass": 5,
+    "fail": 1
+  }
+}
