@@ -1,0 +1,3050 @@
+AIDRPG Design Bible — Chunk 32: World State, Time, Travel, Place Memory, Context Injection, Story Cards, Canon Pipeline, and Final System Integration
+
+1. Purpose of this chunk
+
+Chunk 32 is the final design-planning chunk.
+
+This chunk explains how all previous systems connect into one stable AIDRPG system.
+
+Earlier chunks defined:
+
+* player identity
+* race/species
+* level scaling
+* XP and progression
+* stats and resources
+* enemy tiers
+* combat math
+* abilities and passives
+* absorption and anime-style growth
+* crafting
+* economy
+* quests
+* investigation
+* actors, factions, reputation, and social memory
+
+Chunk 32 answers:
+
+How does the whole system actually work together?
+
+How does AIDRPG decide what is real?
+
+How does it update state safely?
+
+How does it prevent duplicated Story Cards?
+
+How does it prevent junk names?
+
+How does it prevent card triggers from firing constantly?
+
+How does it manage time, travel, weather, recovery, locations, routes, and scene state?
+
+How does it decide what information to inject into AI Dungeon context?
+
+How does it decide what belongs in protected summary cards versus generated cards?
+
+How does it keep freeform AI Dungeon play flexible without losing truth?
+
+The central rule is:
+
+AIDRPG is a canon-state manager for AI Dungeon.
+
+It should not try to replace AI Dungeon’s narration.
+
+It should read the story, validate what happened, update structured state, and inject only the most relevant confirmed context back into the story.
+
+⸻
+
+2. Final product summary
+
+The final AIDRPG system is a large, modular script framework for AI Dungeon that tracks and stabilizes RPG gameplay across long freeform stories.
+
+It is meant to support:
+
+* character sheets
+* races/species
+* age and appearance
+* level and XP
+* stats and resources
+* HP, MP, EP
+* injuries and conditions
+* abilities and passives
+* skills and domains
+* anime-style absorption/copy/evolution
+* combat and enemy scaling
+* group combat
+* quests and contracts
+* investigation cases
+* clues and evidence
+* actor memory
+* faction memory
+* reputation and titles
+* inventory and equipment
+* item ownership and custody
+* crafting and repairs
+* economy and labor
+* domain/base projects
+* locations and buildings
+* routes and travel
+* time and deadlines
+* weather
+* recovery ticks
+* Story Cards
+* context injection
+* audits/debug commands
+* anti-duplication safeguards
+* truth validation safeguards
+
+The goal is not to create a rigid tabletop simulator.
+
+The goal is to create a truth-preserving RPG support layer that helps AI Dungeon stay consistent.
+
+⸻
+
+3. The full gameplay loop
+
+AIDRPG should work through a repeated loop.
+
+Step 1 — Player acts
+
+The player writes a freeform action.
+
+Examples:
+
+* “I slash at the wolf.”
+* “I ask Mara what she saw.”
+* “I inspect the body.”
+* “I try to craft a dagger from scrap.”
+* “I absorb the slime core.”
+* “I travel to Greyford.”
+* “I pay the workers.”
+* “I use Mana Slash.”
+
+Player input usually creates an attempt, not automatic success.
+
+Step 2 — AI Dungeon narrates
+
+AI Dungeon responds.
+
+It may confirm success, partial success, failure, new facts, or consequences.
+
+Step 3 — AIDRPG reads the output
+
+The script scans the new narration for possible state changes.
+
+Examples:
+
+* damage occurred
+* item was gained
+* quest progressed
+* clue was found
+* actor spoke
+* reward was paid
+* time passed
+* location changed
+* ability was used
+* injury happened
+* enemy died
+* worker project advanced
+
+Step 4 — AIDRPG proposes updates
+
+The system creates proposed updates.
+
+Examples:
+
+* HP -12%
+* wolf injured
+* clue discovered
+* Mara relationship +trust
+* 2 silver spent
+* quest objective complete
+* Mana Slash evidence gained
+
+Step 5 — CanonValidator checks them
+
+CanonValidator asks:
+
+Is this possible?
+
+Is the source valid?
+
+Is it duplicated?
+
+Does it contradict protected state?
+
+Does the relevant system own this update?
+
+Is it confirmed, rumored, claimed, or only suspected?
+
+Does this require custody, proof, cost, time, or presence?
+
+Step 6 — Owner reducers commit valid changes
+
+Each owner system commits only its own state.
+
+Examples:
+
+* BodyReducer updates HP/injuries.
+* InventoryReducer updates items.
+* QuestReducer updates objectives.
+* InvestigationReducer updates clues.
+* ActorReducer updates relationships.
+* EconomyReducer updates currency.
+* ProgressionReducer updates XP.
+* CardSync updates cards.
+
+Step 7 — OperationLedger prevents duplicates
+
+Every committed change gets an operation key.
+
+If the same event is processed again, it is skipped.
+
+Step 8 — Dirty targets are marked
+
+Any changed area is marked dirty.
+
+Examples:
+
+* Player Sheet dirty
+* Inventory card dirty
+* Quest Log dirty
+* Actor card dirty
+* Place memory dirty
+* Context dirty
+
+Step 9 — ContextBuilder prepares next context
+
+ContextBuilder injects only relevant confirmed facts into AI Dungeon.
+
+Step 10 — Story Cards update safely
+
+Protected summary cards and generated cards update only from structured state.
+
+Cards mirror truth.
+
+Cards do not create truth.
+
+⸻
+
+4. State layers
+
+AIDRPG should use several state layers.
+
+4.1 Protected core state
+
+This is the most trusted state.
+
+It includes:
+
+* player sheet
+* stats
+* resources
+* level
+* XP
+* abilities
+* body state
+* inventory
+* equipment
+* active quests
+* active cases
+* current location
+* active companions
+* active conditions
+* time
+* important world flags
+
+Protected core state should be difficult for normal narration to overwrite.
+
+4.2 Structured system state
+
+This includes detailed records for:
+
+* actors
+* factions
+* places
+* buildings
+* routes
+* cases
+* quests
+* contracts
+* crafting projects
+* domain projects
+* economy records
+* operation ledger
+* card registry
+
+4.3 Generated card state
+
+Generated cards are long-term memory surfaces shown to AI Dungeon.
+
+They should be concise mirrors of structured state.
+
+4.4 Context injection state
+
+This is temporary text inserted for the next AI response.
+
+It should contain only what matters right now.
+
+4.5 Archive state
+
+Archives store old but important history.
+
+Examples:
+
+* completed quests
+* solved cases
+* dead actors
+* old locations
+* finished contracts
+* resolved domain projects
+
+Archives should not flood current context.
+
+⸻
+
+5. CanonValidator
+
+CanonValidator is the main safeguard layer.
+
+Every proposed update should pass through it.
+
+CanonValidator checks:
+
+* source validity
+* ownership
+* duplicate operation
+* truth status
+* contradiction
+* scale
+* resource cost
+* actor presence
+* item custody
+* location consistency
+* time consistency
+* body compatibility
+* ability validity
+* quest proof
+* evidence strength
+* card safety
+* name hygiene
+* anti-farm
+* player settings
+* death boundary
+* manual overrides
+
+CanonValidator should not make the story boring.
+
+It should allow freeform play, but it should prevent unsupported truth from entering state.
+
+⸻
+
+6. Canon validation outcomes
+
+Every proposal should resolve into one of these outcomes.
+
+Outcome	Meaning
+Accept	update is valid and committed
+Reject	update is unsupported and not committed
+Pending	possible but unconfirmed
+Soft_fail	partial result or consequence
+Hard_deny	invalid, unsafe, duplicate, or canon-breaking
+Merge	same as existing record; merge/update
+Archive	old state becomes inactive
+Supersede	new confirmed state replaces older uncertain state
+Flag	needs debug/audit warning
+
+Examples:
+
+AI says:
+
+“The wolf dies.”
+
+If wolf had already been killed:
+
+* duplicate / reject.
+
+AI says:
+
+“Mara blocks the arrow.”
+
+If Mara is absent:
+
+* reject or flag.
+
+AI says:
+
+“You find blue wax.”
+
+If scene supports searching victim’s sleeve:
+
+* accept clue.
+
+AI says:
+
+“Lord Veyr is definitely the murderer.”
+
+If evidence is insufficient:
+
+* reject as confirmed fact, maybe record theory.
+
+⸻
+
+7. OperationLedger
+
+OperationLedger prevents duplicate changes.
+
+It should store keys for:
+
+* XP gains
+* stat changes
+* item gains/losses
+* currency transactions
+* injuries
+* HP/MP/EP changes
+* quest objective updates
+* quest rewards
+* clue discoveries
+* evidence collection
+* actor relationship changes
+* card creation
+* card update
+* enemy defeat
+* group casualty
+* crafting output
+* domain progress
+* time jumps
+* weather changes
+* location changes
+
+Example operation keys:
+
+xp.quest.clear_mill_wolves.complete.turn_145
+item.add.iron_dagger.craft_project_002.turn_91
+currency.pay.mara_repair_6_silver.turn_47
+clue.add.blue_wax.dalen_murder.turn_122
+actor.relationship.mara.trust_saved_brother.turn_201
+quest.reward.clear_mill_wolves.old_bren_15_gold.turn_150
+combat.damage.player.wolf_bite.turn_33
+card.create.actor.mara.turn_12
+
+The exact key format can vary, but the concept must exist.
+
+No duplicate operation should apply twice.
+
+⸻
+
+8. Dirty target system
+
+Whenever state changes, the system should mark affected outputs dirty.
+
+Dirty targets include:
+
+* Player Sheet
+* Body Status
+* Abilities Summary
+* Inventory Summary
+* Equipment Summary
+* Quest Log
+* Case Log
+* Social Memory
+* Place Memory
+* Domain Summary
+* Economy Summary
+* Active Combat Context
+* Actor Cards
+* Place Cards
+* Ability Cards
+* Item Cards
+* Quest Cards
+* Contract Cards
+* Domain Cards
+* Faction Cards
+* Context Injection
+
+Dirty targets prevent unnecessary rewriting.
+
+Only update what changed.
+
+Example:
+
+If Mana Slash rank changes:
+
+* Abilities Summary dirty
+* Mana Slash card dirty if generated
+* Player Sheet maybe not dirty unless ability summary included there
+* Quest Log not dirty
+
+If player moves to Greyford:
+
+* Current Location dirty
+* Context dirty
+* Route/travel state dirty
+* Inventory not dirty
+
+⸻
+
+9. Reducer ownership doctrine
+
+Each system owns its own truth.
+
+No reducer should directly mutate another reducer’s state.
+
+Instead, it should propose an event.
+
+Examples:
+
+CombatResolver can propose:
+
+* wolf injured
+* player takes damage
+* XP candidate
+* quest target defeated
+
+But:
+
+* BodyReducer commits player damage
+* Enemy/Scale system commits enemy state
+* ProgressionReducer commits XP
+* QuestReducer commits objective progress
+
+CraftingReducer can propose item output.
+
+But InventoryReducer creates the item.
+
+QuestReducer can propose reward.
+
+But EconomyReducer adds money and InventoryReducer adds reward item.
+
+This prevents systems from fighting each other.
+
+⸻
+
+10. Current scene state
+
+Scene state tracks what is happening right now.
+
+Scene record should include:
+
+Scene ID:
+Current location:
+Current sub-location:
+Time:
+Weather:
+Lighting:
+Active actors:
+Active party members:
+Active enemies:
+Active hazards:
+Active objective:
+Available exits:
+Visible items:
+Important sounds/smells:
+Combat state:
+Social state:
+Investigation state:
+Travel state:
+Recent changes:
+
+Scene state should be short-lived.
+
+It should not become permanent memory unless something important happens.
+
+Example:
+
+A tavern scene may include:
+
+* location: Greyford tavern
+* actors present: Mara, innkeeper, two guards
+* visible item: sealed letter on table
+* exits: street, stairs, kitchen
+* social state: tense after accusation
+* active quest: deliver letter maybe
+
+When the player leaves the tavern, scene state changes.
+
+Important facts may transfer to place or actor memory.
+
+⸻
+
+11. Current location
+
+Current location is a core state field.
+
+It should track:
+
+* region
+* settlement
+* place
+* building
+* room/sub-area
+* route if traveling
+* plane/dimension if relevant
+* confidence
+* last update
+
+Example:
+
+Current Location:
+Region: Blackwood
+Route: Blackwood Road
+Specific Area: Old Mill crossroads
+Confidence: confirmed
+
+Location matters for:
+
+* context
+* quest objectives
+* actor presence
+* available exits
+* weather
+* travel
+* encounters
+* shop availability
+* faction jurisdiction
+* legal consequences
+* card triggers
+
+The player should not be in two places at once unless magic/clone rules support it.
+
+⸻
+
+12. Place memory
+
+Place memory tracks locations.
+
+Place record template:
+
+Place ID:
+Name:
+Type:
+Region:
+Parent Place:
+Known Description:
+Current State:
+Known Hazards:
+Known Exits:
+Routes:
+Actors Present or Associated:
+Factions Present:
+Quest Links:
+Case Links:
+Domain Links:
+Resources:
+Shops/Services:
+Secrets Known:
+Rumors:
+Last Visited:
+Importance:
+Card Eligibility:
+
+Examples of places:
+
+* Greyford
+* Old Mill
+* Blackwood Road
+* Ruined Tower
+* North Wall
+* Greyford Barracks
+* Mara’s Smithy
+* Fever Well
+* Veyr Manor
+* Slime Cave
+* Dragon Peak
+
+Place memory should store stable facts, not every temporary scene detail.
+
+⸻
+
+13. Building memory
+
+Buildings are subtypes of places.
+
+Building record should track:
+
+Building Name:
+Place Parent:
+Type:
+Owner:
+Custody/Access:
+Condition:
+Rooms Known:
+Entrances:
+Exits:
+Hidden Areas:
+Security:
+Occupants:
+Services:
+Damage:
+Quest Links:
+Case Links:
+Domain Links:
+
+Examples:
+
+* Greyford Inn
+* Captain Mora’s Barracks
+* Old Mill
+* Veyr Manor
+* North Wall Gatehouse
+* Player Workshop
+* Alchemy Lab
+* Slimebound Shrine
+
+Building memory matters when:
+
+* the building recurs
+* it has rooms/exits
+* it contains quest items
+* it is damaged
+* it is owned
+* it is a domain asset
+* it is a crime scene
+* it contains a hidden room
+* it has a service/shop function
+
+Do not create building cards for every generic house.
+
+⸻
+
+14. Local hazards
+
+Hazards are threats in a place or scene.
+
+Hazard types:
+
+* enemy presence
+* trap
+* fire
+* poison gas
+* disease
+* curse
+* unstable bridge
+* dark tunnel
+* falling rocks
+* magical field
+* anti-magic zone
+* acid pool
+* weather hazard
+* social/legal danger
+* faction patrol
+* unstable building
+* hostile crowd
+* contaminated water
+* spiritual haunting
+
+Hazard record:
+
+Hazard:
+Location:
+Type:
+Severity:
+Known/Unknown:
+Trigger:
+Avoidance:
+Counter:
+Status:
+Last Updated:
+
+Hazards should appear in Context when relevant.
+
+Example:
+
+“The well water is suspected to be contaminated; drinking it may worsen the slime corruption case.”
+
+⸻
+
+15. Local exits
+
+Exits help travel and scene continuity.
+
+Exit types:
+
+* door
+* road
+* trail
+* stairway
+* tunnel
+* gate
+* river route
+* portal
+* hidden passage
+* locked exit
+* blocked exit
+* dangerous route
+* unknown route
+
+Exit record:
+
+From:
+To:
+Exit Name:
+Status:
+Known:
+Requirements:
+Hazards:
+Travel Time:
+Route Link:
+
+Example:
+
+From: Greyford Tavern
+To: Greyford Street
+Exit: front door
+Status: open
+
+From: Old Mill Basement
+To: Hidden Smuggler Tunnel
+Status: discovered, dark, unstable
+
+This prevents the story from forgetting where the player can go.
+
+⸻
+
+16. Routes
+
+Routes connect places.
+
+Route record template:
+
+Route ID:
+Name:
+From:
+To:
+Distance:
+Travel Time:
+Terrain:
+Known Hazards:
+Weather Impact:
+Faction Control:
+Safety Level:
+Known Landmarks:
+Blocked?
+Discovered?
+Last Traveled:
+Route Quality:
+
+Examples:
+
+* Greyford to Old Mill road
+* Blackwood Road
+* Riverpath to North Gate
+* Hidden tunnel under Veyr Manor
+* Mountain pass to Dragon Peak
+
+Routes matter for:
+
+* travel time
+* encounters
+* weather
+* route hazards
+* patrols
+* cargo transport
+* domain logistics
+* quests
+* escort missions
+* trade
+
+⸻
+
+17. Travel
+
+Travel should be structured enough to be believable.
+
+Travel state should track:
+
+Origin:
+Destination:
+Current Route:
+Progress:
+Estimated Time:
+Party:
+Mounts/Vehicles:
+Cargo:
+Weather:
+Hazards:
+Pace:
+Rest State:
+Supplies:
+Current Encounter:
+
+Travel pace:
+
+* slow/careful
+* normal
+* fast
+* forced march
+* stealthy
+* escorted
+* overloaded
+* mounted
+* magical
+
+Travel outcomes:
+
+* arrive safely
+* arrive late
+* encounter hazard
+* get lost
+* find route clue
+* discover place
+* lose supplies
+* fatigue
+* ambush
+* weather delay
+* split party
+* shortcut discovered
+
+Travel is not just teleportation unless fast travel/magic exists.
+
+⸻
+
+18. Travel time estimates
+
+Default travel estimates can be approximate.
+
+Travel Mode	Rough Distance / Day
+walking careful	10–15 miles/day
+walking normal road	15–25 miles/day
+forced march	25–35 miles/day with fatigue
+mounted normal	25–40 miles/day
+mounted fast	40–60 miles/day with rest needs
+wagon/cart	10–25 miles/day
+rough terrain	reduce by 25–75%
+mountain/swamp/forest	reduce heavily
+flying	depends on creature/ability
+teleport	ability-specific
+
+The system does not need perfect realism.
+
+It needs consistency.
+
+If a route normally takes two days, the player should not arrive in one minute unless magic or scene compression supports it.
+
+⸻
+
+19. Travel hazards
+
+Travel hazards include:
+
+* weather
+* bandits
+* monsters
+* broken bridge
+* blocked road
+* patrol
+* disease
+* terrain
+* exhaustion
+* lost route
+* food shortage
+* vehicle damage
+* mount injury
+* hostile faction
+* toll
+* ambush
+* magical anomaly
+* night danger
+
+Travel hazards can connect to:
+
+* combat
+* quests
+* investigation
+* domain
+* economy
+* reputation
+* resource costs
+
+Example:
+
+Caravan escort route hazard:
+
+* bandits on Blackwood Road
+* bridge partially collapsed
+* storm expected by evening
+
+This makes travel gameplay meaningful.
+
+⸻
+
+20. Time system
+
+Time is one of the most important global systems.
+
+Time should track:
+
+Current date:
+Current day:
+Time of day:
+Season:
+Calendar if used:
+Elapsed time this turn:
+Time confidence:
+Active deadlines:
+Recovery ticks:
+Project ticks:
+Travel ticks:
+Weather ticks:
+
+Time does not need a complex calendar at first.
+
+But it must support:
+
+* deadlines
+* travel duration
+* rest
+* recovery
+* crafting time
+* domain work
+* wages/payroll
+* shop hours
+* weather changes
+* NPC schedules
+* timed quests
+* cooldowns
+* training sessions
+* night/day effects
+
+Time should advance when the story says time passes.
+
+⸻
+
+21. Time advancement
+
+Time can advance from:
+
+* AI narration
+* player action
+* travel
+* rest
+* sleep
+* waiting
+* crafting
+* training
+* domain work
+* recovery
+* scene transition
+* explicit command
+
+Examples:
+
+* “After an hour of searching…”
+* “You sleep until dawn.”
+* “Three days later…”
+* “The caravan reaches Greyford by sunset.”
+* “You spend the afternoon repairing the blade.”
+
+Time should not advance from:
+
+* irrelevant card text
+* examples
+* hypothetical plans
+* debug output
+* player saying “I will later” without confirmation
+* duplicate output
+
+Time advancement should trigger relevant ticks.
+
+⸻
+
+22. Time scale categories
+
+AIDRPG should classify time jumps.
+
+Time Jump	Examples
+moment	quick action, glance
+combat beat	attack/defense exchange
+minute	brief search, short talk
+scene	tavern scene, interrogation
+hour	crafting, study, travel segment
+day	sleep, long travel, workday
+week	project progress, long recovery
+month	domain development, long training
+season	major domain/world changes
+year+	campaign timeskip
+
+Different systems respond to different scales.
+
+Combat uses beats.
+
+Crafting uses minutes/hours/days.
+
+Recovery uses rest/ticks.
+
+Domain projects use days/weeks.
+
+Reputation spread may use days/weeks/months.
+
+⸻
+
+23. Recovery ticks
+
+Recovery ticks handle healing, rest, fatigue, cooldowns, and long-term conditions.
+
+Recovery can affect:
+
+* HP
+* MP
+* EP
+* injuries
+* conditions
+* fatigue
+* ability cooldowns
+* poison/disease
+* corruption
+* hunger/thirst
+* sleep deprivation
+* mental strain
+* regeneration
+* item recharge
+* summon duration
+* enchantment upkeep
+
+Recovery depends on:
+
+* rest quality
+* safety
+* food/water
+* medical care
+* healer ability
+* race/body type
+* injury severity
+* conditions
+* environment
+* time passed
+* abilities/passives
+* magic
+* current activity
+
+Do not fully heal the player every scene unless the system setting says so.
+
+⸻
+
+24. Rest quality
+
+Rest quality affects recovery.
+
+Rest categories:
+
+Rest Type	Recovery
+no rest	fatigue worsens
+brief pause	small EP recovery only if safe
+short rest	EP/MP partial, minor fatigue relief
+poor sleep	limited recovery
+normal sleep	good EP/MP recovery, HP minor
+safe full rest	strong recovery
+medical rest	injury recovery improved
+magical healing rest	depends on healer/spells
+hostile rest	interrupted, low recovery
+cursed/unsafe rest	may worsen conditions
+
+Rest should consider:
+
+* location safety
+* bed/shelter
+* weather
+* food/water
+* guards
+* injuries
+* enemy pursuit
+* mental stress
+* companion care
+
+⸻
+
+25. Injury recovery
+
+Injuries recover by severity.
+
+Injury Severity	Natural Recovery
+scratch	minutes/hours
+minor	hours/day
+moderate	days
+serious	days/weeks
+severe	weeks/months or magic
+critical	special care/magic
+permanent	prosthetic, magic, adaptation, or lasting scar
+
+Recovery should not be instant.
+
+Healing magic can speed it, but must respect ability tier.
+
+A minor healing potion should not regrow a severed limb.
+
+Regeneration passives follow their own limits.
+
+⸻
+
+26. Weather
+
+Weather affects the world.
+
+Weather record:
+
+Region:
+Current Weather:
+Severity:
+Temperature:
+Wind:
+Visibility:
+Precipitation:
+Hazards:
+Forecast if known:
+Start Time:
+Expected Duration:
+
+Weather types:
+
+* clear
+* cloudy
+* rain
+* heavy rain
+* storm
+* snow
+* blizzard
+* fog
+* heat wave
+* cold snap
+* drought
+* high wind
+* magical storm
+* ashfall
+* acid rain
+* divine light
+* cursed darkness
+
+Weather affects:
+
+* travel
+* combat
+* fire magic
+* stealth
+* perception
+* disease
+* fatigue
+* road quality
+* construction
+* morale
+* farming/domain
+* investigation traces
+* visibility
+* flying
+* ships
+
+Weather should be region-specific and time-based.
+
+⸻
+
+27. Weather changes
+
+Weather can change due to:
+
+* time
+* region climate
+* season
+* magic
+* divine event
+* disaster
+* player ability
+* story event
+* random encounter system if enabled
+
+Weather should not randomly flip every turn.
+
+If AI suddenly says:
+
+“A blizzard begins” in a desert summer with no magic,
+
+CanonValidator should reject or soften unless the story supports supernatural weather.
+
+If player casts weather magic:
+
+* check ability, cost, scale, and consequences.
+
+⸻
+
+28. World entities
+
+World entities are large-scale nonhuman or supernatural systems that may not fit normal actor/place/item categories.
+
+Examples:
+
+* world tree
+* demon seal
+* dungeon core
+* divine storm
+* plague
+* magical leyline
+* cursed forest
+* ancient machine
+* living city
+* cosmic rift
+* kingdom-wide war
+* primordial slime sea
+* god’s domain
+* global prophecy
+
+World entity record:
+
+Entity Name:
+Type:
+Scale:
+Location/Scope:
+Status:
+Known Effects:
+Related Factions:
+Related Places:
+Related Quests:
+Related Cases:
+Related Hazards:
+Known Weaknesses:
+Truth Status:
+Card Eligibility:
+
+World entities should be rare and important.
+
+They may deserve generated cards if they affect many scenes.
+
+⸻
+
+29. Domain and base memory
+
+Domain/base memory should track player holdings and large projects.
+
+Domain record:
+
+Domain Name:
+Type:
+Owner:
+Location:
+Territory:
+Buildings:
+Population:
+Workers:
+Foremen:
+Treasury:
+Income:
+Expenses:
+Projects:
+Defenses:
+Resources:
+Hazards:
+Factions:
+Reputation:
+Maintenance:
+Unresolved Issues:
+
+Examples:
+
+* player camp
+* workshop
+* manor
+* village holding
+* mine
+* fortress
+* guild hall
+* slime sanctuary
+* tower
+* farm
+* ship
+
+Domain state connects to:
+
+* economy
+* labor
+* crafting
+* quests
+* travel
+* reputation
+* place memory
+* faction relations
+
+Domain projects should not live only in quest text.
+
+They need structured tracking.
+
+⸻
+
+30. ContextBuilder
+
+ContextBuilder decides what AI Dungeon needs to know right now.
+
+It should use priority and relevance.
+
+Context should include:
+
+* current player status if relevant
+* current location
+* active scene state
+* present actors
+* active combat state
+* current quest objective
+* relevant case facts
+* item custody warnings
+* ability limits if used
+* resource warnings
+* location hazards
+* time/deadline warnings
+* companion presence/absence
+* key social/faction context
+* immediate unresolved contradictions
+* card correction notes
+
+Context should not include:
+
+* every stat
+* every card
+* every old quest
+* every old clue
+* every actor
+* every inventory item
+* every archived case
+* every domain detail
+* every known ability
+* every rumor
+* every transaction
+* every old combat event
+
+The strongest Context rule:
+
+Inject only the smallest amount of truth needed to keep the next response consistent.
+
+⸻
+
+31. Context priority order
+
+When space is limited, use this priority:
+
+1. Safety/canon correction
+2. Current location and scene
+3. Current player body/resource danger
+4. Active combat/enemy state
+5. Present actors and companion presence
+6. Current action-relevant equipment/custody
+7. Current quest objective/deadline
+8. Current case confirmed facts/leads
+9. Active hazards
+10. Relevant ability limits/costs
+11. Relevant reputation/faction constraints
+12. Active domain/project blocker
+13. Recent important event
+14. Archived memory only if directly relevant
+
+This prevents bloated context.
+
+⸻
+
+32. Context correction notes
+
+Sometimes AI Dungeon drifts.
+
+ContextBuilder should inject correction notes.
+
+Examples:
+
+Mara is not present; she is at Greyford smithy with the player’s sword.
+Shadow Step is only a candidate and should not work as reliable teleport yet.
+Lord Veyr is suspected but not proven guilty.
+The player has only 2 silver in their purse; their domain treasury is not accessible here.
+The slime core was already consumed and cannot be absorbed again.
+Frostmaw is a named spirit wolf; ordinary wolf facts should not replace its established traits.
+
+Correction notes should be direct and concise.
+
+⸻
+
+33. Story Card architecture
+
+AIDRPG should use Story Cards as memory surfaces, not primary truth.
+
+Story Cards should be divided into:
+
+1. Protected summary cards
+2. Generated actor cards
+3. Generated place cards
+4. Generated ability cards
+5. Generated item cards
+6. Generated quest cards
+7. Generated contract cards
+8. Generated domain cards
+9. Generated faction cards
+10. Generated case cards
+11. Generated world entity cards
+
+The core doctrine:
+
+Structured state is source of truth.
+
+Cards mirror structured state.
+
+Cards never create truth.
+
+⸻
+
+34. Protected summary cards
+
+Protected summary cards should contain compact core state.
+
+Recommended protected cards:
+
+* AIDRPG Player Sheet
+* AIDRPG Body Status
+* AIDRPG Abilities
+* AIDRPG Inventory/Equipment
+* AIDRPG Quest Log
+* AIDRPG Case Log
+* AIDRPG Social Memory
+* AIDRPG Current Location
+* AIDRPG Domain Summary, if domain play exists
+* AIDRPG Rules/Canon Guard, if needed
+
+Protected cards should be updated from state and should not be freely modified by AI narration.
+
+They should avoid huge detail dumps.
+
+⸻
+
+35. Player Sheet protected card
+
+Player Sheet should include:
+
+* name
+* race/species
+* age
+* appearance summary
+* level
+* XP
+* total XP
+* XP to next
+* core stats
+* HP/MP/EP
+* major body traits
+* build identity
+* specializations
+* major statuses
+
+It should not include:
+
+* every XP event
+* every stat XP detail
+* every domain detail
+* every temporary combat note
+* every inventory item
+* every old quest
+
+Detailed values can be shown through commands.
+
+⸻
+
+36. Body Status protected card
+
+Body Status should include:
+
+* current HP/MP/EP
+* injuries
+* conditions
+* fatigue
+* death-boundary state
+* body-specific damage
+* recovery notes
+* major resistances/vulnerabilities
+* active transformation
+* disease/poison/corruption
+
+It should update after:
+
+* combat damage
+* healing
+* rest
+* poison/disease
+* transformation
+* regeneration
+* recovery ticks
+
+⸻
+
+37. Abilities protected card
+
+Abilities protected card should include:
+
+* stable abilities
+* candidates
+* passives
+* talents
+* specializations
+* sealed/unavailable abilities
+* important costs/limits
+
+Generated ability cards should exist only for stable important abilities.
+
+Candidates belong in protected Abilities card, not generated cards.
+
+⸻
+
+38. Inventory/Equipment protected card
+
+Inventory card should include:
+
+* equipped items
+* accessible currency
+* key items
+* important materials
+* quest items
+* unavailable items in custody
+* important item conditions
+* important containers/storage
+* major valuables
+
+It should not list every common item if too large.
+
+Commands can show full inventory.
+
+Important custody facts must be visible.
+
+Example:
+
+“Player’s iron sword is with Mara for repair and cannot be used.”
+
+⸻
+
+39. Quest Log protected card
+
+Quest Log should include:
+
+* active quests
+* urgent deadlines
+* ready turn-ins
+* blocked quests
+* active contracts
+* promised but unpaid rewards
+
+It should not contain every archived quest.
+
+⸻
+
+40. Case Log protected card
+
+Case Log should include:
+
+* active cases
+* confirmed facts
+* supported theories
+* current leads
+* unresolved contradictions
+* proof items if relevant
+
+It must separate:
+
+* confirmed
+* suspected
+* claimed
+* rumored
+* false
+
+This prevents investigation corruption.
+
+⸻
+
+41. Social Memory protected card
+
+Social Memory should include:
+
+* major actors
+* companion presence/status
+* key relationships
+* faction standings
+* titles/reputation
+* active promises/debts
+* social warnings
+
+It should not include every NPC.
+
+⸻
+
+42. Current Location protected card
+
+Current Location card should include:
+
+* where the player is
+* immediate area
+* current scene
+* hazards
+* exits
+* present actors
+* relevant active route/travel state
+* time/weather if relevant
+
+This card should be concise and frequently updated.
+
+⸻
+
+43. Generated card creation rules
+
+A generated card may be created only when:
+
+* entity is important enough
+* name passes hygiene
+* canonical key is unique
+* no duplicate card exists
+* trigger can be specific
+* state has stable facts
+* card would improve AI continuity
+* entity is likely to recur
+* card type is appropriate
+* card text can be concise
+* card mirrors structured state
+
+Do not create cards for:
+
+* every random NPC
+* every enemy
+* every item
+* every clue
+* every rumor
+* every temporary condition
+* every XP event
+* every generic location
+* every crafting project
+* every weak candidate ability
+* every material
+* every transaction
+* every generic faction mention
+
+⸻
+
+44. Generated card update rules
+
+Update a card when confirmed state changes.
+
+Examples:
+
+Actor card update:
+
+* relationship changes
+* actor injured
+* actor location changes if important
+* actor becomes enemy/ally
+* rumor becomes confirmed or disproven
+
+Place card update:
+
+* hidden room discovered
+* hazard removed
+* building damaged
+* owner changes
+* route blocked
+
+Ability card update:
+
+* rank changes
+* cost discovered
+* limit discovered
+* ability sealed
+* variant stabilizes
+
+Item card update:
+
+* condition changes
+* custody changes
+* enchantment added
+* item lost/broken
+
+Quest card update:
+
+* major objective changes
+* status changes
+* deadline changes
+* reward status changes
+
+Cards should not rewrite everything every turn.
+
+Only update when needed.
+
+⸻
+
+45. Generated card archive/delete rules
+
+Cards should be archived or removed when:
+
+* entity is no longer important
+* duplicate merged
+* temporary entity ended
+* quest completed and no longer relevant
+* minor actor leaves permanently
+* card was created by mistake
+* trigger is dangerous
+* card causes repeated activation issues
+* entity moved into archive summary
+
+Do not delete major history blindly.
+
+Archive summaries can preserve important outcomes.
+
+Example:
+
+A completed minor quest card can be archived into Quest Archive and removed from active cards.
+
+A dead major companion card may remain if emotionally/story relevant.
+
+⸻
+
+46. Trigger safety
+
+Story Card triggers are one of the most dangerous parts.
+
+Good triggers are:
+
+* specific
+* unique
+* unlikely to appear accidentally
+* tied to name or exact phrase
+* not generic
+* not common nouns
+
+Bad triggers:
+
+* street
+* wolf
+* guard
+* sword
+* magic
+* skill
+* quest
+* town
+* forest
+* road
+* item
+* enemy
+* actor
+* companion
+* power
+* slime
+* dragon
+* coin
+* shop
+* house
+
+Good triggers:
+
+* Frostmaw
+* Old Mill wolves
+* Captain Mora
+* Lord Veyr
+* Slimebound Shield
+* Mana Slash
+* Greyford Caravan Escort
+* Dalen murder case
+* North Wall repair
+* Veyr Manor
+* Blackwood Road
+
+A card about “Blackwood Road” should trigger on “Blackwood Road,” not “road.”
+
+A card about “Frostmaw the spirit wolf” should trigger on “Frostmaw,” not “wolf.”
+
+⸻
+
+47. Card dedupe keys
+
+Every card should have a canonical key.
+
+Examples:
+
+actor:mara
+actor:captain_mora
+place:greyford
+place:old_mill
+ability:mana_slash
+item:slimebound_shield
+quest:clear_mill_wolves
+case:dalen_murder
+faction:greyford_guard
+domain:north_wall_repair
+
+Before creating a card:
+
+* check canonical key
+* check aliases
+* check similar names
+* check existing state record
+* check recently archived cards
+
+If duplicate:
+
+* update existing card
+* merge aliases
+* do not create new card
+
+⸻
+
+48. Junk name prevention
+
+Name hygiene must apply to:
+
+* actors
+* places
+* abilities
+* items
+* quests
+* factions
+* cases
+* domains
+* cards
+
+Reject names that are:
+
+* generic
+* too broad
+* too long
+* full sentences
+* commands
+* parser fragments
+* debug labels
+* quote fragments
+* AI mistakes
+* repeated words
+* common trigger words
+* vague descriptions
+* pronouns
+* temporary labels unless intentionally canonical
+
+Examples of rejected names:
+
+* “street”
+* “the thing”
+* “a man”
+* “you feel stronger”
+* “attack”
+* “quest complete”
+* “unknown person”
+* “debug ability”
+* “try to use fire”
+* “the old old old sword”
+* “AIDRPG Output”
+
+Use fallback names only if needed:
+
+* unnamed guard
+* unknown suspect
+* strange slime
+* sealed relic
+
+But do not card them until identity stabilizes.
+
+⸻
+
+49. Truth statuses across all memory
+
+Every long-term fact should have truth status.
+
+Core statuses:
+
+* confirmed
+* observed
+* claimed
+* rumored
+* suspected
+* supported
+* disputed
+* contradicted
+* false
+* unknown
+
+Examples:
+
+Actor:
+
+“Mara claims she once worked for nobles.”
+
+Case:
+
+“Lord Veyr is suspected.”
+
+Place:
+
+“Hidden tunnel under manor is confirmed.”
+
+Ability:
+
+“Shadow Step is candidate, not stable.”
+
+Quest:
+
+“Reward promised, not paid.”
+
+Item:
+
+“Sword is in Mara’s custody.”
+
+Faction:
+
+“Greyford Guard cautiously respects player.”
+
+Cards should state uncertainty clearly.
+
+⸻
+
+50. Contradiction handling
+
+Contradictions should not be ignored.
+
+When a new fact conflicts with existing state:
+
+1. Identify conflict.
+2. Determine source reliability.
+3. Check if new fact is confirmed or only claimed.
+4. Check if old fact is confirmed.
+5. Decide outcome:
+    * reject new fact
+    * mark new fact as claim
+    * update old fact
+    * create contradiction record
+    * flag audit
+    * ask no question unless absolutely necessary
+6. ContextBuilder may inject correction.
+
+Examples:
+
+Existing:
+
+Mara is at smithy.
+
+New AI output:
+
+Mara attacks beside player in forest.
+
+Outcome:
+
+* reject or flag unless travel occurred.
+
+Existing:
+
+Sword is broken.
+
+New output:
+
+Player draws pristine sword.
+
+Outcome:
+
+* reject pristine state; maybe player draws broken sword if they have it.
+
+Existing:
+
+Lord Veyr only suspected.
+
+New output:
+
+Everyone knows he is guilty.
+
+Outcome:
+
+* reject public certainty unless proof/spread occurred.
+
+⸻
+
+51. World-state update pipeline
+
+Every turn should conceptually follow this pipeline.
+
+Input/Output
+→ Event Scanner
+→ Proposal Builder
+→ CanonValidator
+→ Owner Reducers
+→ OperationLedger
+→ Dirty Target Marking
+→ CardSync
+→ ContextBuilder
+→ Audit Log
+
+Event Scanner
+
+Finds possible events.
+
+Proposal Builder
+
+Turns events into structured proposals.
+
+CanonValidator
+
+Approves, rejects, soft-fails, or marks pending.
+
+Owner Reducers
+
+Commit state.
+
+OperationLedger
+
+Prevents duplicates.
+
+Dirty Target Marking
+
+Marks affected summaries/cards/context.
+
+CardSync
+
+Updates cards safely.
+
+ContextBuilder
+
+Builds next-turn relevant context.
+
+Audit Log
+
+Explains what happened.
+
+⸻
+
+52. Audit system
+
+Audit commands are required for trust.
+
+Important audits:
+
+* /debuglast
+* /xpaudit
+* /abilityaudit
+* /craftaudit
+* /economyaudit
+* /questaudit
+* /caseaudit
+* /socialaudit
+* /cardaudit
+* /contextaudit
+* /timeaudit
+* /travelaudit
+
+Audit should show:
+
+* proposed update
+* accepted update
+* rejected update
+* reason
+* owner reducer
+* operation key
+* duplicate status
+* dirty targets
+* card changes
+* context changes
+
+Example:
+
+Card Audit:
+Proposed card: “Wolf”
+Rejected.
+Reason: generic trigger and temporary enemy.
+Accepted instead:
+Active enemy group tracked in combat state.
+No generated card created.
+
+⸻
+
+53. Command philosophy
+
+Commands should help inspect and correct state.
+
+Commands should not accidentally create story truth.
+
+Command categories:
+
+Inspection commands
+
+Show state.
+
+Examples:
+
+* /status
+* /inventory
+* /quests
+* /cases
+* /actors
+* /location
+* /time
+* /weather
+
+Audit commands
+
+Explain recent decisions.
+
+Examples:
+
+* /debuglast
+* /cardaudit
+* /caseaudit
+
+Controlled mutation commands
+
+Change state manually, but log override.
+
+Examples:
+
+* /setstat
+* /setability
+* /additem
+* /setlocation
+* /completequest
+
+Manual commands should be explicit and auditable.
+
+Command output should not be parsed as story narration unless designed to mutate state.
+
+⸻
+
+54. Manual override policy
+
+Manual override is necessary because AI Dungeon and scripts can fail.
+
+Manual override should:
+
+* require explicit command
+* state what changed
+* create operation key
+* mark dirty targets
+* log source as manual
+* avoid duplicate card creation
+* respect entity naming rules if possible
+
+Manual override can fix:
+
+* wrong HP
+* duplicated item
+* missing quest progress
+* wrong location
+* incorrect actor presence
+* bad card
+* broken ability state
+* accidental death
+* missing reward
+
+Manual override should not silently happen from normal narration.
+
+⸻
+
+55. Startup behavior
+
+When a new game starts, AIDRPG should initialize cleanly.
+
+Startup should create protected cards:
+
+* Player Sheet
+* Body Status
+* Abilities
+* Inventory/Equipment
+* Quest Log
+* Case Log
+* Social Memory
+* Current Location
+
+Startup may also create state from scenario if provided:
+
+* player name
+* race/species
+* age
+* appearance
+* starting stats
+* starting level
+* starting equipment
+* starting location
+* starting abilities
+* starting quest
+* starting companions
+* starting faction status
+
+Startup should not generate dozens of cards immediately.
+
+Only create generated cards for:
+
+* starting companion
+* major starting location
+* main quest
+* major faction
+* unique starting item
+* stable signature ability
+
+if they are important and trigger-safe.
+
+⸻
+
+56. Starting card set
+
+Clean default starting cards:
+
+Required protected cards
+
+1. AIDRPG Player Sheet
+2. AIDRPG Body Status
+3. AIDRPG Abilities
+4. AIDRPG Inventory/Equipment
+5. AIDRPG Quest Log
+6. AIDRPG Case Log
+7. AIDRPG Social Memory
+8. AIDRPG Current Location
+
+Optional generated cards at start
+
+Only if scenario supports:
+
+* main companion
+* home/base
+* main faction
+* main quest
+* unique artifact
+* signature ability
+* major enemy
+* important domain
+
+Do not generate cards for:
+
+* every stat
+* every skill candidate
+* every background NPC
+* every generic race
+* every location in setting
+* every possible enemy
+* every item in inventory
+
+⸻
+
+57. Card update development over time
+
+Cards should develop as facts become confirmed.
+
+Example: location card
+
+Initial:
+
+Place: Old Mill
+Known: abandoned mill near Greyford. Wolves have been seen nearby.
+
+After exploration:
+
+Confirmed: hidden basement beneath mill.
+Confirmed: wolf tracks lead to creek.
+
+After quest resolution:
+
+Status: wolf threat resolved. Mill is usable again if repaired.
+
+Example: actor card
+
+Initial:
+
+Mara is a traveling swordswoman.
+
+Later:
+
+Mara is a companion. She trusts the player moderately. She was wounded fighting Frostmaw.
+
+Later:
+
+Rumor of thieves’ guild past is confirmed false / confirmed true / still unverified.
+
+Cards should evolve from truth, not speculation.
+
+⸻
+
+58. Place card creation rules
+
+Create place cards for:
+
+* recurring important locations
+* current home/base
+* quest-critical places
+* major settlements
+* dungeons
+* buildings with complex memory
+* dangerous routes
+* domains/holdings
+* investigation scenes
+* places with discovered secrets
+* places with persistent hazards
+
+Do not create place cards for:
+
+* every street
+* every room
+* every generic forest clearing
+* every random cave
+* every market stall
+* every temporary battlefield
+* every generic road
+
+Use current scene state for temporary places.
+
+Use generated cards for persistent important places.
+
+⸻
+
+59. Place card template
+
+Place: Old Mill
+Type:
+Abandoned mill near Greyford.
+Confirmed facts:
+The mill has been threatened by wolves. The outer yard shows claw marks and signs of struggle.
+Known areas:
+Main floor, mill yard, locked cellar if discovered.
+Known hazards:
+Wolf tracks nearby. Alpha wolf threat remains if not resolved.
+Quest links:
+Clear the Mill Wolves.
+Current status:
+Use PlaceReducer state for whether the wolf threat is active or resolved.
+Canon note:
+Rumors about the mill are not confirmed unless marked confirmed.
+
+Keep place cards concise.
+
+⸻
+
+60. Route card creation rules
+
+Create route cards for:
+
+* important recurring routes
+* dangerous roads
+* trade routes
+* escort quest routes
+* routes with hazards
+* hidden passages
+* domain logistics routes
+* travel chokepoints
+* portals
+
+Do not create route cards for every short walk.
+
+Example route card:
+
+Route: Blackwood Road
+Connects:
+Greyford and the Old Mill region.
+Known hazards:
+Bandit sightings and wolf activity have been reported. Weather can make the road muddy and slow carts.
+Faction control:
+Greyford Town Guard patrols parts of it, but not reliably.
+Quest links:
+Greyford Caravan Escort.
+
+Trigger should be “Blackwood Road,” not “road.”
+
+⸻
+
+61. Domain card creation rules
+
+Create domain cards for:
+
+* player base
+* workshop
+* mine
+* village holding
+* fortress
+* guild hall
+* major construction project
+* long-term domain management area
+
+Domain cards should include:
+
+* owner
+* location
+* current state
+* workers/projects
+* treasury if relevant
+* active blockers
+* defenses
+* maintenance warnings
+
+Do not create domain cards for every small repair.
+
+⸻
+
+62. Contract card creation rules
+
+Create contract cards for:
+
+* active long-term contracts
+* high-stakes agreements
+* labor contracts
+* escort contracts
+* commissions
+* debt contracts
+* magical pacts
+* faction obligations
+
+Do not create contract cards for:
+
+* every small purchase
+* every simple completed service
+* every casual promise unless important
+
+Contract cards should include:
+
+* parties
+* obligation
+* payment
+* deadline
+* penalties
+* status
+* proof required
+
+⸻
+
+63. Final system safeguards list
+
+The final system requires these safeguards.
+
+Truth safeguards
+
+* Rumors are not facts.
+* Claims are not facts.
+* Theories are not facts.
+* Cards are not facts.
+* Commands are not narration.
+* Player input is attempt, not automatic success.
+* AI output is validated, not blindly trusted.
+
+Duplication safeguards
+
+* OperationLedger dedupes all state changes.
+* Card registry prevents duplicate cards.
+* Canonical keys prevent duplicate actors/items/quests.
+* Alias merging handles spelling drift.
+* Source caps prevent repeated absorption.
+* Quest rewards pay once.
+* XP rewards pay once.
+* Items cannot be sold twice.
+
+Naming safeguards
+
+* Reject junk names.
+* Reject generic triggers.
+* Use specific canonical names.
+* Avoid common words like street, wolf, guard, skill, item, quest.
+* Use aliases carefully.
+
+Scale safeguards
+
+* Level/tier comparison controls combat.
+* Ability effect tier controls cost.
+* XP scales by challenge.
+* Overleveled farming gives little/no reward.
+* Underleveled impossible victories are rejected/softened.
+* Bosses need defeat conditions.
+
+Resource safeguards
+
+* MP/EP/HP costs apply.
+* Low resources weaken/block actions.
+* Overexertion has consequences.
+* Healing has limits.
+* Recovery needs time/rest.
+* Crafting needs materials/tools/time.
+* Economy needs funds/availability.
+* Labor needs workers/wages/materials.
+
+Presence/custody safeguards
+
+* Actors must be present to act.
+* Companions cannot help while absent.
+* Items must be accessible.
+* Custody matters.
+* Quest items must be tracked.
+* Currency in distant treasury is not purse money.
+
+Card safeguards
+
+* Generated cards only for important stable entities.
+* Protected cards summarize core state.
+* Cards mirror state only.
+* Card updates come from dirty targets.
+* Trigger safety is mandatory.
+* Card archive/removal prevents clutter.
+
+Context safeguards
+
+* Inject only relevant current facts.
+* Do not dump all memory.
+* Do not spoil hidden truth.
+* Prioritize corrections.
+* Distinguish confirmed/suspected/rumored.
+* Keep context compact.
+
+⸻
+
+64. Full system acceptance tests
+
+Test 1 — card does not create truth
+
+Given:
+
+A Story Card says “Frostmaw attacks.”
+
+Current scene is Greyford tavern with no Frostmaw.
+
+Expected:
+
+* no Frostmaw spawn
+* card text ignored as event source
+* maybe context only if Frostmaw relevant
+
+Test 2 — generic trigger rejected
+
+Given:
+
+Generated card trigger proposed as “street.”
+
+Expected:
+
+* reject trigger
+* card not created or trigger changed to specific place name
+
+Test 3 — duplicate actor prevented
+
+Given:
+
+Mara already exists.
+
+AI refers to “Maira” with same role/history.
+
+Expected:
+
+* alias/merge or typo flag
+* no duplicate card
+
+Test 4 — absent companion cannot act
+
+Given:
+
+Mara is at smithy.
+
+AI says Mara blocks attack in forest.
+
+Expected:
+
+* reject/flag
+* context correction generated
+
+Test 5 — item custody enforced
+
+Given:
+
+Sword is with Mara for repair.
+
+Player tries to use sword.
+
+Expected:
+
+* reject or remind unavailable
+* no sword attack unless alternate weapon exists
+
+Test 6 — quest reward once
+
+Given:
+
+Old Bren pays 15 gold.
+
+Same output repeats.
+
+Expected:
+
+* gold added once
+* duplicate reward skipped
+
+Test 7 — clue not duplicated
+
+Given:
+
+Blue wax clue already collected.
+
+AI repeats same clue.
+
+Expected:
+
+* no duplicate evidence item
+* maybe existing clue referenced
+
+Test 8 — rumor not card fact
+
+Given:
+
+Rumor says Lord Veyr is murderer.
+
+Expected:
+
+* case rumor/theory updated
+* Lord Veyr card not marked confirmed murderer
+
+Test 9 — travel consumes time
+
+Given:
+
+Route takes one day.
+
+AI says player travels normally.
+
+Expected:
+
+* time advances
+* travel state updates
+* recovery/project/deadline ticks process
+
+Test 10 — weather affects travel
+
+Given:
+
+Heavy storm on road.
+
+Expected:
+
+* travel slower or hazard increased
+* context includes weather if relevant
+
+Test 11 — recovery tick after sleep
+
+Given:
+
+Player sleeps safely overnight.
+
+Expected:
+
+* EP/MP recover appropriately
+* HP/injury recovery based on severity
+* deadlines/time advance
+* no full severe injury cure unless supported
+
+Test 12 — crafting project not instant
+
+Given:
+
+Player says “I build a fortress.”
+
+Expected:
+
+* domain project requirements generated
+* no instant fortress
+* materials/labor/time needed
+
+Test 13 — ability candidate not stable
+
+Given:
+
+Shadow Step candidate exists.
+
+AI treats it as reliable teleport.
+
+Expected:
+
+* reject/soften
+* context correction: candidate only
+
+Test 14 — absorption source cap
+
+Given:
+
+Slime core already consumed.
+
+Player absorbs it again.
+
+Expected:
+
+* reject duplicate source
+* audit shows source consumed
+
+Test 15 — faction reputation scope
+
+Given:
+
+Player saves Greyford privately with one witness.
+
+Expected:
+
+* relationship with witness may improve
+* public Greyford reputation only changes if witness reports/spread occurs
+
+Test 16 — generated card eligibility
+
+Given:
+
+Random unnamed guard appears.
+
+Expected:
+
+* no generated actor card
+
+Given:
+
+Captain Mora recurs and leads Greyford Guard.
+
+Expected:
+
+* actor card eligible
+
+Test 17 — place memory update
+
+Given:
+
+Player discovers hidden tunnel under Old Mill.
+
+Expected:
+
+* Old Mill place memory updates
+* place card dirty if exists
+* trigger remains Old Mill, not tunnel
+
+Test 18 — context compactness
+
+Given:
+
+Player is in combat with Frostmaw.
+
+Expected context includes:
+
+* current enemy
+* player danger/resources
+* relevant ability limits
+* present companions
+* immediate location/hazards
+
+Expected context excludes:
+
+* old economy history
+* unrelated archived quests
+* every actor in world
+
+Test 19 — contradiction flagged
+
+Given:
+
+State says player is in Greyford.
+
+AI says player is suddenly in Dragon Peak with no travel/magic.
+
+Expected:
+
+* reject or treat as scene error unless timeskip/teleport supported
+* audit notes location contradiction
+
+Test 20 — final integration
+
+Given:
+
+Player defeats Frostmaw, collects fang, returns to Old Bren, gets paid, gains XP, earns local title, updates place state.
+
+Expected:
+
+* Combat validates defeat.
+* Inventory adds fang proof.
+* Quest marks ready/completed.
+* Economy pays once.
+* Progression awards XP once.
+* Reputation grants local title if public.
+* Actor/Place memory updates.
+* Cards update only if dirty.
+* Archive records completed quest.
+* OperationLedger prevents duplicates.
+
+⸻
+
+65. Final integrated example
+
+A long example shows how the full system works.
+
+Scene
+
+The player is at the Old Mill with Mara.
+
+Active quest:
+
+Clear the Mill Wolves.
+
+Active case:
+
+None.
+
+Current enemy:
+
+Frostmaw, named spirit wolf.
+
+Player uses Mana Slash.
+
+AI output says:
+
+“Your Mana Slash cuts across Frostmaw’s shoulder. The blue fire in its jaws sputters, and Mara shouts that the spirit wolf is weakening. Frostmaw retreats toward the creek, leaving a glowing fang behind.”
+
+Event proposals
+
+Possible updates:
+
+* Mana Slash used
+* MP/EP cost
+* Frostmaw damaged
+* Frostmaw retreats
+* Mara is present and speaks
+* Frostmaw weakness clue maybe
+* glowing fang appears as scene item
+* quest progresses maybe
+* ability evidence gained
+* combat state changes
+
+Validation
+
+CanonValidator checks:
+
+* Mana Slash stable?
+* player has blade?
+* enough MP/EP?
+* Frostmaw present?
+* Mara present?
+* Is Frostmaw defeated or only wounded?
+* Is fang dropped?
+* Is fang acquired or merely on ground?
+* Does quest require killing/clearing/proof?
+* Is this duplicate?
+
+Committed changes
+
+Accepted:
+
+* MP/EP cost once
+* Mana Slash evidence
+* Frostmaw wounded
+* Frostmaw retreated toward creek
+* glowing fang is available scene item
+* Mara statement recorded as observed dialogue
+
+Not accepted:
+
+* quest completion, because Frostmaw retreated and threat may remain
+* inventory fang, unless player picks it up
+* Frostmaw death, because output says retreat
+
+Context next turn
+
+ContextBuilder injects:
+
+You are at the Old Mill. Frostmaw, the named spirit wolf, is wounded and retreating toward the creek. A glowing fang lies near the mill yard but has not been picked up yet. Mara is present. Mana Slash is stable but costs MP and EP.
+
+This is exactly the desired behavior.
+
+The system helps AI Dungeon continue correctly without overclaiming.
+
+⸻
+
+66. What the final product is building
+
+AIDRPG is building a layered RPG truth engine.
+
+It is not just:
+
+* a leveling script
+* a combat script
+* a story card generator
+* an inventory tracker
+* a quest log
+
+It is all of these connected through canon validation.
+
+The final product consists of:
+
+66.1 A player state engine
+
+Tracks identity, race, age, appearance, level, stats, resources, abilities, body, injuries, and progression.
+
+66.2 A gameplay event engine
+
+Reads AI Dungeon outputs and proposes events.
+
+66.3 A canon validation engine
+
+Determines what is real, suspected, pending, rejected, duplicated, or contradicted.
+
+66.4 A reducer engine
+
+Commits valid state through owner systems.
+
+66.5 A memory engine
+
+Stores actors, places, factions, quests, cases, items, domains, routes, and archives.
+
+66.6 A card engine
+
+Creates and updates Story Cards safely.
+
+66.7 A context engine
+
+Injects the smallest relevant truth into AI Dungeon.
+
+66.8 An audit engine
+
+Explains decisions so the player can trust and debug the system.
+
+This is the complete planned design.
+
+⸻
+
+67. What must be true for this to work
+
+For AIDRPG to function properly, these principles must be followed consistently:
+
+1. Every system must have an owner.
+2. Every update must pass validation.
+3. Every committed update must be deduped.
+4. Every card must mirror state only.
+5. Every generated card must have a safe trigger.
+6. Every important fact must distinguish truth status.
+7. Every resource-costing action must check resources.
+8. Every item must track ownership/custody/access when relevant.
+9. Every actor must track presence when relevant.
+10. Every quest reward must pay once.
+11. Every clue must have a source.
+12. Every ability must have cost, limits, and evidence.
+13. Every absorption needs a source and caps.
+14. Every domain project needs time/materials/labor.
+15. Every economy action needs price, funds, item, and seller/buyer.
+16. Every relationship/reputation change needs cause and awareness.
+17. Every travel change needs route/time/method.
+18. Every recovery change needs time/rest/support.
+19. Every contradiction must be rejected, marked, or resolved.
+20. Every debug command should explain what happened.
+
+If these are followed, the system becomes stable.
+
+If they are ignored, the system will scramble again.
+
+⸻
+
+68. Final doctrine
+
+AIDRPG is a freeform RPG continuity system for AI Dungeon.
+
+It should let the player do almost anything.
+
+But it should not let anything become canon without support.
+
+It should reward creativity, danger, risk, cleverness, investigation, crafting, social play, travel, combat, training, and domain management.
+
+It should support anime-style growth, but not infinite free power.
+
+It should support Story Cards, but not let Story Cards create false truth.
+
+It should support generated memory, but not flood the game with junk cards.
+
+It should support long campaigns, but not inject every old detail into context.
+
+It should support mysteries, but not turn rumors into facts.
+
+It should support companions, but not let absent companions act.
+
+It should support economy and labor, but not free money or instant buildings.
+
+It should support combat, but not impossible kills or absurd deaths.
+
+It should support player power fantasy, but with scale, cost, risk, and consequences.
+
+The full final product is:
+
+A structured, auditable, reducer-owned, card-synchronized, context-aware canon engine that keeps AI Dungeon’s freeform story coherent across character growth, combat, abilities, inventory, quests, investigations, relationships, economy, domains, time, travel, weather, locations, and world memory.
+
+That is the end goal.
+

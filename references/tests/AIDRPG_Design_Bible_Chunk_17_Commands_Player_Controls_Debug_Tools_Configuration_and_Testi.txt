@@ -1,0 +1,2768 @@
+AIDRPG Design Bible — Chunk 17: Commands, Player Controls, Debug Tools, Configuration, and Testing Interface
+
+1. Purpose of this chunk
+
+Chunk 17 defines how the player interacts with AIDRPG directly.
+
+Earlier chunks defined the game systems.
+
+Chunk 17 defines the command layer that lets the player inspect, correct, test, configure, and control those systems.
+
+This chunk answers:
+
+What commands should exist?
+
+Which commands are read-only?
+
+Which commands can change state?
+
+How should commands avoid being mistaken for story actions?
+
+How should commands explain what the system believes?
+
+How should commands support debugging without overwhelming normal play?
+
+How should manual override work?
+
+How should settings work?
+
+How should /help stay honest?
+
+How should the user test the system after each build?
+
+The central rule is:
+
+Commands are the player’s control panel, not the story itself.
+
+A command can inspect or intentionally edit state, but it must not be confused with normal narrative text.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG is too large to operate blindly.
+
+The player needs commands because the system tracks many things:
+
+* player sheet
+* body state
+* stats
+* resources
+* abilities
+* inventory
+* equipment
+* quests
+* contracts
+* cases
+* reputation
+* party
+* actors
+* places
+* factions
+* routes
+* time
+* travel
+* weather
+* domain projects
+* cards
+* audits
+* quarantine
+* migration
+* cleanup
+
+Without commands, the user cannot tell whether the system is working or silently drifting.
+
+Commands should make the system trustworthy.
+
+They should answer:
+
+* What does AIDRPG think is true?
+* Why does it think that?
+* What changed last turn?
+* What was rejected?
+* What was skipped as duplicate?
+* What is pending?
+* What is active?
+* What is archived?
+* What is broken?
+* What needs manual correction?
+
+Commands should not become clutter.
+
+Normal gameplay should not require constant command use.
+
+The player should be able to play naturally, then use commands when they want clarity, correction, or debugging.
+
+⸻
+
+3. Command ownership boundaries
+
+The command layer should not own gameplay truth.
+
+Commands are interfaces into owner systems.
+
+CommandRouter owns
+
+* detecting command input
+* parsing command names
+* parsing command arguments
+* routing to the correct command handler
+* blocking command text from narrative parsing
+* formatting command output
+* command permission/safety level
+* command help registry
+
+Command handlers read or request changes from owners
+
+Examples:
+
+* /inventory reads InventoryReducer state
+* /quests reads QuestReducer state
+* /debuglast reads AuditSystem
+* /cardaudit reads CardSync audit
+* /sethp requests BodyReducer update through manual override
+* /restoreitem requests InventoryReducer update through manual override
+* /cleanup requests CleanupSystem action
+* /releasecheck reads ReleaseCheck results
+
+Reducers still own state
+
+A command should not bypass reducers unless it is a carefully logged manual override path.
+
+Even manual override should route through owner authority.
+
+Example:
+
+/sethp 50
+
+This should not directly mutate random player fields.
+
+It should call a body/player owner path that logs:
+
+* old HP
+* new HP
+* source: manual override command
+* dirty targets
+
+⸻
+
+4. Command categories
+
+Commands should be grouped by function.
+
+4.1 Status commands
+
+Show current state.
+
+Examples:
+
+* /sheet
+* /status
+* /resources
+* /progression
+* /abilities
+* /inventory
+* /equipment
+* /party
+* /time
+* /scene
+* /travel
+* /weather
+
+4.2 Objective commands
+
+Show active goals and obligations.
+
+Examples:
+
+* /quests
+* /contracts
+* /labor
+* /domain
+* /deadlines
+* /cases
+* /evidence
+* /reputation
+* /rumors
+
+4.3 World commands
+
+Show remembered world state.
+
+Examples:
+
+* /actors
+* /actor Mara
+* /places
+* /place Old Chapel
+* /factions
+* /routes
+* /world
+
+4.4 Debug commands
+
+Explain system behavior.
+
+Examples:
+
+* /debuglast
+* /stateaudit
+* /cardaudit
+* /context
+* /cards
+* /quarantine
+* /migration
+* /cleanup
+* /releasecheck
+
+4.5 Manual correction commands
+
+Safely edit state.
+
+Examples:
+
+* /setname
+* /setrace
+* /setage
+* /setappearance
+* /setlocation
+* /sethp
+* /setmp
+* /setep
+* /additem
+* /removeitem
+* /setcustody
+* /equip
+* /unequip
+* /markquest
+* /mergeactor
+* /renameactor
+* /mergeplace
+* /renameplace
+* /restorequarantine
+* /neutralizecard
+
+4.6 Configuration commands
+
+Change system behavior.
+
+Examples:
+
+* /settings
+* /setmode
+* /setdifficulty
+* /setmagic
+* /setdeath
+* /setcards
+* /setdebug
+* /setcontext
+* /setcleanup
+* /setprogression
+
+4.7 Help commands
+
+Explain command usage honestly.
+
+Examples:
+
+* /help
+* /help inventory
+* /help debug
+* /help manual
+* /help settings
+* /help implemented
+
+⸻
+
+5. Command authority levels
+
+Commands need authority levels.
+
+Read-only
+
+These commands only display state.
+
+Examples:
+
+* /sheet
+* /inventory
+* /quests
+* /actors
+* /debuglast
+
+They should never mutate gameplay state.
+
+Safe action
+
+These commands perform low-risk maintenance.
+
+Examples:
+
+* /cardaudit
+* /stateaudit
+* /releasecheck
+* /cleanup preview
+
+They may scan or report, but should not alter important canon unless explicitly run in fix mode.
+
+Controlled maintenance
+
+These commands can change memory surfaces or cleanup noise.
+
+Examples:
+
+* /cleanup run
+* /cardfix
+* /rebuildcards
+* /neutralizecard
+
+They should not create gameplay truth.
+
+Manual override
+
+These commands intentionally edit canon.
+
+Examples:
+
+* /additem
+* /setlocation
+* /sethp
+* /markquest complete
+* /restorequarantine
+
+They must log the change.
+
+Dangerous manual override
+
+These commands can heavily alter canon.
+
+Examples:
+
+* deleting key items
+* killing major actors
+* completing major quests
+* importing card text
+* mass merging actors
+* wiping cards
+* resetting state
+
+These should require very explicit command syntax later.
+
+They should never happen from natural prose.
+
+⸻
+
+6. Command detection rules
+
+Command input must be clearly separated from story input.
+
+Recommended rule:
+
+A command begins with /.
+
+Examples:
+
+* /sheet
+* /inventory
+* /debuglast
+* /sethp 70
+
+The command router should intercept slash commands before normal event parsing.
+
+This prevents command text from becoming story action.
+
+Example:
+
+Input:
+
+/additem rusted iron key
+
+This should be treated as a command.
+
+It should not be parsed as the player narratively finding a key.
+
+Example:
+
+Input:
+
+“I type /additem sword into my journal.”
+
+This is narrative text, not necessarily command execution, unless the system explicitly treats slash at beginning only as command.
+
+Best rule:
+
+Only messages that begin with / are commands.
+
+⸻
+
+7. Command output should not become canon
+
+Command output is diagnostic/interface text.
+
+It should not be parsed back as story events.
+
+Example command output:
+
+“Inventory: rusted iron key.”
+
+This should not create another rusted iron key.
+
+Example command output:
+
+“Quest completed: Missing Ring.”
+
+This should not re-trigger quest completion rewards.
+
+Command outputs should be tagged internally as command output or diagnostic output.
+
+Parser should ignore them as gameplay source.
+
+This prevents command loops.
+
+⸻
+
+8. Command honesty rule
+
+Commands must not lie.
+
+If a feature is not implemented, the command should say so.
+
+If a feature is partial, the command should say partial.
+
+If a command is read-only, it should not imply it changed anything.
+
+If a command failed, it should explain why.
+
+If a command skipped something as duplicate, it should say so.
+
+If a command cannot determine something, it should say unknown.
+
+Bad command output:
+
+“Everything is working.”
+
+Good command output:
+
+“Release check passed 42/47 tests. Five card audit tests are not implemented yet.”
+
+Bad /help output:
+
+“Use /crafting to manage full crafting.”
+
+if crafting commands only display partial state.
+
+Good /help output:
+
+“/crafting currently displays active crafting projects. It does not yet start projects by command.”
+
+Command honesty is one of the main safeguards against confusion during testing.
+
+⸻
+
+9. Display formatting philosophy
+
+Command output should be clear and compact.
+
+It should use:
+
+* section headers
+* short labels
+* plain language
+* warnings when relevant
+* uncertainty labels
+* no raw JSON unless debug mode asks
+* no giant dumps in normal commands
+* no internal IDs unless debug mode asks
+
+Normal command output should be readable by a player.
+
+Debug command output may be technical.
+
+Example normal output:
+
+/status
+
+Current Status:
+
+HP: 72 / 100
+MP: 18 / 50
+EP: 9 / 100
+
+Warnings:
+
+You are exhausted. Physical actions are risky.
+Your left arm is bleeding. Weapon use may be impaired.
+
+Example debug output:
+
+/debuglast
+
+Proposed events:
+
+* body.damage: accepted
+* body.injury.add: accepted
+* progression.xp.gain: rejected, reason: trivial repeated action
+* inventory.item.gain: hard-denied, reason: quoted text
+
+This is useful without dumping entire state.
+
+⸻
+
+10. /help
+
+/help is the command index.
+
+It should show:
+
+* available commands
+* command category
+* whether command is implemented
+* whether command is read-only or mutating
+* short usage
+* warning for dangerous commands
+
+/help should not claim unfinished systems are complete.
+
+Recommended /help sections:
+
+* Core Status
+* Inventory & Equipment
+* Progression & Abilities
+* Quests & Objectives
+* Investigation & Reputation
+* Party & World
+* Time & Travel
+* Debug & Safety
+* Manual Corrections
+* Settings
+
+Example:
+
+Core Status:
+
+* /sheet — show player sheet
+* /status — show body state, injuries, conditions, resources
+* /progression — show level, XP, stat training, domain ranks
+
+Debug & Safety:
+
+* /debuglast — show last turn’s parsed events and validation results
+* /stateaudit — scan active state for contradictions
+* /cardaudit — scan Story Cards for duplicates, stale facts, and unsafe triggers
+* /releasecheck — show whether the script passes safety checks
+
+Manual Corrections:
+
+* /additem <name> — manually add an item through override
+* /setlocation <place> — manually correct current location
+* /restorequarantine <id> — restore quarantined data through override
+
+If not implemented, label it.
+
+⸻
+
+11. /sheet
+
+/sheet shows the main player sheet.
+
+It should display:
+
+* character name
+* race/species
+* age
+* appearance summary
+* level
+* XP / XP-to-next
+* total XP
+* core stats
+* HP / max HP
+* MP / max MP
+* EP / max EP
+* major abilities
+* major passives
+* current build identity
+* active major conditions
+* active major injuries
+* equipped weapon/armor summary
+
+It should not display:
+
+* every stat XP detail
+* every domain rank
+* every item
+* every audit entry
+* every hidden debug field
+
+/sheet is the player-facing character overview.
+
+⸻
+
+12. /status
+
+/status shows immediate body and resource state.
+
+It should display:
+
+* HP / max HP
+* MP / max MP
+* EP / max EP
+* body state
+* injuries
+* conditions
+* fatigue
+* unconsciousness/death-boundary warning if relevant
+* recovery blockers
+* current effective penalties
+* recent body/resource changes
+
+Example:
+
+Status:
+
+HP: 41 / 105
+MP: 8 / 62
+EP: 0 / 116
+
+Warnings:
+
+* Exhausted: physical actions are high-risk.
+* Left arm injury: two-handed weapon use is impaired.
+* Low MP: spellcasting may fail or cause backlash.
+
+Recovery:
+
+A safe rest could restore EP.
+The arm injury needs treatment or time.
+
+⸻
+
+13. /resources
+
+/resources is a smaller version of /status.
+
+It should show:
+
+* HP
+* MP
+* EP
+* resource thresholds
+* recent changes
+* recovery expectation
+
+This command is useful if /status is too detailed.
+
+⸻
+
+14. /progression
+
+/progression shows growth state.
+
+It should display:
+
+* level
+* current XP
+* XP-to-next
+* total XP
+* recent XP gains
+* stat training XP
+* stat increases pending or completed
+* domain XP
+* domain ranks
+* recent progression events
+* anti-farm reductions
+* duplicate XP skips if relevant
+
+It should not show every old XP event by default.
+
+Example:
+
+Progression:
+
+Level 4
+XP: 120 / 230
+Total XP: 540
+
+Recent gains:
+
+* +12 Level XP from dangerous duel
+* +8 ATK XP from sword training
+* +6 Melee Domain XP from sword training
+* repeated training reward reduced by anti-farm rule
+
+⸻
+
+15. /abilities
+
+/abilities shows stable abilities and developing candidates.
+
+It should display sections:
+
+Stable abilities
+
+* name
+* category
+* rank/stage
+* cost
+* effect
+* limits
+* reliability
+
+Candidates
+
+* name
+* stage
+* evidence summary
+* last attempt
+* failure pattern
+* stabilization status
+
+Passives / talents
+
+* name
+* scope
+* limits
+* trigger
+
+The command must clearly separate stable abilities from candidates.
+
+Bad output:
+
+“Mana Slash — ability”
+
+when it is only a candidate.
+
+Good output:
+
+“Mana Slash — candidate, unstable manifestation, not reliable yet.”
+
+This prevents the player and AI from treating candidates as stable powers.
+
+⸻
+
+16. /abilityaudit
+
+/abilityaudit is the debug version of /abilities.
+
+It should show:
+
+* candidates
+* evidence counts
+* evidence quality
+* failed attempts
+* soft failures
+* hard denials
+* cost guesses
+* cost confidence
+* aliases
+* merge candidates
+* card eligibility
+* why ability did or did not stabilize
+
+Example:
+
+Mana Slash:
+
+Stage: Candidate / unstable manifestation
+Evidence:
+
+* accepted: mana edge flickered once
+* soft_fail: collapsed during training
+* rejected: quoted mention ignored
+* hard_deny: pretend use ignored
+
+Card eligibility:
+
+No. Candidate not stable.
+
+⸻
+
+17. /inventory
+
+/inventory shows possession state.
+
+It should display:
+
+* carried items
+* equipped items
+* key items
+* consumables
+* materials summary
+* currency
+* unavailable owned items
+* items held by others
+* stored items summary
+* damaged important items
+* evidence items if relevant
+
+It should preserve ownership/custody/access distinction.
+
+Example:
+
+Carried:
+
+* Rusted Iron Key
+* 2 healing potions
+* 12 arrows
+
+Equipped:
+
+* Iron Sword, worn
+* Cracked Shield
+
+Unavailable owned items:
+
+* Fine cloak — stored at Greyford Inn
+* Silver dagger — held by Mira for repair
+
+Currency:
+
+* 3 silver, 12 copper
+
+The command should not dump every trivial item unless full mode is requested.
+
+Possible optional syntax:
+
+* /inventory full
+* /inventory key
+* /inventory materials
+* /inventory unavailable
+
+⸻
+
+18. /equipment
+
+/equipment shows currently equipped and readied gear.
+
+It should display:
+
+* main hand
+* off hand
+* armor/body
+* head
+* hands
+* feet
+* accessories
+* cloak/back
+* ready tool
+* pack/burden summary
+* condition
+* quality
+* effective combat notes
+
+Example:
+
+Main hand:
+
+Iron Sword, worn, usable
+
+Off hand:
+
+Cracked Shield, damaged; blocking heavy blows may worsen it
+
+Body:
+
+Leather Armor, good condition
+
+Burden:
+
+Moderate. Long travel costs more EP.
+
+⸻
+
+19. /quests
+
+/quests shows objective state.
+
+It should display:
+
+* active quests
+* current objective
+* quest giver
+* progress
+* blockers
+* ready-to-complete state
+* deadlines
+* promised rewards
+* completed/failed archive summary
+
+It should separate:
+
+* offered
+* active
+* ready to complete
+* completed
+* failed
+* archived
+
+Example:
+
+Active:
+
+Missing Ring
+Giver: Mara
+Current objective: Return the recovered ring to Mara
+Status: ready to complete
+Reward: 5 silver promised, not yet paid
+
+Blocked:
+
+Old Chapel Door
+Blocker: need rusted iron key
+
+Archived:
+
+Wolf at the Mill — completed
+
+⸻
+
+20. /contracts
+
+/contracts shows agreements and obligations.
+
+It should display:
+
+* active contracts
+* parties
+* terms
+* payment
+* payment status
+* item custody
+* deadline
+* fulfillment/breach status
+* linked quest/domain/item
+* archived contracts
+
+Example:
+
+Active Contract:
+
+Sword Repair
+Parties: Player and Mira
+Terms: Mira repairs iron sword for 5 silver by morning
+Custody: Mira has the sword
+Payment: unpaid
+Deadline: morning
+Status: active
+
+This command is critical because contract and custody bugs are common.
+
+⸻
+
+21. /crafting
+
+/crafting shows crafting projects and repair workflows.
+
+It should display:
+
+* active projects
+* blocked projects
+* progress stage
+* required materials
+* reserved materials
+* consumed materials
+* required tools/station
+* crafter
+* assistants
+* quality forecast/result
+* linked contract if NPC crafting
+* linked inventory item
+* recent failure/insight
+
+Example:
+
+Active:
+
+Repair Cracked Shield
+Stage: replacing brace
+Materials: leather strap available, iron rivets missing
+Tools: hammer available
+Status: blocked by missing rivets
+
+NPC service:
+
+Iron Sword Repair
+Crafter: Mira
+Custody: Mira
+Due: morning
+Status: active contract
+
+⸻
+
+22. /recipes
+
+/recipes shows recipe knowledge.
+
+It should display:
+
+* known recipes
+* partial recipes
+* recipe leads
+* difficulty
+* materials
+* tools/station
+* source
+* confidence
+
+It should separate:
+
+* known
+* partial
+* rumored
+* unknown
+
+Example:
+
+Known:
+
+Healing Poultice
+Requires: common herbs, clean cloth, water
+Difficulty: basic
+
+Partial:
+
+Fire Resistance Potion
+Known: frost herbs and ashroot are involved
+Missing: stabilizing agent
+
+Rumored:
+
+Moonsteel Edge
+Source: old smith’s tale
+Not enough to craft.
+
+⸻
+
+23. /materials
+
+/materials shows crafting resources.
+
+It should display:
+
+* available materials
+* reserved materials
+* stored materials
+* material quality
+* material condition
+* project links
+
+Example:
+
+Available:
+
+* 3 iron ingots, common quality
+* 2 wolf pelts, damaged
+* 1 mana crystal, cracked
+
+Reserved:
+
+* 1 iron ingot reserved for dagger project
+
+Stored:
+
+* 20 timber at Northwatch warehouse
+
+⸻
+
+24. /party
+
+/party shows companions, followers, summons, and present allies.
+
+It should display:
+
+* present companions
+* absent companions
+* temporary allies
+* followers
+* worker/follower groups
+* summons
+* party injuries
+* morale
+* loyalty/trust
+* current orders
+* location if absent
+
+Example:
+
+Present:
+
+* Mara — companion, wounded shoulder, trusts player
+
+Absent:
+
+* Harlan — scouting north road, not currently present
+
+Followers:
+
+* 5 hired guards — morale shaken, guarding camp
+
+Summons:
+
+* 3 shadow wolves — active, unstable, will fade soon
+
+This command prevents the AI from assuming absent allies are present.
+
+⸻
+
+25. /combat
+
+/combat shows current combat state.
+
+It should display:
+
+* active enemy or enemy group
+* player posture
+* matchup label
+* active hazards
+* current HP/MP/EP warnings
+* relevant injuries
+* equipment notes
+* party participation
+* enemy group counts
+* unresolved threats
+* last accepted combat consequence
+
+Example:
+
+Combat:
+
+Enemy group: goblin ambushers
+Known count: 13 total, 9 killed, 4 active
+Player posture: strained
+Matchup: dangerous
+Warnings: EP low, shield cracked
+Party: Mara present, injured but fighting defensively
+
+⸻
+
+26. /scale
+
+/scale shows group-scale state.
+
+It should display:
+
+* active groups
+* counts
+* killed/wounded/fled/captured/routed
+* morale
+* scale tier
+* unresolved battlefield/domain conflicts
+* multi-protagonist state if enabled
+
+Example:
+
+Goblin Ambushers:
+
+Total: 13
+Killed: 9
+Fled: 0
+Captured: 0
+Active remaining: 4
+Morale: shaken
+Status: active
+
+This command directly tests group-count safety.
+
+⸻
+
+27. /cases
+
+/cases shows investigations.
+
+It should display:
+
+* active cases
+* case question
+* suspects
+* leads
+* clues
+* evidence
+* contradictions
+* confidence
+* private/public solved state
+* archived solved cases
+
+Example:
+
+Missing Ring Case:
+
+Question: Who stole Mara’s ring?
+Status: active
+Suspects: Harlan likely, Mara cleared pending public report
+Evidence:
+
+* muddy footprints under window
+* footprint matches Harlan’s broken-heel boot
+* private confession from Harlan
+
+Public status:
+
+Not publicly resolved yet.
+
+⸻
+
+28. /evidence
+
+/evidence shows evidence items and evidence meaning.
+
+It should display:
+
+* evidence name
+* type
+* linked case
+* confidence
+* custody/access
+* whether public/private
+* condition
+* contradictions
+
+Example:
+
+Bloodstained Dagger:
+
+Type: physical evidence
+Case: Greyford murder
+Custody: player
+Condition: bloodstained
+Confidence: strong
+Public: no, not yet reported
+
+This command must separate item custody from evidence meaning.
+
+⸻
+
+29. /reputation
+
+/reputation shows social standing.
+
+It should display:
+
+* local reputation
+* faction reputation
+* legal status
+* titles
+* major rumors
+* private witness knowledge if relevant
+* public/private distinction
+
+Example:
+
+Greyford:
+
+* helpful +2
+* trusted by Mara
+* rumor: some villagers think you hid evidence, unproven
+
+Silver Guild:
+
+* debtor, owes 20 silver
+* trust neutral
+
+Titles:
+
+* Friend of Greyford, local title
+
+Legal:
+
+No active charges
+
+⸻
+
+30. /rumors
+
+/rumors shows active rumors.
+
+It should display:
+
+* rumor text
+* scope
+* subject
+* source if known
+* spread level
+* truth status if known
+* reputation effect
+* linked case/quest
+
+Example:
+
+Rumor:
+
+“The player stole Mara’s ring.”
+Scope: Greyford
+Spread: local
+Truth status: false, but not publicly disproven
+Effect: local suspicion
+
+⸻
+
+31. /actors
+
+/actors shows important actors.
+
+It should display:
+
+* actor name
+* role
+* status
+* location
+* relationship
+* importance
+* active links
+
+Default should show important/relevant actors, not every candidate.
+
+Optional syntax:
+
+* /actors all
+* /actors present
+* /actor Mara
+
+/actor Mara should show:
+
+* identity
+* aliases
+* role
+* current status
+* location
+* relationship
+* key memories
+* quest/contract/case links
+* card status if relevant
+
+⸻
+
+32. /places
+
+/places shows known important places.
+
+It should display:
+
+* current location
+* visited places
+* important places
+* hazards
+* services
+* routes
+* domain links
+
+Optional syntax:
+
+* /place Old Chapel
+* /places visited
+* /places important
+
+/place Old Chapel should show:
+
+* type
+* parent location
+* visited status
+* known exits
+* hazards
+* linked quests/cases/items/actors
+* memory summary
+* current status
+
+It should not list every generic room unless requested in debug.
+
+⸻
+
+33. /factions
+
+/factions shows known organized groups.
+
+It should display:
+
+* faction name
+* type
+* player standing
+* known leaders
+* territory
+* goals if known
+* active conflicts
+* contracts/quests
+* reputation links
+
+Example:
+
+Silver Guild:
+
+Type: merchant guild
+Standing: debtor, cautious
+Known leader: unknown
+Linked obligation: 20 silver debt due tomorrow
+Territory: Greyford warehouse district
+
+⸻
+
+34. /routes
+
+/routes shows travel connections.
+
+It should display:
+
+* route name
+* endpoints
+* discovered status
+* travel time if known
+* hazards
+* blocked/open status
+* controlling faction if any
+* last traveled
+
+Example:
+
+Blackwood Road:
+
+Connects: Greyford ↔ Old Chapel
+Status: discovered, dangerous
+Hazard: cursed fog
+Travel time: about one hour on foot
+Control: unknown
+
+⸻
+
+35. /time
+
+/time shows current time state.
+
+It should display:
+
+* current day/date if known
+* time of day
+* precision
+* recent time passage
+* active deadlines summary
+* last rest
+* time contradictions if any
+
+Example:
+
+Time:
+
+Day 4, evening
+Precision: approximate
+Last passage: one hour during travel
+Last long rest: previous night
+Warnings: caravan deadline at dawn
+
+⸻
+
+36. /travel
+
+/travel shows travel state.
+
+It should display:
+
+* current location
+* origin
+* destination
+* route
+* travel state
+* elapsed time
+* remaining time if known
+* hazards
+* weather
+* party state
+* interruption status
+
+Example:
+
+Travel:
+
+Origin: Greyford
+Destination: Old Chapel
+Route: Blackwood Road
+State: interrupted by goblin ambush
+Elapsed: about 30 minutes
+Current scene: Blackwood Road, foggy ravine
+
+⸻
+
+37. /scene
+
+/scene shows immediate scene state.
+
+It should display:
+
+* current location
+* sub-location
+* scene type
+* present actors
+* present party
+* local exits
+* local hazards
+* active weather/light
+* nearby important objects
+* current activity
+* unresolved tension
+
+Example:
+
+Scene:
+
+Location: Mara’s Forge, Greyford
+Type: contract/service
+Present: Mara
+Exits: front door to street, back room door
+Hazard: smoke from damaged roof, minor
+Nearby important object: iron sword on workbench
+Current activity: sword repair negotiation
+
+⸻
+
+38. /weather
+
+/weather shows environmental state.
+
+It should display:
+
+* current local weather
+* severity
+* scope
+* duration/forecast if known
+* travel effects
+* recovery effects
+* hazard links
+
+Example:
+
+Weather:
+
+Heavy rain
+Scope: Greyford and nearby roads
+Effects: outdoor travel slower, fire harder to start, outdoor rest reduced
+Forecast: farmer warned storm may worsen tonight
+
+⸻
+
+39. /deadlines
+
+/deadlines shows time pressure.
+
+It should display:
+
+* deadline
+* linked objective
+* time remaining if known
+* precision
+* status
+* consequence if known
+
+Example:
+
+Deadlines:
+
+Caravan departure
+Linked objective: deliver crate
+Due: dawn
+Status: active, approaching
+Consequence: caravan leaves if missed
+
+Sword repair
+Linked contract: Mira repair contract
+Due: morning
+Status: active
+
+⸻
+
+40. /domain
+
+/domain shows holdings and domain projects.
+
+It should display:
+
+* holdings/base
+* active projects
+* progress
+* assigned workers
+* materials
+* blockers
+* deadlines
+* risks
+* completed projects
+* benefits
+
+Example:
+
+Northwatch Keep:
+
+Project: Repair north wall
+Progress: 33%
+Workers: five carpenters, Harlan foreman
+Materials: timber exhausted
+Blocker: need 20 timber
+Risk: raiders expected in three days
+
+⸻
+
+41. /labor
+
+/labor shows workers and work groups.
+
+It should display:
+
+* worker groups
+* count
+* role
+* current task
+* morale
+* wage/payment
+* foreman
+* assigned project
+* status
+* blockers
+
+Example:
+
+Carpenters:
+
+Count: 5
+Foreman: Harlan
+Task: repair north wall
+Status: blocked
+Morale: steady
+Wage: 2 silver each, unpaid
+Blocker: no timber
+
+⸻
+
+42. /context
+
+/context shows what AIDRPG is currently injecting into AI Dungeon.
+
+It should display:
+
+* active Context packets
+* packet priority
+* source state bucket
+* why included
+* stale/dirty status
+* omitted high-priority facts if budget limited
+
+Normal version should be readable.
+
+Debug version may include technical details.
+
+Example:
+
+Context packets:
+
+1. Current location: Old Chapel
+    Reason: current scene
+2. Resource warning: EP is low
+    Reason: EP below 25%
+3. Quest objective: return ring to Mara
+    Reason: active ready-to-complete quest
+4. Correction: Mara is not present
+    Reason: actor absent, recent AI confusion
+
+⸻
+
+43. /cards
+
+/cards shows managed card state.
+
+It should display:
+
+* protected cards
+* generated cards
+* dirty cards
+* queued updates
+* skipped updates
+* card budget
+* card family counts
+* stale warnings
+
+Example:
+
+Protected cards:
+
+* Player Sheet, synced
+* Quest Log, dirty
+* Inventory Overview, synced
+
+Generated cards:
+
+* Mara, synced
+* Mana Slash, queued update
+* Old Chapel, synced
+
+Skipped:
+
+* Rusted Iron Key card skipped: protected inventory summary sufficient
+
+⸻
+
+44. /cardaudit
+
+/cardaudit scans Story Cards.
+
+It should display:
+
+* duplicate cards
+* broad trigger keys
+* stale cards
+* unsupported card claims
+* junk cards
+* unmanaged conflicts
+* tombstones
+* neutralized cards
+* generated cards for ineligible entities
+* missing required protected cards
+
+Example:
+
+Card audit warnings:
+
+* Duplicate actor cards: Mara / Blacksmith Mara
+* Broad trigger key: “quest” on Missing Ring card
+* Unsupported claim: Dragon Crown card says player owns item, but inventory has no Dragon Crown
+* Junk place card: “The Room”
+
+No gameplay state changes should occur unless /cardfix or a manual command is run.
+
+⸻
+
+45. /stateaudit
+
+/stateaudit scans active state.
+
+It should display:
+
+* invalid records
+* contradictions
+* duplicate identities
+* ownership/custody conflicts
+* current location issues
+* active objective issues
+* resource bounds issues
+* stuck dirty queues
+* impossible equipment states
+* stale active hazards
+* missing linked entities
+
+Example:
+
+State audit warnings:
+
+* Iron Sword is marked equipped but custody is Mira.
+* Missing Ring quest is completed but still listed active.
+* Actor Mara is marked present and absent.
+* HP exceeds max HP.
+* Current location Old Chapel has no place record.
+
+State audit should report.
+
+It should not silently fix unless a safe fix command is used.
+
+⸻
+
+46. /debuglast
+
+/debuglast is one of the most important commands.
+
+It should show the last processed turn.
+
+It should display:
+
+* input classification
+* source classification
+* parsed signals
+* proposed events
+* validation outcomes
+* accepted commits
+* rejected events
+* pending events
+* soft failures
+* hard denials
+* duplicate skips
+* operation keys
+* follow-up events
+* dirty targets
+* Context updates
+* CardSync updates/skips
+* warnings
+
+Example:
+
+Last turn debug:
+
+Input:
+
+“I focus mana through my sword.”
+
+AI output:
+
+“The blade glows briefly, then the light collapses.”
+
+Proposed events:
+
+* ability.attempt Mana Slash — soft_fail
+* resource.mp.change -4 — accepted
+* progression.domainXp.gain Magic +2 — accepted
+* ability.stabilize Mana Slash — rejected, not enough evidence
+* card.create Mana Slash — rejected, candidate not stable
+
+Dirty targets:
+
+* abilities context
+* progression context
+
+This command is the main tool for testing parser and validator behavior.
+
+⸻
+
+47. /quarantine
+
+/quarantine shows quarantined data.
+
+It should display:
+
+* quarantine ID
+* source
+* reason
+* record type
+* safe summary
+* restore options
+* ignore/delete options if safe
+
+Example:
+
+Quarantine:
+
+Q-17
+Type: item
+Name: “pick up the thing from the”
+Reason: malformed item name from old migration
+Status: inactive
+Options:
+
+* /restorequarantine Q-17 as item <clean name>
+* /deletequarantine Q-17
+
+Quarantined data should not appear as active canon.
+
+⸻
+
+48. /migration
+
+/migration shows migration status.
+
+It should display:
+
+* current schema version
+* migration history
+* last migration result
+* migrated records
+* quarantined records
+* skipped records
+* unresolved warnings
+
+Example:
+
+Migration:
+
+Current schema: 17
+Last migration: old schema 11 → 17
+Migrated:
+
+* 12 inventory items
+* 5 actors
+* 3 quests
+
+Quarantined:
+
+* 2 malformed items
+* 1 duplicate ability
+* 4 unsupported old cards
+
+Warnings:
+
+* Old card claims Dragon Crown, not imported.
+
+⸻
+
+49. /cleanup
+
+/cleanup controls safe cleanup.
+
+Recommended modes:
+
+* /cleanup preview
+* /cleanup run
+* /cleanup cards
+* /cleanup candidates
+* /cleanup diagnostics
+* /cleanup context
+* /cleanup quarantine preview
+
+/cleanup preview should show what would happen.
+
+/cleanup run should perform safe cleanup within budget.
+
+Cleanup output should say:
+
+* what was removed
+* what was compressed
+* what was neutralized
+* what was skipped
+* what was refused
+* what budget was used
+
+Cleanup must not invent gameplay truth.
+
+Example:
+
+Cleanup result:
+
+Removed:
+
+* 4 stale actor candidates
+* 2 expired scene hazards
+
+Compressed:
+
+* Mara memory from 12 small notes to 1 summary
+
+Neutralized:
+
+* duplicate card “Blacksmith Mara”
+
+Refused:
+
+* key item deletion request skipped, requires explicit manual override
+
+⸻
+
+50. /releasecheck
+
+/releasecheck shows whether the current build is safe to test.
+
+It should display:
+
+* schema status
+* required buckets
+* owner boundary checks
+* operation ledger status
+* command honesty status
+* CardSync safety
+* ContextBuilder safety
+* migration readiness
+* cleanup safety
+* critical test results
+* unsupported features listed
+* health state
+
+Example:
+
+Release Check:
+
+Health: Warning
+
+Passed:
+
+* OperationLedger exists
+* ContextBuilder read-only
+* CardSync does not create canon
+* Inventory owner boundary valid
+* XP owner boundary valid
+
+Warnings:
+
+* /recipes command display implemented, recipe editing not implemented
+* Card cleanup budget low
+
+Failures:
+
+None critical
+
+Safe to test:
+
+Yes, with warnings.
+
+If critical failures exist, it should say not safe to trust.
+
+⸻
+
+51. Manual correction commands
+
+Manual correction commands should be explicit and logged.
+
+/setname <name>
+
+Sets player name.
+
+/setrace <race/species>
+
+Sets player race/species.
+
+/setage <age>
+
+Sets player age.
+
+/setappearance <description>
+
+Sets appearance summary.
+
+/setlocation <place>
+
+Corrects current location.
+
+Should create or link place record if needed.
+
+Should log manual override.
+
+/sethp <value>
+
+Sets HP within safe bounds unless override allows otherwise.
+
+/setmp <value>
+
+Sets MP.
+
+/setep <value>
+
+Sets EP.
+
+/additem <name>
+
+Adds item manually.
+
+Should require item name hygiene.
+
+Optional syntax later:
+
+* /additem Rusted Iron Key type key
+* /additem 5 healing potion
+* /additem Royal Seal keyitem
+
+/removeitem <name>
+
+Removes or marks item lost manually.
+
+Key item removal should require explicit force syntax later.
+
+/setcustody <item> <holder>
+
+Changes item custody.
+
+Example:
+
+/setcustody Iron Sword Mira
+
+/equip <item>
+
+Equips accessible item.
+
+Should validate access.
+
+/unequip <slot/item>
+
+Unequips item.
+
+/markquest <quest> <status>
+
+Changes quest status.
+
+Should be careful with rewards.
+
+Manual completion should not automatically pay rewards unless command says so.
+
+/mergeactor <actor A> <actor B>
+
+Merges actors only through manual override.
+
+Should preserve aliases and links.
+
+/renameactor <actor> <new name>
+
+Renames actor.
+
+/mergeplace <place A> <place B>
+
+Merges places.
+
+/renameplace <place> <new name>
+
+Renames place.
+
+/restorequarantine <id>
+
+Restores quarantined data through controlled conversion.
+
+Manual commands are necessary, but they must be auditable.
+
+⸻
+
+52. Manual override logging
+
+Every manual override should log:
+
+* command text
+* source: manual override
+* user-facing target
+* old value
+* new value
+* owner system
+* validation result
+* dirty targets
+* operation key
+* timestamp/turn
+
+Example:
+
+Manual override:
+
+Command: /setlocation Old Chapel
+Old location: Blackwood Road
+New location: Old Chapel
+Owner: PlaceReducer
+Reason: user correction
+Dirty: scene context, travel context, place cards
+Operation: manual.location.set.old_chapel.turn_341
+
+Manual correction should never be invisible.
+
+⸻
+
+53. Manual override limits
+
+Manual override should not be too broad.
+
+Avoid commands like:
+
+* /fix everything
+* /import all cards
+* /delete all bad stuff
+* /complete all quests
+* /clean all state
+* /trust card canon
+
+unless they are carefully designed as preview-first tools.
+
+Broad commands are dangerous.
+
+Prefer narrow commands:
+
+* restore this one item
+* merge these two actors
+* set this location
+* neutralize this card
+* rebuild protected cards
+* mark this quest abandoned
+
+The player should be able to correct errors without accidentally destroying state.
+
+⸻
+
+54. Settings commands
+
+Settings should control system behavior.
+
+Possible settings:
+
+Gameplay style
+
+* gritty
+* balanced
+* heroic
+* high fantasy
+* low magic
+* survival-heavy
+
+Death handling
+
+* no permanent death without manual confirmation
+* death-boundary allowed
+* lethal mode
+* cinematic survival mode
+
+Progression speed
+
+* slow
+* normal
+* fast
+
+Card behavior
+
+* cards off
+* protected cards only
+* generated important cards
+* aggressive card generation
+* conservative card generation
+
+Recommended default:
+
+Generated important cards, conservative.
+
+Context size
+
+* tiny
+* normal
+* wide
+* debug
+
+Debug verbosity
+
+* off
+* errors only
+* normal
+* verbose
+
+Cleanup behavior
+
+* manual only
+* safe automatic
+* conservative automatic
+* aggressive preview only
+
+Magic level
+
+* mundane
+* low magic
+* standard fantasy
+* high magic
+* mythic
+
+Automation strictness
+
+* strict validation
+* balanced validation
+* permissive validation
+
+Recommended default:
+
+Balanced validation with strict canon safeguards.
+
+Settings should be shown with /settings.
+
+Changed with /set... commands or /settings set.
+
+⸻
+
+55. Settings safety
+
+Settings must not corrupt existing state.
+
+Changing progression speed should affect future rewards, not rewrite all past XP unless explicitly recalculated.
+
+Changing card behavior should affect future CardSync and maybe cleanup, not delete cards silently.
+
+Changing death mode should affect future death-boundary handling, not resurrect or kill automatically.
+
+Changing magic level should affect future validation plausibility, not instantly create or remove abilities.
+
+Settings are behavior knobs, not story events.
+
+⸻
+
+56. Command result validation outcomes
+
+Commands can also use the five outcomes.
+
+Accept
+
+Command succeeded.
+
+Example:
+
+/sethp 70
+
+HP set to 70.
+
+Reject
+
+Command understood but cannot execute.
+
+Example:
+
+/equip Iron Sword when sword is with Mira.
+
+Pending
+
+Command creates pending state.
+
+Example:
+
+/cleanup preview
+
+No mutation yet, pending user run.
+
+Soft_fail
+
+Command partially succeeded.
+
+Example:
+
+/cleanup run neutralized 2 cards but skipped 1 due to identity conflict.
+
+Hard_deny
+
+Command is unsafe or malformed.
+
+Example:
+
+/additem the room
+
+Rejected by item name hygiene.
+
+Command output should say which outcome happened.
+
+⸻
+
+57. Command examples
+
+Example 1 — Read-only command
+
+Input:
+
+/inventory
+
+Expected:
+
+* display inventory
+* no state mutation
+* parser ignores command output as story
+
+Example 2 — Manual item add
+
+Input:
+
+/additem Rusted Iron Key keyitem
+
+Expected:
+
+* name hygiene passes
+* InventoryReducer adds item through manual override
+* dirty inventory/context/cards
+* audit logs manual source
+
+Example 3 — Bad manual item add
+
+Input:
+
+/additem the room
+
+Expected:
+
+* hard deny
+* no item
+* reason: junk item name
+
+Example 4 — Equip unavailable item
+
+State:
+
+Iron Sword custody Mira.
+
+Input:
+
+/equip Iron Sword
+
+Expected:
+
+* reject
+* reason: item unavailable, custody Mira
+* no equipment change
+
+Example 5 — Debug last turn
+
+Input:
+
+/debuglast
+
+Expected:
+
+* show proposed/accepted/rejected events
+* no gameplay mutation
+
+Example 6 — Cleanup preview
+
+Input:
+
+/cleanup preview
+
+Expected:
+
+* show planned cleanup
+* no mutation
+
+Example 7 — Cleanup run
+
+Input:
+
+/cleanup run
+
+Expected:
+
+* safe cleanup within budget
+* no gameplay truth invented
+* audit logs changes
+
+Example 8 — Set location
+
+Input:
+
+/setlocation Old Chapel
+
+Expected:
+
+* current location corrected
+* travel may be cleared or updated
+* place record created/linked if needed
+* dirty scene/travel/context/cards
+* audit logs override
+
+Example 9 — Mark quest complete
+
+Input:
+
+/markquest Missing Ring complete
+
+Expected:
+
+* quest status changed by manual override
+* no automatic XP/coins unless command also specifies reward handling
+* audit logs manual completion
+
+Example 10 — Release check
+
+Input:
+
+/releasecheck
+
+Expected:
+
+* show health
+* show failures/warnings
+* no mutation
+
+⸻
+
+58. Command safety rules
+
+58.1 Commands must be intercepted before narrative parsing
+
+A slash command should not become story action.
+
+58.2 Command output must not be parsed as gameplay
+
+Displaying inventory should not add inventory.
+
+58.3 Read-only commands must not mutate state
+
+No hidden writes.
+
+58.4 Manual override must be logged
+
+No invisible corrections.
+
+58.5 Dangerous changes require explicit syntax
+
+No accidental deletion of key items or major actors.
+
+58.6 Commands must respect owner boundaries
+
+Commands request changes through proper owners.
+
+58.7 Commands must validate names
+
+No junk item/actor/place through commands.
+
+58.8 Commands must not auto-grant rewards unless designed to
+
+Manual quest completion should not duplicate rewards.
+
+58.9 Commands must show uncertainty
+
+Suspect is not culprit. Rumor is not proof.
+
+58.10 Commands must be honest about implementation
+
+No fake help entries.
+
+58.11 Debug commands should not flood normal play
+
+Technical details only when requested.
+
+58.12 Commands should support testing
+
+Every major system should have a display or audit command.
+
+⸻
+
+59. Command implementation priority
+
+Not every command needs to exist in v1.
+
+Recommended priority order:
+
+Priority 1 — Required for safe testing
+
+* /help
+* /sheet
+* /status
+* /inventory
+* /equipment
+* /quests
+* /debuglast
+* /stateaudit
+* /cardaudit
+* /releasecheck
+* /context
+* /cards
+
+Priority 2 — Required for core gameplay clarity
+
+* /progression
+* /abilities
+* /abilityaudit
+* /party
+* /combat
+* /time
+* /travel
+* /scene
+* /deadlines
+* /actors
+* /places
+
+Priority 3 — Required for expanded systems
+
+* /contracts
+* /crafting
+* /recipes
+* /materials
+* /cases
+* /evidence
+* /reputation
+* /rumors
+* /domain
+* /labor
+* /factions
+* /routes
+* /weather
+* /scale
+
+Priority 4 — Required for recovery and maintenance
+
+* /quarantine
+* /migration
+* /cleanup
+* /cardfix
+* /restorequarantine
+* manual override commands
+
+Priority 5 — Advanced configuration
+
+* /settings
+* /setmode
+* /setdifficulty
+* /setdeath
+* /setcards
+* /setcontext
+* /setdebug
+
+The build plan should not try to implement every command at once.
+
+But the design should know where they belong.
+
+⸻
+
+60. Command acceptance tests
+
+Test 1 — slash command intercepted
+
+Given:
+
+/inventory
+
+Expected:
+
+* CommandRouter handles it
+* no narrative parser item events
+
+Test 2 — command output ignored as canon
+
+Given:
+
+/inventory outputs “Rusted Iron Key.”
+
+Expected:
+
+* no duplicate key created from command output
+
+Test 3 — read-only command no mutation
+
+Given:
+
+/sheet
+
+Expected:
+
+* state unchanged
+
+Test 4 — manual override logs
+
+Given:
+
+/sethp 50
+
+Expected:
+
+* HP changes through owner path
+* manual audit record created
+* dirty status/context marked
+
+Test 5 — invalid manual item rejected
+
+Given:
+
+/additem the room
+
+Expected:
+
+* hard deny
+* no item created
+
+Test 6 — unavailable equip rejected
+
+Given:
+
+Iron Sword is with Mira.
+
+Command:
+
+/equip Iron Sword
+
+Expected:
+
+* reject
+* no equipment change
+
+Test 7 — quest command does not duplicate reward
+
+Given:
+
+Manual command marks quest complete.
+
+Expected:
+
+* quest status changes if valid
+* no XP/coin reward unless reward command explicitly applies it
+* no duplicate reward
+
+Test 8 — /help honesty
+
+Given:
+
+Crafting mutation commands are not implemented.
+
+Expected:
+
+* /help crafting says display-only or partial
+
+Test 9 — /debuglast shows rejected events
+
+Given:
+
+Last turn had quote-based item false positive.
+
+Expected:
+
+* /debuglast shows item gain rejected because quoted
+
+Test 10 — /cardaudit does not import card truth
+
+Given:
+
+Card says Dragon Crown exists.
+
+Expected:
+
+* audit reports unsupported claim
+* no item created
+
+Test 11 — /cleanup preview no mutation
+
+Given:
+
+cleanup preview command.
+
+Expected:
+
+* no state change
+
+Test 12 — /cleanup run no gameplay invention
+
+Given:
+
+cleanup run.
+
+Expected:
+
+* may remove candidates/neutralize cards
+* no XP/items/quests/abilities created
+
+Test 13 — /context shows source reasons
+
+Given:
+
+EP low.
+
+Expected:
+
+* /context shows EP warning packet and source/reason
+
+Test 14 — /releasecheck detects critical issue
+
+Given:
+
+OperationLedger missing.
+
+Expected:
+
+* release check critical failure
+
+Test 15 — command mode not confused by story quote
+
+Given:
+
+Player writes: Mara says "/additem sword" as a joke.
+
+Expected:
+
+* not executed as command unless slash begins message and command routing rules say so
+
+⸻
+
+61. Final Chunk 17 doctrine
+
+Commands are the player’s control panel.
+
+Commands must be clearly separated from story text.
+
+Read-only commands must never mutate state.
+
+Manual override commands must be explicit, validated, and logged.
+
+Command output must never become gameplay canon.
+
+Commands must respect owner boundaries.
+
+Commands must show current truth, uncertainty, blockers, and warnings.
+
+Commands must support debugging without flooding normal play.
+
+/help must be honest about what exists and what is partial.
+
+/debuglast must explain the last turn.
+
+/stateaudit, /cardaudit, and /releasecheck must make system health visible.
+
+/context and /cards must reveal what the AI is being told and what cards are being managed.
+
+Manual correction commands are necessary, but they must be narrow and auditable.
+
+Settings can tune behavior, but they should not rewrite history.
+
+The goal is to let the player trust, inspect, and correct AIDRPG without turning commands into another source of canon corruption.
+

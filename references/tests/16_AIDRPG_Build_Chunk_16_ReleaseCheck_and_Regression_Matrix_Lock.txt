@@ -1,0 +1,1369 @@
+AIDRPG Build Chunk 16 — ReleaseCheck and Regression Matrix Lock
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 16 — ReleaseCheck and Regression Matrix Lock
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact ReleaseCheck gate system, regression matrix, old-failure coverage gates, deferred-system gates, and no-code-until-covered policy before Foundation Code Pass 1 planning.
+Status: Practical build document.
+Follows: Build Chunk 15 — ContextBuilder, CardSyncLite, Migration, DirtyQueue, and Cleanup Integration Plan.
+This document does not contain final script code.
+
+This chunk exists because previous AIDRPG builds passed normal checks while still failing under old patch-loop problems, adversarial wording, command/card/context contamination, repeated effects, and cross-system regressions.
+
+A final build cannot rely on hope.
+
+ReleaseCheck and the regression matrix are the gate that prevents old failures from being forgotten.
+
+⸻
+
+1. ReleaseCheck doctrine
+
+If a current-stage system is active, ReleaseCheck must know how to inspect it.
+If a known old failure is current-stage relevant, ReleaseCheck must know whether it is covered.
+If a system is deferred, ReleaseCheck must verify it is actually disabled.
+If a reducer can mutate state, ReleaseCheck must verify its owner boundary.
+If a parser can detect events, ReleaseCheck must verify it cannot commit them.
+If a support layer can mirror or summarize, ReleaseCheck must verify it cannot invent canon.
+
+ReleaseCheck is not decoration.
+
+ReleaseCheck is the final planning and runtime safety gate.
+
+⸻
+
+2. Regression matrix doctrine
+
+Every known failure becomes a test.
+Every old patch goal becomes a regression requirement.
+Every new design decision gets a proof case.
+Every deferred system gets a disabled-behavior test.
+Every active reducer gets commit, duplicate, no-op, and fail-soft tests.
+Every non-canon source gets a rejection test.
+
+The regression matrix is not just for future QA.
+
+It tells the script builder exactly what must not break.
+
+⸻
+
+3. Placement in final script/package
+
+ReleaseCheckLite belongs in:
+
+Section 22 — ReleaseCheck Lite
+
+Regression Matrix belongs in the planning/test package as:
+
+AIDRPG Regression Matrix v1
+
+ReleaseCheck depends on:
+
+StateManager
+Runtime
+Feature Flags
+CommandRouter
+AuditLogger
+OperationLedger
+EventScannerLite
+ProposalBuilder
+CanonValidator
+Resolver/Sanitizer
+ReducerRegistry
+Owner Reducer declarations
+DirtyQueue
+ContextBuilderLite
+CardSyncLite
+Migration/Quarantine
+CleanupManagerLite
+
+ReleaseCheck must not:
+
+mutate gameplay state
+repair gameplay truth except through StateManager structural init
+write Story Cards
+process dirty targets
+resolve quarantine
+activate deferred systems
+run expensive full-history scans
+
+⸻
+
+4. ReleaseCheck result statuses
+
+ReleaseCheck returns one of four top-level results.
+
+PASS
+WARN
+FAIL
+BLOCKED
+
+4.1 PASS
+
+All current-stage mandatory gates pass.
+
+Deferred systems are disabled safely.
+
+Known current-stage failure classes have owner/rule/test coverage.
+
+4.2 WARN
+
+Current-stage core can operate, but non-blocking limitations exist.
+
+Allowed WARN examples:
+
+parser family detection is limited but honestly shell-only
+CardSync live writes are dry-run only
+progression formula automation is shell/deferred
+WorldStructure deferred
+reputation automation deferred
+
+WARN must not hide unsafe active behavior.
+
+4.3 FAIL
+
+A current-stage safety requirement is broken.
+
+Examples:
+
+command output can be parsed as story
+context can mutate gameplay
+generated cards enabled in MVP
+parser can write inventory directly
+CanonValidator missing for active proposals
+rejected results can reach reducers
+
+FAIL means do not ship / do not proceed to code-finalization.
+
+4.4 BLOCKED
+
+A requested active system lacks required spec, tests, or gates.
+
+Examples:
+
+crafting enabled without Crafting Mini-Spec
+economy enabled without Transaction Ledger Mini-Spec
+generated cards enabled without Generated CardSync Beta Spec
+manual mutation commands enabled without Manual Override Spec
+
+BLOCKED means the system cannot be activated in the current build.
+
+⸻
+
+5. ReleaseCheck record schema
+
+ReleaseCheck should produce a structured record.
+
+ReleaseCheckRecord {
+  turn: number,
+  result: 'PASS' | 'WARN' | 'FAIL' | 'BLOCKED',
+  buildName: string,
+  buildVersion: string,
+  schemaVersion: string,
+  checkedAtTurn: number,
+  passCount: number,
+  warningCount: number,
+  failureCount: number,
+  blockerCount: number,
+  passes: ReleaseCheckLine[],
+  warnings: ReleaseCheckLine[],
+  failures: ReleaseCheckLine[],
+  blockers: ReleaseCheckLine[],
+  deferredSystems: ReleaseCheckLine[],
+  knownFailureCoverage: KnownFailureCoverageSummary[],
+  notes: string[]
+}
+
+5.1 ReleaseCheckLine schema
+
+ReleaseCheckLine {
+  gateId: string,
+  gateName: string,
+  status: 'PASS' | 'WARN' | 'FAIL' | 'BLOCKED',
+  severity: 'info' | 'low' | 'medium' | 'high' | 'critical',
+  message: string,
+  ownerModule: string,
+  relatedFailureIds: string[],
+  requiredAction: string
+}
+
+5.2 KnownFailureCoverageSummary schema
+
+KnownFailureCoverageSummary {
+  failureId: string,
+  title: string,
+  currentStage: boolean,
+  ownerModule: string,
+  ruleDefined: boolean,
+  testDefined: boolean,
+  releaseGateDefined: boolean,
+  status: 'covered' | 'partial' | 'missing' | 'deferred'
+}
+
+⸻
+
+6. ReleaseCheck output command format
+
+/releasecheck should render a concise human-readable summary.
+
+Required sections:
+
+[AIDRPG] Release Check
+Status: PASS/WARN/FAIL/BLOCKED
+Build:
+Schema:
+Mode:
+Summary:
+- Passes:
+- Warnings:
+- Failures:
+- Blockers:
+Critical Gates:
+- ...
+Known Failure Coverage:
+- ...
+Deferred Systems:
+- ...
+Result:
+No gameplay state was changed.
+
+The command may store the ReleaseCheckRecord in audits through official audit path.
+
+It must not mutate gameplay state.
+
+⸻
+
+7. Master gate families
+
+ReleaseCheck must eventually check these families.
+
+G01 Build Identity Gate
+G02 State Schema Gate
+G03 Runtime Hook Gate
+G04 Command Non-Canon Gate
+G05 Feature Flag / Deferred System Gate
+G06 Parser Source Gate
+G07 Proposal Local Binding Gate
+G08 Canon Clause Gate
+G09 Resolver/Sanitizer Gate
+G10 Reducer Registry Gate
+G11 Owner Reducer Boundary Gate
+G12 Operation Ledger Gate
+G13 DirtyQueue Gate
+G14 Context No-Write Gate
+G15 CardSync Mirror Gate
+G16 Migration/Quarantine Gate
+G17 Cleanup/Performance Gate
+G18 Command Renderer Honesty Gate
+G19 Regression Coverage Gate
+G20 Old Fix Salvage Coverage Gate
+G21 Player-Breaker Adversarial Gate
+G22 Package Readiness Gate
+
+⸻
+
+8. G01 — Build Identity Gate
+
+Checks:
+
+constants build name exists
+constants build version exists
+schema version exists
+meta build/schema version exists
+/version command agrees with constants
+runtime identity is not downgraded by late patch
+
+Fail if:
+
+/version disagrees with constants
+schema missing
+build stage unknown
+late patch identity mismatch detected
+
+Related failures:
+
+F011 runtime identity / build stage overwritten by patches
+
+⸻
+
+9. G02 — State Schema Gate
+
+Checks:
+
+state.aidrpg root exists
+all required buckets exist
+meta/features/runtime/startup/player/body/progression/inventory/abilities/quests/actors/places/time/cards/operationLedger/audits/migration/quarantine/dirty/cleanup exist
+required runtime fields exist
+required card flags safe
+required ledger buckets exist
+required audit buckets exist
+
+Fail if:
+
+required current-stage bucket missing and StateManager cannot repair
+operationLedger reward/card/permanent keys missing
+runtime duplicate output fields missing
+cards generated enabled by default
+
+Related failures:
+
+F021 migration/save corruption/old patch layers
+F022 runtime hook failure and timeout risk
+
+⸻
+
+10. G03 — Runtime Hook Gate
+
+Checks:
+
+StateManager runs first in each hook
+Input/Context/Output return valid shapes
+fail-soft exists
+hookDepth resets
+command suppression exists
+duplicate output hash exists
+lastAppliedOutputHash exists
+runtime warnings/errors capped
+
+Fail if:
+
+hook can return undefined
+command output can reach parser before suppression
+duplicate output can reapply consequences
+fail-soft missing
+hookDepth can get stuck
+
+Related failures:
+
+F022 runtime hook failure and timeout risk
+F024 command/manual mutation safety
+
+⸻
+
+11. G04 — Command Non-Canon Gate
+
+Checks:
+
+CommandRouter exists
+active command list exists
+all command outputs start with [AIDRPG]
+unknown commands safe
+aliases safe
+disabled command families recognized
+manual mutation commands disabled
+command output suppression active
+
+Fail if:
+
+command output can be scanned as story
+/additem or /setlevel can mutate in MVP
+/cardsync live on can enable live/generated cards
+/help claims deferred systems are active
+
+Related failures:
+
+F024 command/manual mutation commands unsafe
+F019 CardSync pollution and live writes too early
+
+⸻
+
+12. G05 — Feature Flag / Deferred System Gate
+
+Checks deferred systems are disabled:
+
+economy
+crafting
+investigation
+reputation automation
+domain/labor
+absorption/evolution
+advanced combat
+warfare/group combat
+party/summons advanced controls
+multi-protagonist
+generated CardSync
+manual mutation commands
+
+Fail/BLOCKED if any are active without mini-spec and tests.
+
+Related failures:
+
+F014 reputation leakage
+F018 WorldStructure/project/assignment failures
+F024 unsafe manual/generated activation
+
+⸻
+
+13. G06 — Parser Source Gate
+
+Checks:
+
+EventScannerLite exists or is honestly shell-only
+parser cannot mutate state
+parser rejects command/context/card/debug/audit/help text
+input parser is attempt-only
+output parser gated by runtime suppression and duplicate checks
+parser emits safety flags
+parser caps hits
+
+Fail if:
+
+parser writes inventory/abilities/quests/body/places/time directly
+parser scans [AIDRPG] command output
+parser scans Story Card text as canon
+parser treats input as completed success
+
+Related failures:
+
+F006 inventory false grants
+F003 ability false canon
+F009 nonliteral time aging
+F015 death boundary false canon
+
+⸻
+
+14. G07 — Proposal Local Binding Gate
+
+Checks:
+
+EventProposal schema exists
+source binding exists
+local clause binding exists
+target binding exists
+safety flags carry over
+owner module assignment exists
+operation key suggestions exist for repeat-sensitive families
+proposal caps exist
+
+Fail if:
+
+ParserHit can go directly to reducer
+proposal lacks localClause
+proposal lacks target binding
+proposal builds gameplay state
+proposal accepts command/context/card/audit/help source
+input proposal marks completed success
+
+Related failures:
+
+F006 mixed clause inventory false grants
+F008 road vs named arrival
+F023 promise/payment confusion
+
+⸻
+
+15. G08 — Canon Clause Gate
+
+Checks:
+
+CanonValidator exists
+ValidationResult schema exists
+unsafe sources blocked
+local clause safety flags used
+inventory canon rules exist
+ability canon rules exist
+body/death canon rules exist
+place/time/reward/actor rules exist
+reducers receive only accepted results
+
+Fail if:
+
+quoted/dreamed/rumored/revoked/denied text can mutate gameplay
+promised reward can pay currency
+input-only item/ability/travel can become success
+nonliteral time can age player
+weak place mention can overwrite scene
+
+Related failures:
+
+F003 F004 F005 F006 F009 F015 F023
+
+⸻
+
+16. G09 — Resolver/Sanitizer Gate
+
+Checks:
+
+SharedHintCleaner conservative
+AbilityNameSanitizer exists
+ItemNameSanitizer exists
+PlaceNameSanitizer exists
+ActorNameSanitizer exists
+QuestObjectiveSanitizer exists
+CardNameSanitizer/TriggerSanitizer exists or generated cards disabled
+compound actor suppression exists
+route/interstitial handling exists
+broad trigger rejection exists
+ambiguous target handling exists
+
+Fail if:
+
+aggressive ability cleanup is global
+travel/inspect/use-object creates junk abilities
+Veteran Guard creates both Veteran Guard and Guard
+weak place reference overwrites scene
+broad generated card trigger accepted
+
+Related failures:
+
+F001 F002 F008 F012 F018 F019
+
+⸻
+
+17. G10 — Reducer Registry Gate
+
+Checks:
+
+ReducerRegistry exists
+owner map exists
+all active families map to exactly one owner
+non-accepted validation results cannot reach reducers
+unknown owner fails softly
+wrong owner rejects
+
+Fail if:
+
+parser/proposal/validator can mutate without reducer
+rejected/pending/deferred result can mutate
+multiple reducers own same truth family
+unknown owner routes loosely
+
+Related failures:
+
+all patch-loop truth ownership failures
+
+⸻
+
+18. G11 — Owner Reducer Boundary Gate
+
+Checks:
+
+InventoryReducer owns inventory only
+AbilityReducer owns abilities only
+BodyReducer owns body only
+QuestReducer owns quests/reward status only
+ActorReducer owns actors only
+PlaceReducer owns places only
+TimeReducer owns time only
+ProgressionReducer owns progression only
+
+Fail if:
+
+InventoryReducer creates abilities or completes quests
+AbilityReducer awards XP directly without contract
+PlaceReducer creates persistent actors directly
+CardSync creates gameplay canon
+ContextBuilder calls reducers
+
+Related failures:
+
+F003 F004 F005 F006 F009 F013 F019 F020 F023
+
+⸻
+
+19. G12 — Operation Ledger Gate
+
+Checks:
+
+permanentKeys exists
+recentKeys exists
+rewardKeys exists
+cardKeys exists
+sourceUseKeys exists
+recent cap sane
+reward/card/permanent keys durable
+repeat-sensitive reducers declare key policy
+
+Fail if:
+
+reward payment can repeat
+XP can repeat
+time/age can repeat
+ability stabilization can repeat
+card writes can repeat
+startup import can repeat
+recent cap deletes durable reward/card/permanent keys
+
+Related failures:
+
+F010 repeated ability over-amplification
+F023 duplicate rewards
+F019 duplicate cards
+F022 duplicate output replay
+
+⸻
+
+20. G13 — DirtyQueue Gate
+
+Checks:
+
+DirtyQueue exists
+dirty targets schema exists
+reducers create dirty targets
+dirty targets dedupe
+dirty targets capped
+support layers read dirty targets without mutating gameplay
+
+Fail if:
+
+dirty queue grows unbounded
+reducers commit without dirty targets
+DirtyQueue writes cards/gameplay directly
+important protected dirty targets dropped silently
+
+Related failures:
+
+F019 CardSync update bloat
+F020 context stale/bloat
+F022 runtime/performance risk
+
+⸻
+
+21. G14 — Context No-Write Gate
+
+Checks:
+
+ContextBuilderLite exists or shell-only
+ContextBuilder reads state only
+context budget exists
+context packet selection exists
+context audit exists
+context cannot mutate gameplay buckets
+
+Fail if:
+
+context mutates inventory/quests/actors/body/places/time
+context text can become canon
+context includes unbounded lore spam
+context includes stale facts as truth after state changed
+
+Related failures:
+
+F020 context bloat and context-as-canon risk
+
+⸻
+
+22. G15 — CardSync Mirror Gate
+
+Checks:
+
+CardSyncLite exists or shell-only
+Card API adapter boundary exists
+protected card registry exists
+generated cards disabled in MVP
+protected singleton policy exists
+manual card text non-canon
+broad trigger rejection exists
+card write mode dry-run/safe by default
+
+Fail if:
+
+generatedCardsEnabled true in MVP
+Story Card text can mutate gameplay
+live writes enabled without adapter tests
+protected duplicate can crash/import text
+broad trigger accepted for generated cards
+
+Related failures:
+
+F019 CardSync pollution, duplicate cards, broad triggers
+
+⸻
+
+23. G16 — Migration/Quarantine Gate
+
+Checks:
+
+MigrationManager conservative
+QuarantineManager exists
+old unsafe data quarantined
+quarantine inactive
+future schema safe warning
+old card prose non-canon
+
+Fail if:
+
+old card prose imports as inventory/ability/quest truth
+quarantine records become active gameplay
+migration overwrites protected identity
+migration erases valid inventory/quests/ledger
+
+Related failures:
+
+F021 migration/save corruption/old patch layers
+
+⸻
+
+24. G17 — Cleanup/Performance Gate
+
+Checks:
+
+CleanupManagerLite exists or shell-only
+safe array caps exist
+recent key cap exists
+cleanup audit exists
+cleanup does not delete active truth
+hook work bounded
+no full-history scan every turn
+
+Fail if:
+
+cleanup removes active inventory/quest/ability/actor/body condition
+cleanup clears durable reward/card/permanent keys
+logs grow unbounded
+runtime does expensive full card/history scan every hook
+support-layer errors crash output
+
+Related failures:
+
+F022 runtime hook failure and timeout risk
+F025 whole-system testing gaps
+
+⸻
+
+25. G18 — Command Renderer Honesty Gate
+
+Checks:
+
+/help honest
+/version honest
+/sheet separates identity/disguise/illusion
+/status shows body states
+/inventory separates owned/visible/custody/lost/consumed
+/abilities separates candidate/stable/failed/sealed
+/quests separates promised/paid/ready/completed
+/location separates current/travel intent/nearby
+/time does not advance time
+/debuglast shows parser/validator/reducer shell status
+
+Fail if:
+
+commands claim deferred systems active
+commands mutate gameplay
+commands hide candidate vs stable distinctions
+commands show promised reward as paid
+commands show visible item as owned
+
+Related failures:
+
+F024 command/manual mutation safety
+F003 ability candidate/stable confusion
+F006 inventory ownership confusion
+F023 reward promise/payment confusion
+
+⸻
+
+26. G19 — Regression Coverage Gate
+
+Checks:
+
+current-stage modules have tests
+known failure IDs have test coverage
+old patch salvage entries mapped to tests
+new design decisions mapped to tests
+adversarial player-breaker tier exists
+
+Fail if:
+
+current-stage known failure has no regression test
+active module has no safety tests
+old critical patch goal not classified
+
+⸻
+
+27. G20 — Old Fix Salvage Coverage Gate
+
+Checks every old fix has classification:
+
+Keep in MVP
+Rewrite in MVP
+Defer
+Discard
+Test Only
+
+Each kept/rewrite/test-only fix needs:
+
+owner module
+core rule
+test
+risk if skipped
+
+Fail if:
+
+critical old fix has no classification
+old protection silently dropped
+old patch copied blindly without owner/rule/test
+
+⸻
+
+28. G21 — Player-Breaker Adversarial Gate
+
+Checks that adversarial tests exist for:
+
+negative inventory
+failed acquisition
+abstract inventory
+quoted handoff
+dream handoff
+output-only ability learning
+failed ability
+pretend ability
+nonliteral time skip
+quote death/rumor death
+weak scene mention
+reward promise vs payment
+command/context/card output injection
+repeated output/reward/ability/time
+
+Fail if active canon pipeline lacks adversarial rejection coverage.
+
+⸻
+
+29. G22 — Package Readiness Gate
+
+Before final package/code pass:
+
+Checks:
+
+Build Chunks 1–17 present
+Final Build Control Map present
+known failure list current
+open evidence queue acknowledged
+implementation order clear
+deferred systems listed
+code pass scope defined
+install/use notes planned
+
+Fail if:
+
+planning documents contradict active build scope
+remaining mandatory chunk missing
+code pass scope unclear
+
+⸻
+
+30. Regression Matrix structure
+
+The regression matrix should be stored as a table or structured document with fields:
+
+Test ID
+Failure ID
+Module owner
+Scenario name
+Setup state
+Input text
+AI output text
+Expected parser hits
+Expected proposals
+Expected validation results
+Expected reducer result
+Expected state diff
+Expected dirty targets
+Expected command/audit output
+Expected ReleaseCheck gate
+Status
+Notes
+
+Not every test needs every field in early planning, but final code tests should capture state diffs where possible.
+
+⸻
+
+31. Regression test tiers
+
+The test suite should be organized into tiers.
+
+T0 Smoke Tests
+T1 State/Runtime/Command Foundation Tests
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+T9 Packaging/Install/Usage Tests
+
+⸻
+
+32. T0 — Smoke Tests
+
+Minimum smoke tests:
+
+fresh state initializes
+/help works
+/version works
+/sheet works
+/status works
+/inventory works
+/releasecheck runs
+unknown command safe
+non-command input returns valid shape
+output hook returns valid shape
+context hook returns valid shape
+
+Fail if any command crashes.
+
+⸻
+
+33. T1 — State/Runtime/Command Foundation Tests
+
+Must include:
+
+fresh root creation
+missing bucket repair preserves player
+malformed root fail-soft
+resource clamping structural only
+feature flags forced safe
+command output prefix
+command output suppression
+manual mutation commands disabled
+unknown command no mutation
+duplicate output hash skip
+hookDepth resets after error
+runtime warnings/errors capped
+
+⸻
+
+34. T2 — Parser/Proposal/Validator Safety Tests
+
+Must include:
+
+command output not parsed
+context text not parsed
+Story Card text not parsed
+input item attempt only
+output pickup candidate only until validation
+quoted/dream/rumor/negated/hypothetical flags
+local clause target binding
+proposal source/local/target binding
+CanonValidator rejection/acceptance/pending/defer
+
+⸻
+
+35. T3 — Resolver/Sanitizer Tests
+
+Must include:
+
+Ember Ward to protect allies -> Ember Ward
+Frost Step by moving -> Frost Step
+Stoneguard until stance holds -> Stoneguard
+travel to smithy does not create ability
+inspect door does not create ability
+use iron key on cellar door does not create ability
+target rusted iron key cleaned from failed grab clause
+Veteran Guard not duplicate Guard
+High Priestess preserved
+chapel visible weak reference
+road interstitial loses to named inn arrival
+village well not settlement
+broad trigger street rejected
+ACTOR:AND_MIRA cleaned to ACTOR:MIRA
+
+⸻
+
+36. T4 — Reducer Commit Tests
+
+Must include:
+
+accepted potion handoff commits once
+visible ring scene item not owned
+denied item routed accidentally no-ops
+candidate ability training creates candidate/evidence
+output-only learned ability not stable
+exhausted status visible
+fatigue not exhaustion
+death rumor no-op
+quest promise no currency
+reward payment once
+absent actor not present
+travel intent not arrival
+strong arrival updates place
+time quote no-op
+literal time duplicate skipped
+vague experience no XP
+
+⸻
+
+37. T5 — Context/Card/Migration/Cleanup Tests
+
+Must include:
+
+context read-only
+context budget respected
+stale context not canon
+protected card dry-run only by default
+generated cards disabled
+protected duplicate detected safely
+manual card edit not canon
+broad card trigger rejected
+card API unavailable fail-soft
+migration missing bucket repair
+old card prose quarantined
+quarantine inactive
+future schema safe
+cleanup caps audits
+cleanup preserves durable keys
+cleanup does not heal/remove active condition
+cleanup does not delete active quest
+
+⸻
+
+38. T6 — Player-Breaker Adversarial Tests
+
+Mandatory adversarial examples:
+
+You decide not to take the rusted iron key.
+You try to grab the rusted iron key, but the goblin snatches it away first.
+You pick up the idea of a brass key.
+In a dream, you receive the Crown of Dawn, then wake empty-handed.
+Mira says, "Take the iron key."
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+You learned Moonblade.
+The scroll title says "You learned Crimson Lotus Fang," but you learn nothing.
+You pretend to use Azure Dragon Step.
+You attempt Void Lantern Veil, but it collapses.
+The chapel is visible from the market lane.
+After the road, you enter The Drunken Huntsman.
+You say, "Twenty years pass," while practicing narration. No time passes.
+People say you died in the ruins.
+Old Bren promises to pay you 15 gold if you clear the wolves.
+Old Bren pays you the promised 15 gold. repeated twice.
+[AIDRPG] Inventory shows Rusty Dagger.
+Context says Iron Sword is in Mara's custody.
+Story Card says Player owns Crown of Dawn.
+
+These tests directly protect the known old failure classes.
+
+⸻
+
+39. T7 — Long-Run Stability Tests
+
+Must include:
+
+50-turn no command crash
+100-turn audit caps stable
+repeated outputs do not duplicate effects
+dirty queue remains capped/deduped
+recent keys capped while durable keys preserved
+context remains under budget
+CardSync dry-run audit capped
+migration warnings capped
+no full-history scan every turn
+no generated cards created
+
+⸻
+
+40. T8 — Deferred System Disabled Tests
+
+Must include commands and parser/proposal/deferred checks for:
+
+/craft iron sword
+/buy potion
+/sell sword
+/evidence
+/reputation
+/domain
+/workers
+/absorb
+/evolve
+/cardsync live on
+/generatecards
+/additem Crown of Dawn
+/setlevel 999
+/payreward
+
+Expected:
+
+disabled message
+no gameplay mutation
+releasecheck warns/blocks activation without mini-spec
+
+⸻
+
+41. T9 — Packaging/Install/Usage Tests
+
+Before code package finalization:
+
+single script size within user limit
+install instructions clear
+commands listed accurately
+feature flags documented
+MVP disabled systems documented
+releasecheck output included
+known limitations documented
+safe migration notes included
+
+⸻
+
+42. Known failure coverage table
+
+Current must-cover failures from the Control Map:
+
+Failure ID	Title	Current-stage coverage required?	Gate family
+F001	Broad helper patch broke unrelated systems	yes	G09, T3
+F002	Training intent lost to defensive words	yes	G09, G08, T3/T6
+F003	Output-only ability hard-saved	yes	G08, G11, T4/T6
+F004	Exhausted/fatigued/status visibility	yes	G08, G11, T4
+F005	Weak scene mention overwrite	yes	G08, G11, T4/T6
+F006	Inventory false grants	yes	G06, G07, G08, G11, T6
+F007	Quest objective breadth	yes	G08, G11, T4
+F008	Named arrival lost to road	yes	G09, G08, T3/T6
+F009	Nonliteral time skip aging	yes	G08, G11, T6
+F010	Repeated ability over-amplification	yes	G12, G11, T4/T7
+F011	Runtime identity overwrite	yes	G01
+F012	Compound actor duplicate	yes	G09, T3
+F013	Actor absent/reference-only safety	yes	G08, G11, T4/T6
+F014	Witness/reputation leakage	partial/deferred	G05, future social spec
+F015	Body/death rumor/quote boundary	yes	G08, G11, T6
+F017	World scaling benchmark drift	partial/deferred progression	G05/G19, future progression tests
+F018	WorldStructure failures	deferred	G05, T8 future
+F019	CardSync pollution/duplicates/triggers	yes for protected/dry-run	G15, T5
+F020	Context bloat/context-as-canon	yes	G14, T5
+F021	Migration/save corruption	yes	G16, T5
+F022	Runtime hook/timeout risk	yes	G03, G17, T1/T7
+F023	Reward promise/payment duplication	yes	G08, G11, G12, T4/T6
+F024	Command/manual mutation safety	yes	G04, G18, T8
+F025	Whole-system testing gaps	yes	G19, G21
+
+⸻
+
+43. No-code-until-covered policy
+
+Before Foundation Code Pass 1 begins, the package must have:
+
+Final Build Control Map v1
+Build Chunks 1–16 complete
+Build Chunk 17 code-pass plan complete
+known failure coverage table included
+mandatory current-stage failures assigned to gates/tests
+open evidence queue acknowledged
+MVP/deferred systems list frozen
+
+Code can begin only after Build Chunk 17 defines exact code-pass scope.
+
+Code must not begin from vague roadmap alone.
+
+⸻
+
+44. ReleaseCheck implementation sequence
+
+When coding begins, implement ReleaseCheck in stages.
+
+44.1 Stage A — Foundation checks
+
+Build Identity
+State Schema
+Runtime
+Commands
+Feature Flags
+OperationLedger
+Audit caps
+
+44.2 Stage B — Pipeline checks
+
+Parser source safety
+Proposal binding
+CanonValidator presence
+Resolver/sanitizer ownership
+Reducer registry owner map
+
+44.3 Stage C — Support checks
+
+DirtyQueue
+Context no-write
+CardSync dry-run/protected/generator-disabled
+Migration/quarantine
+Cleanup caps
+
+44.4 Stage D — Regression coverage checks
+
+known failure coverage
+player-breaker tier
+old fix salvage classification
+package readiness
+
+⸻
+
+45. ReleaseCheck must not fake readiness
+
+ReleaseCheck must not return PASS if:
+
+it cannot inspect a mandatory gate
+mandatory gate is shell-only but active system depends on it
+known failure is current-stage and has no test
+unsafe feature flag is true
+reducer ownership is unknown
+command output suppression is missing
+ContextBuilder can mutate state
+CardSync generated cards are enabled
+
+If uncertain, use WARN or FAIL depending current-stage risk.
+
+Do not use PASS for uncertainty.
+
+⸻
+
+46. Required ReleaseCheck tests
+
+BC16-001 — Fresh safe build passes foundation gates
+
+Expected:
+
+ReleaseCheck returns PASS or WARN only for honest deferred shells
+no FAIL/BLOCKED for core foundation
+
+BC16-002 — Generated cards enabled fails
+
+Set:
+
+generatedCardsEnabled = true
+
+Expected:
+
+FAIL or BLOCKED
+
+BC16-003 — Manual mutation commands enabled fails
+
+Set:
+
+manualMutationCommandsEnabled = true
+
+Expected:
+
+FAIL/BLOCKED
+
+BC16-004 — Missing operationLedger rewardKeys fails
+
+Expected:
+
+FAIL
+
+BC16-005 — Command output suppression missing fails
+
+Expected:
+
+FAIL
+
+BC16-006 — Parser direct mutation path fails
+
+Expected:
+
+FAIL
+
+BC16-007 — Proposal missing local clause fails
+
+Expected:
+
+FAIL if ProposalBuilder active
+
+BC16-008 — CanonValidator missing fails
+
+Expected:
+
+FAIL if reducers active
+
+BC16-009 — Rejected result can reach reducer fails
+
+Expected:
+
+FAIL
+
+BC16-010 — Context mutation path fails
+
+Expected:
+
+FAIL
+
+BC16-011 — Story Card text import path fails
+
+Expected:
+
+FAIL
+
+BC16-012 — Cleanup deletes durable keys fails
+
+Expected:
+
+FAIL
+
+BC16-013 — Known failure missing test fails coverage gate
+
+Remove F006 test coverage.
+
+Expected:
+
+FAIL or BLOCKED depending stage
+
+BC16-014 — Deferred crafting enabled without spec blocked
+
+Expected:
+
+BLOCKED
+
+BC16-015 — ReleaseCheck command non-mutating
+
+Run /releasecheck.
+
+Expected:
+
+ReleaseCheck audit may update
+no gameplay state mutation
+
+⸻
+
+47. Relationship to Final Build Control Map v1
+
+This chunk operationalizes the Control Map.
+
+The Control Map says:
+
+Old patch goals become core rules.
+Core rules get owner modules.
+Owner modules get state fields.
+State changes go through validators and reducers.
+Repeat-sensitive effects get ledger keys.
+Every old failure gets a regression test.
+ReleaseCheck blocks missing safety.
+
+Build Chunk 16 turns that into ReleaseCheck gates and regression tiers.
+
+⸻
+
+48. What Build Chunk 17 should do next
+
+Next build document:
+
+Build Chunk 17 — Foundation Code Pass 1 Plan
+
+Build Chunk 17 must define the exact first code generation scope.
+
+It must include:
+
+* what sections are generated in Code Pass 1
+* what sections are shells only
+* what systems stay disabled
+* exact order of code assembly
+* maximum safe code size strategy
+* testing order after code generation
+* known limitations of Code Pass 1
+* what must not be added yet
+* packaging plan after Code Pass 1
+
+Build Chunk 17 is the final planning chunk before actual script generation.
+
+⸻
+
+49. Final Build Chunk 16 doctrine
+
+ReleaseCheck and the Regression Matrix are the anti-patch-loop gate.
+
+Final rule:
+
+No silent old failure drop.
+No active system without a gate.
+No gate without a test.
+No test without an owner.
+No PASS on uncertainty.
+No code-finalization until current-stage known failures are covered.
+
+With ReleaseCheck and the regression matrix locked, the next safe step is the Foundation Code Pass 1 Plan.

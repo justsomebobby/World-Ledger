@@ -1,0 +1,2764 @@
+AIDRPG Design Bible — Chunk 23: Creature Tier Matrix, Enemy Stat Bands, Boss Scaling, Group Threat, and Encounter Difficulty
+
+1. Purpose of this chunk
+
+Chunk 23 defines how AIDRPG scales enemies, monsters, NPC opponents, bosses, swarms, creatures, and unknown threats.
+
+Chunk 19 defined player level scale.
+
+Chunk 20 defined race/species scaling.
+
+Chunk 21 defined player stats and resources.
+
+Chunk 22 defined XP and progression.
+
+Chunk 23 answers:
+
+How strong is a wolf?
+
+How strong is a goblin?
+
+How strong is a guard?
+
+How strong is a slime?
+
+How strong is an ogre, troll, demon, dragon, lich, god avatar, or cosmic entity?
+
+How does AIDRPG estimate an enemy when AI Dungeon invents something new?
+
+How does enemy tier relate to player level?
+
+How do groups scale?
+
+How do bosses scale?
+
+How do enemy stats, HP, MP, EP, abilities, resistances, and weaknesses work?
+
+How does AIDRPG avoid treating every creature name as a fixed power level?
+
+The central rule is:
+
+Enemy scaling is based on threat context, not name alone.
+
+A “slime” can be harmless, acidic, intelligent, corrupted, symbiotic, dungeon-core, ancient, or godlike.
+
+A “human” can be a civilian, guard, assassin, archmage, champion, avatar, or divine vessel.
+
+AIDRPG must estimate threat from the full scene.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon creates enemies freely.
+
+It may say:
+
+* a wolf appears
+* thirteen goblins attack
+* a strange slime pulses near the tower
+* a guard blocks the way
+* an old man draws a sword
+* a dragon descends
+* the demon king smiles
+* a goddess tests you
+* a cosmic shadow watches from the sky
+* a swarm of insects fills the room
+* a bandit captain calls for reinforcements
+* the slime tries to bond with your arm
+* a child-sized creature emits killing intent
+
+AIDRPG cannot rely on names only.
+
+It must consider:
+
+* enemy species
+* enemy size
+* enemy number
+* enemy equipment
+* enemy intelligence
+* enemy training
+* enemy abilities
+* enemy behavior
+* enemy environment
+* enemy story role
+* enemy condition
+* enemy resistance
+* enemy weakness
+* player level
+* player resources
+* party support
+* leverage
+* whether the enemy is named
+* whether locals fear it
+* whether it has already shown power
+
+The enemy system should produce a Threat Estimate first.
+
+Hard enemy stats can be generated only when enough information exists or when the story/card explicitly defines them.
+
+⸻
+
+3. Enemy tier overview
+
+AIDRPG uses enemy threat tiers.
+
+Recommended enemy tiers:
+
+Tier	Name	Meaning
+0	Harmless / Noncombatant	not a real combat threat unless context changes
+1	Trivial Threat	dangerous only to fragile or careless characters
+2	Minor Threat	weak monster or ordinary low-trained attacker
+3	Standard Threat	dangerous to novices, ordinary trained combatant or beast
+4	Serious Threat	skilled fighter, dangerous monster, strong pack
+5	Elite Threat	high danger, ogre-class, elite soldier, strong monster
+6	Boss Threat	major monster, named champion, troll, lesser demon boss
+7	Legendary Threat	dragonling, ancient knight, major demon, large boss
+8	Mythic Threat	adult dragon, lich, archmage, ancient monster
+9	Worldly Mythic Threat	ancient dragon, demon lord lieutenant, demigod beast
+10	World-Scale Threat	god avatar, sealed titan, world-ending beast
+10+	Cosmic / Divine / Absolute	full gods, cosmic entities, reality-scale threats
+
+Tiers are not exact.
+
+They are scale categories.
+
+An enemy can have:
+
+* individual tier
+* group tier
+* boss tier
+* environmental tier
+* social/legal tier
+* unknown/pending tier
+
+Example:
+
+A plague rat may be Tier 1 physically but Tier 5 as a disease hazard.
+
+A noble magistrate may be Tier 0 physically but Tier 5 socially.
+
+A slime swarm may be Tier 1 individually but Tier 5 as a group.
+
+⸻
+
+4. Enemy effective level range by tier
+
+Each tier maps roughly to a player-level equivalent.
+
+Enemy Tier	Effective Level Range	Typical Meaning
+0	0–1	harmless civilian, noncombatant, ordinary animal
+1	1–3	rat, weak pest, fragile enemy
+2	3–8	goblin, stray dog, weak bandit, basic slime
+3	8–18	wolf, trained thug, guard, small pack
+4	18–35	trained soldier, large wolf, dangerous beast, bandit captain
+5	35–75	ogre, elite soldier, strong monster, serious magical beast
+6	75–150	troll, named champion, lesser demon boss, powerful mage
+7	150–300	dragonling, ancient warrior, major demon, young giant boss
+8	300–500	adult dragon, lich, archmage, legendary monster
+9	500–800	ancient dragon, demigod beast, demon lord lieutenant
+10	800–1000+	god avatar, sealed titan, world-scale entity
+10+	1000+	full deity, cosmic entity, reality-scale being
+
+This effective level helps XP and matchup estimation.
+
+It is not always literal character level.
+
+A Tier 6 monster might not have a “level” in-world.
+
+It has an equivalent scale for validation.
+
+⸻
+
+5. Enemy stat band by tier
+
+Enemy stats should scale similarly to player stats, but enemies can be more focused.
+
+Enemy stats:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+
+Suggested individual enemy stat ranges:
+
+Tier	Weak Stat	Average Stat	Strong Stat	Extreme Stat
+0	1–3	3–5	5–8	8–10
+1	2–5	5–8	8–12	12–16
+2	5–10	10–18	18–28	28–40
+3	10–20	20–40	40–65	65–90
+4	25–45	45–85	85–140	140–200
+5	50–90	90–170	170–280	280–400
+6	100–180	180–350	350–600	600–850
+7	180–325	325–650	650–1100	1100–1600
+8	325–600	600–1200	1200–2000	2000–3000
+9	600–1000	1000–2000	2000–3500	3500–5000
+10	1000–1800	1800–3500	3500–6000	6000–9000
+10+	1800+	3500+	6000+	special/cosmic
+
+Important:
+
+Enemies should not always use balanced stats.
+
+A troll may have:
+
+* high ATK
+* high DEF
+* low SPD
+* low INT
+* average LCK
+
+A dragon may have:
+
+* high ATK
+* high DEF
+* high SPD through flight
+* high INT
+* high MP
+
+A ghost may have:
+
+* low physical ATK
+* unusual DEF against physical
+* high INT/MP
+* strong spirit attacks
+
+⸻
+
+6. Enemy resource bands by tier
+
+Enemies should have HP, MP, and EP or equivalent resources.
+
+Some enemies use alternative meanings:
+
+* HP = body integrity, mass, core, structure, essence
+* MP = mana, spiritual power, divine power, infernal force
+* EP = stamina, action endurance, cohesion, battery, animating force
+
+Suggested individual enemy resource ranges:
+
+Tier	HP Range	MP Range	EP Range
+0	5–50	0–30	10–50
+1	30–120	0–80	40–150
+2	100–350	0–250	100–400
+3	250–800	0–600	300–900
+4	700–1,800	100–1,500	800–2,000
+5	1,500–4,000	300–3,500	1,500–4,500
+6	3,500–9,000	800–8,000	3,000–9,000
+7	8,000–20,000	2,000–18,000	7,000–20,000
+8	18,000–45,000	5,000–40,000	15,000–45,000
+9	40,000–100,000	15,000–90,000	35,000–100,000
+10	90,000–250,000	40,000–250,000	80,000–250,000
+10+	special	special	special
+
+These are for major individual enemies.
+
+Ordinary humanoids at a tier may have lower HP than monsters but higher equipment, skill, intelligence, or tactics.
+
+Boss modifiers can raise resources.
+
+Group scaling is separate.
+
+⸻
+
+7. Tier is not only combat
+
+An entity can have different threat dimensions.
+
+Threat dimensions:
+
+* physical threat
+* magical threat
+* social threat
+* legal threat
+* environmental threat
+* disease/poison threat
+* spiritual threat
+* economic threat
+* domain threat
+* investigation threat
+* narrative/boss threat
+
+Example:
+
+A plague rat:
+
+Physical Tier: 1
+Disease Tier: 5
+Overall Scene Threat: depends on exposure
+
+A noble judge:
+
+Physical Tier: 0
+Social/Legal Tier: 6
+Overall Scene Threat: high if trial/reputation scene
+
+A sealed demon statue:
+
+Physical Tier: 0 while sealed
+Spiritual/Corruption Tier: 7
+Combat Tier: pending if awakened
+
+AIDRPG should not convert every threat into sword-fight numbers.
+
+⸻
+
+8. Threat estimate model
+
+When a creature has no known stats, AIDRPG should create a threat estimate.
+
+Threat Estimate fields:
+
+Label:
+Known name:
+Creature type:
+Count:
+Individual tier:
+Group tier:
+Threat dimensions:
+Effective level:
+Confidence:
+Known traits:
+Suspected traits:
+Known weaknesses:
+Suspected weaknesses:
+Environment:
+Behavior:
+Story role:
+Named/unnamed:
+Boss status:
+Last evidence:
+
+Example:
+
+Label: tainted slime cluster
+Creature type: corrupted slime
+Count: dozens
+Individual tier: 2–3
+Group tier: 4–5
+Threat dimensions: physical, acid, corruption
+Effective level: 25–50
+Confidence: moderate
+Known traits: gelatinous, pulsing, blocking tower path
+Suspected traits: acid, infection, swarm behavior
+Known weaknesses: none confirmed
+Environment: ruined tower clearing
+Story role: obstacle/possible monster encounter
+
+Threat estimates can be refined as the story reveals more.
+
+⸻
+
+9. Threat estimate confidence
+
+Threat estimate confidence levels:
+
+Confidence	Meaning
+Unknown	very little information
+Low	creature label known, traits unclear
+Moderate	enough context for usable estimate
+High	observed abilities/behavior support tier
+Confirmed	card, repeated evidence, or direct stat/lore support
+
+Confidence matters.
+
+Low-confidence enemies should not be overdefined.
+
+Example:
+
+“The black wolf watches you with glowing eyes.”
+
+Initial:
+
+* wolf-like
+* possible magical
+* confidence low/moderate
+
+After it breathes shadow fire:
+
+* threat increases
+* magical trait confirmed
+* confidence high
+
+After locals call it the Moon-Eater:
+
+* possible boss/legendary status
+* story role changes
+
+⸻
+
+10. Enemy stat generation from tier
+
+If exact stats are needed, generate them from tier and archetype.
+
+Process:
+
+1. Determine enemy tier.
+2. Determine enemy archetype.
+3. Select effective level within tier.
+4. Assign stat spread.
+5. Apply race/species/body modifiers.
+6. Apply equipment/ability modifiers.
+7. Apply boss/group modifiers.
+8. Apply current condition modifiers.
+9. Record confidence.
+
+Enemy archetypes:
+
+* brute
+* skirmisher
+* tank
+* caster
+* assassin
+* beast
+* swarm
+* guardian
+* boss
+* elite humanoid
+* undead
+* spirit
+* construct
+* slime/ooze
+* dragon
+* divine/cosmic
+* social/legal threat
+
+Example:
+
+Tier 5 ogre brute:
+
+* effective level 50
+* high ATK
+* high DEF
+* low INT
+* low SPD
+* high HP/EP
+* little MP
+
+Tier 5 assassin:
+
+* effective level 50
+* high SPD
+* high ATK
+* high LCK
+* low HP/DEF
+* poison/equipment threat
+
+Same tier, different danger.
+
+⸻
+
+11. Enemy archetype stat spreads
+
+Brute
+
+ATK: high
+DEF: high
+SPD: low to average
+INT: low to average
+LCK: average
+HP: high
+MP: low
+EP: high
+
+Examples:
+
+* ogre
+* troll
+* minotaur
+* berserker
+* giant beast
+
+Skirmisher
+
+ATK: average to high
+DEF: low to average
+SPD: high
+INT: average
+LCK: average to high
+HP: average
+MP: low to average
+EP: high
+
+Examples:
+
+* wolf
+* rogue
+* goblin scout
+* beastkin raider
+
+Tank / Guardian
+
+ATK: average
+DEF: very high
+SPD: low
+INT: average
+LCK: average
+HP: very high
+MP: variable
+EP: high
+
+Examples:
+
+* shield knight
+* golem
+* armored beast
+* fortress guardian
+
+Caster
+
+ATK: low physically
+DEF: low to average
+SPD: low to average
+INT: high to extreme
+LCK: average
+HP: low to average
+MP: high
+EP: average
+
+Examples:
+
+* mage
+* lich
+* shaman
+* cult priest
+* elemental caster
+
+Assassin
+
+ATK: high
+DEF: low
+SPD: very high
+INT: high
+LCK: high
+HP: low to average
+MP: variable
+EP: high
+
+Examples:
+
+* assassin
+* venom rogue
+* shadow beast
+* stalker
+
+Beast
+
+ATK: average to high
+DEF: average
+SPD: high or average
+INT: low to animal-smart
+LCK: average
+HP: average to high
+MP: low unless magical
+EP: high
+
+Examples:
+
+* wolf
+* bear
+* boar
+* big cat
+* monster hound
+
+Swarm
+
+Individual stats: low
+Group pressure: high
+DEF: low individually, high as mass
+SPD: varies
+INT: low unless hive
+HP: group pool or count
+Special: surrounds, overwhelms, disease, attrition
+
+Examples:
+
+* rats
+* insects
+* slimes
+* undead horde
+* goblin mob
+
+Spirit
+
+Physical ATK: low or special
+Spirit/Magic ATK: high
+Physical DEF: unusual
+INT: high or variable
+MP: high
+EP: spiritual focus
+Weakness: anchors, holy, exorcism, spirit weapons
+
+Examples:
+
+* ghost
+* wraith
+* elemental spirit
+
+Construct
+
+ATK: average to high
+DEF: high
+SPD: low to average
+INT: low to high depending type
+HP: structural integrity high
+MP/EP: core/battery
+Weakness: core, joints, rust, anti-magic
+
+Examples:
+
+* golem
+* automaton
+* enchanted armor
+
+Slime / Ooze
+
+ATK: low to high depending acid/mass
+DEF: unusual
+SPD: low to average
+INT: variable
+HP: mass/cohesion/core
+MP: variable
+EP: cohesion/control
+Weakness: fire, drying, freezing, salt, core damage, purification
+
+Examples:
+
+* basic slime
+* acid slime
+* tainted slime
+* intelligent slime
+
+Dragon
+
+ATK: very high
+DEF: very high
+SPD: high if flying
+INT: high
+HP: very high
+MP: high
+EP: high
+Special: breath, flight, fear, elemental resistance
+Weakness: element opposite, anti-dragon weapons, pride, terrain, hoard/law
+
+Divine / Cosmic
+
+Stats: extreme or special
+HP/MP/EP: may not follow normal rules
+Threat: law, reality, soul, fate, domain, belief
+Weakness: story-specific leverage required
+
+Examples:
+
+* god avatar
+* sealed titan
+* cosmic shadow
+* world entity
+
+⸻
+
+12. Common creature default tiers
+
+These are default assumptions only.
+
+Enemy	Default Tier	Notes
+harmless civilian	0	social consequences may matter
+common rat	1	disease/swarm can raise threat
+weak pest	1	mostly nuisance
+tiny slime	1	may be harmless unless acidic
+basic slime	1–2	physical danger low, body traits matter
+stray dog	1–2	dangerous to ordinary person
+goblin	2	stronger in groups/traps
+novice bandit	2–3	weapon matters
+common wolf	2–3	pack raises threat
+trained guard	3	equipment and law matter
+skeleton	2–4	damage type matters
+zombie	2–4	slow but hard to stop
+large wolf	3–4	dangerous beast
+bandit captain	4	trained human threat
+elite guard	4–5	strong equipment/skill
+ogre	5	brute threat
+troll	6	regeneration raises tier
+lesser demon	5–6	magic/resistance likely
+battle mage	5–7	high MP/INT
+named champion	6–8	boss/skill scaling
+dragonling	7	dangerous early boss
+adult dragon	8	legendary monster
+lich	8–9	phylactery/sealing logic
+ancient dragon	9	mythic regional threat
+demon lord lieutenant	9	arc boss
+god avatar	10	manifestation of divine force
+full god	10+	requires special leverage
+cosmic entity	10+	not normal combat
+
+AIDRPG must update these defaults based on story.
+
+⸻
+
+13. Slime threat matrix
+
+Slimes need special treatment because AI Dungeon often uses them in creative ways.
+
+Slime Type	Individual Tier	Group Tier	Main Threat
+harmless tiny slime	0–1	1–2	nuisance, mess, weak acid maybe
+basic wild slime	1–2	2–3	engulfing, weak acid, physical weirdness
+acid slime	2–4	3–5	burns, equipment damage
+sticky slime	2–3	3–5	restraint, suffocation risk
+poison slime	3–5	4–6	toxin/condition
+tainted slime	3–5	4–7	corruption, disease, mutation
+intelligent slime	4–7	varies	tactics, negotiation, symbiosis
+mimic slime	4–8	varies	copying, disguise, ambush
+dungeon core slime	6–8	7–9	dungeon control, spawning
+ancient devouring slime	8–10	9–10	absorption, adaptation
+primordial slime	10+	special	world/cosmic body logic
+
+Slime validation rules:
+
+* do not assume every slime is weak
+* do not assume every slime is acid
+* do not assume stabbing works normally
+* do not assume a slime has a core unless established
+* do not allow slime symbiosis as simple equipment pickup
+* bonding with slime may affect body, item, actor, ability, condition, or curse systems
+
+⸻
+
+14. Wolf and beast threat matrix
+
+Wolves and beasts are common early threats.
+
+Beast	Default Tier	Notes
+small harmless animal	0–1	not combat-relevant unless disease/swarm
+stray dog	1–2	can hurt Level 1
+common wolf	2–3	dangerous to low-level player
+wolf pack	3–5	group tactics matter
+dire wolf	4–5	large monster beast
+magical wolf	4–7	depends on element/curse
+named alpha wolf	5–7	boss/pack leader
+divine/cursed wolf	7–10	story-specific
+
+Wolf danger factors:
+
+* pack count
+* ambush
+* terrain
+* hunger
+* disease
+* magical traits
+* alpha coordination
+* player injuries
+* night/fog/weather
+
+A normal wolf should not threaten a Level 100 character much.
+
+A cursed moon wolf might.
+
+⸻
+
+15. Goblin and small humanoid threat matrix
+
+Goblins are not always weak jokes.
+
+Goblin Type	Tier
+starving goblin	1–2
+ordinary goblin	2
+armed goblin	2–3
+goblin scout	3
+goblin trapper	3–4
+goblin shaman	4–5
+goblin boss	4–6
+goblin warband	group tier 5–7
+evolved/hobgoblin champion	5–7
+ancient goblin king	7–9
+
+Goblin threat factors:
+
+* traps
+* numbers
+* poison
+* terrain
+* ambush
+* shaman support
+* warband tactics
+* cowardice or morale
+* use of hostages
+* knowledge of tunnels
+
+Do not give full XP per goblin if group is handled as a mob.
+
+Use group scaling.
+
+⸻
+
+16. Human/humanoid threat matrix
+
+Humans and humanoids scale by role, equipment, training, and social position.
+
+Human/Humanoid Role	Physical Tier	Notes
+civilian	0–1	social/legal consequences may matter
+drunk thug	1–2	dangerous only early
+novice bandit	2	
+trained guard	3	
+veteran guard	4	
+elite soldier	4–5	
+assassin	4–6	poison/ambush can raise threat
+battle mage	5–7	
+knight captain	5–7	
+named champion	6–8	
+legendary swordsman	8–9	
+archmage	8–9	
+divine hero/avatar vessel	9–10	
+
+Humanoid danger factors:
+
+* weapon quality
+* armor
+* training
+* tactics
+* allies
+* legal authority
+* magic
+* poison
+* social leverage
+* reputation
+* preparedness
+* terrain
+* surprise
+
+A civilian noble may be Tier 0 physically but Tier 6 socially.
+
+⸻
+
+17. Undead threat matrix
+
+Undead tier depends on type, intelligence, necromancy, and death rules.
+
+Undead Type	Tier	Notes
+weak skeleton	2	blunt/holy weakness
+zombie	2–3	slow, durable
+skeleton soldier	3–4	weapon/armor
+ghoul	4–5	paralysis/disease
+wight	5–6	life drain
+vampire spawn	5–6	blood/charm/regeneration
+vampire noble	7–8	social and combat threat
+necromancer’s champion	6–8	equipment/magic
+lich	8–9	phylactery, high magic
+ancient death lord	9–10	army/curse/domain threat
+god of death avatar	10+	divine leverage needed
+
+Undead threat factors:
+
+* holy weakness
+* fire weakness
+* regeneration
+* poison immunity
+* disease
+* life drain
+* phylactery/anchor
+* morale immunity
+* numbers
+* necromancer support
+
+⸻
+
+18. Demon/fiend threat matrix
+
+Demons scale heavily by rank and summoning context.
+
+Demon Type	Tier	Notes
+imp	2–4	trickery, poison, fire
+lesser demon	5–6	magic/resistance
+demon brute	6–7	physical power
+demon mage	6–8	magic, curses
+named demon	7–9	boss logic
+demon general	8–9	
+demon lord lieutenant	9	
+demon lord avatar	10	
+true demon lord	10+	
+
+Demon threat factors:
+
+* summoning circle
+* true name
+* holy weakness
+* contract rules
+* corruption aura
+* regeneration
+* infernal resistance
+* possession
+* fear
+* minions
+* domain/plane advantage
+
+A demon outside its home plane may be weaker.
+
+A demon in its own domain may be much stronger.
+
+⸻
+
+19. Angel/celestial threat matrix
+
+Celestial entities also scale by rank.
+
+Celestial Type	Tier	Notes
+minor light spirit	2–4	support/purification
+lesser angel	5–6	
+warrior angel	6–8	
+judgment angel	7–9	
+archangel avatar	9–10	
+divine herald	10	
+full divine servant	10+	
+god manifestation	10+	
+
+Celestial threat factors:
+
+* divine law
+* holy power
+* flight
+* healing
+* judgment effects
+* oath enforcement
+* purification
+* anti-undead/demon advantage
+* cosmic permission
+* limited manifestation
+
+Celestials may be bound by rules, oaths, or domains.
+
+Those rules can be leverage.
+
+⸻
+
+20. Dragon threat matrix
+
+Dragons are major scaling anchors.
+
+Dragon Type	Tier	Notes
+hatchling	4–5	still dangerous to low levels
+young dragon	6–7	boss threat
+dragonling / drake	6–7	may lack full intelligence/magic
+adult dragon	8	legendary threat
+elder dragon	9	mythic threat
+ancient dragon	9–10	regional/world threat
+dragon sovereign	10	
+primordial dragon	10+	
+dragon god	10+ special	
+
+Dragon threat factors:
+
+* size
+* age
+* element
+* flight
+* breath weapon
+* scales
+* magic
+* intelligence
+* hoard/domain
+* minions
+* terrain
+* pride
+* anti-dragon weapons
+* elemental opposites
+* prophecy/oath weaknesses
+
+A dragon on open ground is different from a dragon in a cramped cave.
+
+A grounded dragon is different from a flying dragon.
+
+A wounded dragon is different from a prepared dragon.
+
+⸻
+
+21. Construct/golem threat matrix
+
+Constructs are durable and body-rule dependent.
+
+Construct Type	Tier	Notes
+weak automaton	2–3	
+guard construct	4–5	
+stone golem	5–6	
+iron golem	6–7	
+war machine	7–8	
+ancient guardian	8–9	
+divine construct	9–10	
+world-engine construct	10+	
+
+Construct threat factors:
+
+* armor material
+* power core
+* programming
+* magic resistance
+* repair/regeneration
+* weak joints
+* command sigils
+* rust/corrosion
+* anti-magic
+* hacking/control
+* environment
+
+Constructs may be immune to poison and fear but vulnerable to control disruption or core damage.
+
+⸻
+
+22. Spirit/ghost threat matrix
+
+Spirits may be weak physically but dangerous spiritually.
+
+Spirit Type	Tier	Notes
+minor ghost	2–3	
+haunting spirit	3–5	
+wraith	5–6	
+bound guardian spirit	5–7	
+elemental spirit	5–8	
+ancient ghost	7–8	
+spirit lord	8–9	
+divine spirit	9–10	
+cosmic spirit	10+	
+
+Spirit threat factors:
+
+* incorporeal body
+* possession
+* fear
+* soul damage
+* anchor
+* exorcism weakness
+* holy/spirit weapons
+* memory/emotion unresolved
+* place-bound rules
+* daylight/darkness rules
+
+Physical ATK/DEF may not decide spirit fights.
+
+Need correct damage type or ritual leverage.
+
+⸻
+
+23. Fae/fairy enemy threat matrix
+
+Fae are often tricky rather than durable.
+
+Fae Type	Tier	Notes
+minor pixie	1–3	
+trickster fae	3–5	
+fae duelist	4–6	
+fae witch	5–7	
+noble fae	7–8	
+archfey servant	8–9	
+archfey	9–10	
+fae sovereign	10+	
+
+Fae threat factors:
+
+* illusions
+* bargains
+* true names
+* glamour
+* charms
+* oaths
+* iron weakness if setting supports
+* social/legal trickery
+* domain rules
+* dream logic
+
+A low-HP fae can still be extremely dangerous through rules and bargains.
+
+⸻
+
+24. Giant/ogre/troll threat matrix
+
+Large brutes differ by regeneration and intelligence.
+
+Creature	Tier	Notes
+ogre youth	4	
+ogre	5	
+ogre chief	6	
+troll	6	regeneration
+war troll	7	
+young giant	6–7	
+adult giant	7–8	
+giant champion	8–9	
+titan spawn	9–10	
+titan	10+	
+
+Threat factors:
+
+* size
+* reach
+* regeneration
+* slow speed
+* vulnerability to fire/acid
+* crude or advanced weapons
+* armor
+* terrain
+* hunger
+* intelligence
+* thrown objects
+
+Troll regeneration must be treated as ability/trait, not just HP.
+
+⸻
+
+25. Boss scaling
+
+Bosses are not just stronger enemies.
+
+A boss may have:
+
+* higher resources
+* multiple phases
+* special abilities
+* minions
+* lair effects
+* resistances
+* weaknesses
+* named identity
+* quest/case/domain links
+* special defeat condition
+* escape/routesecond phase
+* story consequences
+
+Boss types:
+
+Boss Type	Resource Multiplier	Ability Complexity
+elite	×1.25–1.5	one special trait
+named enemy	×1.5–2	one or two special traits
+minor boss	×2–3	defined ability set
+major boss	×3–5	phases/minions/lair
+arc boss	×5–8	major story mechanics
+mythic boss	×8–15	special victory conditions
+world boss	special	may require non-combat resolution
+
+Bosses should not always die when HP hits zero if story supports alternate defeat rules.
+
+Examples:
+
+* lich requires phylactery
+* demon requires banishment circle
+* spirit requires anchor resolution
+* god avatar can be banished but not killed
+* troll regenerates unless countered
+* slime core must be damaged
+* dragon may flee if wounded
+
+Boss victory must be validated by the boss’s defeat condition.
+
+⸻
+
+26. Boss phase logic
+
+Some bosses should have phases.
+
+Phase examples:
+
+Physical phase
+
+Boss fights normally.
+
+Enraged phase
+
+ATK/SPD increase, defense drops or risk rises.
+
+Defensive phase
+
+Boss shields, summons, or retreats.
+
+Ritual phase
+
+Boss channels spell/objective.
+
+Desperation phase
+
+Boss uses dangerous final ability.
+
+Escape phase
+
+Boss flees, transforms, or collapses lair.
+
+Non-combat phase
+
+Negotiation, oath, puzzle, exorcism, seal, or moral decision.
+
+Phases should be used for major bosses, not every enemy.
+
+AIDRPG should not invent phases unless boss scale/story supports them.
+
+⸻
+
+27. Boss defeat condition examples
+
+Boss Type	Possible Defeat Conditions
+troll	fire/acid prevents regeneration
+lich	body destroyed plus phylactery/anchor dealt with
+vampire	sunlight/stake/holy/decapitation depending setting
+demon	physical defeat, banishment, true name, contract
+ghost	exorcism, anchor resolution, emotional closure
+construct	core destroyed, command sigil disrupted
+dragon	HP defeat, surrender, flight, hoard/oath leverage
+fae	bargain, true name, iron, rule exploit
+god avatar	banishment, ritual, divine law, artifact
+slime core	core disruption, drying, fire, containment
+
+If defeat condition is unmet, outcome may be:
+
+* wounded
+* routed
+* temporarily dispersed
+* sealed
+* delayed
+* escaped
+* weakened
+* transformed
+
+not fully killed.
+
+⸻
+
+28. Group threat scaling
+
+Groups require separate scaling.
+
+Group threat depends on:
+
+* individual tier
+* number
+* coordination
+* morale
+* terrain
+* ranged/melee mix
+* leader
+* formation
+* surprise
+* swarm traits
+* player AoE ability
+* party size
+* escape routes
+
+A group should track:
+
+Group name:
+Total count:
+Active count:
+Killed:
+Wounded:
+Fled:
+Captured:
+Routed:
+Individual tier:
+Group tier:
+Morale:
+Coordination:
+Leader:
+Hazards:
+
+This prevents “13 goblins attack, 9 die, therefore all gone” bugs.
+
+⸻
+
+29. Group tier estimation
+
+Suggested group tier adjustment:
+
+Count	Group Tier Increase
+1	+0
+2–3	+1
+4–7	+2
+8–15	+3
+16–30	+4
+31–60	+5
+61–150	+6
+151+	army-scale
+
+Apply only if the group can actually coordinate or threaten the player.
+
+Weak enemies may not scale much if:
+
+* player has huge AoE
+* enemies cannot reach player
+* enemies are terrified
+* terrain funnels them
+* enemies are harmless
+
+Swarms may scale faster because they overwhelm through mass.
+
+Example:
+
+13 Tier 2 goblins:
+
+* individual Tier 2
+* count increase +3
+* group Tier 5 if coordinated/armed
+
+But if disorganized and scared:
+
+* maybe group Tier 4
+
+If led by shaman and ambushing:
+
+* maybe group Tier 5–6
+
+⸻
+
+30. Swarm scaling
+
+Swarms are different from groups.
+
+A swarm may be dangerous because individual attacks accumulate.
+
+Swarm traits:
+
+* surrounds
+* blocks movement
+* ignores single-target damage
+* causes attrition
+* spreads disease/poison
+* suffocates
+* consumes resources
+* reduces visibility
+* damages equipment
+* overwhelms footing
+
+Examples:
+
+* rat swarm
+* insect cloud
+* slime swarm
+* undead horde
+* shadow swarm
+* nanite swarm
+* spirit swarm
+
+Swarm threat depends on:
+
+* area covered
+* individual hazard
+* density
+* movement speed
+* player AoE access
+* containment
+* environmental weakness
+* escape route
+
+A sword master may struggle against insects if they lack AoE.
+
+A fire mage may trivialize ordinary insect swarms.
+
+⸻
+
+31. Enemy morale
+
+Enemies should not always fight to death.
+
+Morale states:
+
+* fearless
+* confident
+* steady
+* shaken
+* frightened
+* routing
+* surrendered
+* berserk
+* mindless
+* controlled
+
+Morale affects:
+
+* whether enemies flee
+* whether group collapses
+* whether intimidation works
+* whether combat continues
+* whether XP/reward is based on defeat, rout, negotiation, or survival
+
+Examples:
+
+Goblins may flee after leader dies.
+
+Undead may not flee.
+
+Constructs may continue until disabled.
+
+Fanatics may fight to death.
+
+Animals may run from fire or injury.
+
+Bosses may retreat strategically.
+
+Morale makes freeform combat more believable.
+
+⸻
+
+32. Enemy intelligence
+
+Intelligence affects tactics.
+
+Enemy intelligence categories:
+
+Category	Behavior
+mindless	simple attack/command
+animal	instinct, fear, pack behavior
+cunning animal	ambush, terrain use
+low humanoid	basic tactics, tools
+trained humanoid	formation, tactics
+expert	counters, strategy, feints
+genius	plans, traps, adaptation
+alien/divine	may follow non-human logic
+
+Do not assume species equals intelligence.
+
+A goblin may be clever.
+
+A dragon may be brilliant.
+
+A slime may be mindless or genius.
+
+A cosmic entity may not behave like a person.
+
+⸻
+
+33. Enemy equipment
+
+Humanoid enemies often scale through equipment.
+
+Equipment can raise threat through:
+
+* weapon damage
+* armor
+* shield
+* poison
+* ranged weapons
+* magic items
+* traps
+* potions
+* mounts
+* siege weapons
+* artifacts
+
+Example:
+
+A Tier 2 bandit with rusty knife is minor.
+
+A Tier 2 bandit with poisoned crossbow in ambush may become Tier 4 scene threat.
+
+A civilian with a god-killing artifact may be physically weak but extremely dangerous.
+
+Equipment can create threat spikes.
+
+⸻
+
+34. Enemy abilities
+
+Enemies may have abilities.
+
+Enemy ability categories:
+
+* natural attack
+* spell
+* passive
+* regeneration
+* resistance
+* immunity
+* aura
+* summon
+* curse
+* poison
+* disease
+* mobility
+* stealth
+* illusion
+* possession
+* charm
+* absorption
+* adaptation
+* phase shift
+* domain/lair effect
+
+Enemy ability rank can mirror player ability rank.
+
+Suggested enemy ability rank by tier:
+
+Enemy Tier	Typical Ability Rank
+0–1	none or Rank 1
+2	Rank 1–2
+3	Rank 2–3
+4	Rank 3–4
+5	Rank 4–5
+6	Rank 5–6
+7	Rank 6–7
+8	Rank 7–8
+9	Rank 8–9
+10	Rank 9–10
+10+	special/mythic
+
+A Tier 2 slime should not have Rank 9 adaptation unless it is secretly not Tier 2.
+
+If it shows Rank 9 adaptation, its threat estimate must increase.
+
+⸻
+
+35. Resistances and weaknesses
+
+Enemies should have resistances and weaknesses based on body and lore.
+
+Resistance types:
+
+* physical
+* slashing
+* piercing
+* blunt
+* fire
+* ice
+* lightning
+* acid
+* poison
+* disease
+* holy
+* dark
+* psychic
+* spirit
+* magic
+* nonmagical weapons
+* status effects
+* fear
+* charm
+* sleep
+* paralysis
+
+Weakness types:
+
+* elemental
+* material
+* ritual
+* body part/core
+* social/oath
+* true name
+* terrain
+* light/darkness
+* sound
+* salt/iron/silver
+* divine/infernal
+* emotional anchor
+* phylactery
+* command sigil
+
+Resistance should not be full immunity unless supported.
+
+Weakness should not be assumed unless supported.
+
+Example:
+
+Slime may resist piercing, but not necessarily fire if water slime.
+
+Werewolf may be weak to silver if setting supports it.
+
+Fae may be weak to iron if setting supports it.
+
+⸻
+
+36. Resistance levels
+
+Use resistance levels:
+
+Resistance Level	Effect
+Vulnerable	takes more damage or suffers worse effect
+Normal	no special modifier
+Resistant	reduced effect
+Highly Resistant	greatly reduced effect
+Immune	no effect unless bypassed
+Absorbs	converts effect into healing/charge
+Reflects	sends effect back or redirects
+Conditional	depends on state/context
+
+Example:
+
+Fire elemental:
+
+* absorbs fire
+* vulnerable to water/ice maybe
+* physical normal/resistant depending body
+
+Troll:
+
+* physical normal/high HP/regeneration
+* fire/acid prevents regeneration
+
+Ghost:
+
+* immune/resistant to mundane physical
+* vulnerable to holy/spirit weapons/exorcism
+
+⸻
+
+37. Enemy status and condition rules
+
+Enemies can have:
+
+* HP loss
+* injuries
+* conditions
+* morale effects
+* fatigue
+* poison
+* stunned
+* burning
+* frozen
+* bleeding
+* cursed
+* restrained
+* blinded
+* knocked down
+* disarmed
+* routed
+* captured
+* banished
+* sealed
+
+But conditions must fit body type.
+
+Examples:
+
+Skeleton does not bleed normally.
+
+Construct does not get biological poison normally.
+
+Slime does not get broken bones normally.
+
+Spirit does not get tripped normally unless manifested/bound.
+
+AIDRPG should convert or reject incompatible conditions.
+
+⸻
+
+38. Enemy current state
+
+An enemy’s current condition matters.
+
+Threat can be reduced by:
+
+* wounded
+* exhausted
+* surprised
+* restrained
+* asleep
+* distracted
+* trapped
+* poisoned
+* sealed
+* disarmed
+* frightened
+* weakened by ritual
+* away from lair
+* missing minions
+* low MP/EP
+
+Threat can be increased by:
+
+* enraged
+* prepared
+* buffed
+* in lair
+* protected by minions
+* at full resources
+* holding hostage
+* advantage terrain
+* ambush
+* player exhausted
+* divine favor
+* ritual ongoing
+
+A wounded dragon may be Tier 8 base but Tier 7 effective.
+
+A prepared dragon in its lair may be Tier 9.
+
+⸻
+
+39. Encounter difficulty labels
+
+AIDRPG should label encounters relative to the player.
+
+Labels:
+
+* harmless
+* trivial
+* easy
+* manageable
+* fair
+* dangerous
+* severe
+* overwhelming
+* impossible without leverage
+* non-combat threat
+* unknown threat
+
+Encounter difficulty should consider:
+
+* player effective level
+* player resources
+* party
+* enemy group tier
+* enemy abilities
+* enemy state
+* terrain
+* leverage
+* objective
+* escape possibility
+
+Example:
+
+A Tier 5 ogre against Level 50 warrior:
+
+* fair/dangerous depending stats
+
+A Tier 5 ogre against Level 5 novice:
+
+* overwhelming
+
+A Tier 5 ogre trapped in pit while Level 5 has fire/oil/bow:
+
+* dangerous but possible with leverage
+
+⸻
+
+40. Enemy tier versus player level table
+
+This is the practical matchup table.
+
+Enemy Tier	Fair Player Level	Dangerous Below	Trivial Above
+1	1–3	Level 1 fragile	Level 10+
+2	3–8	Level 1–2	Level 20+
+3	8–18	Level 1–7	Level 35+
+4	18–35	Level 1–17	Level 60+
+5	35–75	Level 1–34	Level 120+
+6	75–150	Level 1–74	Level 250+
+7	150–300	Level 1–149	Level 450+
+8	300–500	Level 1–299	Level 700+
+9	500–800	Level 1–499	Level 1000+ only maybe
+10	800–1000+	Level 1–799	rarely trivial
+10+	special	usually impossible	not trivial without special scale
+
+“Trivial above” can still be dangerous if:
+
+* enemy has special counter
+* player is exhausted
+* enemy uses poison/curse
+* social/legal stakes matter
+* objective is protection, not survival
+* collateral damage matters
+* enemy is a swarm with special mechanics
+
+⸻
+
+41. Encounter objective matters
+
+Difficulty depends on the goal.
+
+Examples:
+
+Goal: survive
+
+Easier than killing boss.
+
+Goal: escape
+
+May depend on SPD/travel/terrain.
+
+Goal: protect civilians
+
+Harder because collateral matters.
+
+Goal: capture alive
+
+Harder than killing.
+
+Goal: avoid detection
+
+Depends on stealth and enemy senses.
+
+Goal: negotiate
+
+Depends on social logic, not just combat tier.
+
+Goal: steal item
+
+Depends on stealth, traps, security, enemy awareness.
+
+Goal: banish spirit
+
+Requires correct ritual/knowledge, not raw ATK.
+
+AIDRPG should scale encounter difficulty against the actual objective.
+
+⸻
+
+42. Environmental modifiers
+
+Environment can change threat.
+
+Examples:
+
+* narrow tunnel
+* open field
+* cliff
+* river
+* storm
+* fog
+* darkness
+* lava
+* ice
+* city crowd
+* holy ground
+* cursed zone
+* enemy lair
+* anti-magic field
+* underwater
+* burning building
+* unstable bridge
+
+Environment can:
+
+* raise enemy effective tier
+* lower enemy effective tier
+* raise player effective level
+* lower player effective level
+* change possible actions
+* change damage types
+* create hazards
+* create leverage
+
+Example:
+
+Fire mage versus slime in dry field:
+
+* player advantage
+
+Fire mage versus water slime underwater:
+
+* player disadvantage
+
+Wolf pack in dense forest at night:
+
+* enemy advantage
+
+Wolf pack in open daylight with mounted party:
+
+* player advantage
+
+⸻
+
+43. Party and ally modifiers
+
+Party support changes difficulty.
+
+Ally factors:
+
+* number
+* level/tier
+* roles
+* morale
+* injuries
+* loyalty
+* coordination
+* equipment
+* relationship
+* commands
+* presence/absence
+
+AIDRPG must check that allies are actually present.
+
+Do not let absent companions contribute.
+
+Suggested party impact:
+
+Ally Support	Encounter Shift
+weak/minor help	small benefit
+useful companion	+10–25% effective strength
+strong companion	+25–75%
+full balanced party	+50–150%
+army/group support	scale system applies
+unreliable ally	benefit uncertain
+absent ally	no benefit
+
+Party support may also create new risks:
+
+* protecting allies
+* coordination problems
+* friendly fire
+* morale
+* injuries
+* split objectives
+
+⸻
+
+44. Enemy generation from AI text
+
+When AI introduces an enemy, AIDRPG should parse but not overcommit.
+
+Example AI output:
+
+A huge wolf steps from the fog, its eyes burning blue.
+
+Threat estimate:
+
+* wolf-like beast
+* large
+* magical sign: blue burning eyes
+* fog environment
+* individual tier maybe 4–6
+* confidence moderate
+* suspected magic/cold/spirit trait
+
+Do not immediately assign:
+
+* exact HP
+* exact weakness
+* exact name
+* exact boss status
+
+unless text gives it.
+
+If later output says:
+
+The villagers whisper that this is Frostmaw, the spirit wolf that killed three hunters.
+
+Update:
+
+* name Frostmaw
+* boss/named enemy
+* spirit/cold traits likely
+* tier increases
+* actor/card eligibility possible if recurring/important
+
+⸻
+
+45. Enemy card behavior
+
+Generated enemy cards should be rare.
+
+Create cards for:
+
+* recurring named enemies
+* bosses
+* important monsters
+* major faction enemies
+* companion-like creatures
+* world entities
+* quest-critical creatures
+* enemies with complex rules
+* major group leaders
+
+Do not create cards for:
+
+* every wolf
+* every goblin
+* every slime
+* every guard
+* every random bandit
+* every unnamed monster
+* every temporary enemy group
+
+Enemy card should include:
+
+Name:
+Type:
+Tier estimate:
+Known traits:
+Known weaknesses:
+Status:
+Relationship/hostility:
+Quest/case/faction links:
+Last known location:
+Defeat condition if known:
+Uncertainty:
+
+Enemy cards must update when:
+
+* enemy is wounded
+* enemy retreats
+* enemy dies
+* weakness is discovered
+* tier estimate changes
+* enemy becomes ally/neutral
+* boss phase/defeat condition is learned
+* enemy card facts become stale
+
+⸻
+
+46. Enemy card trigger safety
+
+Enemy card triggers should be specific.
+
+Good triggers:
+
+* Frostmaw
+* Ashen Troll
+* Lord Veyr
+* Blackwood Slime Core
+* The Bone Knight
+
+Bad triggers:
+
+* wolf
+* troll
+* slime
+* demon
+* dragon
+* enemy
+* monster
+* boss
+* guard
+
+A card for “Frostmaw the spirit wolf” can trigger on:
+
+* Frostmaw
+
+Maybe:
+
+* spirit wolf Frostmaw
+
+Not:
+
+* wolf
+
+This prevents the card from firing every time any wolf appears.
+
+⸻
+
+47. Enemy and XP connection
+
+Enemy tier affects XP through effective level.
+
+XP should consider:
+
+* enemy tier
+* group tier
+* boss status
+* player level
+* challenge ratio
+* actual danger
+* objective
+* contribution
+* leverage
+* anti-farm
+* duplicate checks
+
+Defeating a Tier 5 ogre at Level 40 gives meaningful XP.
+
+Defeating a Tier 5 ogre at Level 500 gives little Level XP unless special story relevance exists.
+
+Surviving a Tier 9 dragon at Level 100 may give survival XP if validated, even without victory.
+
+Negotiating with a Tier 8 dragon may give social/quest XP, not combat XP.
+
+⸻
+
+48. Enemy and stat absorption connection
+
+Enemy tier affects absorption.
+
+Chunk 26 will define absorption in detail.
+
+Chunk 23 rule:
+
+Absorption source value depends on:
+
+* enemy tier
+* enemy uniqueness
+* enemy trait compatibility
+* whether enemy was truly defeated/acquired
+* whether source is consumed
+* player level
+* anti-farm caps
+* risk
+* story support
+
+Weak enemies far below player scale give little or no absorption value.
+
+Boss/unique enemies may provide strong but risky evolution material.
+
+A slime absorbing 100 ordinary rats should not become godlike.
+
+A slime absorbing a dragon core may create major evolution progress, but also risk.
+
+⸻
+
+49. Enemy and investigation connection
+
+Enemies can also be clues.
+
+Example:
+
+A slime’s color reveals corruption.
+
+A wolf’s wounds reveal a larger predator.
+
+A goblin’s weapon shows faction supply.
+
+A demon’s sigil identifies summoner.
+
+A ghost’s behavior reveals unresolved murder.
+
+Threat estimate should connect to InvestigationReducer when creature evidence matters.
+
+Enemy traits discovered through observation can become:
+
+* clues
+* evidence
+* weaknesses
+* quest progress
+* ability counters
+* card updates
+
+⸻
+
+50. Enemy and reputation connection
+
+Enemies can affect reputation.
+
+Examples:
+
+* killing wolves threatening village improves local reputation
+* killing sacred wolves harms reputation
+* sparing goblins creates mercy reputation
+* defeating bandits earns title
+* killing guards creates legal trouble
+* banishing demon improves church standing
+* killing demon peacefully might anger demon faction
+* killing dragon may create fame or dragon-hunter enemies
+
+Enemy outcome must route to ReputationReducer only when public/witnessed/known.
+
+Private kills do not automatically create public fame.
+
+Rumors may spread over time.
+
+⸻
+
+51. Enemy and quest connection
+
+Enemies may be:
+
+* quest targets
+* blockers
+* witnesses
+* victims
+* suspects
+* companions
+* faction members
+* contract targets
+* domain threats
+* route hazards
+* world entities
+
+Killing or defeating enemy may affect quests only if linked.
+
+Example:
+
+Defeating random wolf:
+
+* no quest progress unless wolf was quest target
+
+Defeating “the mill wolf” linked to quest:
+
+* quest progress
+
+Defeating wrong wolf:
+
+* no completion, maybe clue
+
+QuestReducer owns quest progress.
+
+Enemy defeat only proposes it.
+
+⸻
+
+52. Enemy condition compatibility
+
+Conditions must fit enemy body.
+
+Examples:
+
+Slime
+
+Valid:
+
+* burning
+* frozen
+* dried
+* dispersed
+* contaminated
+* core cracked
+* cohesion unstable
+
+Invalid unless special:
+
+* broken bones
+* bleeding
+* pierced lung
+
+Skeleton
+
+Valid:
+
+* cracked bones
+* missing limb
+* holy burn
+* necromantic disruption
+
+Invalid:
+
+* poison blood
+* bleeding wound
+
+Construct
+
+Valid:
+
+* cracked plating
+* jammed joint
+* core damage
+* rust
+* overheated
+
+Invalid:
+
+* disease
+* normal bleeding
+
+Spirit
+
+Valid:
+
+* banished
+* bound
+* essence torn
+* anchor damaged
+
+Invalid:
+
+* tripped physically unless manifested
+* ordinary stab wound
+
+This should be enforced by CanonValidator.
+
+⸻
+
+53. Enemy current-state examples
+
+Example 1 — wounded ogre
+
+Base:
+
+* Tier 5
+
+Current state:
+
+* one leg injured
+* bleeding
+* enraged
+
+Effective:
+
+* ATK may rise briefly
+* SPD lowered
+* morale maybe berserk
+* still dangerous but easier to evade
+
+Example 2 — prepared mage
+
+Base:
+
+* Tier 5
+
+Current state:
+
+* shield spell active
+* full MP
+* ritual circle prepared
+
+Effective:
+
+* Tier 6 scene threat
+
+Example 3 — dragon in cramped cave
+
+Base:
+
+* Tier 8
+
+Current state:
+
+* cannot fly
+* wings cramped
+* still strong
+
+Effective:
+
+* lower mobility
+* breath still dangerous
+* terrain can help player
+
+Example 4 — ghost on holy ground
+
+Base:
+
+* Tier 5
+
+Environment:
+
+* holy ground weakens it
+
+Effective:
+
+* lower threat
+* exorcism easier
+
+⸻
+
+54. Encounter generation policy
+
+AIDRPG should not randomly generate enemies unless the script is specifically designed to simulate encounters.
+
+In AI Dungeon, enemies are usually introduced by the story.
+
+When AI introduces an enemy:
+
+* estimate threat
+* validate consequences
+* track if important
+* avoid unnecessary cards
+* route combat/quest/reputation effects as needed
+
+If a future random encounter system is added, it should use:
+
+* current location
+* route hazards
+* time
+* weather
+* player level
+* story tone
+* region ecology
+* quest/domain state
+* anti-spam rules
+
+But random generation is not required for MVP.
+
+⸻
+
+55. Enemy difficulty and validation outcomes
+
+Enemy-related events use five outcomes.
+
+Accept
+
+Use when enemy fact or consequence is confirmed.
+
+Examples:
+
+* wolf bites player
+* goblin group has thirteen members
+* dragon breathes fire
+* troll regenerates
+* boss flees wounded
+
+Reject
+
+Use when unsupported.
+
+Examples:
+
+* normal rat kills Level 500 player instantly
+* Tier 1 slime suddenly has godlike power with no setup
+* player kills dragon with no leverage at Level 5
+* absent enemy attacks
+
+Pending
+
+Use when possible but unconfirmed.
+
+Examples:
+
+* strange slime may be acidic
+* wolf may be magical
+* old man may be dangerous
+* rumor of dragon nearby
+
+Soft_fail
+
+Use when attempt partially works.
+
+Examples:
+
+* player wounds troll but it regenerates
+* player damages slime but does not kill core
+* player scares goblins but leader holds them
+* player identifies possible weakness but not enough proof
+
+Hard_deny
+
+Use when unsafe/non-canon.
+
+Examples:
+
+* card text creates enemy
+* debug text creates monster
+* dream enemy changes real scene
+* duplicate enemy defeat reward
+* junk enemy name becomes card
+* unsupported instant god kill
+
+⸻
+
+56. Commands related to enemies
+
+/combat
+
+Shows:
+
+* active enemies
+* group counts
+* enemy tier estimate
+* matchup
+* known traits
+* known weaknesses
+* player warnings
+* current combat state
+
+/enemy <name>
+
+Optional command.
+
+Shows:
+
+* enemy identity
+* tier estimate
+* confidence
+* known abilities
+* known weaknesses
+* current status
+* links
+
+/scale
+
+Shows group counts and casualties.
+
+/debuglast
+
+Shows enemy proposals and validation.
+
+/threat
+
+Optional command.
+
+Shows current threat estimate.
+
+Example:
+
+Threat Estimate:
+Enemy: Frostmaw
+Type: magical wolf
+Tier: 5–6
+Confidence: moderate
+Known: large wolf, blue fire eyes, villagers fear it
+Suspected: cold/spirit magic
+Matchup: dangerous at current level
+
+⸻
+
+57. Chunk 23 acceptance tests
+
+Test 1 — ordinary rat versus Level 100
+
+Given:
+
+Level 100 player encounters ordinary rat.
+
+Expected:
+
+* Tier 1 physical threat
+* trivial encounter
+* no meaningful XP
+* no serious injury unless special context
+
+Test 2 — plague rat versus Level 100
+
+Given:
+
+Rat carries divine plague.
+
+Expected:
+
+* physical tier low
+* disease/curse threat high
+* encounter not dismissed as harmless
+* XP based on real hazard if resolved
+
+Test 3 — basic slime
+
+Given:
+
+Basic slime appears.
+
+Expected:
+
+* Tier 1–2 estimate
+* physical weirdness noted
+* no acid/core assumptions unless confirmed
+
+Test 4 — acid slime
+
+Given:
+
+AI describes slime burning through boots.
+
+Expected:
+
+* acid trait confirmed
+* tier raised if necessary
+* equipment damage possible
+
+Test 5 — tainted slime swarm
+
+Given:
+
+Dozens of tainted slimes block route.
+
+Expected:
+
+* individual tier maybe 2–3
+* group tier 4–6
+* corruption hazard possible
+* no simple “one slime” handling
+
+Test 6 — goblin group count
+
+Given:
+
+Thirteen goblins attack.
+
+Expected:
+
+* group record total 13
+* group tier calculated
+* casualties tracked numerically
+
+Test 7 — partial group defeat
+
+Given:
+
+Nine goblins fall.
+
+Expected:
+
+* killed 9
+* active remaining 4
+* group not fully defeated unless routed/finished
+
+Test 8 — trained human
+
+Given:
+
+Player faces trained guard.
+
+Expected:
+
+* tier around 3
+* equipment/legal authority noted
+* not treated as harmless civilian
+
+Test 9 — civilian noble
+
+Given:
+
+Civilian noble threatens player legally.
+
+Expected:
+
+* physical tier 0–1
+* social/legal threat may be high
+* combat stats do not solve legal threat automatically
+
+Test 10 — dragonling against Level 20
+
+Given:
+
+Level 20 player faces dragonling.
+
+Expected:
+
+* overwhelming without leverage
+* victory rejected/softened if unsupported
+* escape, hiding, bargaining, or leverage more plausible
+
+Test 11 — dragon with leverage
+
+Given:
+
+Level 30 player has dragon trap, anti-dragon spear, and wounded dragonling.
+
+Expected:
+
+* matchup improves
+* dangerous but possible if narration supports
+
+Test 12 — troll regeneration
+
+Given:
+
+Player cuts troll.
+
+Expected:
+
+* damage may occur
+* regeneration considered
+* death not confirmed unless weakness/defeat condition met
+
+Test 13 — ghost physical attack
+
+Given:
+
+Player swings mundane sword at ghost.
+
+Expected:
+
+* physical attack reduced/rejected unless ghost manifested or weapon special
+* spirit/holy/anchor options more relevant
+
+Test 14 — construct poisoned
+
+Given:
+
+Enemy construct hit with normal poison.
+
+Expected:
+
+* poison ineffective unless corrosive/magical
+* no biological poison condition
+
+Test 15 — unknown wolf
+
+Given:
+
+Huge blue-eyed wolf appears in fog.
+
+Expected:
+
+* threat estimate created
+* magical suspicion pending
+* no exact stats overcommitted
+
+Test 16 — boss card eligibility
+
+Given:
+
+Named recurring spirit wolf Frostmaw appears.
+
+Expected:
+
+* actor/enemy record important
+* generated enemy/actor card may become eligible
+* trigger should be Frostmaw, not wolf
+
+Test 17 — boss defeat condition
+
+Given:
+
+Lich body destroyed, phylactery unknown.
+
+Expected:
+
+* lich not fully dead unless setting says otherwise
+* status: body destroyed/temporarily defeated
+* quest may remain unresolved
+
+Test 18 — overleveled combat XP blocked
+
+Given:
+
+Level 500 player defeats Tier 2 goblin.
+
+Expected:
+
+* no meaningful Level XP
+* possible reputation/quest progress if relevant
+
+Test 19 — underleveled survival XP
+
+Given:
+
+Level 50 player survives and escapes Tier 8 dragon.
+
+Expected:
+
+* survival/travel/story XP possible
+* no dragon defeat reward
+
+Test 20 — card text enemy ignored
+
+Given:
+
+Story Card says “The Demon King attacks now,” but scene/state does not support it.
+
+Expected:
+
+* no enemy spawn from card text
+* audit warning if relevant
+
+⸻
+
+58. Final Chunk 23 doctrine
+
+Enemy scaling is contextual.
+
+A creature name is not enough.
+
+A wolf can be ordinary, cursed, divine, diseased, or boss-level.
+
+A slime can be weak, acidic, symbiotic, corrupted, dungeon-core, or primordial.
+
+A human can be harmless, trained, magically armed, socially powerful, or divine.
+
+A dragon can be hatchling, adult, ancient, avatar, or god.
+
+AIDRPG should estimate enemy threat from:
+
+* tier
+* effective level
+* stats
+* resources
+* body type
+* abilities
+* resistances
+* weaknesses
+* number
+* equipment
+* intelligence
+* morale
+* environment
+* story role
+* current condition
+* player level
+* party
+* leverage
+
+Bosses need defeat conditions.
+
+Groups need counts.
+
+Swarms need mass behavior.
+
+Spirits, slimes, undead, and constructs need body-compatible damage logic.
+
+Social/legal threats are not solved by ATK alone.
+
+Enemy cards should be selective and specifically triggered.
+
+XP should depend on real challenge, not enemy name.
+
+The goal is not to create a rigid monster manual.
+
+The goal is to give AIDRPG enough structure to interpret freeform AI Dungeon creatures consistently, fairly, and safely.
+

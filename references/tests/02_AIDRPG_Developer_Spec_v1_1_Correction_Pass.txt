@@ -1,0 +1,1472 @@
+AIDRPG Developer Spec v1.1 — Correction Pass
+
+0. Document status
+
+Document name: AIDRPG Developer Spec v1.1 — Correction Pass
+Applies to: AIDRPG Developer Spec v1
+Purpose: Tighten unclear areas before creating the MVP Build Spec.
+Status: Correction overlay, not code.
+Authority: This document overrides Developer Spec v1 wherever there is ambiguity.
+
+Developer Spec v1 established the build blueprint.
+
+Developer Spec v1.1 corrects, tightens, and locks the parts that were still too loose:
+
+* MVP boundaries
+* reducer ownership conflicts
+* proposal schema details
+* operation key policy
+* parser confidence
+* resolver behavior
+* context budgets
+* CardSync limits
+* cleanup limits
+* formula placeholders
+* command scope
+* testing gates
+* strictness mode behavior
+* deferred systems
+
+This document exists to make sure the next document, AIDRPG MVP Build Spec v1, can be short, exact, and buildable.
+
+⸻
+
+1. Authority order
+
+From this point forward, implementation should follow this authority order:
+
+1. MVP Build Spec v1, once created
+2. Developer Spec v1.1 Correction Pass
+3. Developer Spec v1
+4. Chunk 33 Final Pre-Build Lockdown
+5. Chunks 1–32 Design Bible
+
+If a gameplay chunk says something broad and Developer Spec v1.1 says something narrower, follow Developer Spec v1.1 for implementation.
+
+If v1 and v1.1 conflict, follow v1.1.
+
+If v1.1 still leaves something undecided, the MVP Build Spec must decide it before coding.
+
+⸻
+
+2. Main correction summary
+
+The v1 blueprint is directionally correct, but these changes are required before coding:
+
+1. MVP must be smaller.
+2. Generated card creation must be disabled by default.
+3. Economy, crafting, investigation, factions, domain, absorption, and multi-protagonist support are deferred.
+4. OperationLedger must use permanent and rolling keys.
+5. ContextBuilder must use hard packet budgets.
+6. Parser confidence must treat AI output as proposed truth, not truth.
+7. Item pickup and visible loot must be separated.
+8. Actor presence must be enforced in MVP.
+9. Quest rewards must be separated into promised, ready, paid.
+10. Commands must not mutate state unless explicitly manual/debug commands.
+11. Protected cards are required; generated cards are beta only.
+12. Cleanup must be conservative and never delete important state.
+13. Formula-heavy systems must not be pretended complete until Formula Appendix v1.
+14. Debug/audit output must be reliable before advanced systems are added.
+
+⸻
+
+3. Corrected MVP scope
+
+Developer Spec v1 included a broad MVP. v1.1 narrows it.
+
+3.1 MVP Core must build only these gameplay systems
+
+The MVP should include:
+
+* Player sheet
+* Body/resources
+* Inventory/custody
+* Abilities as candidate/stable records
+* Quest log lite
+* Actor memory lite
+* Current location/scene
+* Time lite
+* ContextBuilder
+* Protected cards
+* OperationLedger
+* Audit commands
+
+3.2 MVP must not attempt full versions of these
+
+The MVP must not fully build:
+
+* economy
+* crafting
+* investigation cases
+* factions
+* reputation
+* titles
+* labor/workers
+* domain projects
+* absorption/devour/copy/evolution
+* generated card ecosystem
+* multi-protagonist mode
+* advanced combat matrixes
+* full weather/travel simulation
+
+3.3 MVP can leave placeholders for deferred systems
+
+Deferred systems may have placeholder state fields only if they are inert.
+
+Allowed placeholder examples:
+
+state.deferred.economyEnabled = false
+state.deferred.craftingEnabled = false
+state.deferred.investigationEnabled = false
+state.deferred.domainEnabled = false
+
+Do not create half-working systems that mutate state unpredictably.
+
+⸻
+
+4. Corrected build phases
+
+Developer Spec v1 phases are mostly correct, but v1.1 tightens the order.
+
+Phase 0 — Documentation lock
+
+Required documents before code:
+
+1. Developer Spec v1
+2. Developer Spec v1.1
+3. MVP Build Spec v1
+4. Test Spec v1
+
+No code should be generated before MVP Build Spec and Test Spec exist.
+
+Phase 1 — State and commands only
+
+Build only:
+
+* StateManager
+* root schema
+* command router
+* inspection commands
+* audit shell
+
+No parser automation yet.
+
+Phase 2 — Proposal pipeline only
+
+Build:
+
+* EventScanner skeleton
+* ProposalBuilder
+* CanonValidator skeleton
+* ReducerRegistry
+* OperationLedger
+* AuditLogger
+
+The goal is not gameplay yet. The goal is safe proposal flow.
+
+Phase 3 — Inventory/body/ability safety
+
+Build:
+
+* BodyReducer
+* InventoryReducer
+* AbilityReducer
+* item visibility versus ownership
+* actor presence checks for ability/help actions
+* candidate versus stable ability checks
+
+Phase 4 — Context and protected cards
+
+Build:
+
+* ContextBuilder
+* context packet budget
+* protected summary cards
+* dirty card queue
+* CardSyncLite only
+
+Generated card creation remains disabled.
+
+Phase 5 — Quest/actor/location MVP
+
+Build:
+
+* QuestReducer lite
+* ActorReducer lite
+* PlaceReducer lite
+* TimeReducer lite
+* quest reward dedupe
+* actor presence enforcement
+* simple location/time corrections
+
+Phase 6 — Basic combat/progression MVP
+
+Build only after Formula Appendix v1 exists.
+
+Phase 7 — Generated CardSync beta
+
+Build only after all earlier gates pass.
+
+Generated CardSync is not part of the first MVP.
+
+Phase 8 — Advanced systems
+
+Only after MVP script is stable.
+
+⸻
+
+5. Corrected module ownership
+
+Developer Spec v1 had minor ownership overlap. v1.1 locks boundaries.
+
+5.1 SceneReducer is not a separate MVP reducer
+
+For MVP, scene state belongs to PlaceReducer.
+
+Later, SceneReducer may be split out if needed.
+
+MVP rule:
+
+PlaceReducer owns currentLocation and currentScene.
+
+5.2 TravelReducer is deferred
+
+For MVP:
+
+* TimeReducer owns time passage.
+* PlaceReducer owns current location.
+* Travel events are simple proposals that may update both through owner reducers.
+
+Later, TravelReducer may exist.
+
+MVP rule:
+
+No full TravelReducer in MVP.
+
+5.3 EconomyReducer is deferred
+
+For MVP:
+
+* InventoryReducer owns accessible currency.
+* QuestReducer owns reward eligibility.
+* InventoryReducer commits simple currency rewards/payments after validation.
+
+Later:
+
+* EconomyReducer owns full transactions, prices, debt, wages, markets, and domain treasury.
+
+5.4 ReputationReducer is deferred
+
+For MVP:
+
+* ActorReducer may store simple relationship/social notes.
+* No full public reputation propagation.
+* No title system except manual note.
+
+Later:
+
+* ReputationReducer owns titles, fame, public rumor spread, faction reputation.
+
+5.5 InvestigationReducer is deferred
+
+For MVP:
+
+* witness claims can be stored as actor/quest notes if necessary.
+* no full case/clue/evidence engine.
+
+Later:
+
+* InvestigationReducer owns cases, clues, evidence, proof, witness knowledge.
+
+5.6 DomainReducer and LaborReducer are deferred
+
+MVP should not implement worker/project systems.
+
+Use simple place notes only.
+
+⸻
+
+6. Corrected root state schema
+
+Developer Spec v1 schema is acceptable, but v1.1 requires these additions.
+
+6.1 Required root flags
+
+flags: {
+  generatedCardsEnabled: false,
+  economyEnabled: false,
+  craftingEnabled: false,
+  investigationEnabled: false,
+  reputationEnabled: false,
+  domainEnabled: false,
+  absorptionEnabled: false,
+  multiProtagonistEnabled: false,
+  strictMode: false,
+  debugMode: false,
+  safeMode: false
+}
+
+6.2 Required state versioning
+
+Root state must include:
+
+version: '0.1.0-mvp-planned'
+schemaVersion: 1
+lastMigration: string
+
+6.3 Required integrity marker
+
+Root state should include:
+
+integrity: {
+  lastValidatedTurn: string,
+  lastSaveHash?: string,
+  warnings: string[]
+}
+
+This helps detect broken or partial state.
+
+⸻
+
+7. Corrected EventProposal schema
+
+Developer Spec v1 event schema is good, but v1.1 requires additional fields.
+
+7.1 Required corrected schema
+
+EventProposal {
+  proposalId: string,
+  turnId: string,
+  sourceHook: 'input' | 'output' | 'command' | 'manual' | 'migration' | 'system',
+  sourceTextHash: string,
+  rawText: string,
+  normalizedText: string,
+  eventType: string,
+  subtype?: string,
+  actorId?: string,
+  targetId?: string,
+  itemId?: string,
+  placeId?: string,
+  questId?: string,
+  abilityId?: string,
+  ownerReducer: string,
+  confidence: number,
+  truthStatus: string,
+  evidenceType: string,
+  intentType?: string,
+  completedAction: boolean,
+  negated: boolean,
+  hypothetical: boolean,
+  quotedSpeech: boolean,
+  dreamOrVision: boolean,
+  proposedChanges: object,
+  operationKey: string,
+  validation: null | ValidationResult,
+  dirtyTargets: string[],
+  notes: string[]
+}
+
+7.2 New required fields explained
+
+normalizedText
+
+Lower-risk cleaned version of rawText used for matching.
+
+completedAction
+
+True only when narration confirms the action occurred.
+
+Example:
+
+* “You pick up the key.” = true
+* “You reach for the key.” = false
+* “You try to pick up the key.” = false unless output confirms success
+
+negated
+
+True when the text denies the event.
+
+Example:
+
+* “You do not take the sword.”
+
+hypothetical
+
+True when the event is only possible, planned, or imagined.
+
+Example:
+
+* “You could take the sword later.”
+
+quotedSpeech
+
+True when the event is inside speech and should usually be a claim, not fact.
+
+Example:
+
+* Mara says, “Lord Veyr killed him.”
+
+dreamOrVision
+
+True when event happens in dream/vision/symbolic space and should not mutate real state unless validated by scenario.
+
+⸻
+
+8. Corrected validation outcomes
+
+Developer Spec v1 outcomes are correct, but v1.1 adds player-facing behavior rules.
+
+8.1 Rejection should be audit-first, not narration-first
+
+Most rejections should not interrupt gameplay with harsh text.
+
+Instead:
+
+* audit records rejection
+* context may add correction
+* state does not commit bad update
+
+8.2 Soft-fail should be preferred for gameplay attempts
+
+When a player attempts something unsupported but plausible, use soft-fail.
+
+Examples:
+
+Unknown ability attempt:
+
+Outcome: soft_fail
+State: ability candidate evidence added
+Narrative interpretation: flicker, strain, partial effect, no full stable power
+
+Impossible item pickup because item is far away:
+
+Outcome: reject or pending
+State: no inventory add
+Context: item is not within reach
+
+Unsupported boss kill:
+
+Outcome: soft_fail
+State: boss injured/staggered, not dead
+
+8.3 Hard-deny reserved cases
+
+Use hard_deny for:
+
+* duplicate quest rewards
+* duplicate unique item creation
+* Story Card creating canon
+* Context text creating canon
+* absent companion acting
+* player using inaccessible item
+* generic junk card trigger
+* impossible global reputation spread
+* command output being parsed as story
+* corrupted state write attempt
+
+⸻
+
+9. Corrected OperationLedger policy
+
+Developer Spec v1 mentioned permanent and rolling keys. v1.1 locks exact policy.
+
+9.1 Required ledger buckets
+
+operationLedger: {
+  permanentKeys: string[],
+  recentKeys: string[],
+  cardKeys: string[],
+  sourceUseKeys: string[],
+  rewardKeys: string[],
+  maxRecentKeys: 250,
+  maxAuditLinkedKeys: 100,
+  lastCompactedTurn: string
+}
+
+9.2 Permanent keys must include
+
+* quest reward payments
+* quest completions
+* unique item gains
+* unique item destruction
+* major boss defeat
+* generated card creation
+* source absorption, later
+* title grants, later
+* contract completion/payment, later
+* domain project completion, later
+
+9.3 Recent keys should include
+
+* normal resource costs
+* ordinary damage
+* minor XP
+* item pickup if non-unique
+* short-term scene events
+* context packet hashes
+* protected card update hashes
+
+9.4 Reward keys are mandatory
+
+Quest rewards need reward-specific keys.
+
+Example:
+
+reward.quest.clear_mill_wolves.gold.old_bren
+
+This key should not expire.
+
+9.5 Card keys are mandatory
+
+Generated card creation keys should not expire.
+
+Example:
+
+card.create.actor.mara
+
+9.6 Recent key compaction
+
+When recentKeys exceeds maxRecentKeys:
+
+* keep newest keys
+* preserve keys linked to active scene if possible
+* never delete permanentKeys
+* never delete rewardKeys
+* never delete cardKeys
+
+⸻
+
+10. Corrected parser confidence rules
+
+Developer Spec v1 gave general confidence rules. v1.1 locks thresholds.
+
+10.1 Confidence thresholds
+
+Confidence	Default Action
+0.00–0.24	ignore or hard_deny if dangerous
+0.25–0.44	pending/reject
+0.45–0.64	validate carefully, usually pending or soft_fail
+0.65–0.84	accept if no contradiction
+0.85–1.00	accept if owner and ledger checks pass
+
+10.2 AI output starts below full certainty
+
+Even clear AI output should not automatically be 1.0 confidence.
+
+Default:
+
+clear AI output event = 0.75 before validation
+
+It may rise if:
+
+* it matches player input
+* it fits current scene
+* target/entity is known
+* no contradiction exists
+* action is completed
+
+It may fall if:
+
+* actor/item/place is ambiguous
+* output contradicts state
+* action was only attempted
+* event is too large-scale
+* event implies unsupported system
+
+10.3 Player input alone cannot complete most events
+
+Player input can create intent proposals.
+
+Player input alone should not usually:
+
+* add item
+* kill enemy
+* complete quest
+* gain XP
+* gain reward
+* create stable ability
+* move location long-distance
+* change NPC relationship strongly
+
+Exception:
+
+Explicit commands or manual overrides may mutate state if designed to.
+
+10.4 Completed-action requirement
+
+An event cannot be accepted as completed if text only says:
+
+* tries to
+* attempts to
+* reaches for
+* starts to
+* prepares to
+* plans to
+* thinks about
+* could
+* might
+* almost
+
+Unless the AI output later confirms completion.
+
+⸻
+
+11. Corrected resolver rules
+
+11.1 Resolver must return confidence and ambiguity
+
+Every resolver should return:
+
+ResolverResult {
+  matchedId?: string,
+  confidence: number,
+  ambiguous: boolean,
+  candidates: string[],
+  reason: string
+}
+
+11.2 Generic name penalty
+
+Generic names should be penalized heavily.
+
+Examples:
+
+* sword
+* guard
+* wolf
+* town
+* road
+* key
+* ring
+* potion
+* spell
+* ability
+
+Generic names can match only if there is exactly one relevant current-scene candidate.
+
+11.3 Current-scene bonus
+
+Entities in current scene receive a matching bonus.
+
+Example:
+
+If there is one visible rusty dagger in the scene, “the dagger” may match it.
+
+If there are three daggers, ambiguity must be flagged.
+
+11.4 Custody/access bonus
+
+Accessible items should match player-use actions more strongly than inaccessible items.
+
+But inaccessible items should still be detected for correction.
+
+Example:
+
+Player says “I draw my sword.”
+
+If sword is with Mara:
+
+* match sword
+* validation rejects use due to custody
+
+11.5 Actor relation matching
+
+“Mara’s sister” must not resolve to Mara.
+
+It should resolve to:
+
+* known sister actor if exists
+* unknown related actor candidate if story supports
+* pending if ambiguous
+
+11.6 Place substring matching danger
+
+“Old Chapel Road” must not automatically resolve to “Old Chapel.”
+
+If a phrase contains a known place as substring, resolver must compare full phrase first.
+
+⸻
+
+12. Corrected inventory state rules
+
+Developer Spec v1 allowed item states but v1.1 locks item possession states.
+
+12.1 Item access states
+
+Allowed item access states:
+
+* visible
+* available_loot
+* held
+* equipped
+* stored
+* npc_custody
+* inaccessible
+* lost
+* sold
+* destroyed
+* consumed
+
+12.2 Ownership/custody distinction
+
+Every important item must distinguish:
+
+* owner
+* custody
+* access
+
+Example:
+
+Owner: player
+Custody: Mara
+Access: npc_custody
+
+This means the item belongs to the player but cannot be used right now.
+
+12.3 Visible is not owned
+
+If narration says:
+
+“You see a dagger on the table.”
+
+State:
+
+access = visible
+owner = unknown or current owner
+custody = scene/table
+
+Do not add to player inventory.
+
+12.4 Available loot is not owned
+
+If narration says:
+
+“The goblin drops a rusty dagger.”
+
+State:
+
+access = available_loot
+owner = none/unknown
+custody = scene
+
+Only after pickup:
+
+owner = player
+custody = player
+access = held or stored
+
+12.5 Equipped is accessible
+
+Equipped item:
+
+owner = player
+custody = player
+access = equipped
+
+12.6 Sold item cannot be used
+
+If item access is sold, destroyed, consumed, or lost, it cannot be used unless reacquired.
+
+⸻
+
+13. Corrected ability rules for MVP
+
+MVP ability system should be simple.
+
+13.1 Ability statuses
+
+Allowed MVP statuses:
+
+* unknown
+* hint
+* candidate
+* unstable
+* stable
+* sealed
+* unavailable
+
+13.2 Candidate rule
+
+Candidate abilities may be attempted but should not be reliable.
+
+Candidate use outcomes:
+
+* fail
+* weak effect
+* partial effect
+* backlash
+* evidence gain
+* no effect
+
+Candidate ability should not get a generated card.
+
+13.3 Stable ability rule
+
+Stable abilities can be used if:
+
+* resource cost can be paid
+* required body exists
+* required equipment exists
+* actor has ability
+* context supports use
+* ability is not sealed/unavailable
+
+13.4 MVP cost model
+
+MVP should use simple cost labels:
+
+* none
+* tiny
+* light
+* moderate
+* heavy
+* severe
+* extreme
+
+Do not implement full percentage calculator until Formula Appendix v1.
+
+13.5 Unknown power attempt
+
+If player attempts an unknown power:
+
+* do not create stable ability
+* create hint/candidate only if story context supports it
+* otherwise reject or soft_fail
+
+⸻
+
+14. Corrected quest lite rules
+
+MVP quest system must be limited.
+
+14.1 MVP quest statuses
+
+Allowed MVP statuses:
+
+* rumored
+* offered
+* active
+* blocked
+* ready_to_turn_in
+* completed
+* rewarded
+* failed
+* abandoned
+* archived
+
+14.2 Promised reward versus paid reward
+
+Quest record must separate:
+
+promisedRewards: []
+rewardStatus: 'none' | 'promised' | 'ready' | 'paid' | 'disputed'
+
+14.3 Quest completion does not pay automatically
+
+If objective completes:
+
+* status may become ready_to_turn_in or completed
+* rewardStatus remains promised/ready
+* currency/item reward is not applied until payment is confirmed
+
+14.4 Reward payment needs ledger key
+
+Reward payment requires permanent reward key.
+
+14.5 Rumor does not create active quest
+
+NPC mentioning a problem creates at most:
+
+* rumored quest
+* offered quest if request/reward is explicit
+
+Active quest requires:
+
+* player acceptance
+* explicit obligation
+* or clear pursuit/contract
+
+⸻
+
+15. Corrected actor lite rules
+
+MVP actor system should track only important actors.
+
+15.1 Importance threshold
+
+MVP should persist actors only if:
+
+* named and recurring
+* companion
+* quest giver
+* quest target
+* item custodian
+* important enemy
+* important witness/claim source
+* relationship-changing actor
+
+Random one-scene NPCs should remain scene actors only.
+
+15.2 Actor presence states
+
+Allowed MVP presence states:
+
+* present
+* nearby
+* elsewhere
+* unknown
+* absent
+* dead
+* captured
+
+15.3 Presence enforcement
+
+If actor presence is not present/nearby, they cannot:
+
+* speak in scene
+* block attacks
+* hand over items
+* witness current event
+* use ability in current scene
+
+Unless communication/magic/travel event validates it.
+
+15.4 Actor memory truth labels
+
+Actor memories must label uncertainty:
+
+* confirmed
+* observed
+* claimed
+* rumored
+* suspected
+* disputed
+* false
+
+MVP must not store rumors as confirmed biography.
+
+⸻
+
+16. Corrected location/time lite rules
+
+16.1 Location change requires arrival
+
+Player input “I go to X” is travel intent, not confirmed arrival.
+
+Location changes when:
+
+* AI output confirms arrival
+* command/manual override sets location
+* location is same immediate scene and movement is trivial
+
+16.2 Heading/toward language
+
+Phrases like:
+
+* head toward
+* start walking to
+* set out for
+* travel toward
+
+should create travel intent/time proposal, not immediate location change.
+
+16.3 Time advances only from confirmed passage
+
+Time advances when output or command confirms:
+
+* minutes pass
+* hours pass
+* rest/sleep
+* travel duration
+* wait
+* crafting/training time
+
+Time should not advance from plans or hypotheticals.
+
+16.4 MVP time format
+
+MVP may use text time:
+
+currentTimeText: 'Evening, Day 3'
+
+No full calendar required yet.
+
+⸻
+
+17. Corrected ContextBuilder budget
+
+Developer Spec v1 said context was scarce. v1.1 assigns default packet limits.
+
+These are conceptual budgets, not exact platform measurements.
+
+17.1 Default context packet size targets
+
+Packet	Target Size
+Critical correction	1–3 short lines
+Current location/scene	2–4 short lines
+Player danger/status	1–3 short lines
+Actor presence	1–3 short lines
+Inventory custody warning	1–2 short lines
+Active quest	1–3 short lines
+Ability limit	1–2 short lines
+Time/deadline	1–2 short lines
+Archive callback	1 short line, only if directly relevant
+
+17.2 Hard context rule
+
+If context is crowded, cut lower-priority packets before shortening critical corrections.
+
+Priority:
+
+1. Corrections
+2. Current scene/location
+3. Player danger
+4. Present/absent companion facts
+5. Item custody/access
+6. Active quest/deadline
+7. Ability limits
+8. Other facts
+
+17.3 Context must label uncertainty
+
+Examples:
+
+Lord Veyr is suspected, not proven guilty.
+Mara claims she once knew the thieves' guild; this is unconfirmed.
+
+17.4 Context packet hash
+
+Each context packet should produce a hash or stable string key so repeated identical packets do not bloat logs.
+
+⸻
+
+18. Corrected CardSync policy
+
+18.1 Generated cards disabled by default
+
+MVP flag:
+
+generatedCardsEnabled = false
+
+Only protected summary cards are active by default.
+
+18.2 Protected card write limits
+
+Protected card updates:
+
+* only update dirty cards
+* maximum protected card updates per turn: 3
+* always prioritize Player Sheet, Body Status, Current Location if dirty and relevant
+* avoid rewriting unchanged content
+
+18.3 Generated card beta limits
+
+When later enabled:
+
+* maximum generated card creations per turn: 1
+* maximum generated card updates per turn: 2
+* no generated card creation from confidence below 0.85
+* no generated card creation for generic names
+* no generated card creation for candidates
+* no generated card creation for one-scene NPCs/items/places
+
+18.4 Safe Mode CardSync
+
+If safeMode is true:
+
+* generated card creation disabled
+* generated card updates disabled unless manually requested
+* protected cards may still update
+* card audit should explain Safe Mode suppression
+
+18.5 Card read policy
+
+Do not scan all Story Cards every hook.
+
+Use registry and dirty targets.
+
+⸻
+
+19. Corrected command policy
+
+19.1 MVP commands are inspect-only except explicit debug/manual commands
+
+Inspection commands must not mutate gameplay state.
+
+Examples:
+
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+
+19.2 Debug commands may display internal state
+
+Examples:
+
+* /debuglast
+* /cardaudit
+* /contextaudit
+
+They should not mutate state.
+
+19.3 Manual override commands deferred
+
+Commands like these are deferred:
+
+* /additem
+* /sethp
+* /setability
+* /completequest
+* /setlocation
+
+Manual override commands require a separate spec before implementation.
+
+19.4 Command output must not be parsed as narration
+
+Command output should set a flag:
+
+suppressEventScanForCommandOutput = true
+
+This prevents /inventory displaying an item and then parser adding it again.
+
+⸻
+
+20. Corrected cleanup policy
+
+20.1 Cleanup frequency
+
+Cleanup should not run every hook unless tiny.
+
+Recommended:
+
+* lightweight cleanup every turn
+* deeper cleanup every 25 turns or command-triggered
+
+20.2 Lightweight cleanup can remove
+
+* expired parser candidates
+* duplicate dirty targets
+* old context packet hashes
+* audit overflow beyond max
+
+20.3 Deep cleanup can compact
+
+* recent operation keys beyond max
+* old scene-only actors
+* old visible loot no longer in scene
+* old debug logs
+* resolved temporary warnings
+
+20.4 Cleanup must never remove
+
+* player state
+* active inventory items
+* active quests
+* important actors
+* protected card registry
+* permanent operation keys
+* reward keys
+* generated card keys
+* archived major outcomes
+
+20.5 Cleanup must audit destructive actions
+
+If cleanup removes or archives anything except temporary parser data, it must log it.
+
+⸻
+
+21. Corrected formula policy
+
+Developer Spec v1 said formulas were pending. v1.1 makes that a hard blocker.
+
+21.1 Formula Appendix v1 required before combat/progression build
+
+Before Phase 6, create Formula Appendix v1 defining:
+
+* XP-to-next-level formula
+* base stat expectation by level
+* HP/MP/EP formulas
+* resource recovery formulas
+* basic damage severity conversion
+* challenge XP formula
+* overlevel XP decay
+* underlevel danger scaling
+* ability rank evidence thresholds
+* ability cost labels to resource ranges
+
+21.2 Until Formula Appendix v1 exists
+
+The script may:
+
+* display stats
+* track resources
+* apply simple fixed/label costs
+* record XP manually/simply
+
+The script must not:
+
+* claim final balance
+* implement Level 1000 scaling math
+* implement complex combat matrix
+* implement advanced ability cost calculator
+
+⸻
+
+22. Corrected testing gates
+
+Developer Spec v1 testing gates are correct but v1.1 adds non-negotiable blockers.
+
+22.1 No generated cards before these pass
+
+Generated card creation cannot be enabled until all pass:
+
+* operation duplicate tests
+* item custody tests
+* actor presence tests
+* protected card dirty update tests
+* generic trigger rejection tests
+* command output suppression tests
+
+22.2 No combat/progression automation before Formula Appendix
+
+Basic HP changes can exist earlier.
+
+But XP/combat scaling automation waits for Formula Appendix v1.
+
+22.3 No economy/crafting/domain/investigation before MVP stability
+
+These systems are too interconnected.
+
+They require:
+
+* stable event schema
+* stable ledger
+* stable inventory custody
+* stable actor/place state
+* stable context and audit
+
+22.4 Required new tests
+
+Add these to the initial regression list:
+
+Command output suppression test
+
+Run /inventory showing a dagger.
+
+Expected:
+
+* dagger is not duplicated.
+
+Similar-name item test
+
+State has:
+
+* iron key
+* iron keyring
+
+Input:
+
+“Take the iron key, not the keyring.”
+
+Expected:
+
+* iron key selected
+* keyring not selected
+
+Actor relation test
+
+State has Mara.
+
+Output says:
+
+“Mara’s sister appears.”
+
+Expected:
+
+* do not resolve sister as Mara
+* create pending/new actor only if story supports
+
+Location substring test
+
+State has Old Chapel and Old Chapel Road.
+
+Input/output references Old Chapel Road.
+
+Expected:
+
+* route/place road selected, not chapel building
+
+Attempt versus success test
+
+Input:
+
+“I try to grab the gem.”
+
+No AI confirmation.
+
+Expected:
+
+* no gem in inventory
+
+⸻
+
+23. Corrected user-facing design
+
+The script should not feel like it is constantly saying no.
+
+23.1 Player-facing style
+
+Prefer:
+
+* “partial result”
+* “not yet stable”
+* “you can attempt it, but…”
+* “this becomes a candidate”
+* “you see it, but have not taken it”
+* “the reward is promised but unpaid”
+
+Avoid:
+
+* blunt denial for every unsupported action
+* constant debug text during normal play
+* exposing internal schemas in story output
+
+23.2 Debug visible only when asked
+
+Audit details should appear through commands, not constant narration.
+
+23.3 Context correction should be concise
+
+A correction should not become a lecture.
+
+Good:
+
+Mara is absent; she cannot block attacks in this scene.
+
+Bad:
+
+According to the ActorReducer and canonical presence validation pipeline, Mara's presence status is elsewhere...
+
+⸻
+
+24. Corrected deferred-system requirements
+
+Before each deferred system is built, it needs its own mini-spec.
+
+24.1 Economy Mini-Spec required before EconomyReducer
+
+Must define:
+
+* transaction schema
+* price abstraction
+* currency ownership
+* sale/buy rules
+* reward handoff
+* debt handling
+
+24.2 Crafting Mini-Spec required before CraftingReducer
+
+Must define:
+
+* project schema
+* material reservation
+* output validation
+* repair/update versus duplicate item
+* quality/condition handling
+
+24.3 Investigation Mini-Spec required before InvestigationReducer
+
+Must define:
+
+* case schema
+* clue schema
+* evidence truth status
+* witness statement handling
+* solved-case validation
+
+24.4 Reputation/Faction Mini-Spec required before ReputationReducer/FactionReducer
+
+Must define:
+
+* reputation scope
+* awareness/spread
+* title records
+* faction standing
+* crime/wanted basics
+
+24.5 Domain/Labor Mini-Spec required before DomainReducer/LaborReducer
+
+Must define:
+
+* project schema
+* work units
+* worker groups
+* payroll
+* blockers
+
+24.6 Absorption/Evolution Mini-Spec required before absorption systems
+
+Must define:
+
+* source record
+* source cap
+* compatibility
+* gain type
+* candidate versus stable trait/ability
+* anti-farm
+
+⸻
+
+25. MVP Build Spec readiness checklist
+
+Before creating MVP Build Spec v1, the following must now be considered settled:
+
+* MVP scope is narrowed.
+* Generated cards are disabled by default.
+* Economy/crafting/investigation/faction/domain/absorption are deferred.
+* State schema v1 is usable.
+* EventProposal schema has attempt/negation/hypothetical fields.
+* OperationLedger has permanent/recent/reward/card buckets.
+* Context packet budgets are defined.
+* CardSync write limits are defined.
+* Resolver ambiguity rules are defined.
+* Commands are inspect-only by default.
+* Formula Appendix is required before combat/progression automation.
+* Cleanup rules are conservative.
+* Soft-fail is preferred over harsh rejection.
+
+If these are accepted, the next document can be:
+
+AIDRPG MVP Build Spec v1
+
+⸻
+
+26. Final v1.1 doctrine
+
+Developer Spec v1.1 exists to prevent the build from becoming another sprawling, unstable attempt.
+
+The corrected plan is:
+
+1. Build the pipeline first.
+2. Build state inspection second.
+3. Build validation and ledger before gameplay automation.
+4. Build protected summaries before generated cards.
+5. Keep generated cards disabled until tests pass.
+6. Keep advanced systems deferred until the MVP is stable.
+7. Use audits to prove why state changed.
+8. Prefer soft-fail over joyless rejection.
+9. Never let cards, context, command output, rumors, or player attempts directly create canon.
+10. Do not build the whole design bible at once.
+
+The repaired design bible explains the full dream.
+
+Developer Spec v1 explains the architecture.
+
+Developer Spec v1.1 locks down the safe implementation boundaries.
+
+The next document, MVP Build Spec v1, should finally define the first exact script target.

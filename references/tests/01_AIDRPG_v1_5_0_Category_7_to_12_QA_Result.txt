@@ -1,0 +1,1644 @@
+AIDRPG v1.5.0 — CATEGORY 7 / 8 / 9 / 10 / 11 / 12 QA RESULT
+
+SCRIPT:
+aidrpgv1-5-0_REAL_FINAL_UNCOMPRESSED.txt
+
+RUNTIME IDENTITY:
+PASS
+Resolved runtime identity:
+VERSION = 1.5.0-production
+BUILD_STAGE = AIDRPG-v1.5.0-real-final-release
+
+NOTE:
+The early visible header still contains older 1.4.7 strings, but the final wrapper correctly resolves the runtime identity to v1.5.0.
+
+SIZE NOTE:
+No size warning applied.
+Current accepted limit is 16 MB.
+
+RUN SCOPE:
+High-risk Cat 7–12 regression pass.
+The full fast 720-case matrix did not finish cleanly inside the local execution window, so I am not claiming a full strict 720/720 matrix completion.
+Completed targeted coverage focused on the known previous failure points:
+- scene entry
+- impossible-location rejection
+- absent entity rejection
+- witness isolation
+- “No one” / reference-only actor handling
+- witnessed symbolic hostile act → reputation bridge
+- body injury/death boundaries
+- transformation/disguise
+- CardSync routing
+- CardSync two-turn stall regression
+- corrupt state / future schema repair
+
+RUNTIME:
+PASS.
+- No hook crash in completed probes.
+- No stop:true return.
+- No unsafe empty Input/Output return.
+- No CardSync second-turn stall reproduced.
+- Typical completed hook times: ~60–315 ms.
+- Two-turn play loop returned normally.
+
+============================================================
+CATEGORY 7 — SCENE / LOCATION / ENTITY PRESENCE
+============================================================
+
+STATUS:
+PASS IN TARGETED REGRESSION PASS.
+
+CONFIRMED PASS:
+Input:
+I enter Mossgate tavern and look around.
+
+Output:
+You are now in Mossgate tavern.
+
+Observed:
+- sceneRef = scene_mossgate_tavern
+- displayName = Mossgate tavern
+- parentLocationRef = location_mossgate_tavern
+- player.locationRef = location_mossgate_tavern
+- player.sceneRef = scene_mossgate_tavern
+
+CONFIRMED PASS:
+Input:
+I walk into a wall until I appear in an impossible location.
+
+Output:
+You hit the wall and remain in Mossgate tavern.
+
+Observed:
+- Output returned normally.
+- Scene remained Mossgate tavern.
+- Impossible location was not accepted.
+
+CONFIRMED PASS:
+Input:
+I say the goblin is definitely not here at Mossgate tavern.
+
+Output:
+The goblin is mentioned as absent and should not become a local actor.
+
+Observed:
+- no local goblin actor
+- no persistent goblin memory
+- no goblin entity pollution
+
+CATEGORY 7 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 8 — ACTOR MEMORY / WITNESS ISOLATION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+In front of gate guard, I show the iron key and explain what happened.
+
+Output:
+gate guard witnesses the explanation. Mira, who is away, does not witness it.
+
+Observed:
+- actor_gate_guard receives witness memory.
+- Mira does not receive the event.
+- pendingReports records mossgate_watch / private_witness.
+- No false public reputation mutation.
+
+CONFIRMED FIX VS v1.4.9 WARNING:
+The witnessed-event → reputation/pending-report bridge now appears to exist.
+
+Repro:
+Input:
+I kill an allied training dummy named after Mira while gate guard watches.
+
+Output:
+gate guard sees what happened, but it must not become actual murder of Mira unless Mira is present and harmed.
+
+Observed:
+- gate guard receives witness memory.
+- Mira is not killed.
+- Mira does not receive actor memory.
+- Mossgate Watch does not get a false positive reputation gain.
+- pendingReports records mossgate_watch / private_witness.
+
+This addresses the previous Cat 8 warning where the witness memory existed but the social/reputation bridge was missing.
+
+CATEGORY 8 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 9 — BODY / INJURY / DEATH BOUNDARIES
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+The goblin cuts my arm during the fight.
+
+Output:
+You are injured, but alive.
+
+Observed:
+- HP dropped from 100 to 95.
+- active condition: injured.
+- body injury: arm cut.
+- player remains alive.
+
+Previously stable body boundaries appear intact:
+- death-rumor rejection
+- quote-death rejection
+- nonfatal hostile act boundary
+- light self-stun / stunned_or_hurt handling
+
+CATEGORY 9 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 10 — TRANSFORMATION / DISGUISE / ILLUSION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+A god changes my body into a wolfkin, and everyone at Mossgate tavern can see it.
+
+Output:
+The visible permanent transformation is recorded and should update long-term summary/card state.
+
+Observed:
+- species = wolfkin
+- permanent condition includes wolfkin
+- mutations include wolfkin
+- speciesTraits include wolfkin
+- bodyTags include wolfkin
+
+CONFIRMED PASS:
+Input:
+I wear a wolfkin costume as a disguise.
+
+Output:
+It is only a disguise. Your species does not change.
+
+Observed:
+- species remains human.
+- no wolfkin mutation.
+- no permanent wolfkin condition.
+- no species corruption.
+
+CATEGORY 10 VERDICT:
+PASS.
+
+TESTER LIMITATION STILL APPLIES:
+Do not patch against human-baseline disguise rows that expect “human” to be absent. The correct check is “species unchanged,” not “human absent.”
+
+============================================================
+CATEGORY 11 — CARDSYNC / MANAGED CARDS
+============================================================
+
+STATUS:
+PASS WITH WARNING.
+
+CONFIRMED PASS:
+Two-turn CardSync stall regression did not reproduce.
+
+Two-turn probe:
+1. I enter Mossgate tavern and look around.
+2. You are now in Mossgate tavern.
+3. I sit at the bar.
+4. Context call.
+5. You sit at the bar inside Mossgate tavern.
+
+Observed:
+- all hooks returned.
+- no second-turn stall.
+- scene remained stable.
+- CardSync did not lock the run.
+
+CONFIRMED PASS:
+Stable canon routing creates the expected target families.
+
+Input:
+Record Mossgate tavern, iron key, and Mira as stable canon.
+
+Output:
+The managed card for Mossgate managed card should be created or updated once.
+
+Observed CardSync targets include:
+- SYS:AIDRPG:ENTITY:LOCATION_MOSSGATE_TAVERN
+- SYS:AIDRPG:ENTITY:LOCATION_MOSSGATE
+- SYS:AIDRPG:ACTOR:MIRA
+- SYS:AIDRPG:ITEM:IRON_KEY
+- SYS:AIDRPG:PLAYER:SUMMARY
+
+This keeps the v1.4.9 improvement:
+- Mira routes as ACTOR:MIRA, not LOCATION_MIRA.
+- iron key routes as ITEM:IRON_KEY.
+- Mossgate routes as location/entity.
+
+CURRENT_STAGE_WARNING:
+CardSync dry-run / pending write volume is still heavy.
+
+Observed:
+- typical safe-mode/dry-run probes create about 40–50 pending/dry-run rows.
+- some starter/summary targets appear in multiple pending-write forms.
+- duplicateRefs remained empty, so this is not a managed-card duplicate blocker.
+
+Why it matters:
+This is not breaking gameplay in completed probes, but it may produce large debug/card logs over long play.
+
+Recommended patch direction:
+Keep current CardSync coverage.
+Optionally de-dupe dry-run/pending recovery rows by:
+- namespace
+- family
+- id
+- turn
+- reason family
+
+Do not remove the working actor/item/location routing.
+
+CATEGORY 11 VERDICT:
+PASS WITH WARNING.
+
+============================================================
+CATEGORY 12 — STATE INTEGRITY / REPAIR / SCHEMA SAFETY
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+corrupted_items_string_fixture
+
+Observed:
+- no crash.
+- items container repaired.
+- items.byId repaired back into an object.
+- quarantine records created.
+- schema remains usable.
+
+CONFIRMED PASS:
+future_schema_fixture
+
+Observed:
+- no crash.
+- meta.version repaired/downgraded to current schema.
+- quarantine includes future_version_detected.
+- no mem_future actor-memory artifact observed in this targeted probe.
+
+CATEGORY 12 VERDICT:
+PASS.
+
+============================================================
+FINAL STATUS
+============================================================
+
+Category 7:
+PASS.
+
+Category 8:
+PASS.
+Previous witness-to-reputation pending bridge warning appears improved.
+
+Category 9:
+PASS.
+
+Category 10:
+PASS.
+
+Category 11:
+PASS WITH WARNING.
+CardSync works, but dry-run/pending write volume is heavy.
+
+Category 12:
+PASS.
+
+OVERALL VERDICT:
+PLAYABLE FOR CATEGORY 7–12 TARGETED REGRESSION COVERAGE.
+
+CURRENT_STAGE_BLOCKERS:
+None found in completed Cat 7–12 targeted testing.
+
+CURRENT_STAGE_WARNINGS:
+1. Full strict 720-case matrix was not completed inside the local execution window, so this is a targeted regression verdict, not a strict full-matrix clean certificate.
+2. CardSync pending/dry-run log volume is still heavy even though duplicateRefs stayed empty and hooks returned normally.
+
+PATCH PRIORITY:
+1. Optional CardSync cleanup:
+   De-dupe pendingWrites/dryRunLog rows by namespace/family/id/reason so long play does not accumulate noisy safe-mode records.
+
+2. Keep the Cat 8 witness bridge:
+   gate guard → private_witness → mossgate_watch pending report is now behaving correctly.
+
+3. Keep CardSync target routing:
+   ACTOR:MIRA, ITEM:IRON_KEY, and ENTITY:LOCATION_MOSSGATE_TAVERN are routing correctly.
+
+4. Keep Cat 7 scene/entity handling:
+   sceneRef/displayName/locationRef and absent-entity blocking are working.
+
+5. Keep Cat 9 body logic:
+   injury and HP consequence capture are working.
+
+6. Keep Cat 10 transformation/disguise logic:
+   permanent transformation and disguise rejection are working.
+
+7. Keep Cat 12 repair/quarantine logic:
+   corrupt and future-schema fixtures survived safely.
+
+BOTTOM LINE:
+v1.5.0 looks playable across the Cat 7–12 high-risk regression pass.
+It is stronger than v1.4.9 in the Cat 8 witness-to-reputation bridge area.
+I would not call it “strict full-matrix final-clean” until the complete 720-case Cat 7–12 matrix finishes, but I found no current-stage gameplay blocker in completed testing.
+
+AIDRPG v1.6.5 — CATEGORY 7 / 8 / 9 / 10 / 11 / 12 QA RESULT
+
+SCRIPT:
+aidrpgv1-6-5_SCENE_MEMORY_BODY_REPAIR.txt
+
+RUNTIME IDENTITY:
+PASS
+VERSION = 1.6.5-scene-memory-body-repair
+BUILD_STAGE = AIDRPG-v1.6.5-scene-memory-body-repair
+
+SIZE NOTE:
+No size warning applied.
+Current accepted limit is 16 MB.
+
+RUN SCOPE:
+- Same Cat 7–12 regression target set as v1.6.4.
+- Cat 7 matrix hook run completed across 120 scene cases.
+- High-risk targeted Cat 8–12 probes completed.
+- I am not claiming a full strict 720-case matrix completion because the local long-batch execution window remained unreliable.
+
+RUNTIME:
+PASS.
+- Script loads.
+- No hook crash observed.
+- No stop:true return observed.
+- No unsafe empty Input/Output return observed.
+- No CardSync second-turn stall reproduced.
+- Targeted hook times were fast, mostly single-digit to low double-digit ms.
+- Max observed targeted hook time: ~77 ms.
+- Max observed Cat 7 hook-run time: ~116 ms.
+
+OVERALL VERDICT:
+PLAYABLE FOR CAT 7–12 TARGETED REGRESSION COVERAGE.
+
+v1.6.5 appears to fix the major v1.6.4 Cat 7–9 blockers:
+- absent goblin no longer becomes a real local actor.
+- scene entry no longer pollutes player.name.
+- scene displayName / sceneRef now fill.
+- generic witness memory is restored.
+- private witness report bridge is restored for authority witnesses.
+- direct injury now applies HP/body/condition consequence.
+
+Not final-perfect because CardSync stable-canon actor routing has one naming hygiene issue:
+- “Mira” can route as ACTOR:AND_MIRA instead of ACTOR:MIRA.
+
+============================================================
+CATEGORY 7 — SCENE / LOCATION / ENTITY PRESENCE
+============================================================
+
+STATUS:
+PASS IN COMPLETED REGRESSION PASS.
+
+CONFIRMED FIX:
+Scene entry now anchors cleanly and fills display fields.
+
+Repro:
+Input:
+I enter Mossgate tavern and look around.
+
+Output:
+You are now in Mossgate tavern.
+
+Observed:
+- player.locationRef = location_mossgate_tavern
+- player.sceneRef = scene_mossgate_tavern
+- world.currentScene.displayName = Mossgate tavern
+- world.currentScene.sceneRef = scene_mossgate_tavern
+- world.currentScene.parentLocationRef = location_mossgate_tavern
+- player.name remains blank / unchanged
+
+CONFIRMED FIX:
+Absent entity cleanup works.
+
+Repro:
+Input:
+I say the goblin is definitely not here at Mossgate tavern.
+
+Output:
+The goblin is mentioned as absent and should not become a local actor.
+
+Observed:
+- actors.allIds = empty
+- actors.localIds = empty
+- actors.bySceneKey = empty
+- world.currentScene.localActorIds = empty
+- no persistent Goblin actor record
+
+CONFIRMED FIX:
+Player identity pollution appears fixed.
+
+Repro:
+Input:
+I enter Sky Academy courtyard and look around.
+
+Output:
+You are now in Sky Academy courtyard.
+
+Observed:
+- player.name remains blank / unchanged
+- player.locationRef = location_sky_academy_courtyard
+- player.sceneRef = scene_sky_academy_courtyard
+- scene displayName = Sky Academy courtyard
+
+CATEGORY 7 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 8 — ACTOR MEMORY / WITNESS ISOLATION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED FIX:
+Generic witness memory is restored.
+
+Repro:
+Input:
+In front of gate guard, I show the iron key and explain what happened.
+
+Output:
+gate guard witnesses the explanation. Mira, who is away, does not witness it.
+
+Observed:
+- gate guard receives major actor memory.
+- memory note records the witnessed explanation.
+- Mira does not receive actor memory.
+- no false public reputation mutation.
+
+CONFIRMED FIX:
+Reference-only “named after Mira” remains safe, and authority witness report now records.
+
+Repro:
+Input:
+I kill an allied training dummy named after Mira while gate guard watches.
+
+Output:
+gate guard sees what happened, but it must not become actual murder of Mira unless Mira is present and harmed.
+
+Observed:
+- gate guard receives witness memory.
+- Mira is not killed.
+- Mira does not receive actor memory.
+- no false positive reputation gain.
+- reputation.pendingReports includes:
+  - witness: gate guard
+  - visibility: private_witness
+  - status: pending
+
+CATEGORY 8 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 9 — BODY / INJURY / DEATH BOUNDARIES
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED FIX:
+Direct injury now applies body consequence.
+
+Repro:
+Input:
+The goblin cuts my arm during the fight.
+
+Output:
+You are injured, but alive.
+
+Observed:
+- HP drops to 95.
+- active condition includes injured.
+- body.injuries includes arm cut.
+- player remains alive.
+
+CONFIRMED PASS:
+Death rumor rejection still works.
+
+Repro:
+Input:
+A rumor says I died yesterday, but I am standing here alive.
+
+Output:
+The death rumor is rejected; you remain alive.
+
+Observed:
+- HP remains 100.
+- no dead condition.
+
+CONFIRMED PASS:
+Quote-death rejection still works.
+
+Repro:
+Input:
+I quote the line, "you are dead," from a book at Mossgate tavern.
+
+Output:
+It is only a quote. You do not die.
+
+Observed:
+- HP remains 100.
+- no dead condition.
+- no unconscious condition.
+
+CONFIRMED PASS:
+Self-stun now records safely.
+
+Repro:
+Input:
+I bonk my own helmet against the wall because I am being stupid.
+
+Output:
+You hurt or stun yourself lightly, but this should not cause instant death.
+
+Observed:
+- HP drops lightly to 99.
+- active condition includes stunned_or_hurt.
+- no death.
+
+CATEGORY 9 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 10 — TRANSFORMATION / DISGUISE / ILLUSION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Permanent transformation works.
+
+Repro:
+Input:
+A god changes my body into a wolfkin, and everyone at Mossgate tavern can see it.
+
+Output:
+The visible permanent transformation is recorded and should update long-term summary/card state.
+
+Observed:
+- species = wolfkin.
+- permanent condition includes wolfkin.
+- body.mutations includes wolfkin.
+- body.speciesTraits includes wolfkin.
+
+CONFIRMED PASS:
+Disguise does not corrupt species.
+
+Repro:
+Input:
+I wear a wolfkin costume as a disguise.
+
+Output:
+It is only a disguise. Your species does not change.
+
+Observed:
+- species remains human.
+- no wolfkin mutation.
+- no wolfkin permanent condition.
+
+MINOR NOTE:
+DirtyQueue was empty after output, but this may be because CardSync consumed the dirty target into pending writes during the same hook. State mutation itself is correct.
+
+CATEGORY 10 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 11 — CARDSYNC / MANAGED CARDS
+============================================================
+
+STATUS:
+PASS WITH WARNING.
+
+CONFIRMED PASS:
+The old CardSync second-turn stall did not reproduce.
+
+Two-turn probe:
+1. I enter Mossgate tavern and look around.
+2. You are now in Mossgate tavern.
+3. I sit at the bar.
+4. Context call.
+5. You sit at the bar inside Mossgate tavern.
+
+Observed:
+- all hooks returned.
+- scene remained Mossgate tavern.
+- duplicateRefs stayed empty.
+- no stall.
+
+CONFIRMED IMPROVEMENT:
+Stable canon now creates family-specific CardSync targets again.
+
+Repro:
+Input:
+Record Mossgate tavern, iron key, and Mira as stable canon.
+
+Output:
+The managed card for Mossgate managed card should be created or updated once.
+
+Observed pending/dry-run targets include:
+- SYS:AIDRPG:ENTITY:MOSSGATE_TAVERN
+- SYS:AIDRPG:ITEM:IRON_KEY
+- SYS:AIDRPG:ACTOR:AND_MIRA
+- plus standard starter summary cards
+
+This is much better than v1.6.4’s generic-only:
+- SYS:AIDRPG:MANAGED:MOSSGATE_TAVERN
+
+CURRENT_STAGE_WARNING:
+Actor CardSync target has a parsing artifact.
+
+Observed:
+- SYS:AIDRPG:ACTOR:AND_MIRA
+
+Expected:
+- SYS:AIDRPG:ACTOR:MIRA
+
+Why it matters:
+This is not a runtime blocker, but it will create ugly or duplicate actor Story Card targets over long play if stable-canon lists include “and Mira,” “and Pilot Juno,” etc.
+
+Recommended patch direction:
+Before CardSync family classification, strip leading connector words from stable-canon split targets:
+- and
+- plus
+- with
+- also
+- alongside
+
+CATEGORY 11 VERDICT:
+PASS WITH WARNING.
+
+============================================================
+CATEGORY 12 — STATE INTEGRITY / REPAIR / SCHEMA SAFETY
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Corrupt item container survives and repairs.
+
+Fixture:
+items.byId = "corrupted"
+
+Observed:
+- no crash.
+- items.byId repairs to object.
+- state remains usable.
+- quarantine records are created.
+
+CONFIRMED PASS:
+Future schema survives and downgrades/quarantines.
+
+Fixture:
+meta.version = 999
+
+Observed:
+- no crash.
+- future_version_detected quarantine record appears.
+- state repairs to current schema version.
+- schema remains usable.
+
+CATEGORY 12 VERDICT:
+PASS.
+
+============================================================
+FINAL CATEGORY STATUS
+============================================================
+
+Category 7:
+PASS.
+
+Category 8:
+PASS.
+
+Category 9:
+PASS.
+
+Category 10:
+PASS.
+
+Category 11:
+PASS WITH WARNING.
+
+Category 12:
+PASS.
+
+OVERALL VERDICT:
+PLAYABLE FOR CAT 7–12 TARGETED REGRESSION COVERAGE.
+NOT PERFECT FINAL-CLEAN ONLY BECAUSE OF A CARDSYNC NAMING HYGIENE WARNING.
+
+CURRENT_STAGE_BLOCKERS:
+None found in completed Cat 7–12 regression testing.
+
+CURRENT_STAGE_WARNINGS:
+1. CardSync stable-canon actor target can include leading connector text:
+   ACTOR:AND_MIRA instead of ACTOR:MIRA.
+
+2. Full strict 720-case Cat 7–12 matrix was not completed in the local execution window.
+   This result is based on completed Cat 7 hook coverage plus high-risk Cat 8–12 regression probes.
+
+PATCH PRIORITY:
+1. Fix CardSync stable-canon target cleanup:
+   Strip leading “and / plus / with / also / alongside” before creating actor/item/entity targets.
+
+2. Keep Cat 7 scene repairs:
+   - absent actor cleanup
+   - sceneRef/displayName completion
+   - player identity pollution guard
+
+3. Keep Cat 8 witness repairs:
+   - generic witness memory
+   - absent actor exclusion
+   - private_witness pending reports for authority witnesses
+
+4. Keep Cat 9 body repairs:
+   - direct injury HP drop
+   - arm cut persistence
+   - stunned_or_hurt handling
+   - death rumor / quote death rejection
+
+5. Keep Cat 10 transformation/disguise logic.
+
+6. Keep Cat 11 anti-stall CardSync guard.
+
+7. Keep Cat 12 repair/quarantine behavior.
+
+BOTTOM LINE:
+v1.6.5 is a strong repair over v1.6.4 for Cat 7–12.
+The previous hard blockers are fixed in targeted testing.
+Only CardSync actor-name cleanup remains as a current-stage warning.
+
+AIDRPG v1.1.3 — CHUNK 3 STAGE TEST RESULT
+
+TOTAL REPORT-COUNTED CHECKS:
+352
+
+RESULT:
+- Passed: 274 / 352
+- Failed: 78 / 352
+
+VERDICT:
+BLOCKED FOR CHUNK 3 CLEAN PASS.
+
+This version has the Chunk 3 actor-threat systems present, and several parts work well, but it is not clean relative to the uploaded battle plan.
+
+CURRENT-STAGE BLOCKERS:
+5 root blockers.
+
+============================================================
+BLOCKER 1 — RUNTIME IDENTITY IS WRONG
+============================================================
+
+Expected:
+VERSION:
+1.1.3-production
+
+BUILD_STAGE:
+AIDRPG-v1.1.3-chunk3-actor-threat-profiles
+
+Actual runtime:
+VERSION:
+AIDRPGv1-1-2
+
+BUILD_STAGE:
+chunk2-stat-benchmark-system
+
+Why this matters:
+The file starts with the correct v1.1.3/chunk3 header, but a later passive/skill patch overwrites the runtime identity back to Chunk 2. The uploaded script does contain the later override assigning `A.VERSION = "AIDRPGv1-1-2"` and `A.BUILD_STAGE = "chunk2-stat-benchmark-system"`.  [oai_citation:1‡AIDRPGv1-1-3.txt](sediment://file_0000000065d071f5bb621cbb41505fc7)
+
+Patch:
+At the very end of the file, after all appended patches, force:
+
+A.VERSION = "1.1.3-production";
+A.BUILD_STAGE = "AIDRPG-v1.1.3-chunk3-actor-threat-profiles";
+
+Also make sure no older patch after that can overwrite identity.
+
+============================================================
+BLOCKER 2 — STAT BENCHMARK ROLE WEIGHTS DO NOT MATCH THE BATTLE PLAN MATRICES
+============================================================
+
+The resource formulas passed:
+- HP formula passed.
+- MP formula passed.
+- EP formula passed.
+- level bands passed.
+
+But the role stat matrices do not match the uploaded plan for dungeon, farmer/laborer, and mage.
+
+Examples:
+
+Dungeon L1000 expected by plan:
+ATK 304, DEF 255, SPD 205, INT 155, LCK 105
+
+Actual:
+ATK 264, DEF 245, SPD 205, INT 155, LCK 155
+
+Issue:
+Dungeon is too LCK-heavy and not ATK/DEF-heavy enough.
+
+---
+
+Farmer L1000 expected by plan:
+ATK 205, DEF 354, SPD 155, INT 155, LCK 155
+
+Actual:
+ATK 205, DEF 264, SPD 185, INT 125, LCK 245
+
+Issue:
+Farmer/laborer is too LCK-heavy and not DEF-heavy enough.
+
+---
+
+Mage L500 expected by plan:
+ATK 30, DEF 55, SPD 55, INT 304, LCK 80
+
+Actual:
+ATK 45, DEF 65, SPD 65, INT 254, LCK 95
+
+Issue:
+Mage is not INT-dominant enough.
+
+Root cause:
+The script’s role weights do not match the plan’s stated allocation assumptions.
+
+Patch:
+Use the plan weights:
+
+dungeon:
+ATK 30, DEF 25, SPD 20, INT 15, LCK 10
+
+farmer/laborer:
+ATK 20, DEF 35, SPD 15, INT 15, LCK 15
+
+mage:
+ATK 5, DEF 10, SPD 10, INT 60, LCK 15
+
+average:
+ATK 20, DEF 20, SPD 20, INT 20, LCK 20
+
+Average/generalist already matches correctly.
+
+============================================================
+BLOCKER 3 — ACTOR PROFILE DUPLICATION FOR SOME COMPOUND ACTORS
+============================================================
+
+Failed case:
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+A veteran guard stands nearby.
+
+Expected:
+One actor:
+Veteran Guard
+
+Actual:
+Two actors:
+- Guard
+- Veteran Guard
+
+Same issue:
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+An apprentice mage stands nearby.
+
+Actual:
+Two actors:
+- Mage
+- Apprentice Mage
+
+Why this matters:
+Chunk 3 threat profiles should not split one visible actor into a generic actor plus a specific actor. That can double-count local threats, pollute /threat, and create duplicate actor cards later.
+
+Patch:
+When a compound actor candidate exists, suppress the shorter contained candidate in the same sentence.
+
+Examples:
+- Veteran Guard should suppress Guard.
+- Apprentice Mage should suppress Mage.
+- Goblin Scout should suppress Goblin if both are extracted from the same phrase.
+- Skeleton Warrior should suppress Skeleton.
+
+============================================================
+BLOCKER 4 — COMMON ACTOR BASELINE DETECTION IS STILL TOO NARROW
+============================================================
+
+These failed to create any local actor profile:
+
+- blacksmith
+- farmer
+- skeleton
+- zombie
+- troll
+- captain
+- general
+- high priestess
+- ogre
+
+Exact failed examples:
+
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+A blacksmith stands nearby.
+
+Actual:
+No actor profile.
+
+---
+
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+A skeleton stands nearby.
+
+Actual:
+No actor profile.
+
+---
+
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+An ogre stands nearby.
+
+Actual:
+No actor profile.
+
+Patch:
+Expand baseline local actor extraction for:
+
+A/An/The [actor] stands nearby
+A/An/The [actor] waits nearby
+A/An/The [actor] watches from [place]
+A/An/The [actor] blocks the path/bridge/door/hall
+
+Add actor heads:
+blacksmith, smith, farmer, peasant, skeleton, zombie, troll, ogre, captain, general, high priestess, priestess, priest, commander, sergeant.
+
+Keep these as local actor profiles, not automatically major actor memory.
+
+============================================================
+BLOCKER 5 — SOME CREATED THREAT PROFILES ARE TOO LOW / WRONG ROLE
+============================================================
+
+Failed case:
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+An orc warrior stands nearby.
+
+Expected:
+A meaningful combat-capable local actor profile.
+
+Actual:
+Level 5, ordinary_or_unproven, role average.
+
+---
+
+Failed case:
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+A stone golem stands nearby.
+
+Expected:
+Construct / monster-scale profile above ordinary human baseline.
+
+Actual:
+Level 5, ordinary_or_unproven, role average.
+
+---
+
+Failed case:
+INPUT:
+I look around.
+
+FORCED OUTPUT:
+A cult acolyte stands nearby.
+
+Expected:
+At least low trained/cultist/mage-style threat profile.
+
+Actual:
+Level 5, ordinary_or_unproven, role average.
+
+Additional pressure probe:
+- General Korr creates a profile, but resolves role average instead of guard/commander.
+- High Priestess Selene creates a profile, but role tags are weak/missing and resolves as average.
+
+Patch:
+Add baseline levels / role mapping:
+
+orc warrior:
+monster/humanoid martial, around L18-L35 depending context.
+
+stone golem:
+construct body, at least L35+, probably monster/dungeon role.
+
+cult acolyte:
+cultist/acolyte/priest/mage role, at least L10-L45 depending wording.
+
+general:
+guard/commander role, not average.
+
+high priestess:
+mage/priest role, not average.
+
+============================================================
+WHAT PASSED
+============================================================
+
+CORE / CHUNK 1 SAFETY:
+- Script loads without syntax error.
+- File size is 842,224 bytes, under the 950 KB planning target and under the 1 MB practical ceiling.
+- /sheet works.
+- /inventory works.
+- /time works.
+- /reputation works.
+- /questlog works.
+- /cardsync works.
+- /actormemory works.
+- /threat works.
+- /help, /helpstats, /helpabilities work.
+- Normal input/output turn passes through.
+
+CHUNK 2 PARTIAL PASSES:
+- Base resources are correct.
+- XP/resource formula foundation stayed intact.
+- Level bands are correct:
+  baseline, novice, developing, trained, village-professional, city-professional, veteran-elite, elite, major-milestone, master, world-class, legendary, mythic, god-walking-earth.
+- /sheet exposes:
+  Scale Band
+  Benchmark Role
+  Benchmark Avg Stats
+  Benchmark Gap
+  Above Benchmark
+  Below Benchmark
+- Average/generalist matrix matches the battle plan.
+
+CHUNK 3 PASSES:
+The following actor profiles worked well:
+
+- village guard -> L25, guard, village-professional
+- city guard -> L50, guard, city-professional
+- elite knight -> L90, guard/elite
+- archmage -> L150, mage, major-milestone
+- black bear -> L28, beast
+- ancient dragon -> L750, mythic draconic
+- merchant -> L6, low combat/social risk
+- innkeeper -> L6, low combat/social risk
+- wolf -> L12, beast
+- wyvern -> L250, draconic/master
+- dragon -> L500, legendary draconic
+
+/threat display worked for created actor profiles.
+
+NO WORLD AUTO-SCALING:
+Passed:
+- Level 1000 player did not force village guard to become level 1000.
+- Level 1000 player did not force dragon to become level 1000.
+- Village guard stayed L25.
+- Dragon stayed L500.
+
+This is very important and good: the world is not simply rubber-banding enemies to the player.
+
+REGRESSION SAFETY:
+Passed:
+- rusted iron key from armory saves cleanly
+- cold resistance passive saves
+- poison tolerance does not become active poisoned
+- Boxing drains EP on stamina-low wording
+- Earth Control drains MP on no-mana wording
+- death rumor does not kill player
+- 30-minute route timing saves
+- strong chapel scene arrival works
+- duplicate combat output does not double-award XP
+
+============================================================
+STAGE DECISION
+============================================================
+
+Do not move to Chunk 4 yet.
+
+Chunk 3 is close structurally, but it is not clean because:
+
+1. Runtime identity says Chunk 2, not Chunk 3.
+2. StatBenchmarkSystem does not match the uploaded rank matrices for key roles.
+3. Actor profile extraction duplicates compound actors.
+4. Several common actor heads are missed entirely.
+5. Some created actors are under-ranked or mis-roled.
+
+PATCH PRIORITY:
+1. Fix final runtime identity.
+2. Replace role weights with the plan weights.
+3. Suppress shorter duplicate actor candidates when a longer same-sentence candidate exists.
+4. Expand local actor baseline extraction.
+5. Add missing role/category/level handling for orc warrior, golem, acolyte, general, high priestess, skeleton, zombie, troll, ogre, farmer, blacksmith.
+
+BOTTOM LINE:
+The system is pointed in the right direction and the no-world-scaling behavior is working, but Chunk 3 is currently blocked. Patch the identity, matrix weights, and actor extraction/ranking before starting Chunk 4.
+
+AIDRPG v1.1.6 — PROGRESS SUCCESS TEST
+
+TOTAL CHECKS:
+151
+
+PASSED:
+131 / 151
+
+FAILED:
+20 / 151
+
+VERDICT:
+BLOCKED BEFORE CHUNK 7.
+
+Chunks 1–3 stayed clean.
+Chunk 5 is clean.
+Most of Chunk 4 works.
+Chunk 6 is not clean enough to move forward because the WorldStructure core has settlement/project/assignment problems.
+
+============================================================
+WHAT PASSED
+============================================================
+
+Runtime / identity:
+PASS
+- Script loads.
+- File size: 932,460 bytes.
+- Under 950 KB target.
+- Under 1 MB hard ceiling.
+- VERSION: 1.1.6-production
+- BUILD_STAGE: AIDRPG-v1.1.6-chunk6-lean-worldstructure-core
+
+Commands:
+PASS
+- /sheet
+- /inventory
+- /time
+- /reputation
+- /questlog
+- /cardsync
+- /actormemory
+- /threat
+- /build
+- /buildprofile
+- /matchup
+- /map
+- /layout
+- /village
+- /help
+- /helpstats
+- /helpabilities
+
+Chunk 2 regression:
+PASS
+- Stat benchmark matrices stayed correct.
+- Dungeon, farmer, mage, and average benchmark profiles matched expected values.
+
+Chunk 3 regression:
+PASS
+- Actor threat profiles still work.
+- Village guard, city guard, veteran guard, elite knight, apprentice mage, archmage, ancient dragon, stone golem, orc warrior, and high priestess all created correct local threat profiles.
+- No world-scaling regression found.
+
+Chunk 5:
+PASS
+- L1 clean dragon kill is guarded.
+- /matchup reports enemy_overwhelms and clean victory guarded.
+- Context includes the matchup warning.
+- High-threat victory with setup is not marked implausible.
+- L1000 player vs village guard is not rubber-banded.
+- Impossible validated actor death can be demoted to tentative.
+
+Regression safety:
+PASS
+- rusted iron key pickup still works
+- poison tolerance does not become poisoned
+- Boxing drains EP
+- Earth Control drains MP
+- death rumor does not kill player
+- route timing still saves
+- duplicate XP protection still works
+
+============================================================
+CURRENT-STAGE BLOCKERS
+============================================================
+
+1. Chunk 6 settlement core is not stable.
+
+Failed input/output:
+INPUT:
+I enter Stoneford.
+
+OUTPUT:
+Stoneford is a small village.
+
+Expected:
+WorldStructure creates Stoneford as an active settlement.
+
+Actual:
+Nodes: 0
+Edges: 0
+Active settlement: none
+
+Also failed:
+- The town of Greybridge surrounds you.
+- Ravenfall is a coastal city.
+- You arrive in Ashford, a farming hamlet.
+
+Patch:
+Add direct settlement capture patterns:
+- “[Name] is a village/town/city/hamlet/camp”
+- “The town/city/village of [Name]…”
+- “You arrive in [Name], a village/town/city/hamlet”
+- “You enter [Name], a village/town/city/hamlet”
+
+Expected state:
+activeSettlementId should point to the named settlement, not remain blank.
+
+
+2. Chunk 6 misclassifies structures as settlements when they contain settlement words.
+
+Failed input/output:
+INPUT:
+I look around.
+
+OUTPUT:
+The village well is beside the market square.
+
+Expected:
+village well = structure
+market square = location
+active settlement should remain none or prior settlement.
+
+Actual:
+village well becomes settlement.
+active settlement becomes village well.
+
+Also failed:
+- town gate becomes settlement
+- city wall becomes settlement
+
+Patch:
+inferKind should not classify the whole phrase as settlement just because it contains:
+- village
+- town
+- city
+
+If the head noun is well/gate/wall, classify by head noun:
+- village well -> structure
+- town gate -> route/structure
+- city wall -> structure
+
+Only classify as settlement when the phrase itself is a settlement identity:
+- Stoneford
+- Greybridge
+- town of Greybridge
+- village of Stoneford
+
+
+3. Chunk 6 core schema is missing project and assignment buckets.
+
+Expected from Chunk 6 stage:
+Lean WorldStructure core should have compact storage for nodes, edges, settlements, projects, and assignments before Chunk 7 parser work begins.
+
+Actual schema keys:
+- schemaVersion
+- nodesById
+- edgesById
+- settlementsById
+- activeSettlementId
+- currentNodeId
+- recentStructureEvents
+- contradictions
+- dirtyNodeIds
+- settings
+
+Missing:
+- projectsById or equivalent
+- assignmentsById or equivalent
+
+Patch:
+Add capped buckets:
+- projectsById
+- assignmentsById
+- dirtyProjectIds
+- dirtyAssignmentIds
+
+Chunk 7 can then parse ownership/job/resident/construction facts into these buckets.
+
+
+4. Chunk 4 domain tags do not read confirmed ability identity.
+
+Failed setup:
+INPUT:
+I practice Earth Control as a skill.
+
+OUTPUT:
+Earth Control becomes natural as earth magic training.
+
+Then player was set to high INT / high MP for mage-domain profiling.
+
+Expected:
+Build dominance profile:
+- magicStyle: domain_caster
+- domainTags includes earth
+
+Actual:
+- magicStyle: technical_magic_potential
+- domainTags: none_confirmed
+
+Why:
+Earth Control exists in abilities, but PlayerBuildDominanceSystem appears to inspect rec.name / rec.displayName / rec.tags and misses identity.name and observation.semanticTags.
+
+Patch:
+In collectDomainTags, also inspect:
+- rec.identity.name
+- rec.identity.displayName
+- rec.keys.keyPhrases
+- rec.meaning.intendedFunction
+- rec.observation.semanticTags
+- rec.source.sourceTags
+
+
+5. WorldStructure cap is off by one.
+
+Stress test:
+Called ensureNode 150 times.
+
+Expected:
+Node count <= 120
+
+Actual:
+Node count 121
+
+Patch:
+Run repairCaps after insertion, not only before insertion, or trim until count <= maxNodes after every ensureNode/addEdge path.
+
+============================================================
+WARNINGS
+============================================================
+
+1. Contains relation can duplicate the same room.
+
+Failed case:
+OUTPUT:
+Inside the tavern is a common room.
+
+Expected:
+One common room node with parent tavern.
+
+Actual:
+A parented common room was created, but a second parentless common room node also appeared from current-scene capture.
+
+Patch:
+Before creating a current scene node, check whether a same-name child node already exists in current scope.
+
+
+2. Some structure heads are still too narrow.
+
+Failed:
+OUTPUT:
+The guard tower is beside the tavern.
+
+Expected:
+guard tower node.
+
+Actual:
+Only tavern was saved.
+
+Patch:
+Add/accept:
+- guard tower
+- watchtower
+- bell tower
+- mage tower
+- lookout tower
+
+
+3. Some project condition wording is weak.
+
+Failed:
+OUTPUT:
+The bakery project is finished.
+
+Expected:
+bakery project node with finished/complete condition.
+
+Actual:
+No node saved.
+
+Patch:
+Allow project as a structure head in condition parsing:
+- project is finished
+- project is complete
+- project is under construction
+
+
+4. Repaired bridge duplicates.
+
+Failed:
+OUTPUT:
+The bridge is repaired.
+
+Expected:
+One bridge node with repaired condition.
+
+Actual:
+Two bridge nodes appeared, one plain and one repaired.
+
+Patch:
+Deduplicate by normalized name + scope before creating condition nodes.
+
+============================================================
+STAGE DECISION
+============================================================
+
+Do not move to Chunk 7 yet.
+
+Chunk 5 is in good shape.
+Chunk 4 needs one domain extraction patch.
+Chunk 6 needs a focused cleanpass patch before Chunk 7.
+
+PATCH PRIORITY:
+1. Fix settlement detection and activeSettlementId.
+2. Fix village/town/city modifier misclassification.
+3. Add project/assignment storage buckets.
+4. Fix PlayerBuildDominanceSystem domain extraction from ability records.
+5. Fix node cap off-by-one.
+6. Deduplicate current scene / contains / condition nodes.
+
+BOTTOM LINE:
+Progress is real and most of the hard stat/threat work is stable. The blocker is specifically WorldStructure core readiness. Patch Chunk 6 before starting Chunk 7 parser + assignments.
+
+AIDRPG v1.7.4 — QUICK VERDICT VS GROK PASS CLAIM
+
+MY TAKE:
+Grok’s “passed” result is believable for v1.7.4.
+
+I specifically retested the v1.7.3 blocker points:
+
+1. Duplicate protected Player Sheet card crash:
+PASS.
+Duplicate SYS:AIDRPG:PLAYER:SUMMARY no longer crashed Output.
+It was quarantined as:
+SYS:AIDRPG:PLAYER:SUMMARY:DUPLICATE_REVIEW
+
+2. Manual Player Sheet HP/death override:
+PASS.
+Edited Player Sheet:
+HP: 47/100
+MP: 12/20
+EP: 30/50
+Remove Conditions: dead, unconscious
+
+Observed:
+HP = 47
+MP = 12
+EP = 30
+dead/unconscious removed
+one manual override log created
+
+3. Confirmed ability learning:
+PASS.
+“I deliberately practice Ember Ward…”
+“You successfully use Ember Ward. The technique becomes a usable ability.”
+
+Observed:
+Committed Abilities = 1
+Developing Candidates = 0
+Ember Ward stabilized correctly.
+
+4. Solved investigation archival:
+PASS.
+“The culprit confessed; the case is solved and the investigation is closed.”
+
+Observed:
+case status = solved
+activeCaseId cleared
+archivedCaseIds includes case
+clues archived
+evidence archived
+
+5. Contract itemName parsing:
+PASS in the repair probe.
+“Brin the smith agrees to repair the iron sword…”
+Observed itemName = iron sword
+
+6. Startup / card hygiene:
+PASS.
+14 protected cards appeared.
+14 unique namespaces.
+No duplicate namespaces.
+No visible SYS title/trigger leakage.
+`/cardaudit` returned PASS.
+
+7. Input-only hiring:
+PASS.
+Created labor order only.
+No worker group.
+
+8. Confirmed workers:
+PASS.
+“Mara returns with five carpenters willing to work.”
+Worker group created.
+
+CURRENT-STAGE BLOCKERS:
+None found in this targeted v1.7.4 repair pass.
+
+CURRENT WARNINGS:
+1. I have not yet certified a huge long-run mixed adventure loop on v1.7.4.
+2. I would still run one final extended “real play” pass before calling it absolutely final.
+3. Protected card notes can accumulate repeated metadata lines, but /cardaudit still passes and this is not a gameplay blocker.
+
+BOTTOM LINE:
+If Grok tested v1.7.4, I agree with the general result.
+v1.7.4 looks like it fixed the v1.7.3 blockers and is currently playable / release-candidate clean from the repair-gate perspective.
+
+If Grok meant v1.7.3 passed, I disagree.
+v1.7.3 had real blockers.
+v1.7.4 is the one that appears to pass the targeted final QA repair checks.
+
+AIDRPG v1.7.4 — GROK PASS CLAIM CHECK
+
+MY VERDICT:
+YES, I would call this version passed for the main gameplay-facing AI Dungeon test set.
+
+NOT A PERFECT ZERO-WARNING CLEAN PASS.
+But the previous real blockers appear fixed.
+
+WHAT PASSED:
+1. New adventure startup creates protected AIDRPG cards with no actual duplicate live Story Card namespaces.
+2. Deleted starter card restores safely.
+3. Broad Story Card / World Bible trigger pressure does not dump lore soup into context.
+4. Input-only hiring creates a labor order, not fake workers.
+5. Steward delegation creates/delegates a labor order, not fake workers.
+6. Confirmed workers create a worker group.
+7. Contract refusal / acceptance / breach / fulfillment works.
+8. Crafter custody / return / theft works.
+9. Manual Player Sheet HP/death override works.
+10. Ability-card cost override works.
+11. Solved investigation archives evidence and clears active case.
+12. Repeated identical output does not duplicate contracts/items.
+13. Many unnamed workers stay grouped and do not become actor/card spam.
+14. Named worker merge is fixed: Harlan becomes a named actor/foreman and links to the carpenter worker group.
+15. Long context mode stays compact and excludes broad World Bible body spam.
+
+IMPORTANT FIXES SINCE v1.7.3:
+- Named worker merge appears fixed.
+  “Harlan the carpenter is chosen as foreman” now creates/links Harlan and adds worker-group foreman data.
+
+- Contract item parsing appears fixed.
+  “Mira the smith agrees to repair your iron sword” now stores itemName = “iron sword,” not “smith agrees to repair your iron sword.”
+
+WARNINGS:
+1. Output-only startup creates 13 protected cards; input -> output startup creates 14 including AIDRPG System Index.
+   I do not treat this as a gameplay blocker because normal play has input before output, but if you want System Index even on output-only bootstrap, patch that.
+
+2. /cardaudit currently reports FAIL in my harness.
+   This does not look like actual duplicate live Story Cards. Actual live Story Card namespaces were unique. The audit appears to count dry-run/protected metadata plus live cards as duplicate namespace problems.
+   Patch /cardaudit so dryRunLog/protected specs and live storyCards are reported separately, or only count actual live Story Card duplicates as duplicate-card failures.
+
+3. Explicit pretend ability can leave a developing candidate.
+   “I pretend to use Crimson Lotus Fang… no ability is gained” does not create a committed ability or card, which is good, but it can leave a non-committed developing candidate in abilities.candidatesByKey.
+   This is warning-level unless it later stabilizes falsely. Best patch: scrub developing candidates when output says pretend/joke/not real/no ability gained/nothing activates.
+
+FINAL CALL:
+Grok saying it passed is basically fair for gameplay.
+My stricter answer is: PASSED WITH WARNINGS, not perfect final-clean.
+
+COPY-CHAIN HANDOFF:
+v1.7.4 passes the main AI Dungeon gameplay QA set. The previous v1.7.3 blockers are fixed: named worker merge now works, and repair-contract itemName parsing now correctly stores “iron sword.” Startup cards appear with no actual duplicate live Story Card namespaces, deleted protected cards restore safely, broad Story Card pressure does not create lore soup, hiring/delegation/confirmed worker flows work, contracts and crafter custody/return/theft work, manual Player Sheet HP/death override works, ability cost override works, solved investigations archive correctly, repeated identical output is idempotent, unnamed workers do not become actor/card spam, and long context remains compact. Remaining warnings: output-only startup creates 13 cards while input->output creates 14 including System Index; /cardaudit reports false duplicate namespace failures by counting dry-run/protected metadata against live cards; explicit pretend/no-ability output can leave a developing ability candidate even though it does not commit an ability or card. Verdict: gameplay pass with warnings, not absolute zero-warning clean.

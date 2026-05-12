@@ -1,0 +1,1758 @@
+AIDRPG Formula Appendix v1
+
+0. Document status
+
+Document name: AIDRPG Formula Appendix v1
+Purpose: Define the first exact math model for AIDRPG Core MVP progression, resources, ability costs, damage severity, and challenge rewards.
+Status: Formula specification, not code.
+Applies after: AIDRPG MVP Build Spec v1 and AIDRPG Test Spec v1.
+Required before: Basic combat/progression automation and Script v0.2+ scaling systems.
+
+This document answers:
+
+* how XP-to-next-level works
+* how total XP maps to level
+* what expected stats look like by level
+* how HP / MP / EP scale
+* how race/species modifies baseline growth
+* how resource recovery works
+* how ability cost labels convert into resource costs
+* how damage severity converts into HP/resource/injury impact
+* how challenge XP is calculated
+* how overleveled XP decay works
+* how underleveled danger scaling works
+* how ability candidate/stabilization thresholds work
+* how formulas stay safe for Level 1000 gameplay
+
+This document is intentionally formula-first.
+
+It does not build the script.
+
+It gives the script exact default math so implementation does not guess.
+
+⸻
+
+1. Authority order
+
+Formula authority order:
+
+1. Formula Appendix v1 for formulas and default math
+2. Test Spec v1 for required pass/fail behavior
+3. MVP Build Spec v1 for implementation scope
+4. Developer Spec v1.1 Correction Pass for safety boundaries
+5. Developer Spec v1 for architecture
+6. Chunk 33 Final Pre-Build Lockdown
+7. Design Bible Chunks 1–32
+
+If a gameplay chunk gives broad scaling philosophy and Formula Appendix v1 gives a specific formula, use this formula for implementation.
+
+If the formula creates bad gameplay later, create Formula Appendix v1.1 rather than patching formulas randomly in code.
+
+⸻
+
+2. Formula philosophy
+
+AIDRPG supports long-scale freeform progression, including high-level and anime-style campaigns.
+
+The formulas must support:
+
+* early game meaning
+* midgame growth
+* late-game power fantasy
+* Level 1000 scaling
+* nonhuman race/species variation
+* skill/domain growth
+* high stat values without immediate overflow
+* challenge-based XP
+* anti-farm decay
+* ability discovery and stabilization
+* soft validation instead of constant hard denial
+
+The formulas should not make every action a spreadsheet.
+
+The script should use these formulas internally and summarize results simply to the player.
+
+⸻
+
+3. Core formula constants
+
+Use these constants as default values.
+
+BASE_LEVEL = 1
+MAX_PLANNED_LEVEL = 1000
+BASE_STAT = 10
+BASE_HP = 100
+BASE_MP = 100
+BASE_EP = 100
+BASE_XP_TO_NEXT = 100
+XP_GROWTH_LINEAR = 25
+XP_GROWTH_POWER = 1.35
+STAT_GROWTH_POWER = 1.12
+RESOURCE_GROWTH_POWER = 1.10
+CHALLENGE_XP_BASE = 20
+OVERLEVEL_DECAY_START = 3
+OVERLEVEL_ZERO_REWARD_GAP = 20
+UNDERLEVEL_DANGER_START = 3
+
+These are defaults.
+
+Scenario settings may override them, but only through explicit configuration.
+
+⸻
+
+4. Level and XP model
+
+4.1 Level definition
+
+Level is the character’s broad overall progression.
+
+It should represent:
+
+* combat experience
+* quest experience
+* training
+* skill development
+* story accomplishments
+* dangerous breakthroughs
+* domain/crafting/social/investigation progress when relevant
+
+Level should not be increased by repeated trivial actions.
+
+⸻
+
+4.2 XP-to-next-level formula
+
+Default formula:
+
+XPToNext(level) = round(100 + 25 × level^1.35)
+
+Where:
+
+level >= 1
+
+Examples:
+
+Current Level	XP to Next
+1	125
+2	164
+5	319
+10	660
+25	2,043
+50	5,005
+100	12,629
+250	43,148
+500	110,953
+750	190,136
+1000	280,846
+
+This curve allows long campaigns without making early leveling impossible.
+
+⸻
+
+4.3 Total XP formula
+
+Total XP required to reach a level is the sum of all previous XP-to-next values.
+
+TotalXPForLevel(1) = 0
+TotalXPForLevel(L) = sum XPToNext(n) for n = 1 to L-1
+
+Approximate examples:
+
+Level	Approx Total XP Required
+1	0
+2	125
+5	845
+10	3,827
+25	28,770
+50	139,961
+100	624,587
+250	5,853,000
+500	32,260,000
+750	89,705,000
+1000	185,570,000
+
+Exact implementation should compute rather than hardcode these approximations.
+
+⸻
+
+4.4 Level-up process
+
+When XP reaches or exceeds XP-to-next:
+
+1. subtract XP-to-next from current XP
+2. add XP-to-next to total XP if not already tracked separately
+3. increase level by 1
+4. recalculate XP-to-next
+5. apply stat/resource growth if automatic level scaling is enabled
+6. mark Player Sheet and Body Status dirty
+7. log operation key
+
+Operation key example:
+
+progression.level_up.player.level_12.turn_405
+
+Level-up must not happen twice from the same XP event.
+
+⸻
+
+5. XP award model
+
+5.1 XP event categories
+
+XP can come from:
+
+* combat challenge
+* quest objective
+* quest completion
+* training
+* ability breakthrough
+* discovery/exploration
+* crafting milestone later
+* investigation breakthrough later
+* social/faction milestone later
+* domain milestone later
+
+MVP should only support simple XP gain safely.
+
+Full category-specific XP can come later.
+
+⸻
+
+5.2 Base challenge XP formula
+
+For combat/challenge events:
+
+ChallengeXP = round(BaseXP × DifficultyModifier × ContributionModifier × NoveltyModifier × AntiFarmModifier)
+
+Default:
+
+BaseXP = 20 × EnemyEffectiveLevel
+
+If no enemy level exists, use challenge tier estimate.
+
+BaseXP = 20 × ChallengeTierEquivalent
+
+⸻
+
+5.3 Difficulty modifier by level gap
+
+Let:
+
+LevelGap = ChallengeEffectiveLevel - PlayerLevel
+
+Use:
+
+Level Gap	Difficulty Modifier
+-20 or lower	0
+-15	0.05
+-10	0.10
+-7	0.20
+-5	0.35
+-3	0.60
+-2	0.75
+-1	0.90
+0	1.00
++1	1.15
++2	1.35
++3	1.60
++5	2.20
++7	3.00
++10	4.50
++15	7.00
++20 or higher	10.00, if victory is valid
+
+Important:
+
+A high positive gap does not mean the player should automatically win and receive huge XP.
+
+It means if the victory is valid, the reward can be high.
+
+CanonValidator must still check plausibility.
+
+⸻
+
+5.4 Contribution modifier
+
+Contribution matters when companions, workers, summons, traps, NPCs, or environmental forces help.
+
+Contribution	Modifier
+player did nearly all meaningful work	1.00
+player did majority	0.75
+player did meaningful support	0.50
+player was present but minor contribution	0.25
+player outsourced nearly all work	0.10
+player not involved	0
+
+Quest completion may still occur with outsourcing, but XP should reduce.
+
+⸻
+
+5.5 Novelty modifier
+
+Novelty prevents repeated farming.
+
+Situation	Modifier
+first meaningful challenge of this type	1.00
+repeated but still risky	0.75
+familiar, low novelty	0.50
+heavily repeated	0.25
+farmed/trivial repetition	0.05 or 0
+
+⸻
+
+5.6 Anti-farm modifier
+
+Anti-farm checks recent repeated actions.
+
+Default:
+
+Repetition Count in Recent Window	AntiFarm Modifier
+1	1.00
+2	0.75
+3	0.50
+4	0.25
+5+	0.05 or 0
+
+Recent window default:
+
+25 turns or same scene, whichever is stricter
+
+Anti-farm should apply to:
+
+* repeated weak enemies
+* repeated training with no new challenge
+* repeated ability attempts without new risk
+* repeated clue questioning later
+* repeated crafting of trivial items later
+
+⸻
+
+6. Quest XP model
+
+6.1 Quest objective XP
+
+Simple objective XP:
+
+ObjectiveXP = round(10 × QuestDifficultyLevel × ObjectiveWeight × NoveltyModifier)
+
+ObjectiveWeight:
+
+Objective Type	Weight
+minor step	0.25
+normal step	0.50
+major step	1.00
+dangerous step	1.50
+climax objective	2.00
+
+⸻
+
+6.2 Quest completion XP
+
+QuestCompletionXP = round(50 × QuestDifficultyLevel × OutcomeModifier × ContributionModifier)
+
+OutcomeModifier:
+
+Outcome	Modifier
+failed but survived/learned	0.10–0.25
+partial success	0.50
+normal success	1.00
+strong success	1.25
+excellent/optional objectives	1.50
+legendary solution	2.00
+
+Quest XP must use permanent or semi-permanent operation keys.
+
+Example:
+
+xp.quest.clear_mill_wolves.complete.player
+
+⸻
+
+7. Stat scaling model
+
+7.1 Core stats
+
+Default core stats:
+
+ATK
+DEF
+SPD
+INT
+LCK
+
+Each stat starts around 10 for a normal Level 1 human.
+
+Stats can grow from:
+
+* level-up
+* training
+* race/species growth
+* abilities/passives
+* equipment
+* conditions
+* temporary buffs/debuffs
+* absorption/evolution later
+
+⸻
+
+7.2 Expected baseline stat by level
+
+Default expected human baseline for a balanced character:
+
+ExpectedStat(level) = round(10 + 2.5 × (level - 1)^1.12)
+
+Examples:
+
+Level	Expected Balanced Core Stat
+1	10
+5	22
+10	39
+25	98
+50	204
+100	442
+250	1,220
+500	2,646
+750	4,174
+1000	5,771
+
+This means Level 1000 is extremely powerful, but not infinite.
+
+Specialized builds can exceed baseline in favored stats and fall below it in weak stats.
+
+⸻
+
+7.3 Stat specialization modifiers
+
+A character’s build can bias stats.
+
+Default build modifiers:
+
+Build Type	ATK	DEF	SPD	INT	LCK
+balanced	1.00	1.00	1.00	1.00	1.00
+warrior	1.20	1.15	1.00	0.85	0.95
+guardian	0.95	1.35	0.80	0.90	1.00
+rogue	1.05	0.85	1.35	0.95	1.15
+mage	0.75	0.80	0.90	1.45	1.00
+monk	1.05	1.05	1.20	1.00	0.95
+survivor	0.90	1.15	0.95	0.95	1.25
+social/trickster	0.80	0.85	1.05	1.15	1.35
+
+Formula:
+
+ExpectedBuildStat = round(ExpectedStat(level) × BuildModifier × RaceModifier × TrainingModifier)
+
+⸻
+
+7.4 Training modifier
+
+Training can raise specific stats above expected baseline.
+
+Default allowed training modifier range:
+
+0.80 to 1.35 for normal characters
+0.80 to 1.75 for extreme specialists
+higher only with supernatural justification
+
+Examples:
+
+* swordsman may have ATK 1.25× expected
+* scholar may have INT 1.30× expected
+* speedster may have SPD 1.50× expected if build supports it
+* monster/evolved entity may exceed normal caps if race/evolution supports it
+
+⸻
+
+8. Race/species scaling modifiers
+
+8.1 Race/species purpose
+
+Race/species should modify stat/resource expectations without requiring a unique formula for every creature.
+
+Each race/species can define modifiers for:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+* HP
+* MP
+* EP
+* growth speed
+* body traits
+* compatible conditions
+* equipment fit
+
+MVP may store race/species as text, but later scaling uses these modifiers.
+
+⸻
+
+8.2 Default human modifiers
+
+Human Race Modifier:
+ATK 1.00
+DEF 1.00
+SPD 1.00
+INT 1.00
+LCK 1.00
+HP 1.00
+MP 1.00
+EP 1.00
+Growth 1.00
+
+Humans are baseline.
+
+⸻
+
+8.3 Common race/species modifier examples
+
+Species Type	ATK	DEF	SPD	INT	LCK	HP	MP	EP	Notes
+human	1.00	1.00	1.00	1.00	1.00	1.00	1.00	1.00	baseline
+elf/fae-touched	0.90	0.85	1.15	1.20	1.05	0.85	1.25	0.95	magic/speed bias
+dwarf/stonekin	1.05	1.25	0.80	0.95	1.00	1.25	0.85	1.10	durable
+beastkin	1.15	0.95	1.25	0.90	1.00	1.05	0.85	1.20	physical/senses
+giant	1.60	1.40	0.65	0.80	0.85	1.80	0.70	1.35	size/power
+slime	0.85	1.10	0.75	0.90	1.05	1.30	0.90	0.95	amorphous body
+undead	1.00	1.15	0.85	0.95	0.80	1.10	0.70	0.80	condition immunity varies
+construct	1.10	1.40	0.75	0.80	0.70	1.50	0.40	1.00	repair not healing
+dragonkin	1.35	1.25	1.00	1.05	0.95	1.40	1.10	1.20	strong body/magic
+spirit	0.75	0.70	1.20	1.25	1.00	0.70	1.50	0.70	incorporeal traits
+demon/celestial	1.25	1.15	1.10	1.15	0.90	1.25	1.25	1.10	supernatural
+
+These are examples, not exhaustive.
+
+Scenario-defined races should use the closest template and then adjust.
+
+⸻
+
+8.4 Race/species modifier formula
+
+FinalExpectedStat = round(ExpectedStat(level) × BuildModifier × RaceStatModifier × TrainingModifier)
+FinalExpectedResource = round(ExpectedResource(level) × RaceResourceModifier × BuildResourceModifier)
+
+⸻
+
+8.5 Race/species safety rule
+
+Race/species modifiers should not make a character infinitely powerful by default.
+
+If a species has extreme scaling, it needs:
+
+* explicit scenario support
+* growth cost
+* weakness
+* resource demand
+* social consequence
+* body limitation
+* delayed maturity
+* special XP/training requirement
+
+Example:
+
+A dragon species can have high HP/ATK, but may have:
+
+* large body equipment issues
+* social fear
+* slow growth
+* high food/resource needs
+* difficulty entering buildings
+
+⸻
+
+9. Resource scaling model
+
+9.1 Resource definitions
+
+HP = bodily durability and life-state buffer
+MP = magical/spiritual/mental casting resource
+EP = stamina, exertion, physical action resource
+
+Resource max values scale with level, stats, race/species, and build.
+
+⸻
+
+9.2 Baseline resource formula
+
+Default human balanced resource expectation:
+
+ExpectedResource(level) = round(100 + 12 × (level - 1)^1.10)
+
+Examples:
+
+Level	Expected HP/MP/EP Baseline
+1	100
+5	155
+10	235
+25	496
+50	965
+100	1,991
+250	5,377
+500	11,190
+750	17,314
+1000	23,625
+
+⸻
+
+9.3 Resource build modifiers
+
+Build Type	HP	MP	EP
+balanced	1.00	1.00	1.00
+warrior	1.15	0.80	1.25
+guardian	1.35	0.75	1.05
+rogue	0.90	0.85	1.30
+mage	0.80	1.50	0.85
+monk	1.00	1.00	1.35
+survivor	1.25	0.85	1.15
+social/trickster	0.85	1.05	1.00
+
+Formula:
+
+MaxHP = round(ExpectedResource(level) × HP RaceModifier × HP BuildModifier × BodyTraitModifier)
+MaxMP = round(ExpectedResource(level) × MP RaceModifier × MP BuildModifier × MagicTrainingModifier)
+MaxEP = round(ExpectedResource(level) × EP RaceModifier × EP BuildModifier × EnduranceTrainingModifier)
+
+⸻
+
+9.4 Resource current value after max increase
+
+When max resource increases from level-up/training:
+
+Default:
+
+CurrentResource += round(MaxIncrease × 0.50)
+
+Do not automatically full-heal unless level-up settings say so.
+
+Example:
+
+HP max increases from 100 to 120.
+
+Current HP increases by 10, not necessarily to 120.
+
+⸻
+
+10. Resource cost labels
+
+MVP uses cost labels before detailed ability math.
+
+Cost labels convert to percentage of max resource.
+
+10.1 Single-resource cost labels
+
+Cost Label	Resource Cost
+none	0%
+tiny	1–2%
+light	3–5%
+moderate	8–12%
+heavy	18–25%
+severe	35–50%
+extreme	60–90%
+lethal/overdraw	100%+ or HP/injury cost
+
+Default exact midpoint values:
+
+Cost Label	Default Exact Cost
+none	0%
+tiny	1%
+light	4%
+moderate	10%
+heavy	22%
+severe	42%
+extreme	75%
+
+⸻
+
+10.2 Multi-resource abilities
+
+Some abilities cost multiple resources.
+
+Example:
+
+Mana Slash:
+
+MP: moderate
+EP: light
+
+Berserk Strike:
+
+EP: heavy
+HP: tiny or injury risk
+
+Blood Magic:
+
+MP: light
+HP: moderate
+condition risk: blood loss
+
+⸻
+
+10.3 Minimum cost rule
+
+Any meaningful supernatural/combat ability should cost at least 1 point if percentage rounds to 0.
+
+Cost = max(1, round(MaxResource × CostPercent))
+
+Exception:
+
+Passive or narrative-only abilities may have no direct cost.
+
+⸻
+
+10.4 Insufficient resource outcomes
+
+If resource is insufficient:
+
+Resource State	Outcome
+slightly short	weak/partial effect, extra fatigue
+very short	fail, backlash, or overdraw prompt/state
+empty	fail or dangerous overdraw only if setting allows
+
+Do not allow full effect for free.
+
+⸻
+
+11. Recovery formulas
+
+11.1 Rest recovery categories
+
+Rest Type	HP Recovery	MP Recovery	EP Recovery	Injury Recovery
+brief pause	0%	2%	5%	none
+short rest	1%	10%	20%	minor only if safe
+poor sleep	2%	20%	35%	limited
+normal sleep	5%	50%	70%	minor/moderate progress
+safe full rest	10%	75%	100%	good progress
+medical rest	15%	75%	100%	improved injury progress
+magical healing rest	ability-specific	ability-specific	ability-specific	ability-specific
+
+Minimum resource recovery:
+
+at least 1 point if recovery percent > 0 and max resource > 0
+
+⸻
+
+11.2 Fatigue recovery
+
+Fatigue states:
+
+normal → tired → exhausted → collapsed
+
+Recovery:
+
+Rest Type	Fatigue Improvement
+brief pause	none or tired relief if mild
+short rest	one step if only tired
+poor sleep	one step
+normal sleep	one to two steps
+safe full rest	usually reset to normal unless condition/injury prevents
+
+⸻
+
+11.3 Injury recovery by severity
+
+Injury Severity	Natural Recovery Unit
+scratch	minutes/hours
+minor	one rest/day
+moderate	several days/rest cycles
+serious	weeks or medical/magic support
+severe	weeks/months or strong magic
+critical	special care/magic, may worsen
+permanent	does not recover without special solution
+
+MVP can track injury text and severity without full day-by-day simulation.
+
+⸻
+
+11.4 Healing magic limits
+
+Healing effect must match tier.
+
+Healing Tier	Can Usually Heal
+weak	scratches, fatigue support
+minor	minor wounds, small HP
+moderate	moderate wounds, meaningful HP
+strong	serious wounds, poison/disease support
+advanced	severe wounds, organ/bone damage
+legendary	critical injuries, limb restoration
+divine/mythic	death-adjacent miracles if setting allows
+
+Weak healing should not regrow limbs.
+
+⸻
+
+12. Damage severity model
+
+12.1 Damage severity categories
+
+Damage should be translated into severity before exact HP changes.
+
+Severity	HP Loss	Possible Injury
+none	0%	none
+graze	1–3%	scratch possible
+light	4–8%	minor injury possible
+moderate	10–18%	moderate injury possible
+heavy	20–35%	serious injury possible
+severe	40–60%	severe injury likely
+critical	65–90%	critical injury/death boundary
+lethal	100%+	dying/death unless protected
+
+Default exact HP loss:
+
+Severity	Default HP Loss
+none	0%
+graze	2%
+light	6%
+moderate	14%
+heavy	28%
+severe	50%
+critical	75%
+lethal	100%
+
+Formula:
+
+HPLoss = max(1, round(MaxHP × SeverityPercent))
+
+Except none = 0.
+
+⸻
+
+12.2 Damage modifier from matchup
+
+Damage severity should be adjusted by matchup.
+
+Use Effective Power Ratio:
+
+PowerRatio = AttackerEffectivePower / DefenderEffectivePower
+
+Where MVP approximation:
+
+AttackerEffectivePower = AttackerLevelEquivalent × relevantStatModifier
+DefenderEffectivePower = DefenderLevelEquivalent × defensiveStatModifier
+
+If exact enemy stats are unavailable, use level/tier estimates.
+
+⸻
+
+12.3 Power ratio severity adjustment
+
+Power Ratio	Severity Adjustment
+0.10 or lower	cannot meaningfully harm unless weakness/exploit
+0.25	reduce by 3 severity steps
+0.50	reduce by 2 steps
+0.75	reduce by 1 step
+1.00	no change
+1.50	increase by 1 step
+2.00	increase by 2 steps
+3.00	increase by 3 steps
+5.00+	overwhelming, may be critical/lethal if hit lands
+
+Severity steps:
+
+none → graze → light → moderate → heavy → severe → critical → lethal
+
+⸻
+
+12.4 Defense and resistance modifier
+
+Defense can reduce severity.
+
+Resistances reduce severity or HP loss.
+
+Resistance Type	Effect
+minor resistance	-10% HP loss or -1 step if borderline
+moderate resistance	-25% HP loss or -1 step
+strong resistance	-50% HP loss or -2 steps
+immunity	no effect unless bypassed
+vulnerability	+25% to +100% HP loss or +1/+2 steps
+
+⸻
+
+12.5 Injury trigger rule
+
+Injury chance by severity:
+
+Severity	Injury Rule
+graze	cosmetic/scratch only
+light	minor injury if fiction supports
+moderate	moderate injury possible
+heavy	injury likely
+severe	serious/severe injury likely
+critical	critical injury or death boundary
+lethal	death/dying unless protection
+
+MVP may record injury only when narration explicitly supports it.
+
+Do not invent specific injuries from pure HP loss unless strict mode.
+
+⸻
+
+13. Enemy/challenge level estimation
+
+13.1 Enemy effective level
+
+If enemy has explicit level, use it.
+
+If enemy has tier, convert tier to level.
+
+Default tier-to-level:
+
+Tier	Level Range	Default Level
+0	0–1	1
+1	1–5	3
+2	6–10	8
+3	11–20	15
+4	21–35	28
+5	36–55	45
+6	56–80	68
+7	81–120	100
+8	121–180	150
+9	181–260	220
+10	261–375	320
+11	376–525	450
+12	526–700	600
+13	701–850	775
+14	851–1000	925
+15	1000+	1100+ special
+
+Tier 15 exceeds normal player-planned scale and should be mythic/cosmic.
+
+⸻
+
+13.2 Narrative enemy estimates
+
+If no level/tier exists, estimate from fiction.
+
+Enemy Type	Suggested Level/Tier
+rat, weak animal	Level 1 / Tier 0–1
+ordinary wolf	Level 2–5 / Tier 1
+trained bandit	Level 3–8 / Tier 1–2
+soldier/guard	Level 5–15 / Tier 2–3
+ogre/troll	Level 15–35 / Tier 3–4
+minor monster boss	Level 20–50 / Tier 4–5
+young dragon	Level 50–120 / Tier 6–7
+adult dragon	Level 150–400 / Tier 8–11
+ancient dragon	Level 500–1000+ / Tier 12–15
+demon lord	scenario-defined, usually Tier 10+
+god/avatar	scenario-defined, may exceed normal
+
+Named enemies should be stronger than generic versions if story supports it.
+
+⸻
+
+14. Underleveled danger scaling
+
+14.1 Danger threshold
+
+When challenge level exceeds player level by 3 or more:
+
+UnderlevelDangerActive = true
+
+Danger increases sharply with gap.
+
+⸻
+
+14.2 Underlevel warning levels
+
+Level Gap	Danger Label
++1 to +2	challenging
++3 to +5	dangerous
++6 to +10	overwhelming
++11 to +20	nearly impossible without leverage
++21 or more	impossible by direct means unless special condition
+
+⸻
+
+14.3 Leverage rule
+
+Underleveled victory can be valid if leverage exists.
+
+Valid leverage examples:
+
+* target weakness discovered
+* trap/environment advantage
+* allies/army help
+* special item
+* ritual preparation
+* enemy wounded/sealed
+* clever noncombat solution
+* social/contract loophole
+* stealth objective, not direct defeat
+* divine/mythic intervention with cost
+
+Without leverage, CanonValidator should soften impossible wins.
+
+Example:
+
+Level 5 player attacks Level 100 dragon.
+
+Unsupported output:
+
+You kill the dragon in one slash.
+
+Expected validation:
+
+soft_fail or hard_deny full kill
+possible result: scratch, evade, dragon notices, weapon breaks, forced retreat
+
+⸻
+
+15. Overlevel XP decay
+
+15.1 Overlevel gap
+
+OverlevelGap = PlayerLevel - ChallengeEffectiveLevel
+
+If OverlevelGap is high, XP decays.
+
+⸻
+
+15.2 Overlevel XP modifier
+
+Overlevel Gap	XP Modifier
+0	1.00
+1	0.90
+2	0.75
+3	0.60
+5	0.35
+7	0.20
+10	0.10
+15	0.05
+20+	0
+
+This prevents farming weak enemies.
+
+⸻
+
+15.3 Exception: meaningful non-XP rewards
+
+Even if XP is zero, actions may still matter for:
+
+* quest progress
+* reputation
+* loot
+* story consequence
+* rescue/protection
+* practice if training is meaningful
+
+But XP should not farm endlessly.
+
+⸻
+
+16. Ability progression model
+
+16.1 Ability states
+
+Ability states:
+
+unknown
+hint
+candidate
+unstable
+stable
+sealed
+unavailable
+
+⸻
+
+16.2 Ability evidence types
+
+Evidence can come from:
+
+* attempted use
+* partial manifestation
+* successful use
+* use under stress
+* training session
+* teacher instruction
+* item/scroll study
+* absorption/evolution later
+* quest breakthrough
+* repeated practice with risk
+
+Evidence should have weight.
+
+⸻
+
+16.3 Evidence weights
+
+Evidence Type	Evidence Points
+vague hint	0.25
+failed attempt with no effect	0.25
+failed attempt with clear feedback	0.50
+partial manifestation	1.00
+successful weak use	1.50
+successful normal use	2.00
+successful use under danger	3.00
+teacher-guided breakthrough	3.00
+quest/ritual breakthrough	4.00
+major story awakening	5.00
+
+Duplicate/farmed attempts should decay.
+
+⸻
+
+16.4 Status thresholds
+
+Default thresholds:
+
+Status Change	Required Evidence Points	Additional Requirement
+unknown → hint	0.25	story suggests possibility
+hint → candidate	1.00	at least one meaningful sign
+candidate → unstable	3.00	at least one partial/successful manifestation
+unstable → stable rank 1	7.00	cost/limit identified
+stable rank 1 → rank 2	+10.00	3 meaningful successful uses
+rank 2 → rank 3	+18.00	use under pressure or training
+rank 3 → rank 4	+30.00	significant challenge/breakthrough
+rank 4 → rank 5	+50.00	major story/training requirement
+
+Ranks above 5 require advanced spec.
+
+⸻
+
+16.5 Candidate use rule
+
+Candidate ability use cannot produce reliable full effect.
+
+Allowed results:
+
+* no effect
+* flicker
+* weak partial effect
+* uncontrolled effect
+* backlash
+* evidence gain
+* fatigue/resource cost
+
+Stable effect requires stable status.
+
+⸻
+
+16.6 Ability rank effect scaling
+
+Default rank interpretation:
+
+Rank	Meaning
+candidate	possible but unreliable
+unstable	can manifest, unreliable/costly
+1	basic reliable use
+2	practiced use
+3	strong skilled use
+4	advanced use
+5	masterful use
+6+	legendary/specialized later
+
+Effect scale should depend on rank, cost, level, and context.
+
+⸻
+
+16.7 Ability cost scaling by rank
+
+Higher rank may reduce cost for same effect or allow stronger effect for same cost.
+
+Default:
+
+Rank	Cost Efficiency
+unstable	1.50× cost
+1	1.00× cost
+2	0.90× cost
+3	0.80× cost
+4	0.70× cost
+5	0.60× cost
+
+If using increased power instead of efficiency, cost may remain same or increase.
+
+⸻
+
+17. Training XP and stat XP
+
+17.1 Training purpose
+
+Training should improve stats, abilities, or domains, but should not be infinitely farmable without time, effort, and increasing challenge.
+
+⸻
+
+17.2 Stat XP threshold
+
+Each stat may have its own XP track.
+
+Default stat XP needed for +1 stat:
+
+StatXPToIncrease(statValue) = round(25 + 5 × statValue^1.10)
+
+Examples:
+
+Current Stat	Stat XP for +1
+10	88
+25	197
+50	394
+100	817
+500	4,670
+1000	10,002
+5000	58,772
+
+This prevents high-level stats from increasing too easily.
+
+⸻
+
+17.3 Training session XP
+
+Training XP depends on quality.
+
+Training Type	Stat XP
+trivial repetition	0–1
+light practice	2–5
+normal practice	5–15
+hard practice	15–40
+dangerous live training	40–100
+expert instruction	25–100
+breakthrough session	100+
+
+Training requires time.
+
+Repeated identical low-risk training decays.
+
+⸻
+
+17.4 Training anti-farm
+
+Use same anti-farm modifier as XP.
+
+If the player repeatedly performs low-risk pushups forever, gains decay unless:
+
+* training difficulty increases
+* weights/resistance increase
+* new technique introduced
+* instructor improves quality
+* risk/time/resource cost increases
+
+⸻
+
+18. Level-up stat growth options
+
+AIDRPG can use one of two stat growth models.
+
+18.1 Recommended MVP model: expected-stat correction
+
+Instead of adding fixed stat points every level, compare current stats to expected stat values.
+
+On level-up:
+
+ExpectedNewStat = ExpectedBuildStat(newLevel)
+If CurrentStat < ExpectedNewStat:
+  CurrentStat += max(1, round((ExpectedNewStat - CurrentStat) × 0.35))
+
+This gradually moves underdeveloped stats toward expected level without huge jumps.
+
+Specialized stats can still grow faster through training.
+
+⸻
+
+18.2 Simpler optional model: fixed points
+
+If implementation needs simpler behavior:
+
+Each level grants 5 stat growth points.
+Build bias auto-assigns them.
+
+Default distribution:
+
+* 2 points to main stat
+* 1 point to secondary stat
+* 1 point to defensive/resource stat
+* 1 free/balanced point
+
+This is easier but weaker for Level 1000 scaling.
+
+Use expected-stat correction if possible.
+
+⸻
+
+19. Level-up resource growth
+
+On level-up:
+
+NewMaxResource = ExpectedResource(newLevel) × RaceModifier × BuildModifier
+
+If current max is below expected:
+
+MaxResource += max(1, round((NewExpectedMax - CurrentMax) × 0.35))
+
+Current resource increases by half of max increase:
+
+CurrentResource += round(MaxIncrease × 0.50)
+
+Clamp:
+
+CurrentResource <= MaxResource
+
+⸻
+
+20. MVP combat automation limits
+
+Formula Appendix v1 enables basic combat/progression automation, but MVP should still avoid pretending to be a full tactical engine.
+
+20.1 MVP combat should track
+
+* damage severity
+* HP loss
+* resource cost
+* obvious injury from narration
+* enemy defeated only if output and validation support it
+* XP reward only if operation key and challenge validation pass
+
+20.2 MVP combat should not track yet
+
+* every enemy stat block
+* exact hit chance
+* initiative order
+* grid positioning
+* full group combat matrix
+* armor penetration tables
+* body-part damage tables
+* advanced boss phases
+
+Those need later specs.
+
+⸻
+
+21. Formula integration with CanonValidator
+
+CanonValidator should use formulas to decide plausibility.
+
+21.1 Example: impossible kill
+
+Player Level 5.
+
+Enemy Effective Level 100.
+
+AI Output:
+
+You kill the ancient dragon in one punch.
+
+Formula check:
+
+LevelGap = +95
+Danger = impossible by direct means
+No leverage detected
+
+Validation:
+
+hard_deny full kill or soft_fail into minor effect
+
+⸻
+
+21.2 Example: valid underleveled success with leverage
+
+Player Level 5.
+
+Enemy Level 30.
+
+Leverage:
+
+* enemy sleeping
+* blessed spear
+* trap prepared
+* weak point discovered
+
+AI Output:
+
+The trap collapses the ceiling onto the troll, crushing it beneath the stones.
+
+Validation:
+
+success possible
+XP high but contribution/leverage considered
+
+⸻
+
+21.3 Example: overleveled trivial enemy
+
+Player Level 100.
+
+Enemy Level 2 rat.
+
+AI Output:
+
+You kill the rat.
+
+Validation:
+
+kill accepted if context supports
+XP = 0 or near 0
+
+⸻
+
+22. Formula operation keys
+
+Formula-driven updates need operation keys.
+
+22.1 XP keys
+
+xp.challenge.{challengeKey}.{turnOrEvent}
+xp.quest.{questKey}.{objectiveOrComplete}
+xp.training.{statOrAbility}.{sessionKey}
+
+22.2 Level-up keys
+
+progression.level_up.player.level_{newLevel}
+
+22.3 Ability evidence keys
+
+ability.evidence.{abilityKey}.{evidenceType}.{turnOrEvent}
+
+22.4 Resource cost keys
+
+resource.cost.{resource}.{abilityOrAction}.{turnOrEvent}
+
+22.5 Damage keys
+
+combat.damage.{target}.{source}.{turnOrEvent}
+
+Duplicate formula events must not apply twice.
+
+⸻
+
+23. Formula safety caps
+
+23.1 Max planned level
+
+Default planned max:
+
+1000
+
+Levels above 1000 require special scenario setting.
+
+23.2 Stat safety cap
+
+Default soft stat cap for normal Level 1000 human-scale play:
+
+around 5,000–8,000 per core stat
+
+Extreme specialists/races may exceed this with justification.
+
+23.3 Resource safety cap
+
+Default Level 1000 resource expectation:
+
+around 20,000–40,000 HP/MP/EP depending build/race
+
+Supernatural beings may exceed this with explicit scaling.
+
+23.4 Formula overflow safety
+
+Implementation should avoid:
+
+* exponential growth without caps
+* multiplying many large modifiers unchecked
+* repeated percentage boosts stacking infinitely
+* absorption adding raw enemy stats without scaling
+
+When combining many modifiers, use capped multiplication or diminishing returns.
+
+⸻
+
+24. Diminishing returns rule
+
+When multiple modifiers stack, use diminishing returns if total would become extreme.
+
+Recommended simple method:
+
+If CombinedModifier <= 2.0: use normally
+If CombinedModifier > 2.0: EffectiveModifier = 2.0 + sqrt(CombinedModifier - 2.0)
+
+Example:
+
+Raw modifiers multiply to 6.0.
+
+Effective = 2.0 + sqrt(4.0) = 4.0
+
+This still rewards stacking but reduces runaway growth.
+
+⸻
+
+25. Absorption/evolution placeholder formulas
+
+Full absorption is deferred, but Formula Appendix v1 defines future guardrails.
+
+25.1 No raw full stat absorption by default
+
+If a player absorbs a creature, they should not gain the creature’s full stats.
+
+Future absorption should use:
+
+Gain = SourceValue × Compatibility × ExtractionRate × DiminishingReturn × StabilityModifier
+
+Default ExtractionRate should usually be low:
+
+1%–10%
+
+25.2 Source cap rule
+
+Each source can be consumed once unless scenario explicitly supports renewable sources.
+
+Operation key example:
+
+source.absorb.slime_core_001
+
+25.3 Compatibility rule
+
+Incompatible sources should create:
+
+* no gain
+* candidate trait
+* corruption
+* sickness
+* unstable adaptation
+* partial resistance
+
+Not automatic clean power.
+
+Full absorption system needs mini-spec later.
+
+⸻
+
+26. Formula examples
+
+26.1 Level 10 human warrior
+
+ExpectedStat(10):
+
+round(10 + 2.5 × 9^1.12) ≈ 39
+
+Warrior modifiers:
+
+ATK 1.20 = 47
+DEF 1.15 = 45
+SPD 1.00 = 39
+INT 0.85 = 33
+LCK 0.95 = 37
+
+ExpectedResource(10):
+
+round(100 + 12 × 9^1.10) ≈ 235
+
+Warrior resources:
+
+HP 270
+MP 188
+EP 294
+
+⸻
+
+26.2 Level 100 mage
+
+ExpectedStat(100):
+
+≈ 442
+
+Mage stats:
+
+ATK 332
+DEF 354
+SPD 398
+INT 641
+LCK 442
+
+ExpectedResource(100):
+
+≈ 1,991
+
+Mage resources:
+
+HP 1,593
+MP 2,987
+EP 1,692
+
+⸻
+
+26.3 Level 1000 dragonkin warrior
+
+ExpectedStat(1000):
+
+≈ 5,771
+
+Dragonkin warrior ATK:
+
+5,771 × 1.20 warrior × 1.35 dragonkin ≈ 9,350
+
+Dragonkin warrior DEF:
+
+5,771 × 1.15 warrior × 1.25 dragonkin ≈ 8,296
+
+ExpectedResource(1000):
+
+≈ 23,625
+
+HP:
+
+23,625 × 1.15 warrior × 1.40 dragonkin ≈ 38,036
+
+EP:
+
+23,625 × 1.25 warrior × 1.20 dragonkin ≈ 35,438
+
+MP:
+
+23,625 × 0.80 warrior × 1.10 dragonkin ≈ 20,790
+
+This is powerful but finite.
+
+⸻
+
+27. Formula acceptance tests
+
+Test F001 — XP-to-next level 1
+
+Given:
+
+level = 1
+
+Expected:
+
+XPToNext = 125
+
+⸻
+
+Test F002 — XP-to-next increases with level
+
+Given:
+
+level 10 XPToNext < level 100 XPToNext < level 1000 XPToNext
+
+Expected:
+
+True.
+
+⸻
+
+Test F003 — Overleveled XP decay
+
+Player Level 100.
+
+Enemy Level 2.
+
+Expected:
+
+XP modifier = 0
+
+or near 0 depending table interpolation.
+
+⸻
+
+Test F004 — Underleveled danger warning
+
+Player Level 5.
+
+Enemy Level 20.
+
+Expected:
+
+LevelGap = +15
+Danger = nearly impossible without leverage
+
+⸻
+
+Test F005 — Candidate ability threshold
+
+Ability evidence = 1.0.
+
+Expected:
+
+status can become candidate, not stable
+
+⸻
+
+Test F006 — Stable ability threshold
+
+Ability evidence = 7.0.
+
+Cost/limit identified.
+
+Expected:
+
+status can become stable rank 1
+
+⸻
+
+Test F007 — Moderate cost
+
+Max MP = 100.
+
+Cost label = moderate.
+
+Expected default cost:
+
+10 MP
+
+⸻
+
+Test F008 — Heavy damage severity
+
+Max HP = 100.
+
+Severity = heavy.
+
+Expected default HP loss:
+
+28 HP
+
+⸻
+
+Test F009 — Visible item not affected by formulas
+
+Formula Appendix must not alter inventory ownership rules.
+
+Expected:
+
+No formula can turn visible item into owned item.
+
+⸻
+
+Test F010 — Level 1000 finite stats
+
+Expected:
+
+Level 1000 baseline stats are finite, not infinite.
+
+⸻
+
+28. What Formula Appendix v1 does not finalize
+
+This document does not finalize:
+
+* full combat engine
+* exact enemy stat blocks
+* full group combat
+* full economy prices
+* full crafting quality math
+* full investigation XP
+* full reputation XP
+* domain project rewards
+* absorption/evolution gains
+* multi-protagonist scaling
+* all race/species templates
+* all ability categories
+* all boss mechanics
+
+Those require later appendices or mini-specs.
+
+⸻
+
+29. Final Formula Appendix doctrine
+
+AIDRPG needs exact math before automation.
+
+Formula Appendix v1 provides the first safe default math model.
+
+It supports early-game play, long-term growth, Level 1000 scaling, race/species variation, resource costs, recovery, damage severity, challenge XP, anti-farm, overlevel decay, underlevel danger, and ability stabilization.
+
+The formulas are strong enough to build basic combat/progression automation.
+
+They are not final forever.
+
+If testing shows a curve feels wrong, update through Formula Appendix v1.1 rather than random code patches.
+
+The formula doctrine is:
+
+Power can grow very high, but not without scale, cost, risk, challenge, compatibility, validation, and anti-duplication.
+
+This completes the math foundation needed before Script v0.1 Phase 1 and later combat/progression expansion.

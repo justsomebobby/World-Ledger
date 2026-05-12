@@ -1,0 +1,2310 @@
+AIDRPG Design Bible — Chunk 19: Level 1–1000 Scaling Matrix, Freeform Gameplay Scaling, Player Power Bands, and Threat Alignment
+
+1. Purpose of this chunk
+
+Chunk 19 defines what player level actually means in AIDRPG.
+
+Earlier chunks defined the architecture, safety systems, combat validation, cards, Context, commands, inventory, quests, abilities, and world memory.
+
+This chunk begins the mechanical calibration layer.
+
+This chunk answers:
+
+How strong is a Level 1 character?
+
+How strong is a Level 100 character?
+
+How strong is a Level 1000 character?
+
+How does AIDRPG scale freeform AI Dungeon gameplay?
+
+How does the system judge a creature, monster, NPC, boss, slime, wolf, goblin, dragon, demon lord, god, or unknown entity?
+
+How does player level connect to enemy threat tier?
+
+How does level affect social situations, travel, crafting, investigation, domain work, and combat?
+
+How should AIDRPG handle real AI Dungeon inputs where the player does not say “attack,” “use skill,” or “roll,” but instead writes naturally?
+
+The central rule is:
+
+AIDRPG level is a story-scale and capability-scale marker, not a rigid turn-based combat value.
+
+Level helps judge what is plausible.
+
+It does not replace context.
+
+A Level 1000 player can still be restrained, tricked, poisoned, socially trapped, cursed, outmaneuvered, emotionally compromised, or countered.
+
+A Level 5 player can still survive a massive threat through luck, stealth, allies, terrain, negotiation, divine intervention, or escape.
+
+⸻
+
+2. What the uploaded gameplay examples show
+
+The example stories make one thing clear:
+
+AIDRPG must be designed for freeform narrative play, not menu-only gameplay.
+
+The player often writes things like:
+
+* asking an interface or spirit for information
+* checking stats naturally
+* asking what the world is like
+* trying to help an NPC stand
+* stepping into a social conflict
+* using real-world knowledge in a fantasy world
+* improvising brawling tactics
+* probing an enemy for openings
+* trying to interact with strange creatures instead of instantly attacking
+* reacting to slimes, monsters, hostile humans, beastfolk, social rumors, and unfamiliar systems
+* asking questions instead of issuing formal commands
+* making plans in prose
+* using unusual ideas from stories or anime logic
+
+So the scaling system cannot assume every gameplay moment is:
+
+Player attacks monster.
+Monster takes damage.
+Player gains XP.
+
+Real play is more like:
+
+Player notices a strange situation.
+Player asks questions.
+AI reveals social or physical context.
+Player improvises.
+AI responds with partial success, danger, or new information.
+AIDRPG decides what consequences are real.
+
+This means level scaling must support:
+
+* social scenes
+* ambiguous danger
+* nonlethal conflict
+* improvised combat
+* training through action
+* in-world stat interfaces
+* unknown creatures
+* strange powers
+* monster biology
+* party/NPC involvement
+* player creativity
+* AI narration that may exaggerate or contradict itself
+
+The level system must be flexible enough for all of that.
+
+⸻
+
+3. What level represents
+
+Level represents the player’s accumulated overall growth.
+
+It includes:
+
+* survival experience
+* combat experience
+* physical conditioning
+* magical growth
+* skill development
+* domain growth
+* danger exposure
+* quest accomplishments
+* major story milestones
+* adaptation to the world
+* practical knowledge
+* body/soul/system progression
+* increasing ability to survive higher-scale situations
+
+Level does not directly mean:
+
+* the player is better at every specific action
+* the player automatically knows every skill
+* the player can ignore injury
+* the player can ignore poison
+* the player can defeat any lower-level enemy instantly
+* the player cannot be socially manipulated
+* the player cannot be trapped
+* the player cannot fail
+
+Level is the broadest measure.
+
+Stats, abilities, resources, race/species, items, and context decide the details.
+
+⸻
+
+4. Level is not the same as skill
+
+A Level 30 brawler may be physically stronger than a Level 10 duelist, but the duelist may still have better sword technique.
+
+A Level 80 mage may have enormous MP but poor hand-to-hand ability.
+
+A Level 200 noble strategist may have high Leadership and INT but low direct ATK.
+
+A Level 500 slime-like character may be almost impossible to stab normally but vulnerable to fire, salt, purification, or containment.
+
+A Level 1000 god-touched warrior may be terrifying in open battle but still vulnerable to oaths, cosmic law, sealing rituals, or emotional leverage.
+
+So AIDRPG must not judge by level alone.
+
+Level creates the expected scale band.
+
+Stats and context decide the actual scene result.
+
+⸻
+
+5. Level bands overview
+
+AIDRPG should treat Level 1–1000 as a long campaign scale.
+
+The level bands are:
+
+Level Band	Scale Name	Story Meaning
+1–5	Ordinary / Newly Awakened	barely above normal person, survival-focused
+6–10	Novice	beginning adventurer, can handle minor threats
+11–20	Apprentice	trained enough to survive low danger
+21–35	Early Adventurer	can handle real danger with care
+36–50	Adventurer	competent in dangerous work
+51–75	Seasoned Adventurer	reliable against standard threats
+76–100	Veteran	strong regional combatant
+101–150	Elite	above ordinary warriors and monsters
+151–200	Heroic	major local hero / boss-fighting range
+201–300	Legendary Mortal	can challenge legendary threats with preparation
+301–400	Mythic Hero	can influence regions and major factions
+401–500	Epic / National Scale	can face threats that end towns or armies
+501–650	Ascendant	beyond normal mortal limits
+651–800	Demi-Mythic	can face ancient monsters and avatars
+801–900	World-Class	affects nations, planes, ancient powers
+901–1000	World-Scale / Divine Edge	can interact with gods, cosmic entities, reality-scale threats
+
+Important:
+
+AIDRPG should not rush players through these bands.
+
+Most normal campaigns may never need Level 1000.
+
+Level 1000 exists for extreme isekai, cultivation, divine, cosmic, anime, or long-form power fantasy campaigns.
+
+⸻
+
+6. Detailed level matrix
+
+This is the primary level matrix.
+
+It gives expected player scale, enemy range, social/world scale, and freeform gameplay meaning.
+
+Level	Scale	Combat Meaning	Freeform Gameplay Meaning	Typical Threats
+1	Normal / fragile	a serious fight can injure or kill	survival, confusion, orientation, asking questions, learning world rules	rats, weak thugs, harmless animals, accidents
+2–3	Slightly above normal	can survive minor danger but not reliably dominate	first training, basic awareness, low confidence	rats, dogs, weak pests, drunk attackers
+4–5	Newly capable	can beat trivial foes, still weak against trained enemies	early interface use, first class identity, first minor skill hints	lone goblin, stray wolf, weak bandit
+6–10	Novice	can fight weak enemies with risk	first real quests, minor jobs, city survival, basic dungeon danger	goblins, wolves, novice thugs, minor slimes
+11–15	Low apprentice	can handle small threats with gear or tactics	player begins making meaningful choices	bandits, weak undead, trained animals
+16–20	Apprentice	can handle ordinary danger but bosses remain scary	basic ability candidates may stabilize	guards, small packs, minor monsters
+21–35	Early adventurer	standard low-level adventuring becomes plausible	player can travel, fight, negotiate, and train more confidently	trained bandits, wolf packs, lesser beasts
+36–50	Adventurer	dangerous but ordinary monsters are fair fights	player can build a reputation locally	ogre youth, dangerous beasts, competent soldiers
+51–75	Seasoned adventurer	can handle groups of weak enemies and elite single foes	player may lead small parties or solve dangerous quests	veterans, large beasts, elite bandits
+76–100	Veteran	regional danger becomes manageable	player may become known in a town/city	elite guards, ogres, battle mages, lesser bosses
+101–150	Elite	boss-level enemies become valid challenges	player can influence local politics and major quests	trolls, named monsters, assassins, mages
+151–200	Heroic	can face Tier 6 threats with real risk	player can change fate of settlements	named champions, powerful undead, demon servants
+201–300	Legendary mortal	can challenge Tier 7 threats with preparation	player may affect regions, factions, armies	dragonlings, ancient knights, elite demons
+301–400	Mythic hero	can fight legendary creatures under right conditions	player becomes a regional legend	adult dragons, liches, war giants
+401–500	Epic	can survive army-scale or disaster-scale scenes	player can decide wars, domain fates, major arcs	archmages, ancient monsters, demon generals
+501–650	Ascendant	ordinary enemies are irrelevant unless special	player surpasses normal mortal limits	demigod beasts, avatars, mythic guardians
+651–800	Demi-mythic	can battle ancient powers with costs	player affects nations, planes, old gods’ servants	primordial monsters, divine champions
+801–900	World-class	can resist world-scale threats briefly	player may confront sealed titans, cosmic curses	avatars, sealed gods, reality-warping enemies
+901–1000	World-scale	direct fights are mythic/cosmic events	player can alter history, planes, divine conflicts	gods, cosmic entities, world-ending monsters
+
+This matrix should guide validation.
+
+It should not force outcomes.
+
+⸻
+
+7. Level band by expected threat tier
+
+This table connects player level to enemy threat tier.
+
+Player Level	Trivial Threats	Fair Threats	Dangerous Threats	Overwhelming Threats
+1–5	Tier 0–1	Tier 1–2	Tier 3	Tier 4+
+6–10	Tier 0–1	Tier 2	Tier 3	Tier 4+
+11–20	Tier 0–2	Tier 2–3	Tier 4	Tier 5+
+21–35	Tier 0–2	Tier 3	Tier 4–5	Tier 6+
+36–50	Tier 0–3	Tier 3–4	Tier 5	Tier 6+
+51–75	Tier 0–3	Tier 4	Tier 5–6	Tier 7+
+76–100	Tier 0–4	Tier 4–5	Tier 6	Tier 7+
+101–150	Tier 0–4	Tier 5	Tier 6–7	Tier 8+
+151–200	Tier 0–5	Tier 5–6	Tier 7	Tier 8+
+201–300	Tier 0–5	Tier 6–7	Tier 8	Tier 9+
+301–400	Tier 0–6	Tier 7–8	Tier 9	Tier 10+
+401–500	Tier 0–7	Tier 8	Tier 9–10	Tier 10+ special
+501–650	Tier 0–8	Tier 8–9	Tier 10	cosmic threats
+651–800	Tier 0–8	Tier 9	Tier 10+	gods/cosmic
+801–900	Tier 0–9	Tier 9–10	cosmic	greater cosmic
+901–1000	Tier 0–9	Tier 10+	divine/cosmic	absolute entities
+
+Definitions:
+
+Trivial Threats
+Usually not dangerous unless there are special conditions, swarms, poison, surprise, curses, environment, or story constraints.
+
+Fair Threats
+Can be fought normally. Outcome depends on stats, resources, equipment, tactics, and narration.
+
+Dangerous Threats
+Victory should require cost, leverage, skill, party support, terrain, or preparation.
+
+Overwhelming Threats
+Clean victory should usually be rejected or softened unless strong leverage exists.
+
+⸻
+
+8. The freeform scaling rule
+
+AI Dungeon does not always present enemies with clear levels.
+
+The system must infer threat from context.
+
+AIDRPG should estimate threat using:
+
+* creature type
+* size
+* behavior
+* intelligence
+* number
+* environment
+* rarity
+* narration tone
+* local world logic
+* known lore
+* previous encounters
+* creature card if one exists
+* race/species traits
+* magical properties
+* durability
+* attack method
+* social authority
+* faction support
+* whether NPCs fear it
+* whether it has defeated others
+* whether it is named
+* whether it is a boss
+* whether it is story-critical
+
+Example:
+
+A “slime” is not always Tier 1.
+
+Possible slime tiers:
+
+Slime Type	Likely Tier
+tiny harmless slime	0–1
+basic wild slime	1–2
+acidic slime	2–3
+tainted slime swarm	3–5 depending count
+intelligent slime symbiote	4–7 depending abilities
+dungeon core slime	5–8
+ancient devouring slime	8–10
+godlike primordial slime	10+
+
+So the system cannot say:
+
+“Slime = weak.”
+
+It must ask:
+
+What kind of slime?
+
+How many?
+
+What does the scene say it can do?
+
+Is it dormant, hostile, acidic, magical, intelligent, bonded, corrupted, or boss-like?
+
+⸻
+
+9. Creature threat estimation model
+
+When an enemy has no predefined stats, AIDRPG should create a Threat Estimate.
+
+Threat Estimate fields:
+
+Name or label:
+Creature type:
+Count:
+Individual threat tier:
+Group threat tier:
+Known traits:
+Unknown risks:
+Environment:
+Behavior:
+Narration danger level:
+Relevant resistances:
+Relevant weaknesses:
+Current confidence:
+
+Example:
+
+Name or label: tainted slimes
+Creature type: slime / corrupted monster
+Count: dozens
+Individual threat tier: 1–3
+Group threat tier: 4–5
+Known traits: gelatinous, tainted, blocking tower entrance
+Unknown risks: acid, infection, absorption, swarm behavior
+Environment: clearing around ruined tower
+Behavior: dormant but pulsing
+Confidence: moderate
+
+This supports freeform play better than assuming exact stat blocks immediately.
+
+⸻
+
+10. Threat estimate confidence
+
+Threat estimates should have confidence.
+
+Confidence	Meaning
+Unknown	almost no information
+Low	creature type known but traits unclear
+Moderate	enough context to estimate danger
+High	repeated observation or known lore
+Confirmed	stats/lore/card/direct evidence confirms threat
+
+Example:
+
+The player sees “a strange wolf with burning eyes.”
+
+Confidence:
+
+Low to moderate.
+
+The system should not fully know its exact tier yet.
+
+If the wolf later breathes fire and resists arrows, threat estimate rises.
+
+⸻
+
+11. Level and freeform player input
+
+The level system must interpret natural actions, not only commands.
+
+Examples of freeform input:
+
+I try to calm him down.
+
+Level relevance:
+
+* level usually matters little
+* Social Domain, INT, reputation, species, and context matter more
+
+I throw a quick jab to test his guard.
+
+Level relevance:
+
+* ATK, SPD, EP, combat domain, enemy skill, and level matter
+* this is a probing action, not full lethal attack
+
+I ask the spirit what my stats mean.
+
+Level relevance:
+
+* no combat effect
+* may reveal player sheet/interface
+* may update knowledge/context
+
+I use what I remember from boxing to throw him off.
+
+Level relevance:
+
+* real-world skill may create a talent/candidate
+* actual success depends on enemy style and context
+* may grant Brawling/Martial Domain evidence
+
+I try to turn the slime into armor because I remember stories from my world.
+
+Level relevance:
+
+* very unusual ability/crafting/creature interaction
+* success depends on slime traits, magic, risk, control, compatibility
+* not automatically valid just because creative
+* may create ability/crafting candidate or dangerous symbiosis event
+
+The matrix must allow creative attempts without making every creative attempt automatically work.
+
+⸻
+
+12. Base human level stat targets
+
+This chunk defines target ranges, not final stat formulas.
+
+Chunk 21 will define exact formulas.
+
+For now, AIDRPG needs expected stat ranges for a base human-like player.
+
+Core stats:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+
+Stat categories:
+
+* Weak
+* Average
+* Strong
+* Extreme / specialized
+
+Level	Weak Stat	Average Stat	Strong Stat	Extreme Stat
+1	3–4	5	6–7	8–10
+5	4–6	7–9	10–13	14–16
+10	6–9	10–14	15–20	21–25
+20	10–16	17–25	26–38	39–50
+35	18–28	29–45	46–70	71–90
+50	25–40	41–65	66–100	101–130
+75	38–60	61–95	96–145	146–190
+100	50–80	81–130	131–200	201–260
+150	75–120	121–195	196–300	301–390
+200	100–160	161–260	261–400	401–520
+300	150–240	241–390	391–600	601–780
+400	200–320	321–520	521–800	801–1040
+500	250–400	401–650	651–1000	1001–1300
+650	325–520	521–845	846–1300	1301–1690
+800	400–640	641–1040	1041–1600	1601–2080
+900	450–720	721–1170	1171–1800	1801–2340
+1000	500–800	801–1300	1301–2000	2001–2600
+
+This means a Level 1000 base human-like character may still have a weak stat around 500–800 if they neglected it.
+
+A specialist may reach 2000+ in their defining stat.
+
+This avoids the bad design where every stat becomes identical at high level.
+
+⸻
+
+13. Example level 1000 stat spreads
+
+Balanced Level 1000 hero
+
+ATK: 1150
+DEF: 1100
+SPD: 1000
+INT: 1200
+LCK: 900
+
+Meaning:
+
+* strong overall
+* no extreme specialization
+* can face world-scale threats with good equipment/abilities
+* still vulnerable to specialized counters
+
+Level 1000 sword saint
+
+ATK: 2400
+DEF: 950
+SPD: 1700
+INT: 650
+LCK: 700
+
+Meaning:
+
+* terrifying direct fighter
+* weaker against complex magic, curses, cosmic puzzles, social traps
+* wins duels easier than rituals or investigations
+
+Level 1000 archmage
+
+ATK: 500
+DEF: 700
+SPD: 600
+INT: 2550
+LCK: 900
+
+Meaning:
+
+* overwhelming magic and knowledge
+* fragile if anti-magic, surprise, silence, or resource denial applies
+* can face cosmic entities through rituals, wards, and spells
+
+Level 1000 immortal tank
+
+ATK: 900
+DEF: 2600
+SPD: 500
+INT: 700
+LCK: 800
+
+Meaning:
+
+* extremely hard to kill
+* slow and less flexible
+* may fail against time limits, flight, mobility, or sealing
+
+Level 1000 trickster
+
+ATK: 650
+DEF: 700
+SPD: 1600
+INT: 1600
+LCK: 2400
+
+Meaning:
+
+* survives impossible situations
+* wins through manipulation, luck, timing, illusions, and escape
+* poor at direct brute-force damage
+
+⸻
+
+14. Resource expectation matrix
+
+This chunk also defines rough resource expectations.
+
+Exact formulas come in Chunk 21.
+
+For now, expected base human-like resource ranges:
+
+Level	HP Average	MP Average	EP Average
+1	50–80	20–60	50–90
+5	80–140	50–140	90–170
+10	130–230	100–260	150–300
+20	250–450	220–550	300–650
+35	450–800	450–1000	550–1100
+50	650–1200	700–1500	800–1600
+75	1000–1800	1100–2400	1300–2600
+100	1400–2600	1500–3300	1700–3600
+150	2200–4000	2400–5200	2800–5600
+200	3000–5500	3300–7000	3800–7600
+300	4700–8500	5200–11000	6000–12000
+400	6500–12000	7200–15000	8200–16500
+500	8500–15500	9500–19500	10500–21000
+650	11500–21000	13000–27000	14500–29000
+800	15000–27500	17000–35000	19000–38000
+900	17500–32000	20000–41000	22000–44000
+1000	20000–37000	23000–48000	25000–50000
+
+These are high because Level 1000 is world-scale.
+
+However, high resources do not remove danger.
+
+At high levels, attacks may cost or deal thousands.
+
+A cosmic seal might drain 30% MP.
+
+A divine wound might bypass ordinary HP.
+
+A world-scale forced march might burn 20% EP.
+
+Resource percentages matter as much as raw numbers.
+
+⸻
+
+15. Why resources must scale high
+
+If HP, MP, and EP stay low while stats scale high, high-level play becomes unstable.
+
+Every hit becomes instant death or every ability becomes free.
+
+Resources must scale so that:
+
+* minor actions are cheap
+* meaningful abilities cost noticeable resources
+* high-tier enemies can still threaten
+* long fights matter
+* overuse has consequences
+* recovery matters
+* attrition matters
+* resource exhaustion can create danger even at high level
+
+Example:
+
+A Level 1000 mage with 40,000 MP can cast many minor spells.
+
+But a mythic ritual may cost 15,000 MP.
+
+A failed divine counterspell may burn 25,000 MP and cause backlash.
+
+So high numbers still matter.
+
+⸻
+
+16. Level and social power
+
+Level should not only affect combat.
+
+At higher levels, the player’s presence may affect social scenes.
+
+But social effects depend on reputation, titles, faction knowledge, and witnesses.
+
+Level Band	Social Meaning
+1–10	unknown nobody
+11–35	minor capable stranger
+36–75	locally competent adventurer
+76–150	respected or feared if deeds are known
+151–300	heroic reputation possible
+301–500	regional legend if public
+501–800	mythic figure if known
+801–1000	world-scale presence, divine or cosmic recognition possible
+
+Important:
+
+Level alone should not make everyone know the player.
+
+A hidden Level 500 hermit may be unknown.
+
+A Level 30 hero who publicly saved a town may be famous locally.
+
+Reputation systems decide social recognition.
+
+Level only affects what kind of reputation is plausible.
+
+⸻
+
+17. Level and crafting scale
+
+Level affects crafting indirectly.
+
+Crafting depends more on:
+
+* Crafting Domain
+* INT
+* tools
+* recipes
+* materials
+* time
+* workshop
+* assistance
+
+But level sets the upper story scale.
+
+Level Band	Crafting Scale
+1–10	basic survival items, crude repairs
+11–35	basic weapons, potions, tools
+36–75	reliable personal gear, quality repairs
+76–150	advanced gear, strong potions, minor enchantment
+151–300	masterwork gear, serious enchantment
+301–500	legendary items with rare materials
+501–800	mythic artifacts with major quests
+801–1000	divine/cosmic crafting only with extraordinary resources
+
+A Level 500 player with no crafting knowledge still cannot casually forge a legendary sword.
+
+But they may have the power to gather rare materials, survive legendary forges, or empower a ritual.
+
+⸻
+
+18. Level and investigation scale
+
+Investigation does not scale like combat.
+
+A Level 1000 player can still miss a clue if careless.
+
+But level may support:
+
+* sharper perception through stats/abilities
+* magical investigation
+* social pressure
+* access to high-level contacts
+* resistance to deception
+* domain knowledge
+* world-scale pattern recognition
+
+Level Band	Investigation Scale
+1–20	local mysteries, simple clues
+21–75	crimes, hidden motives, monster signs
+76–150	political plots, magical evidence
+151–300	faction conspiracies, ancient secrets
+301–500	regional schemes, divine cults
+501–800	planar mysteries, ancient curses
+801–1000	cosmic truth, god plots, reality manipulation
+
+Still:
+
+Rumor is not proof.
+
+High level does not auto-solve cases.
+
+Evidence rules remain.
+
+⸻
+
+19. Level and travel scale
+
+Higher level may allow harder travel.
+
+But travel still depends on:
+
+* route
+* weather
+* mounts
+* flight
+* teleportation
+* endurance
+* injuries
+* party
+* supplies
+* hazards
+* domains
+
+Level Band	Travel Meaning
+1–10	roads and towns matter; wilderness dangerous
+11–35	short wilderness trips possible
+36–75	dangerous routes manageable with preparation
+76–150	harsh terrain, monsters, long travel possible
+151–300	regional travel through dangerous zones
+301–500	supernatural routes, planar gates possible
+501–800	world-spanning travel, dangerous planes
+801–1000	cosmic routes, divine realms, reality tears
+
+Travel intent is still not arrival.
+
+A Level 1000 player cannot be considered to have arrived unless the story confirms travel, teleportation, or transition.
+
+⸻
+
+20. Level and domain scale
+
+Domain management also scales.
+
+Level Band	Domain Scale
+1–35	no domain or very small personal base
+36–75	small camp, workshop, local allies
+76–150	house, guild room, shop, small holding
+151–300	keep, village influence, militia
+301–500	regional base, fortress, faction influence
+501–800	nation-scale domain or mythic territory
+801–1000	world-scale domain, divine realm, planar influence
+
+Level alone does not grant a domain.
+
+Ownership, story, resources, contracts, labor, and reputation decide domain truth.
+
+Level only affects what scale is plausible.
+
+⸻
+
+21. Level and class/background
+
+The uploaded examples include class-like identity such as Brawler, Monk, and special abilities like quick learning or a localized spirit/interface.
+
+AIDRPG should support class/background as build bias, not a hard cage.
+
+Class/background may affect:
+
+* starting stat spread
+* starting domain familiarity
+* ability candidates
+* social interpretation
+* training speed
+* default equipment
+* resource emphasis
+* story expectations
+
+Example:
+
+Human Brawler
+
+Likely starting bias:
+
+* higher ATK
+* higher EP
+* moderate DEF
+* moderate SPD
+* lower MP
+* early Brawling/Martial Domain
+* may develop talents from real-world fighting experience
+
+Human Monk
+
+Likely starting bias:
+
+* balanced ATK/DEF/SPD
+* better EP
+* possible spiritual/discipline skills
+* may have higher MP if setting treats monks as spiritual
+
+Quick Learner ability
+
+Likely effect:
+
+* faster skill/talent/domain growth
+* more ability evidence from practice
+* does not grant instant mastery
+* anti-farm still applies
+* repeated trivial action still reduces rewards
+
+Localized Spirit / Interface
+
+Likely effect:
+
+* improved information access
+* status display
+* world explanations
+* maybe analysis support
+* does not automatically solve combat or grant stats
+
+These should be formalized later in ability and class chunks.
+
+⸻
+
+22. Level and race/species hook
+
+Chunk 20 will define race/species in detail.
+
+Chunk 19 must define the hook:
+
+The level matrix assumes base human-like scaling.
+
+Race/species modifies:
+
+* base stat floor
+* stat growth bias
+* resource scaling
+* injury logic
+* recovery logic
+* equipment compatibility
+* vulnerabilities
+* natural abilities
+* body shape
+* lifespan/age logic
+* size
+* senses
+* movement
+* environment tolerance
+
+Examples:
+
+A fairy Level 20 and a human Level 20 should not have identical HP assumptions.
+
+A giant Level 20 and human Level 20 should not have identical ATK/DEF assumptions.
+
+An undead Level 20 and human Level 20 should not handle poison, fatigue, bleeding, or healing the same way.
+
+A slime Level 20 and human Level 20 should not handle stabbing, armor, digestion, or body damage the same way.
+
+However:
+
+Race/species should not become infinite free power.
+
+A dragonkin may have higher base durability, but also:
+
+* equipment issues
+* social consequences
+* hunger/heat/cold constraints
+* targeted weaknesses
+* slower growth in some stats
+* instinct risks
+* faction danger
+
+Race modifies the matrix.
+
+It does not erase the matrix.
+
+⸻
+
+23. Level and unknown creature scaling
+
+When the AI introduces a creature, AIDRPG should not instantly overcommit.
+
+It should estimate.
+
+Creature scaling should consider:
+
+Physical traits
+
+* size
+* speed
+* armor
+* claws
+* teeth
+* limbs
+* body material
+* regeneration
+* fluid/gelatinous body
+* flying
+* burrowing
+* swimming
+* incorporeal
+
+Magical traits
+
+* spellcasting
+* aura
+* curse
+* resistance
+* elemental body
+* divine power
+* mind effects
+* shapeshifting
+* draining
+* absorption
+
+Social traits
+
+* intelligence
+* speech
+* faction
+* authority
+* pack behavior
+* bargaining
+* command structure
+
+Narrative traits
+
+* named or unnamed
+* feared by locals
+* boss-like entrance
+* previous victims
+* quest target
+* rare species
+* ancient origin
+* divine/cosmic description
+
+Scene traits
+
+* alone or group
+* dormant or aggressive
+* wounded or healthy
+* trapped or free
+* surprised or prepared
+* in home terrain
+* guarding something
+* blocking route
+
+This allows AIDRPG to scale creatures based on story, not just species names.
+
+⸻
+
+24. Basic creature tier examples
+
+These are default assumptions, not hard rules.
+
+Creature / Enemy	Default Tier	Notes
+harmless animal	0	no threat unless disease/swarm/context
+rat	1	can matter in swarms or disease
+common slime	1–2	weak unless acid, swarm, magic, taint
+stray dog	1–2	dangerous to ordinary person
+lone goblin	2	dangerous to novice
+wolf	2–3	dangerous if wild, pack, large, or magical
+novice bandit	2–3	weapon and intent matter
+trained guard	3	ordinary trained combatant
+wolf pack	3–5	group scaling matters
+tainted slime swarm	3–5	count and traits matter
+elite soldier	4–5	strong mortal threat
+ogre	5	high strength, durability
+troll	6	regeneration makes it boss-like
+lesser demon	5–6	magic/resistance likely
+named champion	6	major actor/boss logic
+dragonling	7	overwhelming early
+adult dragon	8	legendary threat
+ancient lich	8–9	magic, immortality, phylactery
+demon lord lieutenant	8–9	story boss
+demigod beast	9	mythic
+god avatar	9–10	depends on manifestation
+full deity	10+	usually impossible without divine/cosmic leverage
+cosmic entity	10+	not normal combat
+
+The system must update these estimates based on story evidence.
+
+⸻
+
+25. Slime-specific scaling example
+
+Because the uploaded gameplay includes slimes and unusual slime interaction, AIDRPG should treat slimes as a full example category.
+
+Basic slime
+
+Tier:
+
+1–2
+
+Traits:
+
+* weak body
+* may be slow
+* may resist blunt damage
+* may be vulnerable to fire, salt, magic, or drying
+* may damage through acid or engulfing
+
+Acid slime
+
+Tier:
+
+2–4
+
+Traits:
+
+* damages equipment
+* armor may not fully protect
+* can cause burning/acid condition
+* dangerous to low-level melee fighters
+
+Tainted slime
+
+Tier:
+
+3–5
+
+Traits:
+
+* corruption risk
+* disease/poison/curse possible
+* unpredictable mutation
+* may affect body state
+
+Slime swarm
+
+Tier:
+
+group tier 3–6 depending count
+
+Traits:
+
+* individual weak
+* group can block path
+* can surround
+* area effects matter
+* fire or freezing may be valuable leverage
+
+Symbiotic slime
+
+Tier:
+
+4–8 depending intelligence and bond
+
+Traits:
+
+* can become armor, weapon, parasite, companion, curse, or body modification
+* requires validation
+* may grant abilities
+* may impose risks
+* may need actor/item/body hybrid handling
+
+Ancient/devouring slime
+
+Tier:
+
+8–10
+
+Traits:
+
+* absorbs matter
+* adapts
+* resists normal weapons
+* may require special weakness
+
+Important:
+
+If the player attempts to wear or bond with a slime, AIDRPG should not treat that as simple item pickup.
+
+It may involve:
+
+* body condition
+* creature interaction
+* ability candidate
+* item/equipment transformation
+* symbiosis contract
+* infection risk
+* corruption risk
+* new passive candidate
+* actor/entity record if intelligent
+
+This is exactly why freeform scaling matters.
+
+⸻
+
+26. Human or humanoid enemy scaling
+
+Human-like enemies are common in AI Dungeon.
+
+They must scale by role, not just species.
+
+Humanoid Type	Default Tier
+civilian	0–1
+drunk thug	1–2
+novice bandit	2
+trained guard	3
+veteran guard	4
+elite soldier	5
+assassin	4–6
+battle mage	4–7
+named champion	6–8
+legendary swordsman	8–9
+divine hero	9–10
+
+A normal human can be more dangerous than a monster if they have:
+
+* training
+* weapons
+* armor
+* magic
+* poison
+* tactics
+* authority
+* allies
+* terrain
+* surprise
+* faction backing
+
+Example:
+
+A player may fight a physically ordinary human in a back alley.
+
+If the human is trained, precise, and tactically superior, the system should not treat him as Tier 1 just because he is human.
+
+A skilled human opponent may be Tier 3–5 even without magic.
+
+⸻
+
+27. Social conflict scaling
+
+The apartment/social story example shows another important point:
+
+Not every danger is a monster.
+
+Social scenes can include:
+
+* rumors
+* reputation pressure
+* neighbor gossip
+* suspicion
+* social exclusion
+* authority complaints
+* public perception
+* legal/HOA/faction pressure
+* misunderstanding
+* manipulation
+* kindness or trust-building
+
+AIDRPG should scale social conflict separately from combat.
+
+Social difficulty factors:
+
+* number of witnesses
+* public/private setting
+* existing reputation
+* social power of target
+* faction/authority involvement
+* evidence
+* player charisma/social domain if used
+* player level only if reputation or aura is known
+* truth versus rumor
+* stakes
+* social norms
+
+A Level 100 warrior does not automatically win an apartment rumor conflict.
+
+They may intimidate people, but that could worsen reputation.
+
+A low-level player can succeed socially through kindness, evidence, timing, or empathy.
+
+So level is secondary in social scenes.
+
+⸻
+
+28. Level and relationship scenes
+
+AI Dungeon often responds strongly to tone and interaction.
+
+AIDRPG should recognize:
+
+* respectful assistance
+* threats
+* kindness
+* deception
+* interrogation
+* flirting
+* intimidation
+* comfort
+* apology
+* bargain
+* refusal
+* promise
+
+Level may affect confidence or aura, but actor relationship changes should be based on:
+
+* what the player did
+* what the actor saw
+* the actor’s values
+* the situation
+* prior relationship
+* reputation
+* social context
+
+Example:
+
+Helping an injured beastfolk stand respectfully should not be judged mainly by level.
+
+It may affect:
+
+* actor trust
+* party possibility
+* quest link
+* reputation if witnessed
+
+This is why level cannot become the only universal mechanic.
+
+⸻
+
+29. Level and interface/status display
+
+In isekai-style games, the player may have a visible status panel.
+
+AIDRPG should support that.
+
+If the story has an interface:
+
+* /sheet may be represented as in-world status display
+* AI output may describe stats
+* player may ask a spirit/interface for explanations
+* system can show level/EXP/resources naturally
+
+But:
+
+AI-generated status panels should not override state unless validated or command/manual route allows it.
+
+Example:
+
+AI says:
+
+LVL: 4
+HP: 38/38
+MP: 107.5/107.5
+EP: 77.15/98
+ATK: 9
+DEF: 9
+SPD: 9
+LCK: 9
+INT: 9
+
+If this is initial setup and accepted by scenario, it may initialize state.
+
+If later AI randomly outputs impossible stats, validator should check against state.
+
+If command /sheet outputs stats, parser must ignore that output as gameplay.
+
+Status displays are mirrors unless used during controlled initialization/manual override.
+
+⸻
+
+30. Level initialization rules
+
+When a new game starts, AIDRPG may initialize level in several ways.
+
+Default start
+
+If no story setup says otherwise:
+
+Level: 1
+Stats: base human average
+Resources: base Level 1 values
+XP: 0
+
+Scenario-defined start
+
+If the scenario says the player starts at Level 4 as a Human Monk, this may be accepted during initialization.
+
+Reincarnation / system start
+
+If an in-world system grants class, level, race, or ability, it may initialize state if:
+
+* source is setup narration
+* not dream-only
+* not quoted
+* not contradicted
+* player accepts it as start
+* migration/manual state does not override it
+
+Manual start
+
+Player may use commands or setup fields.
+
+Example:
+
+/setlevel 4
+/setrace Human
+/setclass Monk
+
+These commands should log manual initialization.
+
+High-level start
+
+If player starts at Level 100 or 1000, this must be explicit.
+
+AIDRPG should not infer high level from vague phrases like “I am powerful.”
+
+⸻
+
+31. Level and class start examples
+
+Example 1 — ordinary human start
+
+Race: Human
+Class: None
+Level: 1
+Stats: ATK 5, DEF 5, SPD 5, INT 5, LCK 5
+
+Meaning:
+
+Normal person, fragile, must learn.
+
+Example 2 — reincarnated Human Monk Level 4
+
+Race: Human
+Class: Monk
+Level: 4
+Stats: ATK 9, DEF 9, SPD 9, INT 9, LCK 9
+Resources: HP lower than MP if setting defines spiritual/magic emphasis
+
+Meaning:
+
+Early-game character already slightly above normal.
+
+Still vulnerable.
+
+Example 3 — Human Brawler with Quick Learner
+
+Race: Human
+Class: Brawler
+Level: 1–4 depending setup
+Bias: ATK/EP/Brawling growth
+Special: faster skill/talent learning
+
+Meaning:
+
+Can improvise fighting better than a normal untrained person.
+
+Still not automatically stronger than trained fantasy fighters.
+
+Example 4 — Level 1 dragonkin
+
+Race: Dragonkin
+Level: 1
+Bias: higher DEF/ATK/HP, possible breath candidate
+Weakness: social suspicion, size/instinct issues, anti-dragon weapons
+
+Meaning:
+
+Stronger body than human Level 1.
+
+Still not a dragon god.
+
+Race modifies baseline.
+
+⸻
+
+32. Level scaling with player creativity
+
+AIDRPG should reward creative play, but safely.
+
+Creative action can improve outcome if:
+
+* it fits the scene
+* it uses real leverage
+* it uses known abilities/items
+* it exploits enemy weakness
+* it changes terrain
+* it creates social pressure
+* it creates surprise
+* it accepts cost/risk
+* it is supported by narration
+
+Creative action should not automatically bypass level.
+
+Example:
+
+Level 5 player says:
+
+I use anime logic to turn the slime into armor.
+
+Possible outcomes:
+
+* failed attempt
+* slime burns/irritates skin
+* slime partially coats arm
+* ability candidate appears
+* symbiosis risk begins
+* slime armor works briefly but unstable
+* success if story strongly supports it
+
+Not automatic:
+
+* permanent legendary living armor
+* huge stat gain
+* stable passive immunity
+* full monster companion card
+
+Creativity creates proposals.
+
+Validation decides permanence.
+
+⸻
+
+33. Level and leverage
+
+Leverage allows lower-level players to affect higher-tier threats.
+
+Leverage types:
+
+* terrain
+* trap
+* poison
+* ritual
+* artifact
+* enemy weakness
+* party support
+* faction support
+* surprise
+* hostage/social leverage
+* environmental hazard
+* previous enemy injury
+* research
+* divine blessing
+* story prophecy
+* sacrifice
+* prepared counter
+
+Leverage can shift matchup.
+
+Suggested leverage shifts:
+
+Leverage Strength	Matchup Shift
+minor	improve by one step
+moderate	improve by two steps
+strong	improve by three steps
+decisive	may allow impossible action if validated
+story-arc leverage	can allow boss victory
+
+Example:
+
+Level 30 player versus adult dragon:
+
+Base:
+
+Impossible without leverage.
+
+With dragon-slaying spear, ritual trap, wounded dragon, and party support:
+
+Could become dangerous but possible.
+
+⸻
+
+34. Level and anti-leverage
+
+Enemies can also have leverage.
+
+Enemy leverage includes:
+
+* home terrain
+* ambush
+* poison
+* hostages
+* numbers
+* superior knowledge
+* anti-magic field
+* prophecy protection
+* regeneration
+* flight
+* invisibility
+* armor
+* social authority
+* divine backing
+* immunity
+* player exhaustion
+
+Enemy leverage can make low-tier enemies dangerous.
+
+Example:
+
+A Tier 2 assassin with poison in a crowded room can threaten a much higher-level player if the player is unaware and lacks poison resistance.
+
+A swarm of weak slimes in a narrow tunnel can be more dangerous than one strong slime.
+
+A low-level politician can ruin a high-level warrior socially through law and reputation.
+
+⸻
+
+35. Level and matchup labels
+
+Level should feed into Chunk 7’s matchup labels.
+
+The labels remain:
+
+* player overwhelms
+* player favored
+* slightly favored
+* even
+* dangerous
+* player disadvantaged
+* heavily outmatched
+* enemy overwhelms
+* impossible without leverage
+
+Level gap helps choose label.
+
+Rough level-equivalent gap:
+
+Player Compared to Enemy Equivalent	Default Matchup
+player 4x+ stronger	player overwhelms
+player 2x stronger	player favored
+player 25–75% stronger	slightly favored
+roughly equal	even
+enemy 25–75% stronger	dangerous
+enemy 2x stronger	player disadvantaged
+enemy 4x stronger	heavily outmatched
+enemy 8x+ stronger	enemy overwhelms
+cosmic/story barrier	impossible without leverage
+
+But this is adjusted by:
+
+* stats
+* resources
+* abilities
+* race
+* equipment
+* injuries
+* party
+* terrain
+* preparation
+* enemy traits
+* story leverage
+
+⸻
+
+36. Effective level
+
+AIDRPG should use effective level for matchup, not raw level.
+
+Effective level is raw level modified by current conditions.
+
+Factors that lower effective level:
+
+* low HP
+* low MP
+* low EP
+* injuries
+* fatigue
+* poison
+* disease
+* fear
+* broken equipment
+* missing weapon
+* bad terrain
+* restrained
+* surprise
+* poor matchup
+* unavailable ability
+* wrong damage type
+
+Factors that raise effective level:
+
+* strong equipment
+* relevant ability
+* terrain advantage
+* preparation
+* party support
+* enemy weakness
+* high morale
+* surprise
+* favorable weather
+* divine blessing
+* buff
+* domain expertise
+
+Example:
+
+Level 100 warrior with 0 EP, broken shield, and poisoned body may fight like Level 50 or worse.
+
+Level 30 hunter with traps, high ground, silver arrows, and knowledge of a werewolf’s weakness may threaten a Tier 5 werewolf above normal level.
+
+⸻
+
+37. Effective level adjustment bands
+
+Suggested adjustment model:
+
+Condition	Effective Level Adjustment
+minor injury	-5%
+moderate injury	-10% to -20%
+severe injury	-25% to -50%
+0 EP for physical build	-20% to -40%
+0 MP for caster	-30% to -60%
+poisoned/diseased	-10% to -40%
+disarmed weapon user	-20% to -50%
+strong equipment advantage	+10% to +30%
+perfect counter item	+25% to +100% depending story
+terrain advantage	+10% to +50%
+strong party support	+25% to +100%
+decisive prepared trap	+50% to +300%
+divine/story leverage	special validation
+
+These are not exact automatic calculations.
+
+They guide validator judgment.
+
+⸻
+
+38. High-level play design
+
+Level 500–1000 should not become:
+
+I swing. Everything dies.
+
+High-level play should shift from ordinary survival to scale management.
+
+High-level threats should include:
+
+* counters
+* resource pressure
+* divine law
+* cosmic rules
+* sealing
+* social consequences
+* collateral damage
+* protecting others
+* multiple simultaneous objectives
+* corruption
+* hostile domains
+* reality instability
+* enemies that cannot be solved by damage alone
+* moral choices
+* faction consequences
+* world entity interactions
+
+Example:
+
+A Level 900 player can destroy a demon army.
+
+But can they do it without:
+
+* destroying the city?
+* killing civilians?
+* triggering divine punishment?
+* exhausting MP before the demon lord arrives?
+* letting the cult complete the ritual?
+* corrupting their own soul?
+
+This keeps high-level play meaningful.
+
+⸻
+
+39. Low-level play design
+
+Level 1–20 should feel grounded.
+
+Low-level play should involve:
+
+* survival
+* learning systems
+* basic resources
+* cautious combat
+* social orientation
+* city navigation
+* first income
+* shelter
+* simple quests
+* weak monsters
+* training
+* first ability attempts
+* first injury consequences
+* first card creation only when important
+
+A Level 1 player should not casually defeat demon lords.
+
+But they should be able to:
+
+* ask questions
+* avoid danger
+* help people
+* train
+* discover abilities
+* make allies
+* use clever leverage
+* survive lucky encounters
+* gain meaningful early XP
+
+This matches real AI Dungeon starts where the player asks what is happening and learns the world.
+
+⸻
+
+40. Mid-level play design
+
+Level 21–150 is the core adventuring zone.
+
+This should involve:
+
+* dungeon exploration
+* dangerous fights
+* real equipment progression
+* stable abilities
+* companions
+* quests
+* local reputation
+* crafting useful gear
+* early domain opportunities
+* investigation arcs
+* meaningful travel
+* strong but not absurd monsters
+
+This is where most classic RPG play lives.
+
+⸻
+
+41. Legendary play design
+
+Level 151–500 should involve:
+
+* bosses
+* faction wars
+* ancient ruins
+* dragon threats
+* domain management
+* major titles
+* powerful abilities
+* advanced crafting
+* serious investigation
+* regional consequences
+* meaningful group combat
+* specialized builds
+
+The player should feel powerful, but not invincible.
+
+Enemies should have:
+
+* resistances
+* phases
+* intelligence
+* minions
+* terrain
+* counters
+* goals beyond killing player
+
+⸻
+
+42. Mythic and world-scale play design
+
+Level 501–1000 should involve:
+
+* gods
+* cosmic rules
+* planar travel
+* ancient entities
+* civilizations
+* world entities
+* divine contracts
+* reality damage
+* enormous collateral risk
+* long-term consequences
+* ability evolution
+* stat absorption caps
+* power control problems
+* faction-scale reputation
+* domain or realm ownership
+
+At this level, the most interesting question is often not:
+
+Can the player win?
+
+It is:
+
+What does winning cost?
+
+⸻
+
+43. Level and XP expectation by band
+
+Chunk 22 will define exact XP.
+
+Chunk 19 defines pacing expectations.
+
+Level Band	Expected Progression Feel
+1–10	fast, every quest/training matters
+11–50	steady, several meaningful scenes per level
+51–100	slower, requires real danger or objectives
+101–200	major quests and dangerous fights matter
+201–500	levels are milestones, not frequent rewards
+501–1000	levels require legendary/mythic achievements
+
+AIDRPG should not grant high-level progress from trivial repeated actions.
+
+A Level 800 character should not gain meaningful XP from killing rats.
+
+They may still gain story consequences if the rats are cursed divine plague rats, but normal rats are not progression.
+
+⸻
+
+44. Level-up validation
+
+A level-up should happen only when:
+
+* XP reaches threshold
+* operation ledger confirms no duplicate
+* ProgressionReducer commits level-up
+* stats/resources update according to rules
+* dirty targets are marked
+* player sheet updates
+* protected cards update
+* /debuglast can explain it
+
+Level-up should not happen from:
+
+* AI saying “you feel stronger” alone
+* dream sequence
+* quote
+* card text
+* rumor
+* duplicate reward
+* command output
+* old migration unless explicit
+
+AI may narrate level-up flavor, but state decides level.
+
+⸻
+
+45. Level and story card behavior
+
+Level changes should update protected cards.
+
+Cards affected:
+
+* Player Sheet
+* Body & Status if max resources change
+* Abilities if level unlocks ability slot/rank
+* Quest Log if level-up came from quest
+* maybe generated ability cards if evolution occurs
+
+Generated cards should not be created merely because level increased.
+
+Example:
+
+Level 10 reached.
+
+Do not create:
+
+* “Level 10 Card”
+* “Power Card”
+* “Stats Card”
+
+Instead update Player Sheet.
+
+If Level 10 unlocks Mana Slash stabilization, AbilityReducer/CardSync may create Mana Slash card if it is stable and important.
+
+⸻
+
+46. Level and Context behavior
+
+Context should include level only when relevant.
+
+Good Context:
+
+You are Level 4, still an early-stage adventurer. The demon lord is far beyond your current capabilities.
+
+Good Context:
+
+You are Level 120 and exhausted; despite your experience, your EP is nearly gone.
+
+Bad Context:
+
+Level 4, XP 0/100, Total XP 0, ATK 9, DEF 9, SPD 9, INT 9, LCK 9...
+
+Unless the player asks for status or debug.
+
+Normal Context should use level to guide plausibility, not dump numbers every turn.
+
+⸻
+
+47. Level and AI Dungeon response correction
+
+If AI Dungeon exaggerates beyond level, AIDRPG should correct gently.
+
+Example:
+
+Level 4 player output:
+
+You instantly annihilate the demon lord with one punch.
+
+Validation:
+
+* reject or soften victory
+* possible dream/vision/flavor
+* no demon lord defeat
+* Context correction:
+
+The King of Demons is far beyond your current level; direct victory is not plausible without major leverage.
+
+Example:
+
+Level 300 player output:
+
+A common rat kills you instantly.
+
+Validation:
+
+* reject or soften unless poison, curse, surprise, or special rat context supports it
+
+Correction:
+
+A normal rat is not a lethal threat to you unless unusual conditions apply.
+
+This keeps AI Dungeon freeform but grounded.
+
+⸻
+
+48. Level matrix for common freeform scenes
+
+Asking questions
+
+Level mostly irrelevant.
+
+Relevant systems:
+
+* actor
+* interface
+* knowledge
+* INT
+* reputation
+* social domain
+
+Helping an injured NPC
+
+Level partly relevant if strength needed.
+
+Relevant systems:
+
+* actor relationship
+* body state of NPC
+* social tone
+* quest possibility
+
+Street fight / brawling
+
+Level relevant.
+
+Also:
+
+* ATK
+* DEF
+* SPD
+* EP
+* combat domain
+* enemy skill
+* terrain
+* injuries
+
+Monster observation
+
+Level not enough.
+
+Need:
+
+* threat estimate
+* creature traits
+* lore
+* perception
+* INT
+* domain knowledge
+
+Creative monster interaction
+
+Level helps survival.
+
+Success depends on:
+
+* ability
+* compatibility
+* creature state
+* risk
+* magic
+* validation
+
+Social rumor scene
+
+Level only matters if reputation/power is known.
+
+Relevant systems:
+
+* reputation
+* witnesses
+* rumor
+* actor trust
+* evidence
+* social domain
+
+Status menu scene
+
+Level state may be displayed.
+
+But AI status text must not override state unless controlled.
+
+Training scene
+
+Level affects difficulty and reward.
+
+Repeated trivial training gets reduced.
+
+Travel scene
+
+Level affects endurance and danger, but arrival still requires narration.
+
+⸻
+
+49. Level matrix acceptance tests
+
+Test 1 — Level 4 versus demon lord
+
+Given:
+
+Player Level 4.
+
+Output says player kills demon lord with one punch.
+
+Expected:
+
+* victory rejected or softened
+* no demon lord death
+* possible dream/flavor if source supports
+* debug reason: impossible without leverage
+
+Test 2 — Level 4 versus weak slime
+
+Given:
+
+Player Level 4.
+
+Enemy: basic slime Tier 1–2.
+
+Expected:
+
+* fight plausible
+* injury possible if slime acidic
+* victory plausible with action
+* XP small/moderate depending danger
+
+Test 3 — Level 4 versus tainted slime swarm
+
+Given:
+
+Player Level 4.
+
+Enemy: dozens of tainted slimes.
+
+Expected:
+
+* group threat high
+* direct charge dangerous
+* escape, terrain, fire, or assistance more plausible
+* clean no-cost victory suspicious
+
+Test 4 — Level 20 brawler versus trained human
+
+Given:
+
+Player Level 20 Brawler.
+
+Enemy: trained fighter Tier 3–4.
+
+Expected:
+
+* fight plausible but not trivial
+* technique matters
+* probing/feints can create tactical info
+* enemy can counter if more skilled
+
+Test 5 — Level 100 versus ordinary rat
+
+Given:
+
+Player Level 100.
+
+Enemy: normal rat.
+
+Expected:
+
+* no meaningful threat
+* little/no XP
+* no serious injury unless special context
+
+Test 6 — Level 100 versus cursed plague rat
+
+Given:
+
+Player Level 100.
+
+Enemy: rat carrying divine plague.
+
+Expected:
+
+* physical threat low
+* disease/curse threat possible
+* XP depends on actual danger and objective
+
+Test 7 — Level 300 versus adult dragon
+
+Given:
+
+Player Level 300.
+
+Enemy: adult dragon Tier 8.
+
+Expected:
+
+* dangerous but possible with good build/leverage
+* no-cost victory suspicious
+* damage/collateral likely
+
+Test 8 — Level 1000 versus social rumor
+
+Given:
+
+Player Level 1000.
+
+Scene: local rumor accusing player.
+
+Expected:
+
+* level does not automatically solve rumor
+* reputation/evidence/witness systems decide
+* intimidation may create consequences
+
+Test 9 — Level 1000 exhausted
+
+Given:
+
+Player Level 1000 but 0 EP, poisoned, disarmed.
+
+Expected:
+
+* effective level reduced
+* lower-tier enemy may become dangerous
+* clean domination not automatic
+
+Test 10 — lower-level leverage
+
+Given:
+
+Player Level 30.
+
+Enemy Tier 7 dragonling.
+
+Player has prepared trap and dragon-weakening ritual.
+
+Expected:
+
+* matchup improves
+* victory may be possible if output supports
+* cost/risk likely high
+
+Test 11 — status panel does not override state randomly
+
+Given:
+
+State says Level 10.
+
+AI output randomly says Level 50 with no valid source.
+
+Expected:
+
+* reject or flag contradiction
+* no level change
+
+Test 12 — scenario initialization accepts starting level
+
+Given:
+
+Opening setup says player is Human Monk Level 4.
+
+Expected:
+
+* initialize Level 4 if no existing state and source is setup
+* player sheet dirty
+* protected card update
+
+⸻
+
+50. What Chunk 19 does not finish
+
+Chunk 19 defines level scale and threat alignment.
+
+It does not fully define:
+
+* exact stat formulas
+* exact race/species modifiers
+* exact XP curve
+* exact enemy stat blocks
+* exact damage math
+* exact ability costs
+* exact absorption/copy mechanics
+* exact card templates
+
+Those belong in later chunks:
+
+* Chunk 20: Race/species modifiers
+* Chunk 21: Core stat/resource formulas
+* Chunk 22: XP and progression math
+* Chunk 23: Enemy tier/stat matrix
+* Chunk 24: Combat math
+* Chunk 25: Ability cost/function templates
+* Chunk 26: Absorption/anime growth systems
+* Chunk 29–30: Story card templates/triggers
+
+Chunk 19 is the scale foundation.
+
+⸻
+
+51. Final Chunk 19 doctrine
+
+AIDRPG level is a scale marker.
+
+It tells the system what kind of story the player has grown into.
+
+Level 1 is fragile.
+
+Level 10 is novice.
+
+Level 50 is a real adventurer.
+
+Level 100 is veteran.
+
+Level 200 is heroic.
+
+Level 500 is epic.
+
+Level 1000 is world-scale.
+
+But level is never the only answer.
+
+Freeform AI Dungeon play requires context.
+
+A slime may be harmless, acidic, tainted, symbiotic, or godlike.
+
+A human may be civilian, trained killer, archmage, or divine champion.
+
+A social rumor may threaten a high-level player more than a sword.
+
+A low-level player may survive a high-tier threat through leverage.
+
+A high-level player may still fail if exhausted, countered, trapped, cursed, or socially outmaneuvered.
+
+AIDRPG should scale the world through:
+
+* level
+* stats
+* resources
+* race/species
+* abilities
+* equipment
+* creature traits
+* numbers
+* terrain
+* preparation
+* story leverage
+* reputation
+* current state
+* validation evidence
+
+The goal is not to make a rigid table decide the story.
+
+The goal is to give the validator enough structure to keep freeform gameplay believable, fair, scalable, and safe.
+

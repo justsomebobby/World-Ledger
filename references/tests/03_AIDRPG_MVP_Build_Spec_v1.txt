@@ -1,0 +1,2192 @@
+AIDRPG MVP Build Spec v1
+
+0. Document status
+
+Document name: AIDRPG MVP Build Spec v1
+Purpose: Define the first exact script target for AIDRPG.
+Status: Build target specification, not code.
+Applies after: AIDRPG Developer Spec v1 and Developer Spec v1.1 Correction Pass.
+Next document after this: AIDRPG Test Spec v1.
+
+This document answers:
+
+* what the first MVP actually builds
+* what stays disabled
+* what modules must exist
+* what state must exist
+* what each AI Dungeon hook should do
+* what commands must work
+* what event types are allowed
+* what validation must block
+* what protected cards must update
+* what tests must pass before expansion
+
+This document is intentionally narrower than the full Design Bible.
+
+The goal of MVP v1 is not to finish AIDRPG.
+
+The goal is to build the stable canon pipeline that later systems can safely use.
+
+⸻
+
+1. Authority order
+
+Implementation authority order is:
+
+1. AIDRPG MVP Build Spec v1
+2. AIDRPG Developer Spec v1.1 Correction Pass
+3. AIDRPG Developer Spec v1
+4. Chunk 33 Final Pre-Build Lockdown
+5. Chunks 1–32 Design Bible
+
+If this MVP Build Spec says a feature is disabled, it is disabled even if the Design Bible describes it in detail.
+
+If this MVP Build Spec leaves something out, do not infer it from the full design unless the MVP explicitly allows it.
+
+⸻
+
+2. MVP build target
+
+2.1 MVP target name
+
+AIDRPG Core MVP v0.1
+
+2.2 MVP purpose
+
+AIDRPG Core MVP v0.1 must prove that the system can:
+
+1. Initialize stable state.
+2. Display state through commands.
+3. Detect simple proposed events.
+4. Validate those events.
+5. Commit accepted changes through owner reducers.
+6. Prevent duplicate changes.
+7. Enforce item custody and actor presence.
+8. Track candidate versus stable abilities.
+9. Track simple quest states and promised versus paid rewards.
+10. Build compact context packets.
+11. Maintain protected summary cards.
+12. Provide audits for debugging.
+
+2.3 MVP success definition
+
+The MVP succeeds when:
+
+* commands work
+* state does not corrupt itself
+* repeated output does not duplicate rewards/items/XP
+* visible loot does not become inventory until taken
+* inaccessible items cannot be used
+* absent companions cannot act
+* candidate abilities do not become stable automatically
+* active quests can track simple progress
+* promised rewards are not paid rewards
+* protected cards mirror state only
+* generated cards stay disabled
+* context stays compact
+* audits explain important decisions
+
+⸻
+
+3. MVP hard exclusions
+
+These must not be implemented in MVP v0.1 as active systems.
+
+3.1 Fully disabled systems
+
+EconomyReducer: disabled
+CraftingReducer: disabled
+InvestigationReducer: disabled
+ReputationReducer: disabled
+FactionReducer: disabled
+DomainReducer: disabled
+LaborReducer: disabled
+AbsorptionReducer: disabled
+EvolutionReducer: disabled
+GeneratedCardSync: disabled
+TravelReducer: disabled
+WeatherReducer: disabled
+MultiProtagonistSystem: disabled
+StrictCombatMatrix: disabled
+
+3.2 Allowed inert placeholders
+
+The root state may include flags for disabled systems.
+
+Example:
+
+flags: {
+  economyEnabled: false,
+  craftingEnabled: false,
+  investigationEnabled: false,
+  reputationEnabled: false,
+  domainEnabled: false,
+  absorptionEnabled: false,
+  generatedCardsEnabled: false,
+  multiProtagonistEnabled: false
+}
+
+These flags must not run logic.
+
+3.3 Do not create half-systems
+
+Do not build partial economy, partial crafting, partial investigation, or partial absorption in MVP.
+
+If a feature is deferred, it may only appear as:
+
+* a text note
+* an inert flag
+* a future hook placeholder
+* a command message saying it is not implemented yet
+
+It must not mutate gameplay state.
+
+⸻
+
+4. MVP enabled systems
+
+MVP v0.1 includes only these active systems.
+
+4.1 Active modules
+
+StateManager
+CommandRouter
+EventScannerLite
+ProposalBuilder
+CanonValidator
+ReducerRegistry
+OperationLedger
+BodyReducer
+InventoryReducer
+AbilityReducer
+QuestReducerLite
+ActorReducerLite
+PlaceReducerLite
+TimeReducerLite
+ProgressionReducerLite
+ContextBuilderLite
+CardSyncLite
+AuditLogger
+CleanupManagerLite
+
+4.2 Active gameplay areas
+
+* player sheet
+* body/resources
+* inventory/custody/access
+* ability candidate/stable status
+* simple quests
+* simple actors/companions
+* current scene/location
+* simple time text
+* simple XP tracking, but no final level math
+* protected cards
+* context packets
+* audit log
+
+⸻
+
+5. Build modes for MVP
+
+MVP supports mode flags, but only Balanced Mode is fully expected.
+
+5.1 Default mode
+
+mode: 'balanced'
+
+5.2 Supported flags
+
+flags: {
+  narrativeMode: false,
+  balancedMode: true,
+  strictMode: false,
+  debugMode: false,
+  safeMode: false,
+  generatedCardsEnabled: false
+}
+
+5.3 Narrative Mode in MVP
+
+Narrative Mode may soften validation messages but must still enforce:
+
+* no duplicate rewards
+* no inaccessible item use
+* no absent companion actions
+* no generated card creation
+* no command output parsing as story
+
+5.4 Strict Mode in MVP
+
+Strict Mode may increase audit detail and stricter rejection, but it must not enable deferred systems.
+
+5.5 Debug Mode in MVP
+
+Debug Mode allows more detailed command output from:
+
+* /debuglast
+* /cardaudit
+* /contextaudit
+
+Debug Mode should not spam normal story output.
+
+5.6 Safe Mode in MVP
+
+Safe Mode:
+
+* keeps generated cards disabled
+* limits parsing to commands and core safety checks
+* keeps protected cards updating if safe
+* prevents cleanup from deleting important records
+
+⸻
+
+6. AI Dungeon hook responsibilities
+
+AIDRPG is assumed to run inside AI Dungeon script surfaces.
+
+The implementation may be one script bundle, but behavior should be separated by hook responsibility.
+
+⸻
+
+6.1 Library / shared code
+
+Library/shared code should define:
+
+* constants
+* schema defaults
+* helper functions
+* ID/key helpers
+* hashing helpers
+* module objects
+* reducer registry
+* command registry
+* validation rules
+
+Library/shared code should not mutate gameplay state by itself.
+
+⸻
+
+6.2 Input hook
+
+Input hook responsibilities:
+
+1. Initialize state if missing.
+2. Detect commands.
+3. If command found, route to CommandRouter.
+4. Mark command output so it is not parsed as story.
+5. For non-command input, optionally create intent proposals.
+6. Do not complete player attempts from input alone.
+
+Input hook must not:
+
+* add items from player claims alone
+* kill enemies from player claims alone
+* complete quests from player claims alone
+* create stable abilities from player claims alone
+* move long-distance locations from player claims alone
+
+Example:
+
+Player input:
+
+I try to grab the gem.
+
+Allowed result:
+
+intent proposal: item_take_attempt
+completedAction: false
+
+Not allowed:
+
+gem added to inventory
+
+⸻
+
+6.3 Context hook
+
+Context hook responsibilities:
+
+1. Initialize state if missing.
+2. Build compact context packets.
+3. Prioritize corrections.
+4. Inject current scene/location if useful.
+5. Inject item custody warnings if relevant.
+6. Inject actor presence warnings if relevant.
+7. Inject active quest and ability limit reminders if relevant.
+8. Avoid full state dumps.
+
+Context hook must not:
+
+* mutate gameplay state
+* create items
+* create actors
+* create quests
+* create cards
+* parse its own injected text as canon
+
+⸻
+
+6.4 Output hook
+
+Output hook responsibilities:
+
+1. Initialize state if missing.
+2. Ignore command output if suppression flag is active.
+3. Scan AI output for simple completed events.
+4. Build proposals.
+5. Validate proposals.
+6. Commit accepted proposals through owner reducers.
+7. Record operation keys.
+8. Mark dirty targets.
+9. Update protected cards if allowed and dirty.
+10. Write audit summary.
+
+Output hook must not:
+
+* scan Story Card text as event source
+* scan Context text as event source
+* create generated cards in MVP
+* allow parser output to bypass CanonValidator
+* allow non-owner reducers to mutate state
+
+⸻
+
+7. Root state schema for MVP
+
+The root state must use a single stable namespace.
+
+Recommended:
+
+state.aidrpg
+
+7.1 Root schema
+
+AIDRPGState {
+  version: '0.1.0-mvp',
+  schemaVersion: 1,
+  mode: 'balanced',
+  flags: FlagsState,
+  integrity: IntegrityState,
+  turn: TurnState,
+  player: PlayerState,
+  body: BodyState,
+  progression: ProgressionState,
+  inventory: InventoryState,
+  abilities: AbilityState,
+  quests: QuestState,
+  actors: ActorState,
+  places: PlaceState,
+  time: TimeState,
+  cards: CardState,
+  operationLedger: OperationLedgerState,
+  audits: AuditState,
+  cleanup: CleanupState
+}
+
+⸻
+
+7.2 FlagsState
+
+FlagsState {
+  narrativeMode: false,
+  balancedMode: true,
+  strictMode: false,
+  debugMode: false,
+  safeMode: false,
+  generatedCardsEnabled: false,
+  economyEnabled: false,
+  craftingEnabled: false,
+  investigationEnabled: false,
+  reputationEnabled: false,
+  domainEnabled: false,
+  absorptionEnabled: false,
+  multiProtagonistEnabled: false
+}
+
+⸻
+
+7.3 IntegrityState
+
+IntegrityState {
+  lastValidatedTurn: string,
+  lastMigration: string,
+  warnings: string[],
+  errorCount: number
+}
+
+⸻
+
+7.4 TurnState
+
+TurnState {
+  id: string,
+  index: number,
+  lastInputHash: string,
+  lastOutputHash: string,
+  commandActive: boolean,
+  suppressEventScanForCommandOutput: boolean
+}
+
+⸻
+
+7.5 PlayerState
+
+PlayerState {
+  id: 'player',
+  name: string,
+  raceSpecies: string,
+  age: string,
+  appearance: string,
+  buildIdentity: string,
+  specialization: string,
+  level: number,
+  stats: {
+    ATK: number,
+    DEF: number,
+    SPD: number,
+    INT: number,
+    LCK: number
+  },
+  notes: string[]
+}
+
+Default stats may use simple values until Formula Appendix v1.
+
+Recommended default:
+
+level: 1
+ATK: 10
+DEF: 10
+SPD: 10
+INT: 10
+LCK: 10
+
+⸻
+
+7.6 BodyState
+
+BodyState {
+  hp: ResourceState,
+  mp: ResourceState,
+  ep: ResourceState,
+  injuries: InjuryRecord[],
+  conditions: ConditionRecord[],
+  fatigue: 'normal' | 'tired' | 'exhausted' | 'collapsed',
+  deathBoundary: 'safe' | 'danger' | 'unconscious' | 'dying' | 'dead',
+  bodyTraits: string[],
+  lastRecoveryTurn: string
+}
+ResourceState {
+  current: number,
+  max: number
+}
+
+Recommended default:
+
+HP 100 / 100
+MP 100 / 100
+EP 100 / 100
+
+MVP does not claim final scaling.
+
+⸻
+
+7.7 ProgressionState
+
+ProgressionState {
+  xp: number,
+  totalXp: number,
+  xpToNext: number,
+  statXp: object,
+  recentRewards: string[],
+  antiFarm: object,
+  formulaStatus: 'placeholder'
+}
+
+MVP may track XP but must not claim final formulas.
+
+⸻
+
+7.8 InventoryState
+
+InventoryState {
+  currency: CurrencyState,
+  items: ItemRecord[],
+  equipped: {
+    mainHand?: string,
+    offHand?: string,
+    armor?: string,
+    accessory?: string[]
+  },
+  sceneItems: SceneItemRecord[],
+  recentItemEvents: string[]
+}
+CurrencyState {
+  copperBase: number,
+  display: string,
+  access: 'personal'
+}
+ItemRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  type: string,
+  quantity: number,
+  quality: string,
+  condition: string,
+  owner: string,
+  custody: string,
+  access: 'held' | 'equipped' | 'stored' | 'npc_custody' | 'inaccessible' | 'lost' | 'sold' | 'destroyed' | 'consumed',
+  location?: string,
+  equipped: boolean,
+  questLinked: boolean,
+  notes: string[],
+  truthStatus: string
+}
+SceneItemRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  access: 'visible' | 'available_loot',
+  location: string,
+  owner: string,
+  custody: 'scene',
+  expiresAfterScene: boolean,
+  truthStatus: string
+}
+
+Important:
+
+* visible is not inventory.
+* available_loot is not inventory.
+* npc_custody is not accessible.
+
+⸻
+
+7.9 AbilityState
+
+AbilityState {
+  abilities: AbilityRecord[],
+  candidates: AbilityRecord[],
+  passives: PassiveRecord[],
+  talents: TalentRecord[],
+  recentEvidence: string[]
+}
+AbilityRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  aliases: string[],
+  category: string,
+  status: 'unknown' | 'hint' | 'candidate' | 'unstable' | 'stable' | 'sealed' | 'unavailable',
+  rank: number,
+  source: string,
+  effect: string,
+  costLabel: 'none' | 'tiny' | 'light' | 'moderate' | 'heavy' | 'severe' | 'extreme' | 'unknown',
+  limits: string,
+  requiredEquipment: string,
+  requiredBody: string,
+  evidence: string[],
+  truthStatus: string
+}
+
+MVP rule:
+
+candidate !== stable
+
+⸻
+
+7.10 QuestState
+
+QuestState {
+  quests: QuestRecord[],
+  archived: QuestArchiveRecord[],
+  aliases: object
+}
+QuestRecord {
+  id: string,
+  title: string,
+  canonicalKey: string,
+  type: 'personal' | 'request' | 'delivery' | 'collection' | 'defeat' | 'escort' | 'training' | 'other',
+  status: 'rumored' | 'offered' | 'active' | 'blocked' | 'ready_to_turn_in' | 'completed' | 'rewarded' | 'failed' | 'abandoned' | 'archived',
+  priority: 'low' | 'normal' | 'high' | 'urgent',
+  source: string,
+  giver?: string,
+  objectives: QuestObjective[],
+  promisedRewards: RewardRecord[],
+  rewardStatus: 'none' | 'promised' | 'ready' | 'paid' | 'disputed',
+  deadline?: string,
+  blockers: string[],
+  truthStatus: string
+}
+QuestObjective {
+  id: string,
+  description: string,
+  status: 'active' | 'complete' | 'failed' | 'blocked',
+  currentCount?: number,
+  requiredCount?: number,
+  target?: string,
+  proofRequired?: string
+}
+
+⸻
+
+7.11 ActorState
+
+ActorState {
+  actors: ActorRecord[],
+  sceneActors: SceneActorRecord[],
+  companions: string[],
+  aliases: object
+}
+ActorRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  aliases: string[],
+  importance: 1 | 2 | 3 | 4 | 5,
+  type: 'npc' | 'companion' | 'enemy' | 'merchant' | 'quest_giver' | 'custodian' | 'other',
+  role: string,
+  status: 'alive' | 'wounded' | 'unconscious' | 'dead' | 'missing' | 'captured' | 'unknown',
+  presence: 'present' | 'nearby' | 'elsewhere' | 'unknown' | 'absent' | 'dead' | 'captured',
+  location?: string,
+  relationship: string,
+  memories: ActorMemoryRecord[],
+  questLinks: string[],
+  itemCustody: string[],
+  truthStatus: string
+}
+SceneActorRecord {
+  id: string,
+  name: string,
+  role: string,
+  temporary: true,
+  expiresAfterScene: true
+}
+
+⸻
+
+7.12 PlaceState
+
+PlaceState {
+  currentLocation: LocationState,
+  currentScene: SceneState,
+  places: PlaceRecord[],
+  routes: RouteRecord[]
+}
+LocationState {
+  region?: string,
+  settlement?: string,
+  place?: string,
+  subLocation?: string,
+  route?: string,
+  confidence: 'confirmed' | 'likely' | 'unknown'
+}
+SceneState {
+  sceneId: string,
+  summary: string,
+  actorsPresent: string[],
+  visibleItems: string[],
+  hazards: string[],
+  exits: string[],
+  activeCombat: boolean,
+  activeObjective?: string
+}
+
+MVP does not build full route/travel simulation.
+
+⸻
+
+7.13 TimeState
+
+TimeState {
+  currentTimeText: string,
+  dayCount?: number,
+  timeOfDay?: string,
+  activeDeadlines: DeadlineRecord[],
+  lastTimeAdvance: string
+}
+
+MVP uses text time.
+
+No full calendar required.
+
+⸻
+
+7.14 CardState
+
+CardState {
+  registry: CardRegistryEntry[],
+  protectedCards: string[],
+  dirtyCards: string[],
+  generatedCardCreationEnabled: false,
+  lastCardAudit: string[]
+}
+
+Generated cards remain disabled.
+
+⸻
+
+7.15 OperationLedgerState
+
+OperationLedgerState {
+  permanentKeys: string[],
+  recentKeys: string[],
+  rewardKeys: string[],
+  cardKeys: string[],
+  sourceUseKeys: string[],
+  maxRecentKeys: 250,
+  maxAuditLinkedKeys: 100,
+  lastCompactedTurn: string
+}
+
+⸻
+
+7.16 AuditState
+
+AuditState {
+  lastTurnSummary: string,
+  recentProposals: EventProposal[],
+  recentValidationResults: ValidationResult[],
+  debugMessages: string[],
+  maxEntries: 50
+}
+
+⸻
+
+8. Required module APIs
+
+These are not final code signatures, but the build should follow this shape.
+
+8.1 StateManager API
+
+StateManager.init(root)
+StateManager.migrate(root)
+StateManager.ensureDefaults(root)
+StateManager.validateIntegrity(root)
+StateManager.nextTurn(root)
+
+Must:
+
+* create state.aidrpg if missing
+* repair missing fields safely
+* never erase existing valid state during migration
+
+⸻
+
+8.2 CommandRouter API
+
+CommandRouter.isCommand(inputText)
+CommandRouter.route(inputText, root)
+CommandRouter.renderHelp(root)
+
+Must:
+
+* suppress event scanning for command output
+* avoid gameplay mutation from inspection commands
+
+⸻
+
+8.3 EventScannerLite API
+
+EventScannerLite.scanInput(inputText, root)
+EventScannerLite.scanOutput(outputText, root)
+
+Returns raw event hits, not committed state.
+
+⸻
+
+8.4 ProposalBuilder API
+
+ProposalBuilder.fromHit(hit, root)
+ProposalBuilder.makeOperationKey(proposal, root)
+
+Must create full EventProposal objects.
+
+⸻
+
+8.5 CanonValidator API
+
+CanonValidator.validate(proposal, root)
+CanonValidator.checkDuplicate(proposal, root)
+CanonValidator.checkOwnership(proposal, root)
+CanonValidator.checkAccess(proposal, root)
+CanonValidator.checkPresence(proposal, root)
+
+Must return ValidationResult.
+
+⸻
+
+8.6 ReducerRegistry API
+
+ReducerRegistry.get(ownerReducer)
+ReducerRegistry.apply(validatedProposal, root)
+
+Must reject unknown owner reducer.
+
+⸻
+
+8.7 Reducer API
+
+Every reducer should support:
+
+Reducer.apply(validatedProposal, root)
+Reducer.markDirty(result, root)
+
+Reducers do not validate broad canon. They commit already-validated changes.
+
+⸻
+
+8.8 OperationLedger API
+
+OperationLedger.has(key, root)
+OperationLedger.add(key, bucket, root)
+OperationLedger.bucketFor(proposal)
+OperationLedger.compact(root)
+
+⸻
+
+8.9 ContextBuilderLite API
+
+ContextBuilderLite.build(root)
+ContextBuilderLite.makeCorrectionPacket(root)
+ContextBuilderLite.makeScenePacket(root)
+ContextBuilderLite.makeStatusPacket(root)
+ContextBuilderLite.makeActorPacket(root)
+ContextBuilderLite.makeInventoryPacket(root)
+ContextBuilderLite.makeQuestPacket(root)
+ContextBuilderLite.makeAbilityPacket(root)
+
+⸻
+
+8.10 CardSyncLite API
+
+CardSyncLite.ensureProtectedCards(root)
+CardSyncLite.markDirty(cardKey, root)
+CardSyncLite.updateDirtyProtectedCards(root)
+CardSyncLite.renderProtectedCard(cardKey, root)
+
+Generated card APIs should exist only as stubs or disabled placeholders.
+
+⸻
+
+8.11 AuditLogger API
+
+AuditLogger.recordProposal(proposal, root)
+AuditLogger.recordValidation(result, root)
+AuditLogger.recordCommit(result, root)
+AuditLogger.renderDebugLast(root)
+AuditLogger.renderCardAudit(root)
+AuditLogger.renderContextAudit(root)
+
+⸻
+
+9. MVP EventProposal schema
+
+MVP must use this corrected schema.
+
+EventProposal {
+  proposalId: string,
+  turnId: string,
+  sourceHook: 'input' | 'output' | 'command' | 'manual' | 'migration' | 'system',
+  sourceTextHash: string,
+  rawText: string,
+  normalizedText: string,
+  eventType: string,
+  subtype?: string,
+  actorId?: string,
+  targetId?: string,
+  itemId?: string,
+  placeId?: string,
+  questId?: string,
+  abilityId?: string,
+  ownerReducer: string,
+  confidence: number,
+  truthStatus: string,
+  evidenceType: string,
+  intentType?: string,
+  completedAction: boolean,
+  negated: boolean,
+  hypothetical: boolean,
+  quotedSpeech: boolean,
+  dreamOrVision: boolean,
+  proposedChanges: object,
+  operationKey: string,
+  validation: null | ValidationResult,
+  dirtyTargets: string[],
+  notes: string[]
+}
+
+Required default logic:
+
+* player input actions usually have completedAction: false
+* clear AI output may have completedAction: true
+* quoted speech usually has truthStatus: claimed
+* rumors have truthStatus: rumored
+* attempts have intentType: attempt
+* command output must not become proposals unless manual mutation commands exist
+
+⸻
+
+10. MVP allowed event types
+
+Only these event types are allowed in MVP v0.1.
+
+10.1 Body events
+
+body.damage
+body.heal
+body.resource_cost
+body.resource_recover
+body.injury_add
+body.condition_add
+body.condition_remove
+body.fatigue_change
+
+10.2 Inventory events
+
+inventory.scene_item_visible
+inventory.scene_item_available_loot
+inventory.item_pickup
+inventory.item_drop
+inventory.item_equip
+inventory.item_unequip
+inventory.item_transfer_custody
+inventory.item_mark_lost
+inventory.item_mark_sold
+inventory.item_mark_destroyed
+inventory.currency_gain_simple
+inventory.currency_spend_simple
+
+10.3 Ability events
+
+ability.use_attempt
+ability.use_confirmed
+ability.evidence_gain
+ability.candidate_create
+ability.status_change
+ability.resource_cost_request
+
+10.4 Quest events
+
+quest.rumor
+quest.offer
+quest.accept
+quest.objective_progress
+quest.objective_complete
+quest.blocked
+quest.ready_to_turn_in
+quest.complete
+quest.reward_promised
+quest.reward_paid
+quest.fail
+quest.archive
+
+10.5 Actor events
+
+actor.scene_present
+actor.persist
+actor.presence_change
+actor.memory_add
+actor.relationship_note
+actor.item_custody
+actor.status_change
+
+10.6 Place/time events
+
+place.scene_update
+place.location_arrive
+place.location_intent
+place.visible_exit
+place.hazard_note
+time.advance_text
+time.deadline_note
+time.rest
+
+10.7 Progression events
+
+progression.xp_gain_simple
+progression.level_note
+
+Progression math remains placeholder until Formula Appendix v1.
+
+10.8 Card/context/audit events
+
+card.protected_dirty
+card.protected_update
+context.packet_generated
+audit.record
+
+Generated card events must be rejected or ignored while generatedCardsEnabled is false.
+
+⸻
+
+11. MVP disallowed event types
+
+These event types must not actively mutate state in MVP.
+
+economy.transaction_full
+crafting.project_create
+crafting.output_item
+investigation.clue_add
+investigation.case_solve
+reputation.title_grant
+faction.standing_change
+domain.project_progress
+labor.worker_hire
+absorption.source_consume
+evolution.trait_gain
+generated_card.create
+generated_card.update
+travel.route_progress_full
+weather.change
+multi_protagonist.switch
+
+If detected, these should become:
+
+* ignored
+* pending note
+* debug/audit message
+* simple quest/actor/place note only if safe
+
+They must not run full logic.
+
+⸻
+
+12. MVP validation rules
+
+12.1 Universal validation rules
+
+Every proposal must pass:
+
+1. source allowed
+2. event type allowed
+3. owner reducer exists
+4. operation key not duplicate
+5. confidence high enough
+6. not negated
+7. not hypothetical
+8. not dream/vision unless explicitly allowed
+9. does not contradict protected state
+10. required actor/item/ability/place exists or can be safely created
+
+12.2 Confidence thresholds
+
+0.00–0.24 = ignore/hard deny if dangerous
+0.25–0.44 = pending/reject
+0.45–0.64 = validate carefully, usually pending or soft_fail
+0.65–0.84 = accept if no contradiction
+0.85–1.00 = accept if owner and ledger checks pass
+
+Clear AI output starts around 0.75 before validation.
+
+12.3 Attempt rule
+
+Input attempts do not complete actions.
+
+Examples:
+
+I try to pick up the gem.
+
+Result:
+
+intent only, no inventory add
+
+12.4 Completion rule
+
+Actions complete only when AI output, command, or manual override confirms completion.
+
+Example:
+
+You pick up the gem.
+
+May become:
+
+inventory.item_pickup
+
+if access and duplicate checks pass.
+
+12.5 Quoted speech rule
+
+Quoted speech creates claims, not facts.
+
+Example:
+
+Mara says, "Lord Veyr killed him."
+
+MVP result:
+
+actor.memory_add truthStatus = claimed
+
+No confirmed guilt.
+
+12.6 Rumor rule
+
+Rumor creates rumored quest/actor note only if useful.
+
+No confirmed fact.
+
+12.7 Story Card rule
+
+Story Card text cannot create proposals.
+
+12.8 Context rule
+
+Context text cannot create proposals.
+
+12.9 Command output rule
+
+Command output cannot create proposals.
+
+⸻
+
+13. MVP resolver rules
+
+13.1 Resolver result shape
+
+ResolverResult {
+  matchedId?: string,
+  confidence: number,
+  ambiguous: boolean,
+  candidates: string[],
+  reason: string
+}
+
+13.2 Generic names
+
+Generic names only match if there is one clear current-scene candidate.
+
+Generic examples:
+
+* sword
+* key
+* ring
+* guard
+* wolf
+* road
+* shop
+* potion
+
+13.3 Similar item rule
+
+If both iron key and iron keyring exist, “iron key” must not select keyring.
+
+13.4 Negated selection rule
+
+If text says:
+
+Take the iron key, not the keyring.
+
+Then keyring must be excluded.
+
+13.5 Actor relation rule
+
+“Mara’s sister” does not resolve to Mara.
+
+13.6 Place substring rule
+
+“Old Chapel Road” does not resolve to “Old Chapel” unless context explicitly says the chapel itself.
+
+13.7 Custody rule
+
+If an item is inaccessible but clearly referenced, resolve it for correction, not use.
+
+Example:
+
+Sword with Mara:
+
+Player says: I draw my sword.
+Resolver: matches sword.
+Validator: rejects use due to npc_custody.
+
+⸻
+
+14. MVP reducer behavior
+
+14.1 BodyReducer MVP
+
+Must support:
+
+* resource cost
+* simple damage
+* simple healing
+* injury add/remove
+* condition add/remove
+* fatigue change
+
+Must not support:
+
+* final combat matrix
+* species-specific body compatibility table
+* advanced disease/poison engine
+* permanent injury math
+
+14.2 InventoryReducer MVP
+
+Must support:
+
+* visible scene item
+* available loot
+* pickup
+* drop
+* equip
+* unequip
+* custody transfer
+* mark lost/sold/destroyed/consumed
+* simple currency gain/spend
+
+Must enforce:
+
+* visible is not inventory
+* available_loot is not inventory
+* npc_custody is not usable
+* sold/destroyed/consumed/lost cannot be used
+
+14.3 AbilityReducer MVP
+
+Must support:
+
+* ability record creation
+* candidate creation
+* evidence gain
+* status change
+* stable ability use check
+* resource cost request
+
+Must enforce:
+
+* candidate is not stable
+* sealed/unavailable cannot be used
+* unknown ability does not become mastered instantly
+
+14.4 QuestReducerLite MVP
+
+Must support:
+
+* rumored quest
+* offered quest
+* active quest
+* objective progress
+* objective complete
+* blocked quest
+* ready to turn in
+* completed quest
+* promised reward
+* paid reward status
+* reward dedupe
+* archive
+
+Must enforce:
+
+* reward promise is not payment
+* reward payment requires confirmed payment event
+* reward payment uses permanent reward key
+
+14.5 ActorReducerLite MVP
+
+Must support:
+
+* persistent important actors
+* scene-only actors
+* companion list
+* actor presence
+* actor memory notes with truth status
+* item custody by actor
+
+Must enforce:
+
+* absent actors cannot act
+* scene-only actors do not automatically persist
+* rumors/claims do not become confirmed actor biography
+
+14.6 PlaceReducerLite MVP
+
+Must support:
+
+* current location
+* current scene
+* visible exits
+* visible hazards
+* scene summary
+* simple arrival
+* simple travel intent
+
+Must enforce:
+
+* “head toward” is not arrival
+* long-distance move requires output confirmation or command/manual override
+
+14.7 TimeReducerLite MVP
+
+Must support:
+
+* text time
+* simple time advance
+* rest time
+* deadline notes
+
+Must enforce:
+
+* plans do not advance time
+* hypothetical time does not advance time
+
+14.8 ProgressionReducerLite MVP
+
+Must support:
+
+* simple XP gain
+* duplicate XP prevention
+* display XP
+
+Must not support:
+
+* final XP formula
+* final level scaling
+* Level 1000 matrix
+* challenge XP automation
+
+Those require Formula Appendix v1.
+
+⸻
+
+15. MVP command specification
+
+All MVP commands are inspection/debug only.
+
+Manual mutation commands are deferred.
+
+15.1 /help
+
+Must show:
+
+* supported commands
+* current mode
+* disabled systems
+* note that MVP is core-only
+
+Must not claim full economy, crafting, investigation, generated cards, domain, or absorption are implemented.
+
+15.2 /sheet
+
+Shows:
+
+* name
+* race/species
+* age
+* appearance
+* level
+* XP
+* total XP
+* XP-to-next if placeholder exists
+* stats
+* build identity
+* specialization
+
+15.3 /status
+
+Shows:
+
+* HP
+* MP
+* EP
+* injuries
+* conditions
+* fatigue
+* death boundary
+
+15.4 /inventory
+
+Shows:
+
+* personal currency
+* equipped items
+* held/stored important items
+* quest-linked items
+* custody warnings
+* visible/available loot separately from inventory
+
+Must clearly separate:
+
+Inventory
+Available nearby
+Unavailable / in custody
+
+15.5 /abilities
+
+Shows:
+
+* stable abilities
+* candidate abilities
+* unstable abilities
+* passives/talents
+* sealed/unavailable abilities
+
+Must label candidates clearly.
+
+15.6 /quests
+
+Shows:
+
+* rumored/offered/active/blocked/ready/completed/rewarded
+* objectives
+* promised rewards
+* reward status
+* deadlines if known
+
+15.7 /actors
+
+Shows:
+
+* present actors
+* companions
+* important persistent actors
+* actor presence
+* relationship summary
+* custody notes
+
+15.8 /location
+
+Shows:
+
+* current location
+* current scene
+* actors present
+* visible items
+* hazards
+* exits
+* travel intent if active
+
+15.9 /time
+
+Shows:
+
+* current time text
+* last time advance
+* active deadline notes
+
+15.10 /debuglast
+
+Shows:
+
+* last proposals
+* validation outcomes
+* accepted commits
+* rejected/skipped duplicates
+* operation keys
+* dirty targets
+
+15.11 /cardaudit
+
+Shows:
+
+* protected cards dirty/updated
+* generated card attempts suppressed
+* rejected triggers/card names if any
+
+15.12 /contextaudit
+
+Shows:
+
+* selected context packets
+* skipped packets
+* correction packets
+* packet hashes
+
+⸻
+
+16. MVP protected cards
+
+MVP must maintain protected cards only.
+
+Generated cards remain disabled.
+
+16.1 Required protected cards
+
+AIDRPG Player Sheet
+AIDRPG Body Status
+AIDRPG Abilities
+AIDRPG Inventory/Equipment
+AIDRPG Quest Log
+AIDRPG Social Memory
+AIDRPG Current Location
+
+16.2 Protected card update limit
+
+Maximum protected card updates per turn:
+
+3
+
+Priority:
+
+1. Current Location
+2. Body Status
+3. Inventory/Equipment
+4. Quest Log
+5. Abilities
+6. Social Memory
+7. Player Sheet
+
+If a card is dirty but not updated due to limit, it remains dirty.
+
+16.3 Protected card doctrine
+
+Protected cards:
+
+* mirror state
+* do not create state
+* do not get parsed as events
+* update only when dirty
+* avoid unchanged rewrites
+
+16.4 Protected card content limits
+
+Each protected card should be compact.
+
+Do not include:
+
+* full audit logs
+* every old item
+* every old quest
+* every old actor
+* hidden/debug fields
+* implementation schemas
+
+⸻
+
+17. MVP context packets
+
+17.1 Packet priority
+
+1. Critical correction
+2. Current scene/location
+3. Player danger/status
+4. Present/absent actor facts
+5. Inventory custody/access
+6. Active quest/deadline
+7. Ability limits
+8. Time note
+
+17.2 Packet target size
+
+critical correction: 1–3 short lines
+scene/location: 2–4 short lines
+status: 1–3 short lines
+actor presence: 1–3 short lines
+inventory custody: 1–2 short lines
+quest: 1–3 short lines
+ability: 1–2 short lines
+time: 1–2 short lines
+
+17.3 Context must not include
+
+* every stat
+* full inventory
+* all quests
+* all actors
+* old logs
+* deferred system data
+* generated card content
+* hidden truth
+
+17.4 Correction examples
+
+Mara is absent; she cannot block attacks in this scene.
+The iron sword is in Mara's custody and cannot be used right now.
+Shadow Step is only a candidate and should not function as reliable teleport yet.
+The reward is promised, not paid.
+
+⸻
+
+18. MVP OperationLedger buckets
+
+18.1 Buckets
+
+permanentKeys
+recentKeys
+rewardKeys
+cardKeys
+sourceUseKeys
+
+18.2 Permanent keys
+
+Use for:
+
+* quest completion
+* unique item gain/loss
+* major boss defeat if implemented
+* protected card identity creation
+
+18.3 Reward keys
+
+Use for:
+
+* all quest reward payments
+* any currency/item reward
+
+Reward keys never expire.
+
+18.4 Card keys
+
+Use for:
+
+* protected card registry creation
+* generated card creation later
+
+Card keys never expire.
+
+18.5 Recent keys
+
+Use for:
+
+* ordinary damage
+* resource costs
+* item pickups
+* item drops
+* simple XP
+* context packet hashes
+* protected card update hashes
+
+Max recent keys:
+
+250
+
+⸻
+
+19. MVP cleanup rules
+
+19.1 Lightweight cleanup every turn
+
+May clean:
+
+* duplicate dirty targets
+* expired parser candidates
+* audit overflow
+* repeated context packet hashes
+
+19.2 Deep cleanup every 25 turns
+
+May clean:
+
+* old recent keys beyond max
+* old scene-only actors after scene change
+* old visible scene items after scene change
+* old debug logs
+
+19.3 Never clean
+
+* player state
+* body state
+* active inventory
+* active quests
+* important actors
+* protected card registry
+* permanent keys
+* reward keys
+* card keys
+* major archived outcomes
+
+19.4 Cleanup audit
+
+Any cleanup beyond temporary parser/debug cleanup must be logged.
+
+⸻
+
+20. MVP implementation phases
+
+Phase 1 — Core state and inspection commands
+
+Build:
+
+* StateManager
+* root state schema
+* CommandRouter
+* AuditLogger shell
+* inspection commands
+
+Commands required:
+
+* /help
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+* /debuglast
+
+Pass Gate 1 before continuing.
+
+⸻
+
+Phase 2 — Proposal pipeline and ledger
+
+Build:
+
+* EventScannerLite shell
+* ProposalBuilder
+* CanonValidator shell
+* ReducerRegistry
+* OperationLedger
+* validation audit
+
+Must support proposals even before all event types are automated.
+
+Pass Gate 2 before continuing.
+
+⸻
+
+Phase 3 — Inventory/body/ability reducers
+
+Build:
+
+* BodyReducer MVP
+* InventoryReducer MVP
+* AbilityReducer MVP
+* item visibility versus inventory
+* custody/access enforcement
+* candidate versus stable ability enforcement
+
+Pass Gates 3 and 4 before continuing.
+
+⸻
+
+Phase 4 — Context and protected cards
+
+Build:
+
+* ContextBuilderLite
+* CardSyncLite protected cards
+* dirty card queue
+* /cardaudit
+* /contextaudit
+
+Generated cards remain disabled.
+
+Pass Gates 7 and 8 before continuing.
+
+⸻
+
+Phase 5 — Quest/actor/place/time lite
+
+Build:
+
+* QuestReducerLite
+* ActorReducerLite
+* PlaceReducerLite
+* TimeReducerLite
+* simple quest progress
+* reward dedupe
+* actor presence
+* location arrival/intent
+* text time advance
+
+Pass Gates 5 and 6 before MVP v0.1 is considered usable.
+
+⸻
+
+Phase 6 — Basic combat/progression extension
+
+Blocked until Formula Appendix v1 exists.
+
+May be part of MVP extension v0.2, not initial v0.1.
+
+⸻
+
+Phase 7 — Generated CardSync beta
+
+Blocked until all MVP gates pass.
+
+Not part of MVP v0.1.
+
+⸻
+
+21. MVP testing gates
+
+Gate 1 — State and command gate
+
+Must pass:
+
+* state initializes without error
+* missing fields repair safely
+* commands display current state
+* /help lists only supported commands
+* command output does not mutate state
+* /debuglast works even if no events occurred
+
+Gate 2 — Pipeline and ledger gate
+
+Must pass:
+
+* proposals can be created
+* proposals can be validated
+* owner reducer routing works
+* duplicate operation key is skipped
+* audit records accept/reject/duplicate
+
+Gate 3 — Inventory custody gate
+
+Must pass:
+
+* visible item is not inventory
+* available loot is not inventory
+* item pickup adds once
+* NPC custody item cannot be used
+* sold/destroyed/consumed item cannot be used
+* command output does not duplicate items
+
+Gate 4 — Ability status gate
+
+Must pass:
+
+* unknown ability does not become stable instantly
+* candidate ability is not reliable
+* stable ability requires cost/access/body/equipment checks
+* sealed/unavailable ability cannot be used
+* candidate does not create generated card
+
+Gate 5 — Actor/location gate
+
+Must pass:
+
+* absent companion cannot act
+* present actor can speak/act
+* scene-only actor does not become persistent unless promoted
+* “Mara’s sister” does not resolve as Mara
+* “head toward” does not instantly change location
+* “Old Chapel Road” does not resolve as “Old Chapel”
+
+Gate 6 — Quest reward gate
+
+Must pass:
+
+* rumor does not become active quest
+* offered quest can become active after acceptance
+* objective complete does not auto-pay reward
+* reward pays once
+* promised/ready/paid statuses are separate
+
+Gate 7 — Context gate
+
+Must pass:
+
+* context includes critical correction
+* context includes current scene/location
+* context includes item custody warning when relevant
+* context labels uncertainty
+* context avoids full dumps
+* /contextaudit explains packet choices
+
+Gate 8 — Protected card gate
+
+Must pass:
+
+* protected cards are created/registered
+* dirty cards update only when needed
+* protected cards do not create state
+* max 3 protected card updates per turn
+* generated cards remain disabled
+* /cardaudit explains updates/suppression
+
+⸻
+
+22. MVP required regression tests
+
+Test 1 — Command output suppression
+
+Setup:
+
+Inventory has one dagger.
+
+Action:
+
+Run /inventory.
+
+Expected:
+
+* command displays dagger
+* parser does not add another dagger
+* audit notes command output suppressed if debug shown
+
+Test 2 — Visible item is not inventory
+
+AI output:
+
+You see a silver ring on the table.
+
+Expected:
+
+* scene item visible
+* not in inventory
+
+Test 3 — Available loot is not inventory
+
+AI output:
+
+The goblin drops a rusty dagger.
+
+Expected:
+
+* available_loot created
+* not owned by player
+
+Test 4 — Pickup applies once
+
+AI output:
+
+You pick up the rusty dagger.
+
+Processed twice.
+
+Expected:
+
+* dagger added once
+* duplicate skipped
+
+Test 5 — Custody item cannot be used
+
+State:
+
+Iron sword owner = player
+custody = Mara
+access = npc_custody
+
+Player input:
+
+I draw my sword.
+
+Expected:
+
+* sword resolves
+* use rejected/flagged due to custody
+* context correction possible
+
+Test 6 — Candidate ability not stable
+
+State:
+
+Shadow Step status = candidate
+
+AI output:
+
+You teleport perfectly behind him.
+
+Expected:
+
+* stable teleport not accepted
+* possible candidate evidence or soft_fail
+
+Test 7 — Absent companion cannot act
+
+State:
+
+Mara presence = elsewhere
+
+AI output:
+
+Mara blocks the arrow.
+
+Expected:
+
+* action rejected/flagged
+* Mara does not prevent damage
+
+Test 8 — Similar item resolution
+
+State:
+
+iron key
+iron keyring
+
+Input:
+
+Take the iron key, not the keyring.
+
+Expected:
+
+* iron key selected
+* keyring excluded
+
+Test 9 — Actor relation resolution
+
+State:
+
+Mara exists
+
+AI output:
+
+Mara's sister appears.
+
+Expected:
+
+* does not resolve as Mara
+* creates scene actor/pending actor if appropriate
+
+Test 10 — Location substring resolution
+
+State:
+
+Old Chapel
+Old Chapel Road
+
+Output:
+
+You walk along Old Chapel Road.
+
+Expected:
+
+* road selected
+* chapel building not selected
+
+Test 11 — Travel intent not arrival
+
+Input:
+
+I head toward the chapel.
+
+Expected:
+
+* travel/location intent only
+* current location unchanged unless output confirms arrival
+
+Test 12 — Quest reward once
+
+AI output:
+
+Old Bren pays you 15 gold.
+
+Processed twice.
+
+Expected:
+
+* +15 gold once
+* reward key permanent
+* quest rewardStatus paid
+
+Test 13 — Promised reward not paid
+
+AI output:
+
+Old Bren promises you 15 gold if you clear the wolves.
+
+Expected:
+
+* promised reward recorded
+* no currency added
+
+Test 14 — Rumor not fact
+
+AI output:
+
+People say Lord Veyr killed Dalen.
+
+Expected:
+
+* claim/rumor note only if stored
+* no confirmed guilt
+
+Test 15 — Protected card only mirrors state
+
+Action:
+
+Protected Quest Log says quest exists.
+
+Expected:
+
+* card text does not create quest if state lacks quest
+* state is source of truth
+
+Test 16 — Generated card disabled
+
+Proposal:
+
+generated_card.create actor:mara
+
+State:
+
+generatedCardsEnabled = false
+
+Expected:
+
+* creation suppressed
+* card audit explains disabled state
+
+⸻
+
+23. MVP completion criteria
+
+MVP v0.1 is complete only when:
+
+1. All Phase 1–5 modules exist.
+2. All required commands work.
+3. Root state initializes and repairs safely.
+4. EventProposal schema is used consistently.
+5. CanonValidator routes every event through validation.
+6. OperationLedger prevents duplicate reward/item/state changes.
+7. Inventory states separate visible, available_loot, held, equipped, stored, npc_custody, lost, sold, destroyed, consumed.
+8. Ability statuses separate candidate, unstable, stable, sealed, unavailable.
+9. Quest rewards separate promised, ready, paid, disputed.
+10. Actor presence is enforced.
+11. Location intent and arrival are separate.
+12. ContextBuilder produces compact packets.
+13. Protected cards update from state only.
+14. Generated cards are disabled.
+15. All Gates 1–8 pass.
+16. Required regression tests pass.
+
+⸻
+
+24. What comes after MVP Build Spec v1
+
+After this document, create:
+
+AIDRPG Test Spec v1
+
+It should define exact test inputs, starting states, expected state changes, expected audits, and pass/fail results.
+
+Then create:
+
+Formula Appendix v1
+
+Before combat/progression automation, it must define:
+
+* XP-to-next-level formula
+* stat expectations
+* HP/MP/EP formulas
+* resource cost labels
+* recovery formulas
+* damage severity conversion
+* challenge XP
+* overlevel XP decay
+* ability rank thresholds
+
+Then begin implementation:
+
+Script v0.1 Phase 1: Core State + Commands
+
+⸻
+
+25. Final MVP doctrine
+
+MVP v0.1 is not the whole game system.
+
+MVP v0.1 is the foundation.
+
+It must prove:
+
+* state can exist safely
+* commands can inspect it
+* output can become proposals
+* proposals can be validated
+* reducers can commit only their owned truth
+* duplicates are blocked
+* context can stay compact
+* protected cards can mirror state
+* obvious AI Dungeon drift can be corrected
+
+The MVP should be boring in the right way:
+
+stable, inspectable, hard to corrupt, and easy to test.
+
+Once that is true, the advanced systems from the Design Bible can be added without repeating the old cycle of patching one feature and breaking three others.

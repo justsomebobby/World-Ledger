@@ -1,0 +1,3463 @@
+“Yes. This is the Final Phase 5 Push only. It fixes the two remaining Phase 5 issues: explicit ability training phrase cleanup and exhausted-status visibility. Do not change VERSION, BUILD_STAGE, scene logic, inventory logic, reputation, quest, or card sync. The handoff confirms this is still Pre-23 stabilization / Phase 5 final push, not Chunk 23.  
+
+How to apply it
+
+Open your AI Dungeon Library script. Use search inside the editor. For each replacement below:
+
+1. Search for the method name.
+2. Start selecting at the method line, like extractAbility(rawText, primaryType) {.
+3. Keep selecting until that method’s closing },.
+4. Replace only that one method.
+5. Do not replace the whole Library.
+
+⸻
+
+Replacement 1 — IntentParser.extractAbility(...)
+
+Find this inside IntentParser:
+
+extractAbility(rawText, primaryType) {
+
+Replace the whole method with:
+
+extractAbility(rawText, primaryType) {
+  if (primaryType !== "use_ability" && primaryType !== "train") {
+    return "";
+  }
+  const patterns = [
+    /\b(?:cast|channel|invoke|activate|unleash|focus on|use)\s+(?:my\s+|the\s+)?([^.,;!?]+)/i,
+    /\b(?:practice|train|drill|exercise|meditate on|spar with|work on)\s+(?:my\s+|the\s+)?([^.,;!?]+)/i,
+    /\buse\s+(?:my\s+|the\s+)?([^.,;!?]+)\s+(?:on|at|against)\b/i
+  ];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const match = rawText.match(patterns[i]);
+    if (match && match[1]) {
+      return this.cleanHint(match[1]);
+    }
+  }
+  return "";
+},
+
+⸻
+
+Replacement 2 — IntentParser.extractTrainingFocus(...)
+
+Find this inside IntentParser:
+
+extractTrainingFocus(rawText, primaryType) {
+
+Replace the whole method with:
+
+extractTrainingFocus(rawText, primaryType) {
+  if (primaryType !== "train") {
+    return "";
+  }
+  const patterns = [
+    /\b(?:train|practice|drill|exercise|meditate on|spar with|work on)\s+(?:my\s+|the\s+)?([^.,;!?]+)/i
+  ];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const match = rawText.match(patterns[i]);
+    if (match && match[1]) {
+      return this.cleanHint(match[1]);
+    }
+  }
+  return "";
+},
+
+⸻
+
+Replacement 3 — IntentParser.cleanHint(...)
+
+Find this inside IntentParser:
+
+cleanHint(value) {
+
+Replace the whole method with:
+
+cleanHint(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\b(?:using|with|at|against|toward|towards|into|to|by|until|through|across|from|for)\b[\s\S]*$/i, "")
+    .replace(/[.,;:!?]+$/g, "")
+    .trim();
+},
+
+This is what prevents names like Ember Ward to protect allies, Frost Step by moving, and Stoneguard until my stance holds.
+
+⸻
+
+Replacement 4 — AbilitySystem.cleanAbilityName(...)
+
+Find this inside AbilitySystem:
+
+cleanAbilityName(value) {
+
+Replace the whole method with:
+
+cleanAbilityName(value) {
+  const text = String(value || "")
+    .replace(/["“”'`]+/g, "")
+    .replace(/^(?:my|the|a|an)\s+/i, "")
+    .replace(/\s+(?:on|at|against|toward|towards|with|using|for|into|from|to|by|until|through|across|while|as)\b.*$/i, "")
+    .replace(/[.,;:!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  if (text.length < 2 || text.length > 48) return "";
+  if (text.split(" ").length > 6) return "";
+  const lower = text.toLowerCase();
+  const banned = new Set([
+    "magic",
+    "ability",
+    "skill",
+    "talent",
+    "passive",
+    "power",
+    "attack",
+    "move",
+    "technique",
+    "training",
+    "it",
+    "that",
+    "this"
+  ]);
+  if (banned.has(lower)) return "";
+  return text;
+},
+
+⸻
+
+Replacement 5 — AbilitySystem.extractNamedPhrase(...)
+
+Find this inside AbilitySystem:
+
+extractNamedPhrase(rawText) {
+
+Replace the whole method with:
+
+extractNamedPhrase(rawText) {
+  const raw = String(rawText || "");
+  const patterns = [
+    /\b(?:cast|channel|invoke|activate|use|unleash|focus on)\s+(?:my\s+|the\s+|a\s+|an\s+)?([^.,;!?]+)/i,
+    /\b(?:practice|train|drill|exercise|meditate on|spar with|work on)\s+(?:my\s+|the\s+|a\s+|an\s+)?([^.,;!?]+)/i,
+    /["“]([^"”]{2,48})["”]/
+  ];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const match = raw.match(patterns[i]);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return "";
+},
+
+⸻
+
+Replacement 6 — ConsequenceParser.extractPlayerCandidates(...)
+
+Find this inside ConsequenceParser:
+
+extractPlayerCandidates(rawText, root = state.aidrpg) {
+
+Replace the whole method with the long fix you pasted:
+
+extractPlayerCandidates(rawText, root = state.aidrpg) {
+  const raw = String(rawText || "");
+  const lower = raw.toLowerCase();
+  const out = [];
+  const add = (type, payload, confidence = 0.76) => {
+    out.push(this.makeCandidate("player", type, payload, raw, confidence, root));
+  };
+  if (/\bno mp left\b|\bno mana left\b|\bout of mana\b|\bspent magic\b|\bmagic is gone\b/.test(lower)) {
+    add("resource_state", { resource: "mp", state: "empty" }, 0.84);
+  } else if (/\bmp is low\b|\bmana is low\b|\bmagic is low\b|\bnearly empty\b/.test(lower)) {
+    add("resource_state", { resource: "mp", state: "low" }, 0.76);
+  }
+  if (/\bno ep left\b|\bfully exhausted\b|\bcan hardly stand\b/.test(lower)) {
+    add("resource_state", { resource: "ep", state: "empty" }, 0.82);
+  } else if (/\bep is dwindling\b|\benergy is dwindling\b|\bbreathing is ragged\b|\bexhausted\b|\bfatigued\b|\blegs shake\b|\bbreath gives out\b|\bwinded\b/.test(lower)) {
+    add("resource_state", { resource: "ep", state: "low" }, 0.70);
+  }
+  if (/\bexhausted\b|\bfully exhausted\b|\bcan hardly stand\b|\blegs shake\b[^.!?]{0,40}\bexhausted\b|\bexhausted\b[^.!?]{0,40}\bclimb\b/.test(lower)) {
+    add("status_gain", { status: "exhausted" }, 0.78);
+  }
+  if (/\bfatigued\b|\bweary\b|\bworn out\b/.test(lower)) {
+    add("status_gain", { status: "fatigued" }, 0.72);
+  }
+  if (/\bburned\b|\bblistered\b|\bcharred\b/.test(lower)) {
+    add("status_gain", { status: "burned" }, 0.86);
+  }
+  if (/\bbleeding\b|\blosing blood\b|\bblood runs\b/.test(lower)) {
+    add("status_gain", { status: "bleeding" }, 0.84);
+  }
+  if (/\bpoisoned\b|\bvenom\b|\btoxins?\b/.test(lower)) {
+    add("status_gain", { status: "poisoned" }, 0.82);
+  }
+  if ((/\bshivering\b|\bchilled\b|\bfreezing\b|\bicy\b/.test(lower)) && /\brain\b|\bcold\b|\bfrost\b|\bice\b/.test(lower)) {
+    add("status_gain", { status: "chilled" }, 0.69);
+  }
+  if (/\bsoaked\b|\bdrenched\b|\brain-soaked\b/.test(lower)) {
+    add("status_gain", { status: "soaked" }, 0.71);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bburning\b|\bno longer\b[^.!?]{0,24}\bburned\b|\bthe burn fades\b|\bthe fire burned out\b/.test(lower)) {
+    add("status_loss", { status: "burned" }, 0.68);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bbleeding\b|\bthe bleeding stops\b|\bblood loss ends\b/.test(lower)) {
+    add("status_loss", { status: "bleeding" }, 0.80);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bexhausted\b|\bexhaustion fades\b|\brecovered from exhaustion\b|\bcatch your breath\b[^.!?]{0,30}\bsteady\b/.test(lower)) {
+    add("status_loss", { status: "exhausted" }, 0.70);
+  }
+  if (/\barm\b[^.!?]{0,18}\bblistered\b|\barm\b[^.!?]{0,18}\bcharred\b|\bburned arm\b/.test(lower)) {
+    add("body_injury", { bodyPart: "arm", injuryTag: "burn" }, 0.87);
+  }
+  if (/\bthroat is raw\b|\bcough\b[^.!?]{0,18}\bpainful\b|\bsmoke\b/.test(lower)) {
+    add("body_injury", { bodyPart: "throat", injuryTag: "smoke_irritation" }, 0.66);
+  }
+  return out;
+},
+
+⸻
+
+Replacement 7 — PersistentTraitSystem.validationSeverityForStatus(...)
+
+Find this inside PersistentTraitSystem:
+
+validationSeverityForStatus(status) {
+
+Replace the whole method with:
+
+validationSeverityForStatus(status) {
+  const lower = String(status || "").toLowerCase();
+  if (
+    lower === "burned" ||
+    lower === "bleeding" ||
+    lower === "poisoned" ||
+    lower === "infected" ||
+    lower === "exhausted"
+  ) {
+    return "severe";
+  }
+  if (
+    lower === "chilled" ||
+    lower === "soaked" ||
+    lower === "fatigued" ||
+    lower === "hungry" ||
+    lower === "weakened"
+  ) {
+    return "moderate";
+  }
+  return "moderate";
+},
+
+⸻
+
+After pasting: quick syntax check
+
+Before testing, look for these common paste mistakes:
+
+Two copies of the same method back-to-back.
+A missing comma after the closing },
+An extra } before the next method.
+A missing }, at the end of a replacement.
+Accidentally replacing the whole system instead of one method.
+
+Every replacement above ends with:
+
+},
+
+That comma matters because these methods are inside large JavaScript objects.
+
+⸻
+
+Phase 5 test plan
+
+Run this first:
+
+/sheet
+/inventory
+I look around and take a slow breath.
+/sheet
+
+Expected:
+
+No red error.
+Commands still work.
+Normal story action still works.
+
+Then test ability training:
+
+I train Ember Ward to protect allies from heat.
+
+Expected ability name:
+
+Ember Ward
+
+Not:
+
+Ember Ward to protect allies
+
+Next:
+
+I practice Frost Step by moving across slick stones.
+
+Expected ability name:
+
+Frost Step
+
+Not:
+
+Frost Step by moving
+
+Next:
+
+I drill Stoneguard until my stance holds under impact.
+
+Expected ability name:
+
+Stoneguard
+
+Not:
+
+Stoneguard until my stance holds
+
+Then test exhaustion:
+
+I keep sprinting uphill long after my breath gives out.
+
+When the output says something like:
+
+Your legs shake and you are exhausted by the climb.
+
+Expected result:
+
+Active conditions include exhausted.
+EP is low, empty, or otherwise constrained.
+
+Final safety regression:
+
+You learned Moonblade.
+
+Expected result:
+
+Moonblade does NOT hard-save as a brand-new ability from output alone.
+
+Once those pass, Phase 5 is complete. Then the next phase is Phase 6 — inventory acquisition hardening, but do not start it until these tests pass.”
+
+Then I said: Something about these fixes broke the current version please adjust it remember looking into ai dungeon scripting methods and giving clear instructions
+
+“Yes — the likely mistake is Replacement 3 from the old fix.
+
+IntentParser.cleanHint(...) is shared by more than ability training. It also cleans item, destination, weapon, and target hints. Making it aggressively cut on words like to, by, from, for, until, and across can break unrelated AI Dungeon intent parsing.
+
+So the adjusted Phase 5 fix should be smaller and safer:
+
+* Put IntentParser.cleanHint(...) back to the conservative version.
+* Move the aggressive cleanup into AbilitySystem.cleanAbilityName(...), because that only affects ability names.
+* Keep the exhausted-status fix in ConsequenceParser and PersistentTraitSystem.
+
+The current handoff says Phase 5 should only fix ability training phrase coverage and exhausted status, without touching scene, inventory, reputation, quest, card sync, VERSION, or BUILD_STAGE.  
+
+Recovery instructions
+
+First: do not keep testing the broken script
+
+Open AI Dungeon script editor.
+
+Go to Library.
+
+Use search to find each method below.
+
+Replace only the listed method. Do not replace the whole Library.
+
+⸻
+
+Fix 1 — restore IntentParser.cleanHint(...)
+
+Find this inside IntentParser:
+
+cleanHint(value) {
+
+Replace the whole method with this conservative version:
+
+cleanHint(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\b(?:using|with|at|against|toward|towards|into|to)\b\s*$/i, "")
+    .trim();
+}
+
+Important: this method is the last method inside IntentParser. After it, the next lines should look like this:
+
+  }
+},
+
+Do not worry that this one does not end with }, inside the replacement. The next }, closes the whole IntentParser object.
+
+⸻
+
+Fix 2 — replace AbilitySystem.cleanAbilityName(...)
+
+Find this inside AbilitySystem:
+
+cleanAbilityName(value) {
+
+Replace the whole method with this:
+
+cleanAbilityName(value) {
+  const text = String(value || "")
+    .replace(/["'`]+/g, "")
+    .replace(/^(?:my|the|a|an)\s+/i, "")
+    .replace(/\s+(?:on|at|against|toward|towards|with|using|for|into|from|to|by|until|through|across|while|as)\b.*$/i, "")
+    .replace(/[.,;:!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  if (text.length < 2 || text.length > 48) return "";
+  if (text.split(" ").length > 6) return "";
+  const lower = text.toLowerCase();
+  const banned = new Set([
+    "magic",
+    "ability",
+    "skill",
+    "talent",
+    "passive",
+    "power",
+    "attack",
+    "move",
+    "technique",
+    "training",
+    "it",
+    "that",
+    "this"
+  ]);
+  if (banned.has(lower)) return "";
+  return text;
+},
+
+This is the safer place to strip junk like:
+
+to protect allies
+by moving across slick stones
+until my stance holds
+
+because it only affects ability names, not travel, inventory, or general intent parsing.
+
+⸻
+
+Fix 3 — replace ConsequenceParser.extractPlayerCandidates(...)
+
+Find this inside ConsequenceParser:
+
+extractPlayerCandidates(rawText, root = state.aidrpg) {
+
+Replace the whole method with this:
+
+extractPlayerCandidates(rawText, root = state.aidrpg) {
+  const raw = String(rawText || "");
+  const lower = raw.toLowerCase();
+  const out = [];
+  const add = (type, payload, confidence = 0.76) => {
+    out.push(this.makeCandidate("player", type, payload, raw, confidence, root));
+  };
+  if (/\bno mp left\b|\bno mana left\b|\bout of mana\b|\bspent magic\b|\bmagic is gone\b/.test(lower)) {
+    add("resource_state", { resource: "mp", state: "empty" }, 0.84);
+  } else if (/\bmp is low\b|\bmana is low\b|\bmagic is low\b|\bnearly empty\b/.test(lower)) {
+    add("resource_state", { resource: "mp", state: "low" }, 0.76);
+  }
+  if (/\bno ep left\b|\bfully exhausted\b|\bcan hardly stand\b/.test(lower)) {
+    add("resource_state", { resource: "ep", state: "empty" }, 0.82);
+  } else if (/\bep is dwindling\b|\benergy is dwindling\b|\bbreathing is ragged\b|\bexhausted\b|\bfatigued\b|\blegs shake\b|\bbreath gives out\b|\bwinded\b/.test(lower)) {
+    add("resource_state", { resource: "ep", state: "low" }, 0.70);
+  }
+  if (/\bexhausted\b|\bfully exhausted\b|\bcan hardly stand\b|\blegs shake\b[^.!?]{0,40}\bexhausted\b|\bexhausted\b[^.!?]{0,40}\bclimb\b/.test(lower)) {
+    add("status_gain", { status: "exhausted" }, 0.78);
+  }
+  if (/\bfatigued\b|\bweary\b|\bworn out\b/.test(lower)) {
+    add("status_gain", { status: "fatigued" }, 0.72);
+  }
+  if (/\bburned\b|\bblistered\b|\bcharred\b/.test(lower)) {
+    add("status_gain", { status: "burned" }, 0.86);
+  }
+  if (/\bbleeding\b|\blosing blood\b|\bblood runs\b/.test(lower)) {
+    add("status_gain", { status: "bleeding" }, 0.84);
+  }
+  if (/\bpoisoned\b|\bvenom\b|\btoxins?\b/.test(lower)) {
+    add("status_gain", { status: "poisoned" }, 0.82);
+  }
+  if ((/\bshivering\b|\bchilled\b|\bfreezing\b|\bicy\b/.test(lower)) && /\brain\b|\bcold\b|\bfrost\b|\bice\b/.test(lower)) {
+    add("status_gain", { status: "chilled" }, 0.69);
+  }
+  if (/\bsoaked\b|\bdrenched\b|\brain-soaked\b/.test(lower)) {
+    add("status_gain", { status: "soaked" }, 0.71);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bburning\b|\bno longer\b[^.!?]{0,24}\bburned\b|\bthe burn fades\b|\bthe fire burned out\b/.test(lower)) {
+    add("status_loss", { status: "burned" }, 0.68);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bbleeding\b|\bthe bleeding stops\b|\bblood loss ends\b/.test(lower)) {
+    add("status_loss", { status: "bleeding" }, 0.80);
+  }
+  if (/\bno longer\b[^.!?]{0,24}\bexhausted\b|\bexhaustion fades\b|\brecovered from exhaustion\b|\bcatch your breath\b[^.!?]{0,30}\bsteady\b/.test(lower)) {
+    add("status_loss", { status: "exhausted" }, 0.70);
+  }
+  if (/\barm\b[^.!?]{0,18}\bblistered\b|\barm\b[^.!?]{0,18}\bcharred\b|\bburned arm\b/.test(lower)) {
+    add("body_injury", { bodyPart: "arm", injuryTag: "burn" }, 0.87);
+  }
+  if (/\bthroat is raw\b|\bcough\b[^.!?]{0,18}\bpainful\b|\bsmoke\b/.test(lower)) {
+    add("body_injury", { bodyPart: "throat", injuryTag: "smoke_irritation" }, 0.66);
+  }
+  return out;
+},
+
+⸻
+
+Fix 4 — replace PersistentTraitSystem.validationSeverityForStatus(...)
+
+Find this inside PersistentTraitSystem:
+
+validationSeverityForStatus(status) {
+
+Replace the whole method with this:
+
+validationSeverityForStatus(status) {
+  const lower = String(status || "").toLowerCase();
+  if (
+    lower === "burned" ||
+    lower === "bleeding" ||
+    lower === "poisoned" ||
+    lower === "infected" ||
+    lower === "exhausted"
+  ) {
+    return "severe";
+  }
+  if (
+    lower === "chilled" ||
+    lower === "soaked" ||
+    lower === "fatigued" ||
+    lower === "hungry" ||
+    lower === "weakened"
+  ) {
+    return "moderate";
+  }
+  return "moderate";
+},
+
+⸻
+
+Do not reapply the earlier risky replacements
+
+For now, do not replace these again:
+
+IntentParser.extractAbility(...)
+IntentParser.extractTrainingFocus(...)
+AbilitySystem.extractNamedPhrase(...)
+
+The existing versions are close enough. The important cleanup now happens inside AbilitySystem.cleanAbilityName(...), which is safer.
+
+⸻
+
+Quick paste check
+
+After applying the recovery patch, search for these method names:
+
+cleanHint(value)
+cleanAbilityName(value)
+extractPlayerCandidates(rawText
+validationSeverityForStatus(status)
+
+Each one should appear once.
+
+Then check this exact area:
+
+cleanHint(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\b(?:using|with|at|against|toward|towards|into|to)\b\s*$/i, "")
+    .trim();
+}
+},
+    // === PROGRESSION SYSTEM ===
+
+That confirms IntentParser closed correctly.
+
+⸻
+
+Test order
+
+First run:
+
+/sheet
+
+Then:
+
+I look around and take a slow breath.
+
+Then:
+
+/sheet
+
+Expected:
+
+No red error.
+No syntax error.
+Sheet command still works.
+
+Then test the Phase 5 ability phrases:
+
+I train Ember Ward to protect allies from heat.
+
+Expected ability name:
+
+Ember Ward
+
+Then:
+
+I practice Frost Step by moving across slick stones.
+
+Expected ability name:
+
+Frost Step
+
+Then:
+
+I drill Stoneguard until my stance holds under impact.
+
+Expected ability name:
+
+Stoneguard
+
+Then exhaustion:
+
+I keep sprinting uphill long after my breath gives out.
+
+When the output includes something like:
+
+Your legs shake and you are exhausted by the climb.
+
+Expected:
+
+Active conditions include exhausted.
+EP is low, empty, or constrained.
+
+Final safety test:
+
+You learned Moonblade.
+
+Expected:
+
+Moonblade does not hard-save as a new ability from output alone.
+
+If this still errors, send me the exact red error text from AI Dungeon. The line number matters more than the screenshot.”
+
+PHASE 5 FINAL PUSH TEST PLAN — TASIS / AIDRPG
+
+Current target:
+- Script should still identify as VERSION "0.22.0-chunk22"
+- Script should still identify as BUILD_STAGE "chunk22-actorprofiles"
+- This is still Pre-23 stabilization, Phase 5 final push.
+- Do not test reputation, quest, card sync, or Phase 6 inventory hardening yet.
+- Main things being tested:
+  1. The script still runs after the recovery patch.
+  2. Ability training names do not become junk phrases.
+  3. Exhausted status becomes visible/persistent when output clearly says the player is exhausted.
+  4. Output-only “you learned X” does not hard-save a new ability.
+  5. Existing scene hardening does not regress.
+
+Important tester rule:
+- Exact AI narration may vary.
+- Judge the state/script result, not whether the prose wording is identical.
+- A test fails if there is a red script error, a syntax error, a broken command, wrong saved ability name, missing exhausted status, or a safety regression.
+
+============================================================
+SECTION 1 — BASIC SCRIPT SURVIVAL / SMOKE TEST
+============================================================
+
+Test 1.1 — Sheet command still works
+
+INPUT:
+/sheet
+
+EXPECTED:
+- No red script error.
+- The script returns a readable player sheet or status summary.
+- It should not say anything like Unexpected token, undefined is not a function, cannot read property, or script error.
+
+PASS IF:
+- /sheet works.
+
+FAIL IF:
+- Any red error appears.
+- /sheet returns broken internal object text.
+- The script stops responding.
+
+------------------------------------------------------------
+
+Test 1.2 — Inventory command still works
+
+INPUT:
+/inventory
+
+EXPECTED:
+- No red script error.
+- The script returns inventory/currency/equipment information, even if mostly empty.
+- This test is not checking Phase 6 item logic yet, only that inventory did not break.
+
+PASS IF:
+- /inventory works.
+
+FAIL IF:
+- Any red error appears.
+- Inventory command no longer works.
+
+------------------------------------------------------------
+
+Test 1.3 — Normal action still passes through
+
+INPUT:
+I look around and take a slow breath.
+
+EXPECTED:
+- No red script error.
+- The story continues normally.
+- The input should not be swallowed.
+- No strange debug dump should appear unless debug mode was already on.
+
+PASS IF:
+- The game produces normal narration.
+
+FAIL IF:
+- Script breaks.
+- Input is replaced with blank output.
+- A weird internal object appears in the story.
+
+------------------------------------------------------------
+
+Test 1.4 — Sheet still works after a normal turn
+
+INPUT:
+/sheet
+
+EXPECTED:
+- No red script error.
+- Sheet still works after a normal input/output cycle.
+
+PASS IF:
+- /sheet works again.
+
+FAIL IF:
+- Commands worked before normal action but fail afterward.
+
+============================================================
+SECTION 2 — ABILITY TRAINING NAME CLEANUP
+============================================================
+
+Purpose:
+These tests confirm that explicit player-driven training still creates or updates ability records, but the stored ability name stays clean.
+
+Important:
+- The expected saved ability name is the short named ability only.
+- The training purpose can be remembered as context, function, or hint, but it must not become part of the ability name.
+
+------------------------------------------------------------
+
+Test 2.1 — Ember Ward training
+
+INPUT:
+I train Ember Ward to protect allies from heat.
+
+EXPECTED:
+- No red script error.
+- A structured ability/training record should be created or updated.
+- The ability name should be:
+  Ember Ward
+
+NOT ACCEPTABLE:
+- Ember Ward to protect allies
+- Ember Ward to protect allies from heat
+- train Ember Ward
+- my Ember Ward
+- the Ember Ward
+- protect allies from heat
+- heat
+- training
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- Ability/training area shows Ember Ward as the ability name, or debug/state summary clearly shows Ember Ward as the stored ability.
+- The long purpose phrase is not stored as the name.
+
+FAIL IF:
+- The ability is missing entirely.
+- The name includes “to protect allies from heat.”
+- The name becomes a generic word like training, magic, skill, or ability.
+
+------------------------------------------------------------
+
+Test 2.2 — Frost Step practice
+
+INPUT:
+I practice Frost Step by moving across slick stones.
+
+EXPECTED:
+- No red script error.
+- The saved ability name should be:
+  Frost Step
+
+NOT ACCEPTABLE:
+- Frost Step by moving
+- Frost Step by moving across slick stones
+- practice Frost Step
+- moving across slick stones
+- slick stones
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- Frost Step exists as the clean ability name.
+
+FAIL IF:
+- The ability is missing.
+- The ability name includes “by moving across slick stones.”
+- The ability name becomes a junk phrase.
+
+------------------------------------------------------------
+
+Test 2.3 — Stoneguard drill
+
+INPUT:
+I drill Stoneguard until my stance holds under impact.
+
+EXPECTED:
+- No red script error.
+- The saved ability name should be:
+  Stoneguard
+
+NOT ACCEPTABLE:
+- Stoneguard until my stance holds
+- Stoneguard until my stance holds under impact
+- drill Stoneguard
+- my stance holds under impact
+- stance
+- impact
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- Stoneguard exists as the clean ability name.
+
+FAIL IF:
+- The ability is missing.
+- The saved name includes “until my stance holds under impact.”
+- The saved name is a generic or junk phrase.
+
+------------------------------------------------------------
+
+Test 2.4 — Ability training should preserve function without polluting name
+
+INPUT:
+I train Ember Ward to protect allies from heat during battle.
+
+EXPECTED:
+- The name should still be:
+  Ember Ward
+
+ACCEPTABLE:
+- The ability record may mention protection, allies, heat, or battle in context/origin/function fields.
+
+NOT ACCEPTABLE:
+- The ability name becomes:
+  Ember Ward to protect allies from heat during battle
+
+PASS IF:
+- Name is Ember Ward.
+- Context may include the training purpose.
+
+FAIL IF:
+- Purpose phrase becomes part of the name.
+
+============================================================
+SECTION 3 — OUTPUT-ONLY ABILITY SAFETY REGRESSION
+============================================================
+
+Purpose:
+This confirms we did not accidentally reopen the unsafe old behavior where AI narration alone can hard-save a brand-new ability.
+
+------------------------------------------------------------
+
+Test 3.1 — Output-only learned ability should not hard-save
+
+INPUT:
+I stand still and wait.
+
+If the AI output can be edited or forced, use this as the output:
+You learned Moonblade.
+
+EXPECTED:
+- No red script error.
+- Moonblade should NOT become a hard-saved brand-new ability from output alone.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- Moonblade is not listed as a confirmed learned ability.
+- At most, it may be ignored or treated as unconfirmed/proposed if the system has such a staging area.
+
+FAIL IF:
+- Moonblade becomes a confirmed ability only because the AI said “You learned Moonblade.”
+
+------------------------------------------------------------
+
+Test 3.2 — Explicit player training is still allowed
+
+INPUT:
+I train Moonblade by practicing careful crescent cuts.
+
+EXPECTED:
+- Since this is player-input-anchored training, Moonblade may be created or updated.
+- The saved name should be:
+  Moonblade
+
+PASS IF:
+- Moonblade appears only after player explicitly trains it.
+
+FAIL IF:
+- Moonblade appeared before this test from AI output alone.
+- The name becomes “Moonblade by practicing careful crescent cuts.”
+
+============================================================
+SECTION 4 — EXHAUSTED STATUS TESTS
+============================================================
+
+Purpose:
+These tests confirm that when the output clearly says the player is exhausted, the persistent condition system actually saves/reflects exhausted.
+
+------------------------------------------------------------
+
+Test 4.1 — Main exhausted test
+
+INPUT:
+I keep sprinting uphill long after my breath gives out.
+
+Desired/forced OUTPUT:
+Your legs shake and you are exhausted by the climb.
+
+EXPECTED:
+- No red script error.
+- EP should become low, empty, or constrained.
+- Active conditions should include:
+  exhausted
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- /sheet or status display shows exhausted as an active condition.
+- EP/resource state reflects strain if visible.
+
+FAIL IF:
+- Output says exhausted but /sheet does not show exhausted.
+- EP is untouched and no exhausted condition appears.
+- Script errors.
+
+------------------------------------------------------------
+
+Test 4.2 — Exhausted wording variant
+
+INPUT:
+I force myself to keep running until I can hardly stand.
+
+Desired/forced OUTPUT:
+You are fully exhausted and can hardly stand.
+
+EXPECTED:
+- Active conditions should include exhausted.
+- EP should be empty, low, or constrained.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- exhausted appears.
+
+FAIL IF:
+- exhausted is missing despite clear wording.
+
+------------------------------------------------------------
+
+Test 4.3 — Fatigued should remain separate from exhausted
+
+INPUT:
+I march for hours until I feel weary and worn out.
+
+Desired/forced OUTPUT:
+You are fatigued and worn out from the long march.
+
+EXPECTED:
+- The script may add fatigued.
+- It should not necessarily upgrade to exhausted unless output clearly says exhausted, fully exhausted, or can hardly stand.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- fatigued appears, or resource strain appears.
+- exhausted does not appear unless the output explicitly used exhausted-level wording.
+
+FAIL IF:
+- mild fatigue always becomes exhausted.
+
+------------------------------------------------------------
+
+Test 4.4 — Exhaustion recovery
+
+INPUT:
+I stop, sit down, and slowly catch my breath until I feel steady again.
+
+Desired/forced OUTPUT:
+You catch your breath and steady yourself. You are no longer exhausted.
+
+EXPECTED:
+- exhausted should be removed or marked recovering/inactive, depending on how the current condition system displays removals.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- exhausted is gone, inactive, or clearly recovering/resolved.
+
+FAIL IF:
+- exhausted remains fully active after explicit recovery wording.
+
+============================================================
+SECTION 5 — BASIC STATUS REGRESSION TESTS
+============================================================
+
+Purpose:
+Make sure adding exhausted to severe statuses did not break older status handling.
+
+------------------------------------------------------------
+
+Test 5.1 — Burned still works
+
+INPUT:
+I grab the hot iron without thinking.
+
+Desired/forced OUTPUT:
+Your palm is burned and blistered by the hot iron.
+
+EXPECTED:
+- burned should be added as an active condition.
+- If body injury is visible, hand/arm burn may also appear depending on current parser limits.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- burned appears.
+
+FAIL IF:
+- burned no longer registers.
+
+------------------------------------------------------------
+
+Test 5.2 — Bleeding still works
+
+INPUT:
+I drag my arm across the broken glass.
+
+Desired/forced OUTPUT:
+The cut opens and you are bleeding.
+
+EXPECTED:
+- bleeding should be added as an active condition.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- bleeding appears.
+
+FAIL IF:
+- bleeding no longer registers.
+
+------------------------------------------------------------
+
+Test 5.3 — Bleeding removal still works
+
+INPUT:
+I bind the cut tightly and wait for the bleeding to stop.
+
+Desired/forced OUTPUT:
+The bleeding stops.
+
+EXPECTED:
+- bleeding should be removed or marked resolved.
+
+VERIFY:
+Run:
+/sheet
+
+PASS IF:
+- bleeding is gone/resolved/inactive.
+
+FAIL IF:
+- bleeding stays fully active after explicit stop wording.
+
+============================================================
+SECTION 6 — SCENE HARDENING REGRESSION SPOT CHECK
+============================================================
+
+Purpose:
+Scene hardening already passed. This is only a quick regression check to make sure Phase 5 final push did not accidentally disturb scene logic.
+
+------------------------------------------------------------
+
+Test 6.1 — Current scene should not change from weak nearby mention
+
+SETUP INPUT:
+I stand in the market lane near the stalls.
+
+Desired/forced OUTPUT:
+The market lane remains busy with merchants and passing townsfolk.
+
+VERIFY:
+Run:
+/sheet or any scene/debug command available if scene is shown.
+
+EXPECTED:
+- Current scene should be market lane or equivalent market scene.
+
+NEXT INPUT:
+I can see the chapel road from here, but I only consider going there.
+
+Desired/forced OUTPUT:
+The road to the chapel is visible from the market lane, but you only consider heading there.
+
+EXPECTED:
+- Current confirmed scene should remain market lane.
+- Chapel may become a pending hint, future option, or nearby reference.
+- Chapel should NOT replace current confirmed scene.
+
+PASS IF:
+- Current scene remains market lane.
+- Chapel is only pending/nearby/future-intent if shown.
+
+FAIL IF:
+- Current scene becomes chapel just because it was mentioned.
+
+------------------------------------------------------------
+
+Test 6.2 — Strong arrival should change scene
+
+INPUT:
+I leave the market lane and enter the chapel.
+
+Desired/forced OUTPUT:
+You step into the chapel, the quiet nave opening around you.
+
+EXPECTED:
+- Strong arrival/entry wording should allow scene to become chapel.
+
+PASS IF:
+- Current scene updates to chapel.
+
+FAIL IF:
+- It refuses to update after clear entry wording.
+
+============================================================
+SECTION 7 — GENERAL INTENT REGRESSION SPOT CHECK
+============================================================
+
+Purpose:
+This checks that restoring cleanHint did not break common non-ability actions.
+
+------------------------------------------------------------
+
+Test 7.1 — Travel intent still works
+
+INPUT:
+I travel to the smithy.
+
+EXPECTED:
+- No red script error.
+- The script should understand this as travel/movement.
+- It should not interpret smithy as an ability.
+- It should not create an ability named smithy.
+
+PASS IF:
+- Story proceeds toward smithy or pending travel.
+- No unwanted ability appears.
+
+FAIL IF:
+- smithy becomes an ability.
+- Travel breaks.
+
+------------------------------------------------------------
+
+Test 7.2 — Inspect intent still works
+
+INPUT:
+I inspect the old wooden door.
+
+EXPECTED:
+- No red script error.
+- Should be treated as inspection.
+- Should not create an ability named old wooden door.
+
+PASS IF:
+- Story inspects the door.
+- No ability junk is created.
+
+FAIL IF:
+- Ability or item state is corrupted by the inspect action.
+
+------------------------------------------------------------
+
+Test 7.3 — Use object should not become ability unless ability phrasing is clear
+
+INPUT:
+I use the iron key on the cellar door.
+
+EXPECTED:
+- No red script error.
+- This should be object/item use, not ability use.
+- It should not create an ability named iron key or cellar door.
+
+PASS IF:
+- No new ability appears from this.
+
+FAIL IF:
+- iron key becomes an ability.
+- cellar door becomes an ability.
+
+============================================================
+SECTION 8 — FINAL PASS CRITERIA
+============================================================
+
+Mark Phase 5 final push PASS only if all of this is true:
+
+1. No syntax errors.
+2. /sheet works before and after normal actions.
+3. /inventory still works.
+4. Ember Ward saves as Ember Ward.
+5. Frost Step saves as Frost Step.
+6. Stoneguard saves as Stoneguard.
+7. Ability names do not include trailing purpose phrases like:
+   - to protect allies from heat
+   - by moving across slick stones
+   - until my stance holds under impact
+8. Output-only “You learned Moonblade” does not hard-save Moonblade.
+9. Explicit player training of Moonblade can save Moonblade.
+10. Exhausted appears as an active condition when output clearly says exhausted.
+11. Fatigued does not always escalate into exhausted unless wording supports it.
+12. Existing burned/bleeding statuses still work.
+13. Weak nearby scene mentions do not overwrite confirmed current scene.
+14. Strong entry/arrival wording can still update scene.
+15. Travel/inspect/use-object actions do not accidentally create abilities.
+
+If all pass:
+- Phase 5 is complete.
+- Next work is Phase 6 — inventory acquisition hardening.
+
+If any fail:
+- Do not move to Phase 6.
+- Record:
+  1. exact input
+  2. exact output
+  3. exact red error, if any
+  4. /sheet result after the failed case
+  5. whether the wrong result was missing state, wrong saved name, or unwanted saved state
+
+Test results as follows:
+QA RESULT — PHASE 5 FINAL PUSH / c22p5u2
+
+Scope followed:
+- Tested survival, clean ability training names, output-only ability safety, exhausted/status persistence, scene hardening regression, and general intent safety.
+- Did NOT test reputation, quest, card sync, or Phase 6 inventory hardening.
+
+Cases tested:
+- Built-in smoke: 9
+- Targeted Phase 5 final-push cases: 66
+- Total: 75
+
+Mechanical result:
+- Passed: 61 / 75
+- Failed: 14 / 75
+
+Current-stage blocker count:
+- 13 blocking failures
+- 1 extra warning-style failure from my internal-ID debug cleanliness check
+
+BOTTOM LINE:
+FAIL FOR PHASE 5 FINAL PUSH.
+Do not move to Phase 6 yet.
+
+WHAT WORKED
+
+Survival / smoke:
+- Script loads.
+- No syntax error after copying as JS.
+- /sheet works.
+- /inventory works.
+- /time works.
+- /questlog works.
+- /debug on and /debug off work.
+- Normal input passes through instead of being swallowed.
+
+Ability safety:
+- Frost Step saves cleanly as "Frost Step".
+- Stoneguard official drill case saves cleanly as "Stoneguard".
+- Purpose suffix cleanup works when the input is classified as training:
+  - "by moving across slick stones" is stripped.
+  - "until my stance holds under impact" is stripped.
+- Output-only ability safety works:
+  - "You learned Moonblade." does NOT hard-save Moonblade.
+  - "You unlocked Star Chain." does NOT hard-save Star Chain.
+  - "New skill: Mirror Guard." does NOT hard-save Mirror Guard.
+- Explicit player training still works:
+  - Moonblade appears only after: "I train Moonblade by practicing careful crescent cuts."
+  - Saved name is clean: "Moonblade".
+
+Exhausted / status:
+- "Your legs shake and you are exhausted by the climb." adds active condition: exhausted.
+- EP drops to low: 13 / 50.
+- "You are fully exhausted and can hardly stand." adds exhausted and empties/lowers EP.
+- Fatigued stays separate from exhausted.
+- "You are fatigued and worn out..." adds fatigued but does not auto-upgrade to exhausted.
+- "You are no longer exhausted" removes exhausted.
+- Burned still works.
+- Bleeding still works.
+- Bleeding removal still works.
+- Poisoned spot check also worked.
+
+Scene:
+- Strong arrival still works:
+  - enter chapel -> chapel
+  - walk inside smithy -> smithy
+  - descend into cellar -> cellar
+  - enter guild hall -> guild hall
+  - step inside apothecary shop -> apothecary shop
+  - push through ruined chapel doors -> chapel
+
+General intent safety:
+- "I travel to the smithy" does not create a smithy ability.
+- "I inspect the old wooden door" does not create a door ability.
+- "I use the iron key on the cellar door" does not create iron key/cellar door abilities.
+- Talk/push/inspect/travel variants did not create junk abilities.
+
+CURRENT-STAGE BLOCKERS
+
+BLOCKER 1 — Ember Ward training fails to create/update ability
+
+Failing official case:
+Input:
+I train Ember Ward to protect allies from heat.
+
+Forced output:
+You practice Ember Ward, shaping the heat away from allies.
+
+Expected:
+- Ability exists.
+- Saved name: Ember Ward.
+
+Actual:
+- No ability record is created.
+- /sheet still works, but ability state is empty.
+- EP/conditions unaffected.
+- No red script error.
+
+Observed likely cause:
+- IntentParser classifies the input as defend, not train, because "protect" triggers defend strongly.
+- AbilitySystem only creates input-anchored ability records when primaryType is train or use_ability.
+- Result: abilityCandidate is null, so Ember Ward never reaches AbilitySystem confirmation.
+
+Related failures:
+- "I train Ember Ward to protect allies from heat during battle."
+- "I train my Ember Ward to shield the wounded from fire."
+
+Patch zone:
+- IntentParser scoring / primaryType tie-break.
+- AbilitySystem.extractInputCandidate fallback from train alternates.
+
+Suggested patch:
+- If input starts with "train/practice/drill/work on" + named phrase, force or heavily prefer primaryType = train.
+- Or allow AbilitySystem to use a train alternate when primaryType is defend but raw text begins with explicit training language.
+- Then keep cleanAbilityName stripping "to/by/until/against..." as currently intended.
+
+BLOCKER 2 — "train Stoneguard against..." fails as training
+
+Failing variation:
+Input:
+I train Stoneguard against shield-cracking blows.
+
+Forced output:
+Stoneguard absorbs the rhythm of shield-cracking impacts.
+
+Expected:
+- Ability exists.
+- Saved name: Stoneguard.
+
+Actual:
+- No ability record is created.
+- Intent is classified as defend.
+- abilityCandidate is null.
+
+Patch zone:
+- Same as Blocker 1.
+- "against" defensive wording should not override explicit "I train X...".
+
+BLOCKER 3 — Market lane setup does not confirm current scene
+
+Failing official setup:
+Input:
+I stand in the market lane near the stalls.
+
+Forced output:
+The market lane remains busy with merchants and passing townsfolk.
+
+Expected:
+- Current confirmed scene: market lane.
+
+Actual:
+- Scene Name remains none/unknown.
+- sceneHintLabel = market lane.
+- sceneHintStrength = 1.
+- sceneConfidence = 0.
+
+Why it matters:
+- The next weak nearby-place mention is judged while there is no confirmed current scene.
+- That makes the scene system vulnerable to confirming the mentioned nearby place.
+
+Patch zone:
+- SceneStateSystem.extractSceneCandidate / applySceneCandidate.
+
+Suggested patch:
+- Treat "The [scene] remains..." / "[scene] remains busy..." / "you remain in [scene]" as current-presence confirmation when no scene is confirmed.
+- Or use input location anchoring when player says "I stand in [place]" and output confirms continuity.
+
+BLOCKER 4 — Weak nearby chapel line can become confirmed chapel
+
+Failing official follow-up:
+Input:
+I can see the chapel road from here, but I only consider going there.
+
+Forced output:
+The road to the chapel is visible from the market lane, but you only consider heading there.
+
+Expected:
+- Confirmed scene remains market lane.
+- Chapel may be pending/nearby/future intent only.
+
+Actual:
+- Scene becomes chapel.
+- /sheet shows:
+  Player Scene Ref: scene_chapel
+  Scene Name: chapel
+
+Likely cause:
+- Because market lane was not confirmed during setup, noConfirmedScene is true.
+- The weak chapel line has enough contextual strength to promote chapel.
+
+Patch zone:
+- SceneStateSystem weak/future/nearby blockers.
+- SceneStateSystem noConfirmedScene promotion rule.
+
+Suggested patch:
+- Add blockers for:
+  - "visible from"
+  - "can see"
+  - "nearby"
+  - "down the street"
+  - "beyond"
+  - "only consider"
+  - "consider heading/going"
+  - "mentions/talks about"
+- These should create at most hint/pendingSceneLabel, never confirmed currentScene.
+
+WARNINGS
+
+1. /sheet exposes internal refs like "scene_smithy".
+   I marked this as a warning, not a Phase 5 blocker, because your current final-push criteria only require /sheet to keep working and stay readable. It may matter later for debug-output cleanliness.
+
+2. Ability names do not appear directly in /sheet.
+   I verified ability state directly through the tester state/context. This is acceptable for testing, but a future /sheet or /abilities debug command would make manual AI Dungeon verification much easier.
+
+3. The scene weak-mention failures are mostly one root bug, not eight unrelated scene bugs:
+   the setup phrase does not confirm market lane, so later weak-place lines are evaluated from an unconfirmed scene.
+
+PATCH PRIORITY
+
+1. Fix explicit training intent priority.
+   "I train X to/against/for..." must remain train even if the purpose contains defend/protect/shield wording.
+
+2. Fix market lane/current-scene setup confirmation.
+   "The market lane remains..." should confirm market lane when the player just said they stand there.
+
+3. Add weak-nearby/future-intent scene blockers.
+   "visible from", "nearby", "only consider", "down the street", and "mentions..." should not confirm arrival.
+
+4. Re-run this exact Phase 5 final-push suite.
+   Do not move to Phase 6 until Ember Ward, market lane setup, and weak chapel protection pass.
+
+
+PHASE 5 FINAL PUSH RECOVERY PATCH 2 — TARGETED TEST PLAN
+
+Target file:
+c22p5u2 / c22p5u2(1) after Recovery Patch 2.
+
+Scope:
+This is still Pre-23 stabilization / Phase 5 final push.
+Do not test Phase 6 inventory acquisition hardening yet.
+Do not test reputation, quest, card sync, or story-card writing yet.
+
+Main fixes being tested:
+1. Explicit training intent should win over defensive wording.
+2. Explicit player training should create/update clean ability records.
+3. Market lane “remains” wording should confirm current scene.
+4. Weak nearby/future scene references should not overwrite current scene.
+5. Output-only ability hallucination blocking should still work.
+
+PASS/FAIL REPORT FORMAT:
+Return one single results message with:
+- Total cases tested
+- Passed count
+- Failed count
+- Current-stage blockers
+- Warnings
+- Exact failed input/output
+- Actual state result from /sheet or tester state
+- Whether Phase 5 can proceed or must remain blocked
+
+============================================================
+SECTION 1 — BASIC SURVIVAL
+============================================================
+
+Test 1.1
+INPUT:
+/sheet
+
+EXPECTED:
+No red script error.
+Sheet command works.
+Build Stage still reads chunk22-actorprofiles.
+Version/build should not have been advanced to Chunk 23.
+
+PASS IF:
+/sheet returns a readable AIDRPG sheet.
+
+FAIL IF:
+Any red error appears, the command breaks, or the build stage changed unexpectedly.
+
+------------------------------------------------------------
+
+Test 1.2
+INPUT:
+/inventory
+
+EXPECTED:
+No red script error.
+Inventory command works.
+
+PASS IF:
+/inventory returns readable inventory info.
+
+FAIL IF:
+Inventory command errors or becomes unreadable.
+
+------------------------------------------------------------
+
+Test 1.3
+INPUT:
+I look around and take a slow breath.
+
+EXPECTED:
+No red script error.
+Normal story action passes through.
+Input is not swallowed.
+No unwanted ability is created.
+
+PASS IF:
+Story continues normally.
+
+FAIL IF:
+Red error, blank output, internal object dump, or unwanted ability creation.
+
+------------------------------------------------------------
+
+Test 1.4
+INPUT:
+/sheet
+
+EXPECTED:
+Sheet still works after a normal input/output cycle.
+
+PASS IF:
+/sheet works.
+
+FAIL IF:
+Commands worked before normal action but fail afterward.
+
+============================================================
+SECTION 2 — FAILED ABILITY CASES FROM LAST REPORT
+============================================================
+
+Test 2.1 — Official Ember Ward case
+
+INPUT:
+I train Ember Ward to protect allies from heat.
+
+FORCED OUTPUT:
+You practice Ember Ward, shaping the heat away from allies.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name is exactly:
+Ember Ward
+
+NOT ACCEPTABLE:
+Ember Ward to protect allies
+Ember Ward to protect allies from heat
+train Ember Ward
+protect allies from heat
+heat
+training
+No ability record created
+
+VERIFY:
+Run /sheet or inspect tester state for ability records.
+
+PASS IF:
+Ember Ward exists as a clean ability/training record.
+
+FAIL IF:
+No ability is created, or the name includes the purpose phrase.
+
+------------------------------------------------------------
+
+Test 2.2 — Ember Ward with extended purpose phrase
+
+INPUT:
+I train Ember Ward to protect allies from heat during battle.
+
+FORCED OUTPUT:
+You practice Ember Ward again, keeping the heat away from nearby allies.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name remains exactly:
+Ember Ward
+
+NOT ACCEPTABLE:
+Ember Ward to protect allies from heat during battle
+protect allies from heat during battle
+No ability record created
+
+PASS IF:
+Ember Ward exists and name remains clean.
+
+FAIL IF:
+The long purpose phrase becomes the name, or ability is missing.
+
+------------------------------------------------------------
+
+Test 2.3 — Ember Ward with “my” and shield wording
+
+INPUT:
+I train my Ember Ward to shield the wounded from fire.
+
+FORCED OUTPUT:
+You refine Ember Ward, shaping it into a steadier protection against fire.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name remains exactly:
+Ember Ward
+
+NOT ACCEPTABLE:
+my Ember Ward
+Ember Ward to shield the wounded from fire
+shield the wounded from fire
+No ability record created
+
+PASS IF:
+Ember Ward exists and name is clean.
+
+FAIL IF:
+No ability is created, or saved name contains the defensive purpose phrase.
+
+------------------------------------------------------------
+
+Test 2.4 — Stoneguard against wording
+
+INPUT:
+I train Stoneguard against shield-cracking blows.
+
+FORCED OUTPUT:
+Stoneguard absorbs the rhythm of shield-cracking impacts.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name is exactly:
+Stoneguard
+
+NOT ACCEPTABLE:
+Stoneguard against shield-cracking blows
+shield-cracking blows
+No ability record created
+
+PASS IF:
+Stoneguard exists as a clean ability record.
+
+FAIL IF:
+No ability is created, or “against shield-cracking blows” remains in the name.
+
+------------------------------------------------------------
+
+Test 2.5 — Frost Step regression check
+
+INPUT:
+I practice Frost Step by moving across slick stones.
+
+FORCED OUTPUT:
+You practice Frost Step across the slick stones until your footing improves.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name is exactly:
+Frost Step
+
+NOT ACCEPTABLE:
+Frost Step by moving
+Frost Step by moving across slick stones
+moving across slick stones
+
+PASS IF:
+Frost Step exists and name is clean.
+
+FAIL IF:
+Frost Step regresses or the suffix becomes part of the name.
+
+------------------------------------------------------------
+
+Test 2.6 — Stoneguard official drill regression check
+
+INPUT:
+I drill Stoneguard until my stance holds under impact.
+
+FORCED OUTPUT:
+You drill Stoneguard until your stance holds steady under impact.
+
+EXPECTED:
+Ability exists or updates.
+Saved ability name is exactly:
+Stoneguard
+
+NOT ACCEPTABLE:
+Stoneguard until my stance holds
+Stoneguard until my stance holds under impact
+my stance holds under impact
+
+PASS IF:
+Stoneguard exists and name is clean.
+
+FAIL IF:
+Stoneguard regresses or the suffix becomes part of the name.
+
+============================================================
+SECTION 3 — OUTPUT-ONLY ABILITY SAFETY
+============================================================
+
+Test 3.1 — Output-only Moonblade should still be blocked
+
+INPUT:
+I stand still and wait.
+
+FORCED OUTPUT:
+You learned Moonblade.
+
+EXPECTED:
+Moonblade does NOT become a confirmed hard-saved ability from output alone.
+
+VERIFY:
+Run /sheet or inspect ability state.
+
+PASS IF:
+Moonblade is not listed as a confirmed learned ability.
+It may be ignored or at most treated as unconfirmed/proposed if such staging exists.
+
+FAIL IF:
+Moonblade becomes a confirmed ability only because the AI output said “You learned Moonblade.”
+
+------------------------------------------------------------
+
+Test 3.2 — Output-only unlocked ability should still be blocked
+
+INPUT:
+I wait quietly.
+
+FORCED OUTPUT:
+You unlocked Star Chain.
+
+EXPECTED:
+Star Chain does NOT become a confirmed hard-saved ability from output alone.
+
+PASS IF:
+Star Chain is not confirmed as a learned ability.
+
+FAIL IF:
+Star Chain becomes confirmed from output alone.
+
+------------------------------------------------------------
+
+Test 3.3 — Explicit player training should still be allowed
+
+INPUT:
+I train Moonblade by practicing careful crescent cuts.
+
+FORCED OUTPUT:
+You practice Moonblade with careful crescent cuts.
+
+EXPECTED:
+Moonblade may now be created or updated because the player explicitly trained it.
+Saved ability name should be exactly:
+Moonblade
+
+NOT ACCEPTABLE:
+Moonblade by practicing careful crescent cuts
+
+PASS IF:
+Moonblade appears only after explicit player training and the name is clean.
+
+FAIL IF:
+Moonblade appeared earlier from output alone, or the name contains the “by practicing...” suffix.
+
+============================================================
+SECTION 4 — SCENE SETUP CONFIRMATION
+============================================================
+
+Test 4.1 — Market lane setup should confirm current scene
+
+INPUT:
+I stand in the market lane near the stalls.
+
+FORCED OUTPUT:
+The market lane remains busy with merchants and passing townsfolk.
+
+EXPECTED:
+Current confirmed scene becomes:
+market lane
+
+Expected internal state:
+Scene Name: market lane
+Player Scene Ref: scene_market_lane or equivalent
+Scene Confidence should no longer be 0.
+Scene Hint may also be market lane.
+
+VERIFY:
+Run /sheet or inspect scene state.
+
+PASS IF:
+Current confirmed scene is market lane.
+
+FAIL IF:
+Scene Name remains none/unknown.
+Scene Confidence remains 0.
+Only sceneHintLabel changes but confirmed scene does not.
+
+------------------------------------------------------------
+
+Test 4.2 — “Remains” variant with square
+
+INPUT:
+I stand in the market square beside the fountain.
+
+FORCED OUTPUT:
+The market square remains crowded and noisy.
+
+EXPECTED:
+Current confirmed scene becomes:
+market square
+
+PASS IF:
+Confirmed scene is market square.
+
+FAIL IF:
+Only a weak hint is recorded, or scene remains unknown.
+
+------------------------------------------------------------
+
+Test 4.3 — “Buzzes” variant with market lane
+
+INPUT:
+I wait in the market lane.
+
+FORCED OUTPUT:
+The market lane buzzes with merchants, carts, and passing townsfolk.
+
+EXPECTED:
+Current confirmed scene becomes or remains:
+market lane
+
+PASS IF:
+Confirmed scene is market lane.
+
+FAIL IF:
+Scene remains unknown or changes to a wrong place.
+
+============================================================
+SECTION 5 — WEAK NEARBY / FUTURE SCENE PROTECTION
+============================================================
+
+Important setup:
+Before Test 5.1, confirmed scene should be market lane from Test 4.1.
+If not, repeat Test 4.1 first.
+
+------------------------------------------------------------
+
+Test 5.1 — Official weak chapel follow-up
+
+INPUT:
+I can see the chapel road from here, but I only consider going there.
+
+FORCED OUTPUT:
+The road to the chapel is visible from the market lane, but you only consider heading there.
+
+EXPECTED:
+Confirmed scene remains:
+market lane
+
+Chapel must NOT become current scene.
+
+ACCEPTABLE:
+Chapel may be ignored.
+Chapel may appear as a pending hint.
+Chapel may be treated as visible/nearby/future reference.
+
+NOT ACCEPTABLE:
+Scene Name: chapel
+Player Scene Ref: scene_chapel
+
+PASS IF:
+Confirmed scene remains market lane.
+
+FAIL IF:
+Confirmed scene becomes chapel.
+
+------------------------------------------------------------
+
+Test 5.2 — “Nearby” mention should not overwrite current scene
+
+INPUT:
+I listen to someone mention the chapel nearby.
+
+FORCED OUTPUT:
+A merchant mentions the chapel nearby, but you remain in the market lane.
+
+EXPECTED:
+Confirmed scene remains:
+market lane
+
+PASS IF:
+Scene remains market lane.
+
+FAIL IF:
+Scene becomes chapel.
+
+------------------------------------------------------------
+
+Test 5.3 — “Down the street” mention should not overwrite current scene
+
+INPUT:
+I look toward the chapel down the street without leaving.
+
+FORCED OUTPUT:
+The chapel stands down the street, but the market lane remains around you.
+
+EXPECTED:
+Confirmed scene remains:
+market lane
+
+PASS IF:
+Scene remains market lane.
+
+FAIL IF:
+Scene becomes chapel.
+
+------------------------------------------------------------
+
+Test 5.4 — “Beyond” mention should not overwrite current scene
+
+INPUT:
+I notice the guild hall beyond the market road.
+
+FORCED OUTPUT:
+The guild hall is visible beyond the road, but you are still in the market lane.
+
+EXPECTED:
+Confirmed scene remains:
+market lane
+
+PASS IF:
+Scene remains market lane.
+
+FAIL IF:
+Scene becomes guild hall.
+
+------------------------------------------------------------
+
+Test 5.5 — “Only consider going” should not overwrite current scene
+
+INPUT:
+I only consider going to the smithy.
+
+FORCED OUTPUT:
+You only consider going to the smithy while staying in the market lane.
+
+EXPECTED:
+Confirmed scene remains:
+market lane
+
+PASS IF:
+Scene remains market lane.
+
+FAIL IF:
+Scene becomes smithy.
+
+============================================================
+SECTION 6 — STRONG ARRIVAL STILL WORKS
+============================================================
+
+Test 6.1 — Strong chapel arrival
+
+INPUT:
+I leave the market lane and enter the chapel.
+
+FORCED OUTPUT:
+You step into the chapel, the quiet nave opening around you.
+
+EXPECTED:
+Confirmed scene updates to:
+chapel
+
+PASS IF:
+Scene Name becomes chapel.
+
+FAIL IF:
+Scene remains market lane after clear entry/arrival wording.
+
+------------------------------------------------------------
+
+Test 6.2 — Strong smithy arrival
+
+INPUT:
+I walk inside the smithy.
+
+FORCED OUTPUT:
+You walk inside the smithy, where the forge heat rolls across your face.
+
+EXPECTED:
+Confirmed scene updates to:
+smithy
+
+PASS IF:
+Scene Name becomes smithy.
+
+FAIL IF:
+Scene does not update after clear arrival.
+
+------------------------------------------------------------
+
+Test 6.3 — Strong cellar arrival
+
+INPUT:
+I descend into the cellar.
+
+FORCED OUTPUT:
+You descend into the cellar, where damp stone and old barrels fill the dark.
+
+EXPECTED:
+Confirmed scene updates to:
+cellar
+
+PASS IF:
+Scene Name becomes cellar.
+
+FAIL IF:
+Scene does not update after clear arrival.
+
+============================================================
+SECTION 7 — GENERAL INTENT SAFETY REGRESSION
+============================================================
+
+Test 7.1 — Travel should not create ability
+
+INPUT:
+I travel to the smithy.
+
+FORCED OUTPUT:
+You make your way toward the smithy.
+
+EXPECTED:
+No ability named smithy is created.
+
+PASS IF:
+Travel/movement proceeds and no smithy ability appears.
+
+FAIL IF:
+smithy becomes an ability.
+
+------------------------------------------------------------
+
+Test 7.2 — Inspect should not create ability
+
+INPUT:
+I inspect the old wooden door.
+
+FORCED OUTPUT:
+You inspect the old wooden door carefully.
+
+EXPECTED:
+No ability named old wooden door is created.
+
+PASS IF:
+Inspection proceeds and no door ability appears.
+
+FAIL IF:
+old wooden door becomes an ability.
+
+------------------------------------------------------------
+
+Test 7.3 — Use object should not create ability
+
+INPUT:
+I use the iron key on the cellar door.
+
+FORCED OUTPUT:
+You use the iron key on the cellar door.
+
+EXPECTED:
+No ability named iron key or cellar door is created.
+
+PASS IF:
+Object-use proceeds and no junk ability appears.
+
+FAIL IF:
+iron key or cellar door becomes an ability.
+
+============================================================
+SECTION 8 — STATUS REGRESSION SPOT CHECK
+============================================================
+
+Test 8.1 — Exhausted still works
+
+INPUT:
+I keep sprinting uphill long after my breath gives out.
+
+FORCED OUTPUT:
+Your legs shake and you are exhausted by the climb.
+
+EXPECTED:
+Active Conditions includes:
+exhausted
+
+EP should be low, empty, or constrained.
+
+PASS IF:
+exhausted appears and EP reflects strain.
+
+FAIL IF:
+Output says exhausted but active condition is missing.
+
+------------------------------------------------------------
+
+Test 8.2 — Fatigued stays separate
+
+INPUT:
+I march for hours until I feel weary and worn out.
+
+FORCED OUTPUT:
+You are fatigued and worn out from the long march.
+
+EXPECTED:
+fatigued may appear.
+exhausted should NOT appear unless output explicitly says exhausted-level wording.
+
+PASS IF:
+fatigued appears or resource strain appears, and exhausted is not incorrectly added.
+
+FAIL IF:
+Mild fatigue always becomes exhausted.
+
+------------------------------------------------------------
+
+Test 8.3 — Burned still works
+
+INPUT:
+I grab the hot iron without thinking.
+
+FORCED OUTPUT:
+Your palm is burned and blistered by the hot iron.
+
+EXPECTED:
+Active Conditions includes:
+burned
+
+PASS IF:
+burned appears.
+
+FAIL IF:
+burned no longer registers.
+
+------------------------------------------------------------
+
+Test 8.4 — Bleeding still works
+
+INPUT:
+I drag my arm across the broken glass.
+
+FORCED OUTPUT:
+The cut opens and you are bleeding.
+
+EXPECTED:
+Active Conditions includes:
+bleeding
+
+PASS IF:
+bleeding appears.
+
+FAIL IF:
+bleeding no longer registers.
+
+============================================================
+SECTION 9 — FINAL PASS CRITERIA
+============================================================
+
+Mark this targeted Recovery Patch 2 test PASS only if:
+
+1. No syntax errors.
+2. /sheet works before and after normal action.
+3. /inventory works.
+4. Ember Ward official case creates/updates ability.
+5. Ember Ward name is clean.
+6. Ember Ward shield/fire variation works.
+7. Stoneguard against variation works.
+8. Frost Step did not regress.
+9. Stoneguard drill did not regress.
+10. Output-only Moonblade does not hard-save.
+11. Output-only Star Chain does not hard-save.
+12. Explicit player Moonblade training still works.
+13. Market lane “remains” confirms current scene.
+14. Market square “remains” confirms current scene.
+15. Weak chapel visible-from line does not overwrite market lane.
+16. Nearby/down-the-street/beyond/only-consider mentions do not overwrite current scene.
+17. Strong chapel/smithy/cellar arrival still updates scene.
+18. Travel/inspect/use-object do not create junk abilities.
+19. Exhausted, fatigued, burned, and bleeding still work.
+
+If all targeted tests pass:
+Run the full 75-case Phase 5 final-push suite.
+
+If the full suite passes:
+Phase 5 is complete.
+Next work is Phase 6 — inventory acquisition hardening.
+
+If any targeted test fails:
+Do NOT move to Phase 6.
+Report exact failed input, forced output, expected result, actual result, and /sheet or state result.
+
+
+Understood. I will not generate another file yet.
+
+Bottom line
+
+Based on the latest normal/full tester report, v1.3.6 is final-clean by the main tester: 2,686 / 2,686 passed, no current-stage blockers. That means there is no ordinary gameplay patch required from that pass.
+
+But the uploaded Player-Breaker Findings Report is a different kind of test. It is adversarial and specifically looks for ways a player or model wording can trick the script into committing false canon. That report found a real root class: the script still sometimes treats mentioned/failed/quoted/dreamed events as confirmed truth. The report identifies false canonical state changes as the main remaining risk: denied/revoked inventory, noncanonical ability mentions, quoted/dreamed time skips, and repeated ability over-amplification.  
+
+So my honest read is:
+
+v1.3.6 is release-ready for normal AI Dungeon playtesting.
+v1.3.6 is not mathematically bulletproof against adversarial player-breaker wording.
+
+If we patch anything, it should be one final root validator patch, not more exact-scenario patches.
+
+⸻
+
+What still may need changing
+
+1. Inventory needs clause-level canon validation
+
+This is the biggest remaining possible issue.
+
+The player-breaker report shows that inventory can still be granted from text like:
+
+* “You never take the black gate key.”
+* “You pick up the idea of a brass key…”
+* “You pick up the obsidian key, but then it dissolves as an illusion…”
+* “You are told to take the sun badge in a dream, then wake empty-handed.”
+* “Mira refuses to give you the jeweled crown, but she hands you the red healing potion.”
+
+The root problem is not a missing phrase. It is that the inventory system still sometimes sees a positive acquisition verb, then commits the item before fully checking whether that specific clause denies, abstracts, revokes, dreams, quotes, or invalidates it. The findings report specifically says the script is not consistently doing “deny/revoke wins locally” before item state is committed.  
+
+Needed change
+
+Add a shared clause-level inventory validator before final item grant.
+
+For every item candidate, the script should classify the local clause as:
+
+* confirmed acquisition,
+* denied acquisition,
+* revoked acquisition,
+* abstract/metaphorical mention,
+* quoted instruction,
+* dream/vision/non-real acquisition,
+* unknown.
+
+Only confirmed acquisition should grant.
+
+Must block
+
+* never take
+* fail to take
+* cannot take
+* not an actual item
+* idea of / concept of / title of
+* pretend to take
+* dream / vision / wake empty-handed
+* dissolves / illusion / have nothing
+* refuses to give X
+* told to take X, but no actual handoff
+* quoted “take X” without narration confirming transfer
+
+Must still allow
+
+* “Mira hands you the red healing potion.”
+* “After searching again, you recover the black gate key.”
+* “You receive the rusted iron key.”
+* “She places the key in your hand, and you accept it.”
+
+This is very aligned with the AIDRPG goal: detect what happened, decide whether it counts as a real event, then safely apply and save it.  
+
+⸻
+
+2. Ability canon needs the same clause-level confirmation gate
+
+The uploaded player-breaker report shows ability names becoming canonical when they are only mentioned in failed, quoted, pretend, manual/title, or “do not know” wording. Examples include:
+
+* “The scroll title says ‘You learned Crimson Lotus Fang,’ but you only read the title and learn nothing.”
+* “You attempt Void Lantern Veil; the veil collapses…”
+* “Mira says, ‘Use Hollow Star Palm now,’ but you do not know that technique.”
+* “You pretend to use Azure Dragon Step while telling a joke.”  
+
+v1.3.5 and v1.3.6 fixed many ability-denial cases, but this report indicates the broader root still may exist: ability name mentioned in output can still sometimes be treated as ability confirmed by output.
+
+Needed change
+
+Ability confirmation should require one of these:
+
+* ability successfully manifests,
+* ability is learned,
+* ability is trained,
+* ability is retained,
+* ability is demonstrated successfully,
+* ability is confirmed as usable.
+
+A player input like “I channel Moonlit Thunder Step” should create at most a pending candidate, not a real ability. The Output must confirm it.
+
+Must block
+
+* scroll title says “you learned X”
+* quoted “use X”
+* pretend to use X
+* do not know X
+* learn nothing
+* no usable technique remains
+* collapses
+* fails
+* fizzles
+* cannot manifest
+* no X answers your call
+
+Must still allow
+
+* “Moonlit Thunder Step becomes a controlled afterimage dash.”
+* “You successfully channel Ember Ward.”
+* “After practice, Crimson Lotus Fang becomes stable.”
+* “You learn Azure Dragon Step from the manual after hours of training.”
+
+This directly supports the AIDRPG skill identity goal: named skills matter, but they should become real through effort, confirmation, training, inheritance, absorption, ritual, or teaching — not because a name appeared in a failed/quoted sentence.  
+
+⸻
+
+3. Repeated ability use should not over-amplify state/context
+
+The player-breaker report found a repeated Ember Ward case where repeated use appeared to create excessive canonical mentions or inflated use tracking. It suspects multiple layers are processing the same ability mention: input intent, output processing, compatibility confirmation, context priority logic, and specialization.  
+
+Needed change
+
+Use one normalized operation key for ability-use mutation:
+
+turn + hook + abilityKey + eventKind + outputHash
+
+Then all ability mutation paths should call the same apply-once guard.
+
+Intended behavior
+
+If the player uses Ember Ward four times, the system can remember that it was used repeatedly, but it should not create seven context entries, seven records, or overcount the use as if several systems each independently confirmed the same event.
+
+This is the same safeguard pattern the old systems relied on: retry detection and duplicate suppression are core stability controls, not optional polish.  
+
+⸻
+
+4. Time-skip aging needs a nonliteral guard
+
+The player-breaker report found age changes from non-real time phrases:
+
+* “You say, ‘Twenty years pass,’ while practicing narration. No time passes.”
+* “In a dream, twenty years pass, but you wake as the same age.”
+
+Both changed age from 19 to 39 in that adversarial run.  
+
+Needed change
+
+Before applying any year-based age change, the script should block nonliteral contexts:
+
+* quoted speech
+* dream
+* vision
+* story/practice narration
+* pretend
+* “no time passes”
+* “same age”
+* “wake as the same age”
+* “not actually”
+
+Must still allow
+
+* “Twenty years pass in exile.”
+* “After twenty years, you finally wake.”
+* “Two years pass while the city rebuilds.”
+
+This should be a small guard, not a rewrite of the time system.
+
+⸻
+
+5. Do not add old TASIS race/passive/world chunks right now
+
+Several uploaded roadmaps are clearly old TASIS repair plans, not the current AIDRPG v1.3.6 source-of-truth. They are useful for principles, but not as “must add now” tasks.
+
+For example, the old roadmaps talk about race/passive rebuilds, schema completion, passive reward architecture, and TAS-style hook repair. Those were meant for earlier TASIS builds and partial-merge states, not this current AIDRPG release candidate. The older handoff explicitly warns against creating competing persistence paths and says systems should have one authoritative path.  
+
+So for v1.3.6, I would not add:
+
+* a new race engine,
+* new passive spell architecture,
+* new combat engine,
+* new card-generation system,
+* new world simulation layer,
+* new wholesale hook structure,
+* old TASIS CH-number systems.
+
+That would be dangerous because the current tester-clean build is already stable.
+
+⸻
+
+6. Keep the AI Dungeon runtime discipline unchanged
+
+Even though the new memory limit is 16 MB, the important operational limit is still 2 seconds per hook, and scripts still run through Input, Context, and Output lifecycle hooks. The scripting reference says scripts are sandboxed with 16 MB and 2 seconds, and recommends using state for persistence, storyCards for structured model-visible info, guarding duplicate story card creation, and managing context size with info.maxChars / info.memoryLength.  
+
+So any final patch should stay cheap:
+
+* current output text only,
+* small pre/post snapshots,
+* no full story-card scan in Input,
+* no full-world scan,
+* no big context rebuild loops,
+* no broad regex sweeps over all history.
+
+⸻
+
+Final “remaining work” list
+
+If we decide to patch beyond v1.3.6, this is the full list I would alter:
+
+1. Inventory clause validator
+    * classify each item candidate locally;
+    * deny/revoke/abstract/dream/quote blocks that specific item;
+    * valid later clauses can still grant a different item.
+2. Ability clause validator
+    * quoted/manual/pretend/failed ability mentions do not commit canon;
+    * output must confirm real manifestation/learning/use.
+3. Ability mutation dedupe
+    * one apply-once guard for repeated ability use;
+    * context dedupes ability lines by normalized ability key.
+4. Nonliteral time-skip guard
+    * quotes/dreams/pretend/no-time-passes do not age the player.
+5. Regression tests only
+    * rerun official v1.4 sectioned suites,
+    * rerun old true-stress cross-check,
+    * rerun the adversarial/player-breaker inventory, ability, and time sections,
+    * run one live AI Dungeon playtest.
+
+That is it. I would not add new features.
+
+⸻
+
+Release judgment
+
+Based only on the latest 0-failure v1.3.6 tester report, v1.3.6 can be called final-clean by the main tester.
+
+Based on the uploaded Player-Breaker Findings report, there is one final adversarial-hardening patch worth doing before calling it “bulletproof final.” That patch should not change the successful systems. It should install a shared canon validator for inventory, abilities, and nonliteral time.
+
+The root rule should be:
+
+Mentioned is not confirmed. Attempted is not confirmed. Quoted is not confirmed. Dreamed is not confirmed. Revoked is not retained. Only confirmed outcome becomes canon.
+
+
+Here’s the feedback please consider these are tester results not real full feedback results from a person, if something were to be fixed the next turn or something I’ll call this a pass I understand we have certain things in play that are meant to be safeguards and not allow a moment to pass as absolute fact the moment is occurs, sometimes things require further validation something I’m not sure the test is considering, but you’re the one writing this, so please generate a working 1-3-1 based off this feedback:
+
+AIDRPG v1.3.0 RETEST RESULT — CORRECTED PASS
+
+SCRIPT:
+aidrpgv1-3-0.txt
+
+RUNTIME:
+PASS
+
+Resolved VERSION:
+1.3.0-production
+
+Resolved BUILD_STAGE:
+AIDRPG-v1.3.0-final-release
+
+SIZE:
+1,080,167 bytes
+PASS under 16 MB.
+
+FINAL AI DUNGEON STRESS TESTER v1.3:
+2,477 / 2,477 passed
+
+OLDER TRUE-STRESS TESTER v1.0 CROSS-CHECK:
+409 / 409 passed
+
+CUSTOM PHRASING / PLAYSTYLE / ABUSE STRESS:
+606 tested
+515 passed
+91 failed
+
+COMBINED COMPLETED TESTS:
+3,492 tested
+3,401 passed
+91 failed
+
+FINAL VERDICT:
+NOT FINAL CLEAN YET.
+
+This is much better than 1.2.9 and the official tester is clean, but the custom abuse pass found real current-stage blockers. The important part: these 91 custom failures are not 91 unique systems. They group into a few root issues.
+
+CURRENT_BLOCKERS
+
+1. Inventory negative/failure phrasing still grants items.
+
+Minimal repro:
+Input:
+I consider the rusted iron key.
+
+Output:
+You decide not to take the rusted iron key.
+
+Expected:
+No item.
+
+Actual:
+Inventory contains:
+rusted iron key
+
+Second repro:
+Output:
+You try to grab the rusted iron key, but the goblin snatches it away first.
+
+Actual:
+Inventory contains:
+rusted iron key
+but the goblin snatches it away first
+
+Severity:
+CURRENT_BLOCKER
+
+Patch area:
+InventorySystem.hasAcquisitionNegation
+InventorySystem.extractAcquisitionPhrases
+InventorySystem.splitAcquisitionCapture
+InventorySystem.cleanItemPhrase
+
+Needed guards:
+- decide not to take
+- try to grab ... but [someone else] snatches/takes it
+- fail to grab
+- reach for ... but miss
+- [item] is taken away before you get it
+
+2. Quest parser is still too narrow.
+
+Minimal repro:
+Input:
+I accept Elder Mira's quest to repair the north wall.
+
+Output:
+You accept Elder Mira's quest to repair the north wall from the barrow sanctum.
+
+Expected:
+Active quest:
+repair the north wall
+
+Actual:
+/questlog shows:
+Active Quests: 0
+
+Severity:
+CURRENT_BLOCKER
+
+Failed objective styles included:
+- repair the north wall
+- escort Bram to The Drunken Huntsman
+- deliver the guild letter
+- investigate the burned tavern
+- protect the market gate
+- some “take/start/commit to quest” phrasings
+
+Patch area:
+QuestLogSystem acceptance/objective parser.
+
+Add accepted objective verbs:
+recover, find, repair, escort, clear, deliver, investigate, protect.
+
+Also accept quest-intent verbs:
+accept, agree to, take, start, commit to.
+
+3. Named building/location arrival still has edge-case drift.
+
+Minimal repro:
+1. You enter The Drunken Huntsman.
+2. After the road, you enter The Silver Hart.
+3. You return to The Drunken Huntsman.
+
+Expected:
+Current scene:
+The Drunken Huntsman
+
+Actual:
+Current scene:
+road
+
+Parent location:
+Drunken Huntsman
+
+Severity:
+CURRENT_BLOCKER
+
+Why it matters:
+The location exists, but the current scene becomes the travel/interstitial “road” instead of the named place the player explicitly entered.
+
+Patch area:
+SceneStateSystem.extractSceneCandidate
+SceneStateSystem.applySceneCandidate
+WorldEntitySystem named-location binding
+
+Specific rule:
+When a sentence contains “After the road, you enter [Named Place]”, the named place should outrank “road” as current scene.
+
+4. Some acquisition verb/source combinations are still brittle.
+
+Custom failures repeated around:
+- scoop up
+- snatch
+- stash
+- pocket
+- gather
+- retrieve
+- recover
+
+Important nuance:
+Simple follow-up repros for “recover the red healing potion” and “retrieve the black gate key” passed, so this is not total verb failure. The failures appear tied to source-clause/action-context variations.
+
+Severity:
+CURRENT_BLOCKER if you want broad natural phrasing support.
+
+Patch area:
+Inventory verb normalization + source-clause trimming.
+
+Add regression matrix:
+verb × item × source phrase:
+from the altar
+from the floor
+near the shrine
+beside the guild chest
+inside the ruined chapel
+after the fight
+
+CURRENT_WARNINGS
+
+1. “After twenty years” double-ages.
+
+Minimal repro:
+Initial:
+Age 19
+
+Output:
+After twenty years, you finally wake.
+
+Expected:
+Age 39
+
+Actual:
+Age 59
+
+Severity:
+CURRENT_WARNING, but important for long campaigns.
+
+Likely cause:
+Time-skip aging is being applied twice, probably by PlayerSystem.applyTransformationCanon and another time/final patch layer.
+
+Patch area:
+Time-skip idempotency guard by output hash / parsed years / current turn.
+
+2. Negative rumor reputation is incomplete.
+
+Minimal repro:
+Rumors spread in Stoneford that you betrayed the guildmaster.
+
+Expected:
+Negative rumor or negative reputation record.
+
+Actual:
+/reputation shows no tracked subject and no rumor.
+
+Severity:
+CURRENT_WARNING
+
+Patch area:
+ReputationSystem rumor parser for negative public rumor phrasing.
+
+3. Two custom scene weak-mention failures were harness over-strict, not real failures.
+
+The script correctly updated to explicit current scenes like smithy forge room and cellar. I am not counting those as real blockers.
+
+STRONG PASSES
+
+Official final tester:
+- Smoke/load: 9/9
+- AI Dungeon final compatibility: 8/8
+- Story Card API: 3/3
+- Wrapper compatibility: 1/1
+- Sandbox guards: 2/2
+- Inventory official: 86/86
+- Regressions: 161/161
+- Dungeon-full: 16/16
+- Adventure-scene: 150/150
+- Adventure-inventory: 60/60
+- Adventure-ability: 100/100
+- Adventure-context-pressure: 50/50
+- Adventure-negative: 110/110
+- Adventure-stress: 661/661
+- True-adventure: 661/661
+- Action-modes: 13/13
+- Mode-semantics: 13/13
+
+Older true-stress tester:
+- 409/409 passed
+
+Custom pass strong areas:
+- Runtime commands: 11/11
+- Multi-item/currency pickup: 4/4
+- Equip: 4/4
+- Random chaotic play: 10/10
+- Anime/named ability play: 84/84
+- Route time/weather delay: 4/4
+- Actors: 7/7
+- Story Card repeat sync: 20/20
+- Long playstyle scenarios: 4/4
+- Stat/world hardening spot checks: 4/4
+
+Anime play result:
+PASS.
+Moonlit Thunder Step, Crimson Lotus Fang, Azure Dragon Step, Hollow Star Palm, Ember Ward, etc. preserved correctly in the custom pass.
+
+Story Card result:
+PASS in custom repeat sync.
+No duplicate key spam found in 20 repeated CardSync stress runs.
+
+Random chaotic player result:
+PASS.
+No fake items from licking doorknobs, insulting soup, arguing with clouds, etc.
+
+RELEASE CALL
+
+Playable:
+YES.
+
+Likely AI Dungeon-runnable:
+YES.
+
+Official final tester clean:
+YES.
+
+Actually final-clean across broader phrasing/playstyle abuse:
+NO.
+
+Recommended status:
+v1.3.0 strong release candidate, not final-final.
+
+Best next patch:
+1. Inventory negative/failure gate.
+2. Quest objective breadth.
+3. Named-location arrival priority over road/interstitial hints.
+4. Time-skip double-aging guard.
+5. Negative rumor reputation parser.
+
+Do not broadly rewrite:
+- AbilitySystem
+- Story Card sync
+- route time
+- equipment
+- combat/progression
+- core hooks
+- official regressions
+
+Done — I created AIDRPG v1.3.0 from the stronger v1.2.8 branch, then applied the broader root fixes from the v1.2.9 feedback.
+
+Download aidrpgv1-3-0.txt
+
+Identity
+
+* VERSION: 1.3.0-production
+* BUILD_STAGE: AIDRPG-v1.3.0-final-release
+
+Size
+
+* 1,080,167 bytes
+* Well below the new 16 MB memory limit.
+* Still keeping hook work bounded for the 2-second runtime limit.
+
+What I fixed broadly
+
+* Inventory / quest separation
+    * Blocks fragments like from the altar, from the barrow sanctum, recover the sun relic, and other objective/location phrases from becoming items.
+    * Cleans existing bad inventory records after Output.
+    * Keeps real item pickups intact.
+* Quest acceptance
+    * You accept Elder Mira’s quest to recover the sun relic from the barrow sanctum.
+    * Now creates an active quest: Recover the Sun Relic
+    * Does not create a fake inventory item.
+* Named anime ability identity
+    * Preserves full names like:
+        * Moonlit Thunder Step
+        * Crimson Lotus Fang
+        * Hollow Star Palm
+        * Azure Dragon Step
+    * Removes/merges partial fallback names like Thunder Step Variation when the full named technique is known.
+* Ember Ward cleanup
+    * Keeps the defensive team-shield meaning.
+    * Removes Low Dome / low ember dome wording from stored ability evidence.
+    * Keeps the application under Ember Ward, not as a new identity.
+* Long time-skip aging
+    * Twenty years pass after the curse...
+    * Now ages the player if they have a known numeric age.
+    * Duplicate same-output replay does not age twice.
+
+Validation I ran
+
+Passed:
+
+* JavaScript syntax check.
+* Runtime identity.
+* Core commands.
+* Multi-item altar pickup:
+    * rusted iron key
+    * red healing potion
+    * 7 copper
+    * no from the altar
+* Quest acceptance:
+    * active quest created
+    * no quest objective in inventory
+* Named techniques:
+    * Moonlit Thunder Step
+    * Crimson Lotus Fang
+    * Hollow Star Palm
+    * Azure Dragon Step
+* Ember Ward:
+    * context still includes Ember Ward
+    * no Low Dome
+    * no low ember dome
+    * no negated Ember Blade evidence
+* Age skip:
+    * 19 → 39 after twenty-year skip
+    * duplicate replay does not double-age
+* Regression spot checks:
+    * dialogue instruction does not grant item
+    * negated pickup blocked
+    * duplicate key pickup stays one item
+    * route base + rain delay still works
+    * Earth Control, Tower Shield, slime soothing-gel absorption still work
+    * public reputation spread still works
+
+This one is not a direct patch over the regressed v1.2.9 behavior. It is a broader root-fix build using the stronger prior branch as the base.
+
+Here’s the feedback the testers give, remember above all functionality is ideal, improper headers or tester confusion doesn’t matter at all. The only thing that matters is that this works in game
+No duplicates of anything
+The cards work BETTER than Inner self, that’s the biggest key here. That the cards actually work better. Than the old version, we’ve made a script 5 times larger than I expected so it better fucking work, look over every single function every single chain, make sure you understand exactly what you’re doing the finish this shit please:
+
+AIDRPG v1.5.0 — CATEGORY 1 / 2 / 3 / 4 / 5 / 6 QA RESULT
+
+SCRIPT:
+aidrpgv1-5-0_REAL_FINAL_UNCOMPRESSED.txt
+
+RUNTIME IDENTITY:
+PASS
+VERSION resolves to: 1.5.0-production
+BUILD_STAGE resolves to: AIDRPG-v1.5.0-real-final-release
+
+TEST SCOPE:
+- Cat 1: INV — inventory acquisition, denial, theft, item identity
+- Cat 2: ABL — ability learning/use, false learning, duplicate use, pending cleanup
+- Cat 3: TIM — time, travel, routes, delays, route contradiction, aging boundaries
+- Cat 4: REP — reputation, rumor spread, witness credibility, private acts
+- Cat 5: QST — quest acceptance/refusal/completion/reward gating
+- Cat 6: SCN — scene/location tracking, exits/routes, entity presence, drift prevention
+
+SAFE RESULT:
+CLEAN PASS CLASSIFICATION FOR CATEGORIES 1–6.
+
+STRICT RUNNER NOTE:
+The full batch runner became unreliable under repeated process execution, so I treated this as a safe QA pass using:
+- direct runtime load checks
+- targeted UTM2 category checks
+- former-regression probes
+- state inspection on the known failure families
+
+No confirmed hook crash, empty return, or stop:true return was observed.
+
+============================================================
+CATEGORY 1 — INV
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Clean direct acquisition works.
+- Refused / not-taken items remain outside player inventory.
+- Idea-only item mentions do not create inventory.
+- Enemy-gets-it-first denial does not grant the item.
+- Former mixed refusal/acquisition edge now behaves correctly.
+
+Important inspected pattern:
+“I refuse the fake iron key, but accept the moonlit amulet from gate guard.”
+
+Observed:
+- moonlit amulet may exist as a non-player / removed record
+- ownership.holder = not_player
+- removedReason = mixed_negative_sentence_requires_strong_confirmation
+- ownership.player remains empty
+- witness memory remains allowed
+
+VERDICT:
+PASS. The item is not in player inventory, which satisfies the strict gameplay requirement.
+
+============================================================
+CATEGORY 2 — ABL
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Real practiced abilities commit.
+- Quote/title “you learned X” does not create false ability.
+- “I do not know X” remains blocked.
+- Pretend/joke use remains blocked.
+- Same-sentence spam does not over-count.
+- Live pending abilityCandidate is cleared.
+
+WARNING:
+Some blocked ability names remain in blocked-name diagnostic records, such as `__aidrpg138Final.blocked.names`. I do not classify that as a blocker because it is not a live candidate and does not create the ability.
+
+============================================================
+CATEGORY 3 — TIM
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Route creation works.
+- Elapsed travel time records.
+- Quote/dream “twenty years pass” does not age the player.
+- Known-route contradiction flags are preserved.
+- Injury/weather delay reasons are preserved.
+- Base route time remains intact when actual travel is delayed.
+
+============================================================
+CATEGORY 4 — REP
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Public witnessed reputation commits.
+- Private/alone claims do not become public reputation.
+- Unreliable accusations remain unconfirmed or rumor-level.
+- Anonymous graffiti is not tied directly to the player.
+- Witnessed private ally-harm does not overcommit to faction reputation.
+- Non-present allies do not magically know.
+
+============================================================
+CATEGORY 5 — QST
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Accepted quests become active.
+- Primary quest tracking works.
+- Refused quests stay inactive.
+- Joke/offscreen “quest complete” language does not complete quests.
+- Unearned rewards are not granted.
+- Quest reward/objective items do not leak into inventory.
+
+============================================================
+CATEGORY 6 — SCN
+============================================================
+
+RESULT:
+CLEAN PASS, safe classification.
+
+CONFIRMED:
+- Entered scenes become current scene.
+- Player location matches current scene.
+- Impossible clip/wall/floor location attempts do not overwrite real scene.
+- Quoted map/location labels are ignored.
+- Asking directions can create route knowledge without moving the player.
+- Absent enemies/entities are not spawned into local scene presence.
+
+============================================================
+FINAL PATCH STATUS
+============================================================
+
+CURRENT-STAGE BLOCKERS:
+None found in Categories 1–6.
+
+WARNINGS:
+1. The file still contains an older visible shell header near the top, but final runtime identity resolves correctly to v1.5.0.
+2. Some diagnostic blocked-name records remain in pending-like debug buckets. These are acceptable as long as they do not function as live candidates.
+3. The test harness had process-exit / repeated-run instability, so this is a safe clean classification rather than a perfect uninterrupted batch transcript.
+
+COPY-CHAIN HANDOFF:
+v1.5.0 safe-clean-passes Categories 1–6. Runtime identity resolves to 1.5.0-production / AIDRPG-v1.5.0-real-final-release, despite an older visible 1.4.7 shell header near the top. No confirmed hook crashes, empty returns, or stop:true failures were observed. Cat 1 INV is clean: direct acquisition works, refusal/idea/enemy-gets-it-first denial blocks player inventory, and the former mixed refusal/acquisition edge is fixed. In the inspected mixed case, the secondary item may exist as a non-player/removed record with holder not_player and removedReason mixed_negative_sentence_requires_strong_confirmation, but it is not owned by the player. Cat 2 ABL is clean: real abilities commit, false learning is blocked, duplicate spam is capped, and live pending abilityCandidate clears; blocked-name diagnostics are not live candidates. Cat 3 TIM is clean: route creation, elapsed time, quote/dream aging blocks, contradiction flags, delay reasons, and base-route preservation work. Cat 4 REP is clean: public/private reputation boundaries, unreliable rumor handling, anonymous acts, private witnessed ally-harm, and non-present knowledge isolation hold. Cat 5 QST is clean: quest activation/refusal/completion ambiguity and reward gating hold. Cat 6 SCN is clean: scene tracking, impossible-location rejection, quoted-location ignoring, route knowledge without movement, and absent-entity blocking hold. No current-stage blockers found for Cat 1–6. 
+
+AIDRPG v1.5.0 — CATEGORY 7 / 8 / 9 / 10 / 11 / 12 QA RESULT
+
+SCRIPT:
+aidrpgv1-5-0_REAL_FINAL_UNCOMPRESSED.txt
+
+RUNTIME IDENTITY:
+PASS
+Resolved runtime identity:
+VERSION = 1.5.0-production
+BUILD_STAGE = AIDRPG-v1.5.0-real-final-release
+
+NOTE:
+The early visible header still contains older 1.4.7 strings, but the final wrapper correctly resolves the runtime identity to v1.5.0.
+
+SIZE NOTE:
+No size warning applied.
+Current accepted limit is 16 MB.
+
+RUN SCOPE:
+High-risk Cat 7–12 regression pass.
+The full fast 720-case matrix did not finish cleanly inside the local execution window, so I am not claiming a full strict 720/720 matrix completion.
+Completed targeted coverage focused on the known previous failure points:
+- scene entry
+- impossible-location rejection
+- absent entity rejection
+- witness isolation
+- “No one” / reference-only actor handling
+- witnessed symbolic hostile act → reputation bridge
+- body injury/death boundaries
+- transformation/disguise
+- CardSync routing
+- CardSync two-turn stall regression
+- corrupt state / future schema repair
+
+RUNTIME:
+PASS.
+- No hook crash in completed probes.
+- No stop:true return.
+- No unsafe empty Input/Output return.
+- No CardSync second-turn stall reproduced.
+- Typical completed hook times: ~60–315 ms.
+- Two-turn play loop returned normally.
+
+============================================================
+CATEGORY 7 — SCENE / LOCATION / ENTITY PRESENCE
+============================================================
+
+STATUS:
+PASS IN TARGETED REGRESSION PASS.
+
+CONFIRMED PASS:
+Input:
+I enter Mossgate tavern and look around.
+
+Output:
+You are now in Mossgate tavern.
+
+Observed:
+- sceneRef = scene_mossgate_tavern
+- displayName = Mossgate tavern
+- parentLocationRef = location_mossgate_tavern
+- player.locationRef = location_mossgate_tavern
+- player.sceneRef = scene_mossgate_tavern
+
+CONFIRMED PASS:
+Input:
+I walk into a wall until I appear in an impossible location.
+
+Output:
+You hit the wall and remain in Mossgate tavern.
+
+Observed:
+- Output returned normally.
+- Scene remained Mossgate tavern.
+- Impossible location was not accepted.
+
+CONFIRMED PASS:
+Input:
+I say the goblin is definitely not here at Mossgate tavern.
+
+Output:
+The goblin is mentioned as absent and should not become a local actor.
+
+Observed:
+- no local goblin actor
+- no persistent goblin memory
+- no goblin entity pollution
+
+CATEGORY 7 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 8 — ACTOR MEMORY / WITNESS ISOLATION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+In front of gate guard, I show the iron key and explain what happened.
+
+Output:
+gate guard witnesses the explanation. Mira, who is away, does not witness it.
+
+Observed:
+- actor_gate_guard receives witness memory.
+- Mira does not receive the event.
+- pendingReports records mossgate_watch / private_witness.
+- No false public reputation mutation.
+
+CONFIRMED FIX VS v1.4.9 WARNING:
+The witnessed-event → reputation/pending-report bridge now appears to exist.
+
+Repro:
+Input:
+I kill an allied training dummy named after Mira while gate guard watches.
+
+Output:
+gate guard sees what happened, but it must not become actual murder of Mira unless Mira is present and harmed.
+
+Observed:
+- gate guard receives witness memory.
+- Mira is not killed.
+- Mira does not receive actor memory.
+- Mossgate Watch does not get a false positive reputation gain.
+- pendingReports records mossgate_watch / private_witness.
+
+This addresses the previous Cat 8 warning where the witness memory existed but the social/reputation bridge was missing.
+
+CATEGORY 8 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 9 — BODY / INJURY / DEATH BOUNDARIES
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+The goblin cuts my arm during the fight.
+
+Output:
+You are injured, but alive.
+
+Observed:
+- HP dropped from 100 to 95.
+- active condition: injured.
+- body injury: arm cut.
+- player remains alive.
+
+Previously stable body boundaries appear intact:
+- death-rumor rejection
+- quote-death rejection
+- nonfatal hostile act boundary
+- light self-stun / stunned_or_hurt handling
+
+CATEGORY 9 VERDICT:
+PASS.
+
+============================================================
+CATEGORY 10 — TRANSFORMATION / DISGUISE / ILLUSION
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+Input:
+A god changes my body into a wolfkin, and everyone at Mossgate tavern can see it.
+
+Output:
+The visible permanent transformation is recorded and should update long-term summary/card state.
+
+Observed:
+- species = wolfkin
+- permanent condition includes wolfkin
+- mutations include wolfkin
+- speciesTraits include wolfkin
+- bodyTags include wolfkin
+
+CONFIRMED PASS:
+Input:
+I wear a wolfkin costume as a disguise.
+
+Output:
+It is only a disguise. Your species does not change.
+
+Observed:
+- species remains human.
+- no wolfkin mutation.
+- no permanent wolfkin condition.
+- no species corruption.
+
+CATEGORY 10 VERDICT:
+PASS.
+
+TESTER LIMITATION STILL APPLIES:
+Do not patch against human-baseline disguise rows that expect “human” to be absent. The correct check is “species unchanged,” not “human absent.”
+
+============================================================
+CATEGORY 11 — CARDSYNC / MANAGED CARDS
+============================================================
+
+STATUS:
+PASS WITH WARNING.
+
+CONFIRMED PASS:
+Two-turn CardSync stall regression did not reproduce.
+
+Two-turn probe:
+1. I enter Mossgate tavern and look around.
+2. You are now in Mossgate tavern.
+3. I sit at the bar.
+4. Context call.
+5. You sit at the bar inside Mossgate tavern.
+
+Observed:
+- all hooks returned.
+- no second-turn stall.
+- scene remained stable.
+- CardSync did not lock the run.
+
+CONFIRMED PASS:
+Stable canon routing creates the expected target families.
+
+Input:
+Record Mossgate tavern, iron key, and Mira as stable canon.
+
+Output:
+The managed card for Mossgate managed card should be created or updated once.
+
+Observed CardSync targets include:
+- SYS:AIDRPG:ENTITY:LOCATION_MOSSGATE_TAVERN
+- SYS:AIDRPG:ENTITY:LOCATION_MOSSGATE
+- SYS:AIDRPG:ACTOR:MIRA
+- SYS:AIDRPG:ITEM:IRON_KEY
+- SYS:AIDRPG:PLAYER:SUMMARY
+
+This keeps the v1.4.9 improvement:
+- Mira routes as ACTOR:MIRA, not LOCATION_MIRA.
+- iron key routes as ITEM:IRON_KEY.
+- Mossgate routes as location/entity.
+
+CURRENT_STAGE_WARNING:
+CardSync dry-run / pending write volume is still heavy.
+
+Observed:
+- typical safe-mode/dry-run probes create about 40–50 pending/dry-run rows.
+- some starter/summary targets appear in multiple pending-write forms.
+- duplicateRefs remained empty, so this is not a managed-card duplicate blocker.
+
+Why it matters:
+This is not breaking gameplay in completed probes, but it may produce large debug/card logs over long play.
+
+Recommended patch direction:
+Keep current CardSync coverage.
+Optionally de-dupe dry-run/pending recovery rows by:
+- namespace
+- family
+- id
+- turn
+- reason family
+
+Do not remove the working actor/item/location routing.
+
+CATEGORY 11 VERDICT:
+PASS WITH WARNING.
+
+============================================================
+CATEGORY 12 — STATE INTEGRITY / REPAIR / SCHEMA SAFETY
+============================================================
+
+STATUS:
+PASS.
+
+CONFIRMED PASS:
+corrupted_items_string_fixture
+
+Observed:
+- no crash.
+- items container repaired.
+- items.byId repaired back into an object.
+- quarantine records created.
+- schema remains usable.
+
+CONFIRMED PASS:
+future_schema_fixture
+
+Observed:
+- no crash.
+- meta.version repaired/downgraded to current schema.
+- quarantine includes future_version_detected.
+- no mem_future actor-memory artifact observed in this targeted probe.
+
+CATEGORY 12 VERDICT:
+PASS.
+
+============================================================
+FINAL STATUS
+============================================================
+
+Category 7:
+PASS.
+
+Category 8:
+PASS.
+Previous witness-to-reputation pending bridge warning appears improved.
+
+Category 9:
+PASS.
+
+Category 10:
+PASS.
+
+Category 11:
+PASS WITH WARNING.
+CardSync works, but dry-run/pending write volume is heavy.
+
+Category 12:
+PASS.
+
+OVERALL VERDICT:
+PLAYABLE FOR CATEGORY 7–12 TARGETED REGRESSION COVERAGE.
+
+CURRENT_STAGE_BLOCKERS:
+None found in completed Cat 7–12 targeted testing.
+
+CURRENT_STAGE_WARNINGS:
+1. Full strict 720-case matrix was not completed inside the local execution window, so this is a targeted regression verdict, not a strict full-matrix clean certificate.
+2. CardSync pending/dry-run log volume is still heavy even though duplicateRefs stayed empty and hooks returned normally.
+
+PATCH PRIORITY:
+1. Optional CardSync cleanup:
+   De-dupe pendingWrites/dryRunLog rows by namespace/family/id/reason so long play does not accumulate noisy safe-mode records.
+
+2. Keep the Cat 8 witness bridge:
+   gate guard → private_witness → mossgate_watch pending report is now behaving correctly.
+
+3. Keep CardSync target routing:
+   ACTOR:MIRA, ITEM:IRON_KEY, and ENTITY:LOCATION_MOSSGATE_TAVERN are routing correctly.
+
+4. Keep Cat 7 scene/entity handling:
+   sceneRef/displayName/locationRef and absent-entity blocking are working.
+
+5. Keep Cat 9 body logic:
+   injury and HP consequence capture are working.
+
+6. Keep Cat 10 transformation/disguise logic:
+   permanent transformation and disguise rejection are working.
+
+7. Keep Cat 12 repair/quarantine logic:
+   corrupt and future-schema fixtures survived safely.
+
+BOTTOM LINE:
+v1.5.0 looks playable across the Cat 7–12 high-risk regression pass.
+It is stronger than v1.4.9 in the Cat 8 witness-to-reputation bridge area.
+I would not call it “strict full-matrix final-clean” until the complete 720-case Cat 7–12 matrix finishes, but I found no current-stage gameplay blocker in completed testing.
+
+Built a corrected AIDRPG v1.5.0 REAL FINAL UNCOMPRESSED from v1.4.9, not from the broken v1.5.0 and not from any scratch v1.5.1/v1.5.2/v1.5.3 attempt. The valid baseline was aidrpgv1-4-9_FINAL_UNCOMPRESSED.txt, which already had the intended starter-card and dirty-queue CardSync path.  
+
+Files:
+
+* Download AIDRPG v1.5.0 REAL FINAL UNCOMPRESSED
+* Download v1.5.0 notes
+
+What this fixes:
+
+* Live Story Card writes are ON by default.
+* Card safe mode is OFF by default.
+* Generated cards are enabled, including locations, NPCs/actors, items, skills, talents, passives, abilities, routes, reputation, and world entities.
+* Starter/system cards are protected and will restore if deleted.
+* Generated cards are not disabled. If the user manually deletes a generated card, the script respects that deletion until new canon dirties that target again.
+* All AI Dungeon live card writes use string keys, not arrays, to avoid item.keys.toLowerCase is not a function.
+* Skill/talent/passive cards are preserved through the generated-card path, not collapsed into only a player summary.
+* Removed old superseded starter aliases like ABILITY:LIST, ITEM:LIST, and ACTOR:MEMORY after the canonical v1.5.0 starter cards take over.
+
+Checks passed:
+
+* Syntax check passed.
+* Runtime identity resolves to 1.5.0-production / AIDRPG-v1.5.0-real-final-release.
+* File is uncompressed, max line length about 1178.
+* Story Card keys stayed strings in the AI Dungeon-style harness.
+* Starter player card restored after deletion.
+* Generated item card was created, then respected when manually deleted.
+* Generated ability card was created for Ember Ward.
+* Two-turn CardSync loop returned normally.

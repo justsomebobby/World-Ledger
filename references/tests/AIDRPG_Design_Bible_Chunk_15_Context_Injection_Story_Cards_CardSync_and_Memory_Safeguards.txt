@@ -1,0 +1,2646 @@
+AIDRPG Design Bible — Chunk 15: Context Injection, Story Cards, CardSync, and Memory Safeguards
+
+1. Purpose of this chunk
+
+Chunk 15 defines how AIDRPG communicates confirmed truth back to AI Dungeon.
+
+This chunk answers:
+
+How does AIDRPG tell the AI what matters right now?
+
+What belongs in Context?
+
+What belongs in Story Cards?
+
+What is a protected summary card?
+
+What is a generated card?
+
+When should cards be created?
+
+When should existing cards be updated?
+
+How do we prevent duplicate cards?
+
+How do we prevent junk cards?
+
+How do we stop cards from becoming canon?
+
+How do we make actor, place, ability, item, quest, contract, and domain cards develop over time from confirmed facts?
+
+The central rule is:
+
+Context is immediate truth for the next AI response.
+
+Story Cards are durable mirrors of stable important state.
+
+Neither Context nor Story Cards are the source of canon.
+
+Canon lives in state.aidrpg.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG needs memory surfaces because AI Dungeon forgets, drifts, and contradicts itself over long play.
+
+The system should help the AI remember:
+
+* who the player is
+* where the player is
+* who is present
+* what the player has
+* what the player can do
+* what wounds or conditions matter
+* what quest is active
+* what promises or deadlines exist
+* what important actors remember
+* what places have changed
+* what items are unavailable, stolen, damaged, or held by someone else
+* what rumors are only rumors
+* what facts are confirmed
+* what facts are uncertain
+
+But memory surfaces can become dangerous if uncontrolled.
+
+Bad behavior includes:
+
+* Context flooding the AI with every state detail
+* old facts staying in Context after they stop being true
+* cards duplicating every time an entity is mentioned
+* generic fragments becoming cards
+* cards creating canon from their own text
+* old duplicate cards reintroducing deleted truth
+* generated cards appearing for every NPC, room, item, or failed ability
+* protected cards being overwritten by polluted copies
+* ability candidates getting cards before stabilization
+* rumors being written as confirmed facts
+* card updates ignoring changes over time
+
+Chunk 15 exists to keep memory useful, compact, current, and safe.
+
+⸻
+
+3. The three memory surfaces
+
+AIDRPG has three main memory surfaces.
+
+3.1 State
+
+State is canon.
+
+This is state.aidrpg.
+
+It owns the truth.
+
+Everything else reads from it.
+
+3.2 Context
+
+Context is immediate AI-facing memory.
+
+It tells the AI what matters for the current or next turn.
+
+Context should be compact, relevant, and current.
+
+Context changes often.
+
+3.3 Story Cards
+
+Story Cards are durable long-term memory.
+
+They help AI Dungeon remember important stable facts across a long adventure.
+
+Story Cards change less often.
+
+They should mirror state, not invent state.
+
+⸻
+
+4. Ownership boundaries
+
+ContextBuilder owns
+
+* Context packet construction
+* Context packet priority
+* Context length budget
+* Context modes
+* Context stale-packet cleanup
+* relevance sorting
+* immediate AI-facing truth
+
+ContextBuilder reads state.
+
+ContextBuilder does not write gameplay truth.
+
+CardSync owns
+
+* protected summary cards
+* generated cards
+* card identity index
+* card dirty queue
+* card update queue
+* card write budget
+* card scan budget
+* duplicate detection
+* duplicate neutralization
+* card tombstones
+* card audit records
+* card family rules
+* card eligibility rules
+
+CardSync writes cards.
+
+CardSync does not write gameplay truth.
+
+Reducers own dirty signals
+
+Reducers do not write cards directly.
+
+When state changes, reducers mark dirty targets.
+
+Examples:
+
+* inventory changed → dirty inventory Context and Inventory Overview card
+* actor relationship changed → dirty actor Context and possible actor card
+* ability stabilized → dirty ability Context and possible ability card
+* quest progressed → dirty quest Context and quest card
+* place damaged → dirty place Context and place card if important
+
+AuditSystem owns explanation
+
+Audit explains:
+
+* why Context included something
+* why a card was created
+* why a card was updated
+* why a card was skipped
+* why a duplicate was neutralized
+* why a card was not eligible
+* why card text was ignored as canon
+
+⸻
+
+5. Context law
+
+Context must obey these rules:
+
+* Context reads state.
+* Context does not create state.
+* Context should be relevant to the current scene.
+* Context should prefer current truth over old history.
+* Context should preserve uncertainty.
+* Context should not flood the AI.
+* Context should not include debug internals.
+* Context should not repeat every card.
+* Context should not include archived facts unless relevant.
+* Context should update when dirty state changes.
+* Context should drop stale facts.
+
+The most important Context law is:
+
+Context is instruction to the AI, not canon storage.
+
+If Context says the player has the rusted iron key, that must come from inventory state.
+
+If Context says Mara is present, that must come from actor/party/scene state.
+
+If Context says the ring theft is only suspected, that must come from investigation state.
+
+⸻
+
+6. Context packet model
+
+Context should be built from packets.
+
+A packet is a small piece of useful current truth.
+
+Packet types may include:
+
+* player identity packet
+* current location packet
+* scene state packet
+* body/resource packet
+* equipment packet
+* inventory/key item packet
+* ability packet
+* quest packet
+* contract packet
+* investigation packet
+* reputation packet
+* actor packet
+* party packet
+* combat packet
+* travel packet
+* deadline packet
+* weather/hazard packet
+* domain/labor packet
+* correction packet
+
+Each packet should have:
+
+* source state bucket
+* priority
+* scene relevance
+* expiry/staleness rule
+* maximum length
+* dirty target link
+* uncertainty wording if needed
+
+Packets are not cards.
+
+Packets are temporary AI guidance.
+
+⸻
+
+7. Context priority
+
+Context should be prioritized.
+
+Highest priority facts:
+
+* current location
+* current scene type
+* immediate danger
+* active combat
+* current travel state
+* severe injuries
+* low HP/MP/EP
+* unconsciousness/death-boundary state
+* active hazards
+* present important actors
+* absent important actors the AI may confuse
+* unavailable key item
+* urgent deadline
+* current objective
+* correction of recent AI drift
+
+Medium priority facts:
+
+* equipped weapon/armor
+* relevant abilities
+* active quest step
+* active contract/custody issue
+* important local reputation
+* active investigation clues
+* relevant party/follower/summon state
+* weather affecting actions
+* important route facts
+* blocked domain/labor project if scene-relevant
+
+Lower priority facts:
+
+* general level/progression
+* old quest history
+* archived cases
+* distant faction reputation
+* stored items far away
+* old actor memories
+* domain projects not in current scene
+* full inventory lists
+* full recipe lists
+* old rumors
+
+Low priority does not mean useless.
+
+It means only include it when relevant.
+
+⸻
+
+8. Context modes
+
+AIDRPG should support different Context sizes.
+
+Tiny Context
+
+Use when space is tight.
+
+Includes only:
+
+* current location
+* immediate scene
+* critical body/resource warnings
+* current objective
+* one or two relevant facts
+
+Normal Context
+
+Default mode.
+
+Includes:
+
+* location
+* scene state
+* relevant body/resources
+* relevant equipment/items
+* relevant actors
+* current objective
+* active danger
+* relevant ability limits
+* urgent deadline
+
+Wide Context
+
+Use when the scene is complex.
+
+Includes:
+
+* more actor/party details
+* active case clues
+* combat matchup
+* route/weather details
+* contract/domain blockers
+* important reputation
+* current project status
+
+Wide Context should still be curated.
+
+It should not dump the whole state.
+
+Debug Context
+
+Only for commands or testing.
+
+May show:
+
+* packet sources
+* priorities
+* dirty targets
+* omitted packets
+* stale packet cleanup
+* why something was included
+
+Debug Context should not be injected into normal story unless explicitly requested.
+
+⸻
+
+9. Context uncertainty wording
+
+Context must not overstate uncertain facts.
+
+Use careful wording.
+
+Examples:
+
+Confirmed:
+
+* “You have the rusted iron key.”
+
+Pending:
+
+* “Mara promised to give you the key tomorrow, but you do not have it yet.”
+
+Rumor:
+
+* “A rumor claims Harlan stole the ring, but this is unproven.”
+
+Suspect:
+
+* “Harlan is a suspect, not confirmed guilty.”
+
+Private knowledge:
+
+* “You privately know Harlan confessed; the village does not know yet.”
+
+Unavailable item:
+
+* “Your iron sword is with Mira for repair, so you cannot draw it.”
+
+Absent actor:
+
+* “Mara is scouting ahead and is not currently beside you.”
+
+This wording protects the AI from turning uncertainty into fact.
+
+⸻
+
+10. Context stale-fact cleanup
+
+Context must drop facts that are no longer true.
+
+Examples:
+
+If the player returns the key:
+
+* Context should stop saying the player carries the key.
+
+If Mara leaves the party:
+
+* Context should stop saying Mara is present.
+
+If the sword returns from repair:
+
+* Context should stop saying it is unavailable.
+
+If combat ends:
+
+* Context should stop saying the enemy is attacking.
+
+If a deadline passes and resolves:
+
+* Context should stop listing it as upcoming.
+
+If a quest completes:
+
+* Context should stop listing it as active.
+
+Stale Context is one of the biggest sources of AI Dungeon drift.
+
+Dirty targets and expiry rules must keep it current.
+
+⸻
+
+11. Context correction packets
+
+Sometimes AI Dungeon begins to drift.
+
+AIDRPG may need correction packets.
+
+Examples:
+
+* “Do not assume Mara is present; she stayed in Greyford.”
+* “The iron sword is not available; it is with Mira for repair.”
+* “Harlan is only suspected, not proven guilty.”
+* “The player has not arrived at the chapel yet; they are still traveling.”
+* “The Dragon Crown is not in inventory.”
+
+Correction packets should be:
+
+* short
+* factual
+* based on state
+* temporary
+* used only when helpful
+* not hostile to the AI
+* not spammed every turn forever
+
+Correction packets are safer than letting wrong Context persist.
+
+⸻
+
+12. Story Card law
+
+Story Cards must obey these rules:
+
+* Cards mirror state.
+* Cards do not create canon.
+* Cards should represent stable important truth.
+* Cards should be updated when confirmed facts change.
+* Cards should not be created from raw prose alone.
+* Cards should not be created for every candidate.
+* Cards should not be created for generic fragments.
+* Cards should not duplicate existing card identities.
+* Cards should not rely only on visible titles.
+* Cards should not rely only on hidden metadata.
+* Cards should not use broad trigger keys that fire constantly.
+* Cards should have clear ownership by card family.
+* Cards should be neutralized or tombstoned when polluted or duplicate.
+* Cards should preserve uncertainty when facts are uncertain.
+
+The most important card law is:
+
+A card is a mirror, not a source.
+
+If a card says something state does not support, the card is stale, polluted, or wrong.
+
+State wins.
+
+⸻
+
+13. Card families
+
+Cards should be organized into families.
+
+Major card families:
+
+* protected summary cards
+* generated actor cards
+* generated place cards
+* generated ability cards
+* generated item cards
+* generated quest cards
+* generated contract cards
+* generated domain cards
+* generated faction/world entity cards
+* archived summary cards, if needed
+
+Each card family should have different eligibility rules.
+
+Do not use one generic “make card for important thing” rule.
+
+That causes junk cards.
+
+⸻
+
+14. Protected summary cards
+
+Protected summary cards are system-owned overview cards.
+
+They should be few, stable, and carefully updated.
+
+Possible protected cards:
+
+* Player Sheet
+* Body & Status
+* Inventory & Equipment Overview
+* Abilities Overview
+* Quest Log
+* Contracts & Obligations
+* Investigation & Evidence Summary
+* Reputation & Titles Summary
+* Party & Companions
+* Time, Travel & Deadlines
+* Domain & Holdings
+* Factions & World State, if needed
+
+Protected cards summarize state.
+
+They should not be duplicated.
+
+They should not be manually rewritten by generated card logic.
+
+They should be rebuilt from state when dirty.
+
+⸻
+
+15. Protected card rules
+
+Protected cards should:
+
+* have stable card family
+* have stable identity
+* use narrow trigger keys
+* be updated in place
+* include compact summaries
+* avoid raw debug data
+* avoid giant full-state dumps
+* avoid stale facts
+* preserve uncertainty
+* mark missing/unavailable important items clearly
+* show active truth, not archived clutter
+* include archive summaries only when useful
+
+Protected cards should not:
+
+* create actor/item/quest truth
+* parse their own text back into state
+* duplicate under slightly different names
+* include junk internal IDs
+* include every low-value item or actor
+* become endlessly longer over time
+
+Protected cards are the safest place to summarize broad state.
+
+⸻
+
+16. Generated cards
+
+Generated cards are entity-specific durable mirrors.
+
+Generated cards may exist for:
+
+* important actors
+* important places
+* stabilized important abilities
+* key or magical items
+* active important quests
+* active important contracts
+* major domain projects
+* important factions
+* important world entities
+* major routes or hazards
+
+Generated cards should not exist for every mention.
+
+Generated cards are earned through importance and stability.
+
+⸻
+
+17. Generated actor cards
+
+Generated actor cards are for important actors.
+
+Eligible actor examples:
+
+* companion
+* recurring quest giver
+* major witness
+* confirmed culprit
+* major suspect
+* faction leader
+* recurring rival
+* named boss
+* important merchant/service provider
+* foreman tied to domain
+* persistent named summon/familiar
+
+Not eligible:
+
+* generic guard
+* random villager
+* unnamed worker
+* one-off merchant
+* ordinary goblin
+* background crowd member
+* actor candidate with one weak mention
+* junk name
+
+Actor card should include:
+
+* name
+* role
+* location or home base if stable
+* relationship to player
+* current status
+* important memories
+* active quest/contract/case links
+* faction links if important
+* uncertainty where needed
+
+Actor card should not include:
+
+* every dialogue line
+* every mood change
+* low-confidence rumor as fact
+* full debug importance score
+* stale location if actor moved
+* private hidden truth unless appropriate
+
+⸻
+
+18. Generated place cards
+
+Generated place cards are for important locations.
+
+Eligible place examples:
+
+* player base
+* recurring town
+* major dungeon
+* important shop/workshop
+* quest-critical location
+* domain holding
+* important route hub
+* damaged/repaired building
+* recurring investigation scene
+* faction headquarters
+
+Not eligible:
+
+* generic room
+* random hallway
+* ordinary door
+* unnamed street
+* temporary camp
+* one-off clearing
+* vague “somewhere”
+* place candidate from rumor only
+* junk fragment
+
+Place card should include:
+
+* place name
+* type
+* parent location
+* function
+* owner/controller if known
+* current status
+* key actors associated
+* services if any
+* hazards if persistent
+* exits/routes if important
+* quest/domain/case links
+* important changes over time
+
+Place card should not include:
+
+* every temporary scene detail
+* every object in room
+* every weather change
+* old hazards that ended
+* full history unless summarized
+
+⸻
+
+19. Generated ability cards
+
+Generated ability cards are for stable important abilities.
+
+Eligible ability examples:
+
+* stabilized signature skill
+* major passive
+* important talent
+* evolved ability
+* item-linked power central to play
+* dangerous curse/blessing ability
+* recurring magical technique
+
+Not eligible:
+
+* hint
+* weak candidate
+* failed attempt
+* pretend ability
+* joke ability
+* one-time unstable effect
+* duplicate alias
+* vague “power”
+* ability from card text only
+
+Ability card should include:
+
+* stable name
+* category
+* effect
+* activation method
+* cost or cost estimate
+* known limits
+* rank/reliability summary
+* related stats/domains
+* origin/source
+* variants/aliases if important
+* current uncertainty if cost/limit unknown
+
+Ability card should update when:
+
+* cost becomes known
+* ability stabilizes
+* rank improves
+* limits are discovered
+* variant appears
+* ability evolves
+* ability is lost, sealed, or changed
+* passive scope changes
+
+Ability cards are where “development over time” matters strongly.
+
+A Mana Slash card should not stay frozen at first discovery if later use proves cost, limits, or rank.
+
+⸻
+
+20. Generated item cards
+
+Generated item cards are for important items.
+
+Eligible item examples:
+
+* artifact
+* key item
+* quest item
+* evidence item
+* named weapon
+* cursed item
+* major magical item
+* heirloom
+* contract/custody-critical item
+* important crafted item
+* item tied to player identity
+
+Not eligible:
+
+* ordinary bread
+* random stick
+* generic dagger
+* every coin
+* every material stack
+* ordinary bandage
+* every dropped enemy weapon
+* item candidate not acquired
+* item mentioned in price quote only
+
+Item card should include:
+
+* item name
+* type
+* owner
+* custody holder
+* access status
+* condition
+* quality
+* magical/curse effects if any
+* quest/case/contract links
+* important history
+* current availability
+
+Item card should update when:
+
+* item is gained
+* item is lost
+* item is stolen
+* custody changes
+* item is repaired
+* item is damaged
+* item is upgraded
+* item is consumed/destroyed
+* item becomes evidence
+* item becomes key item
+* item changes owner
+* item becomes unavailable
+
+This prevents old item cards from lying.
+
+Example:
+
+If the iron sword is with Mira for repair, its card and protected inventory card should say that.
+
+⸻
+
+21. Generated quest cards
+
+Generated quest cards are for important active quests.
+
+Eligible quest examples:
+
+* major story quest
+* long-running personal quest
+* quest with multiple objectives
+* quest with deadline
+* quest linked to major actor/place/item
+* quest the AI must remember across many turns
+
+Not eligible:
+
+* tiny errand
+* vague hook
+* unaccepted offer
+* one-turn task
+* archived mundane quest
+* rumor-only objective
+* card-created quest
+
+Quest card should include:
+
+* quest title
+* status
+* current objective
+* giver if any
+* important linked actors
+* important linked places
+* important linked items
+* deadline if any
+* blockers
+* reward promise if known
+* uncertainty
+* completion/failure if archived
+
+Quest card should update when:
+
+* quest accepted
+* objective progresses
+* item recovered
+* blocker appears/resolves
+* deadline changes
+* quest ready for turn-in
+* quest completes
+* quest fails
+* quest archives
+
+Do not leave completed quests as active cards.
+
+⸻
+
+22. Generated contract cards
+
+Generated contract cards are for important agreements.
+
+Eligible contract examples:
+
+* repair contract involving important item
+* delivery contract with deadline
+* debt
+* hired worker agreement
+* rental/loan of important asset
+* domain-related service contract
+* faction obligation
+* item custody agreement
+
+Not eligible:
+
+* minor one-time purchase
+* price quote
+* vague promise
+* casual favor with no terms
+* completed mundane transaction
+* unaccepted proposal
+
+Contract card should include:
+
+* parties
+* terms
+* payment
+* item/service involved
+* custody status
+* deadline
+* current status
+* breach/fulfillment state
+* linked quest/domain/item if important
+
+Contract card should update when:
+
+* terms accepted
+* payment made
+* item custody transfers
+* work starts
+* deadline nears
+* contract fulfilled
+* contract breached
+* contract cancelled
+* contract archived
+
+Contracts are one of the highest-risk areas for stale card lies.
+
+If a card says Mira has the sword, but state says the sword was returned, the card must update.
+
+⸻
+
+23. Generated domain cards
+
+Generated domain cards are for major holdings, bases, and projects.
+
+Eligible domain examples:
+
+* player base
+* keep
+* settlement
+* repaired wall project
+* workshop construction
+* mine reopening
+* militia training
+* domain warehouse
+* large-scale production project
+* major holding under threat
+
+Not eligible:
+
+* casual building mention
+* one worker action
+* small personal repair
+* ordinary room
+* domain idea not accepted/created
+* minor temporary camp
+
+Domain card should include:
+
+* domain/holding/project name
+* status
+* location
+* owner/controller
+* progress
+* assigned workers
+* materials needed
+* blockers
+* deadlines
+* benefits
+* hazards/threats
+* linked contracts/labor/items
+
+Domain card should update when:
+
+* project starts
+* progress changes
+* materials spent
+* workers assigned/removed
+* blocker appears/resolves
+* project completes
+* project fails
+* holding is damaged
+* holding changes control
+* new benefit unlocks
+
+Domain cards should summarize, not simulate every nail.
+
+⸻
+
+24. Generated faction and world entity cards
+
+Some factions or world entities need cards.
+
+Eligible examples:
+
+* Silver Guild
+* Greyford Guard
+* Moon Cult
+* cursed fog over Blackwood Road
+* royal caravan
+* demon invasion force
+* ancient barrier
+* major army
+* regional plague
+* recurring magical storm
+
+Not eligible:
+
+* vague organization mention
+* random crowd
+* temporary weather
+* one-time rumor
+* generic patrol
+* minor enemy group
+
+Faction/world cards should include:
+
+* identity
+* type
+* scope
+* goals/effects if known
+* player relationship
+* territory/route/place links
+* important actors
+* active conflicts
+* public/private knowledge distinction
+* current status
+
+These cards should be created carefully because factions and world entities can become broad trigger magnets.
+
+⸻
+
+25. Card identity
+
+Every managed card needs stable identity.
+
+Card identity should not rely only on title.
+
+A card identity should include:
+
+* card family
+* canonical entity ID
+* stable slug/key
+* source state bucket
+* created turn
+* last synced turn
+* card version
+* visible title
+* trigger keys
+* tombstone/duplicate status if relevant
+
+Why title alone is unsafe:
+
+* actors can have aliases
+* titles can change
+* AI can rename things
+* player may edit card title
+* duplicate cards may use slightly different names
+* old polluted cards may look similar
+
+Why hidden metadata alone is unsafe:
+
+* metadata may be lost
+* user may copy cards
+* external card edits may strip metadata
+* old versions may not have it
+
+Best rule:
+
+Use both visible matching and managed identity index.
+
+⸻
+
+26. Card trigger keys
+
+Trigger keys decide when AI Dungeon uses a Story Card.
+
+Bad trigger keys are too broad.
+
+Bad examples:
+
+* AIDRPG
+* player
+* quest
+* item
+* magic
+* city
+* sword
+* companion
+* inventory
+
+These fire constantly and flood the AI.
+
+Good trigger keys are specific.
+
+Good examples:
+
+* Mara
+* Mara Ironhand
+* Mara’s Forge
+* Rusted Iron Key
+* Mana Slash
+* Blackwood Road
+* Silver Guild
+* Northwatch Keep
+* Missing Ring Case
+
+Trigger key rules:
+
+* use specific names
+* include important aliases only
+* avoid generic words
+* avoid internal IDs
+* avoid broad family words
+* avoid too many keys
+* update keys when alias confirmed
+* remove keys that cause false triggers
+
+A generated card should not activate constantly unless it truly matters constantly.
+
+⸻
+
+27. Card lifecycle
+
+Cards should have a lifecycle.
+
+27.1 Not eligible
+
+Entity exists but should not have a card.
+
+Example:
+
+generic guard.
+
+27.2 Candidate
+
+Entity may become card-eligible later.
+
+Example:
+
+Mara mentioned once.
+
+27.3 Eligible
+
+Entity is important/stable enough for a card.
+
+Example:
+
+Mara becomes recurring quest giver and blacksmith.
+
+27.4 Queued
+
+CardSync queues card creation/update.
+
+27.5 Created
+
+Card is written.
+
+27.6 Synced
+
+Card mirrors current state.
+
+27.7 Dirty
+
+State changed; card needs update.
+
+27.8 Updated
+
+Existing card updated in place.
+
+27.9 Stale
+
+Card no longer matches state.
+
+Should be updated or neutralized.
+
+27.10 Archived
+
+Entity no longer active but history matters.
+
+Card may become archive summary or be removed/neutralized depending family.
+
+27.11 Tombstoned
+
+Card identity is intentionally retired.
+
+Prevents recreation of bad duplicate.
+
+27.12 Neutralized
+
+Bad/duplicate/polluted card is made harmless.
+
+It should not trigger or claim canon.
+
+⸻
+
+28. Card creation rules
+
+Create a card only if all are true:
+
+* source state exists
+* source state is stable enough
+* entity is important enough
+* entity passes name hygiene
+* entity belongs to allowed card family
+* no existing managed card covers it
+* no tombstone blocks recreation
+* write budget allows it
+* trigger keys are safe
+* card content can be generated from state
+* card will help AI Dungeon
+
+Do not create a card if:
+
+* entity is only pending
+* entity is a weak candidate
+* entity is generic
+* entity name is junk
+* entity came only from raw prose without validation
+* entity came from card text
+* duplicate card already exists
+* card budget is exceeded
+* card content would be mostly uncertainty
+* protected summary card already covers it sufficiently
+
+⸻
+
+29. Card update rules
+
+Update existing cards instead of creating new ones.
+
+Cards should update when confirmed state changes.
+
+Examples:
+
+Actor update:
+
+* Mara trusts player now.
+* Mara leaves party.
+* Mara is injured.
+* Mara becomes suspect.
+* Mara moves to Greyford.
+
+Place update:
+
+* forge is damaged by fire.
+* chapel becomes cleared.
+* route to shrine discovered.
+* hazard removed.
+
+Ability update:
+
+* Mana Slash stabilizes.
+* cost becomes known.
+* rank improves.
+* limit discovered.
+
+Item update:
+
+* sword is cracked.
+* sword is with Mira.
+* sword is returned.
+* item becomes cursed.
+
+Quest update:
+
+* objective changes.
+* ring recovered.
+* quest completed.
+* quest failed.
+
+Contract update:
+
+* payment made.
+* custody transferred.
+* contract fulfilled.
+* breach occurs.
+
+Domain update:
+
+* wall repair reaches 50%.
+* timber missing.
+* project completed.
+
+Update should replace stale facts, not just append forever.
+
+Cards should not grow without limit.
+
+⸻
+
+30. Card content style
+
+Card content should be concise and state-based.
+
+Good card style:
+
+* short identity sentence
+* current role/status
+* important stable facts
+* active links
+* uncertain facts labeled as uncertain
+* no debug internals
+* no huge history
+* no speculation as truth
+
+Bad card style:
+
+* giant narrative transcript
+* every old event
+* raw state JSON
+* debug IDs
+* unverified rumors as fact
+* repeated duplicate lines
+* outdated facts not removed
+* vague “important person” with no useful details
+
+Generated cards should be written for AI Dungeon, not for the programmer.
+
+They should help the AI narrate correctly.
+
+⸻
+
+31. Card update over time
+
+The user specifically called this out earlier: cards must not only be generated; they must develop over time.
+
+That means card updates are as important as card creation.
+
+A card should evolve when confirmed facts evolve.
+
+Example actor card development:
+
+Initial state:
+
+Mara is a blacksmith in Greyford.
+
+Later confirmed:
+
+Mara asks player to find her missing ring.
+
+Card updates:
+
+Mara is the Greyford blacksmith who asked the player to find her missing ring.
+
+Later confirmed:
+
+Player returns the ring and clears Mara.
+
+Card updates:
+
+Mara trusts the player after they returned her missing ring and cleared her of suspicion.
+
+Later confirmed:
+
+Mara takes player’s sword for repair.
+
+Card updates:
+
+Mara currently has custody of the player’s iron sword for repair.
+
+Later confirmed:
+
+Mara returns the sword.
+
+Card updates:
+
+Remove current custody note. Keep history only if important.
+
+The card should not keep saying she has the sword after she returned it.
+
+⸻
+
+32. Duplicate card prevention
+
+Duplicate cards are one of the biggest threats to this system.
+
+Duplicate prevention must happen before card creation.
+
+Check duplicates by:
+
+* managed card identity
+* canonical state ID
+* normalized title
+* aliases
+* card family
+* trigger keys
+* visible content similarity
+* tombstone records
+* existing protected card names
+* old card registry
+* known duplicate map
+
+Duplicate examples:
+
+* Mara
+* Mara Ironhand
+* Blacksmith Mara
+* Mara the Blacksmith
+
+These should usually be one actor card if state proves same actor.
+
+Place duplicate examples:
+
+* Mara’s Forge
+* The Forge
+* Greyford Forge
+
+May be same place if state proves it.
+
+Ability duplicate examples:
+
+* Mana Slash
+* Mana Edge
+* Blue Crescent
+
+May be aliases or variants depending evidence.
+
+The system should not create a new card just because display wording changed.
+
+⸻
+
+33. Duplicate card handling
+
+If duplicate card found, possible actions:
+
+Skip
+
+Do not create new card.
+
+Use existing managed card.
+
+Update existing
+
+Merge new confirmed state into existing card.
+
+Mark duplicate
+
+Record duplicate relationship in diagnostics.
+
+Neutralize duplicate
+
+If unmanaged duplicate exists and is harmful, make it harmless if allowed.
+
+Tombstone
+
+Prevent repeated recreation of the same bad card.
+
+Manual review
+
+If uncertain, do not merge automatically.
+
+Flag for audit.
+
+Do not let duplicate cards remain active with conflicting truth.
+
+Conflicting cards confuse AI Dungeon badly.
+
+⸻
+
+34. Card neutralization
+
+Neutralization means making a bad card stop affecting play.
+
+Neutralize cards that are:
+
+* duplicates
+* polluted
+* obsolete
+* generated from junk names
+* broad-trigger spam cards
+* cards that claim false canon
+* old review/quarantine cards
+* cards with dangerous generic triggers
+* cards created by broken old versions
+
+Neutralization should:
+
+* remove or narrow trigger keys
+* mark card as inactive/neutralized if possible
+* replace content with harmless note if appropriate
+* preserve audit record
+* not delete important user-created content blindly
+* not create gameplay state from card text
+
+Neutralization is a card safety action, not gameplay truth.
+
+⸻
+
+35. Card tombstones
+
+A tombstone records that a card identity should not be recreated automatically.
+
+Use tombstones when:
+
+* duplicate card was neutralized
+* junk card was removed
+* entity was merged into another card
+* candidate was rejected
+* old polluted card family retired
+* entity no longer card-eligible
+
+Tombstone should track:
+
+* family
+* canonical key
+* reason
+* replacement card ID if any
+* created turn
+* whether manual override can restore
+
+Tombstones prevent card storms.
+
+Without tombstones, the system may delete a bad card and recreate it next turn.
+
+⸻
+
+36. Card budgets
+
+CardSync needs budgets.
+
+Budgets prevent excessive scanning and writing.
+
+Budget types:
+
+* card scan budget
+* card write budget
+* card creation budget
+* card update budget
+* duplicate neutralization budget
+* protected card rebuild budget
+* generated card rebuild budget
+
+Rules:
+
+* do not scan every card every hook if avoidable
+* use dirty queues
+* update most important dirty cards first
+* do not create many cards in one turn
+* skip low-priority card updates if budget is tight
+* audit skipped updates
+* protected critical cards outrank low-priority generated cards
+
+Suggested priority:
+
+1. dangerous stale protected card correction
+2. current location/player sheet critical update
+3. active quest/contract/current item custody update
+4. present actor/party card update
+5. stabilized ability card update
+6. important place/domain update
+7. archive/card cleanup
+8. low-priority generated cards
+
+Budgets keep the script stable.
+
+⸻
+
+37. Dirty queues
+
+Dirty queues connect reducers to Context and CardSync.
+
+Dirty target examples:
+
+* dirty.context.player
+* dirty.context.scene
+* dirty.context.inventory
+* dirty.context.quest
+* dirty.card.playerSheet
+* dirty.card.inventoryOverview
+* dirty.card.actor.Mara
+* dirty.card.place.MarasForge
+* dirty.card.ability.ManaSlash
+* dirty.card.item.IronSword
+* dirty.card.quest.MissingRing
+* dirty.card.contract.SwordRepair
+* dirty.card.domain.NorthWall
+
+Dirty queues should:
+
+* dedupe repeated dirty targets
+* preserve priority
+* include reason
+* include source operation
+* expire if no longer relevant
+* process within budget
+* avoid rebuilding everything
+
+Dirty queues are update signals, not truth.
+
+⸻
+
+38. Card audits
+
+AIDRPG needs card audits because cards can drift.
+
+Card audit should check:
+
+* duplicate protected cards
+* duplicate generated cards
+* unmanaged cards with managed-looking titles
+* broad trigger keys
+* junk names
+* stale card content
+* cards claiming state does not support
+* cards missing required identity
+* tombstoned cards recreated
+* protected cards not synced
+* generated cards for ineligible entities
+* ability cards for candidates
+* item cards for items not in state
+* quest cards for inactive/unknown quests
+* actor cards for junk/generic actors
+* place cards for generic rooms
+* contract cards for completed mundane transactions
+
+Audit results should be visible through commands.
+
+Audit should not automatically rewrite gameplay state.
+
+⸻
+
+39. Card import and manual edits
+
+Players may manually edit Story Cards.
+
+This is dangerous.
+
+Manual card edits should not automatically become canon.
+
+Possible policy:
+
+Default
+
+Manual edits affect AI Dungeon’s memory surface but do not rewrite state.aidrpg.
+
+Manual override command
+
+If the player explicitly imports or confirms a card fact, then a controlled manual override can update state.
+
+Audit warning
+
+If a card contradicts state, audit flags it.
+
+Example:
+
+Card says player owns Dragon Crown.
+
+State does not.
+
+Default:
+
+* player does not own Dragon Crown
+* card flagged stale/polluted
+* no inventory change
+
+If player explicitly commands:
+
+“Manually add Dragon Crown as a key item.”
+
+Then ManualOverride may create controlled state update.
+
+Card text alone is not enough.
+
+⸻
+
+40. Protected cards versus user cards
+
+AIDRPG should distinguish:
+
+* managed protected cards
+* managed generated cards
+* unmanaged user cards
+* old AIDRPG cards from previous versions
+* duplicate/polluted cards
+* neutralized cards
+
+Unmanaged user cards should not be destroyed casually.
+
+But if they conflict with managed AIDRPG truth, state still wins.
+
+Audit can report:
+
+* “Unmanaged card mentions Dragon Crown, but inventory state does not contain it.”
+* “Duplicate actor-like card may conflict with managed Mara card.”
+* “Broad trigger key may cause memory pollution.”
+
+The system should be careful and transparent.
+
+⸻
+
+41. Context and cards working together
+
+Context and Story Cards have different jobs.
+
+Context handles now
+
+Examples:
+
+* current location
+* current combat
+* low HP
+* active hazard
+* present actors
+* immediate quest step
+* item unavailable right now
+
+Cards handle durable memory
+
+Examples:
+
+* who Mara is
+* what Mara’s Forge is
+* what Mana Slash does
+* what the Missing Ring quest is
+* what the Silver Guild is
+* what Northwatch Keep is
+
+A fact may exist in both if important.
+
+Example:
+
+Mara is a major actor card.
+
+If Mara is present right now, Context should also mention her.
+
+If Mara is not present, her card may still exist, but Context should not imply presence.
+
+Cards provide background.
+
+Context provides current truth.
+
+⸻
+
+42. Context should override stale card influence
+
+If a card is stale but not yet updated, Context should correct the immediate turn.
+
+Example:
+
+Old card says:
+
+Mara has your sword for repair.
+
+State says:
+
+Mara returned the sword.
+
+Context should say:
+
+Your iron sword has been returned and is available.
+
+Then CardSync should update the card when possible.
+
+Context is the immediate safety layer.
+
+CardSync is the durable repair layer.
+
+State remains canon.
+
+⸻
+
+43. Card eligibility by feature
+
+This section gives the quick reference.
+
+Player
+
+Protected card only.
+
+Usually no generated player card unless multi-protagonist requires separate sheets.
+
+Body/status
+
+Protected summary only.
+
+No generated card for every injury.
+
+Major permanent body changes may appear in Player Sheet.
+
+Ability
+
+Generated card only after stable/card-eligible.
+
+No cards for candidates.
+
+Skill/talent/passive
+
+Generated card if stable and important.
+
+Otherwise summarized in Abilities Overview.
+
+Inventory item
+
+Generated card only for important/key/magical/evidence/named items.
+
+No cards for mundane items.
+
+Equipment
+
+Protected equipment summary.
+
+Generated card for named/signature equipment.
+
+Quest
+
+Generated card for important active quest.
+
+Small quests summarized in Quest Log only.
+
+Contract
+
+Generated card for important active contract.
+
+Minor transactions do not get cards.
+
+Domain
+
+Generated card for major holding/project.
+
+Small labor tasks summarized.
+
+Actor
+
+Generated card for important actors.
+
+Candidates and generic NPCs do not get cards.
+
+Place
+
+Generated card for important places.
+
+Generic rooms and exits do not get cards.
+
+Faction
+
+Generated card for important factions.
+
+Minor group mentions do not get cards.
+
+Route
+
+Generated card only if route is recurring, dangerous, quest-critical, or world-important.
+
+Rumor
+
+Usually no generated card.
+
+Major public rumor may appear in Reputation Summary.
+
+Case
+
+Major active case may have a generated or protected summary entry.
+
+Every clue does not get a card.
+
+⸻
+
+44. Card content update examples
+
+Example 1 — Actor card update
+
+State:
+
+Mara is blacksmith.
+
+Card:
+
+Mara is a blacksmith in Greyford.
+
+Later:
+
+Mara gives missing ring quest.
+
+Update:
+
+Mara is the Greyford blacksmith who asked the player to find her missing ring.
+
+Later:
+
+Player clears Mara.
+
+Update:
+
+Mara trusts the player after they recovered her ring and cleared her of suspicion.
+
+Do not create:
+
+* Mara 2
+* Blacksmith Mara
+* Mara Ring Quest
+* Mara Trusts Player
+
+Update the existing card.
+
+Example 2 — Ability card update
+
+State:
+
+Mana Slash candidate.
+
+No card.
+
+Later:
+
+Mana Slash stabilizes.
+
+Create card:
+
+Mana Slash is a basic sword-mana skill that releases a short crescent of mana from a blade. It costs moderate MP and some EP, and is unreliable when the player is exhausted.
+
+Later:
+
+Cost becomes known.
+
+Update:
+
+Mana Slash usually costs 8 MP and 3 EP.
+
+Later:
+
+It evolves.
+
+Update card or create linked variant depending AbilityReducer state.
+
+Example 3 — Item custody update
+
+State:
+
+Iron sword owned by player and equipped.
+
+No item card if mundane.
+
+Later:
+
+Iron sword becomes named or important.
+
+Card created.
+
+Later:
+
+Mira takes sword for repair.
+
+Update:
+
+The iron sword is owned by the player but currently in Mira’s custody for repair.
+
+Later:
+
+Mira returns sword.
+
+Update:
+
+Remove current custody note. Add repaired condition if important.
+
+Example 4 — Quest completion update
+
+State:
+
+Missing Ring quest active.
+
+Quest card exists.
+
+Later:
+
+Ring found.
+
+Update:
+
+The player has recovered the ring and must return it to Mara.
+
+Later:
+
+Ring returned.
+
+Update:
+
+Quest completed and archived, or remove active generated quest card and summarize in archive/protected Quest Log.
+
+Do not leave active quest card unchanged.
+
+⸻
+
+45. Card validation outcomes
+
+Card events use the same five outcomes.
+
+Accept
+
+Use when card create/update/neutralization is safe and based on state.
+
+Examples:
+
+* stable ability card update
+* protected Player Sheet rebuild
+* duplicate card neutralized
+* important actor card created
+
+Reject
+
+Use when card action is unsupported.
+
+Examples:
+
+* card creation for weak candidate
+* generated card for generic room
+* item card for item not in state
+* quest card for unaccepted hook
+
+Pending
+
+Use when entity may become card-eligible later.
+
+Examples:
+
+* actor candidate close to threshold
+* ability candidate developing
+* place mentioned but not visited
+* quest offered but not accepted
+
+Soft_fail
+
+Use when card update partially succeeds or is deferred.
+
+Examples:
+
+* budget exceeded
+* duplicate uncertain, flagged for audit
+* card update queued but not written this turn
+* identity conflict requires review
+
+Hard_deny
+
+Use when card action is unsafe.
+
+Examples:
+
+* junk-name card
+* card from debug text
+* card from raw prose without validation
+* generated ability card for pretend ability
+* broad trigger spam card
+* card text attempting to create canon
+* tombstoned card recreation
+
+⸻
+
+46. Card safety rules
+
+46.1 No card-created canon
+
+Card text never creates gameplay state.
+
+46.2 No raw-prose card creation
+
+Cards are based on validated state, not raw AI output.
+
+46.3 No cards for candidates unless family explicitly allows pending summaries
+
+Ability candidates do not get generated ability cards.
+
+Actor/place candidates do not get generated cards.
+
+46.4 No generic fragment cards
+
+No cards for room, door, street, guard, goblin, item, thing, pain, shadow, etc., unless uniquely named and important.
+
+46.5 No duplicate cards
+
+Update existing cards.
+
+Do not create new cards for aliases.
+
+46.6 No broad trigger keys
+
+Avoid triggers like player, quest, item, magic, AIDRPG.
+
+46.7 No stale active cards
+
+Completed quests, returned items, absent companions, resolved contracts, and ended hazards must update.
+
+46.8 No unlimited card growth
+
+Cards should summarize and replace stale lines.
+
+46.9 No hidden-metadata-only identity
+
+Use metadata plus visible matching/index.
+
+46.10 No title-only identity
+
+Titles can change.
+
+Use canonical state IDs.
+
+46.11 No card scan storms
+
+Use dirty queues and budgets.
+
+46.12 No deleting user cards blindly
+
+Audit and neutralize carefully.
+
+46.13 No duplicate protected cards
+
+Protected cards must have stable identity and update in place.
+
+46.14 No old polluted cards as truth
+
+Old cards can be audited, neutralized, or manually imported only by explicit override.
+
+46.15 No card update from unconfirmed rumor as fact
+
+Rumors must be labeled as rumors.
+
+⸻
+
+47. Context safety rules
+
+47.1 No Context-created canon
+
+Context cannot mutate state.
+
+47.2 No Context flooding
+
+Only relevant facts.
+
+47.3 No stale Context
+
+Dirty/expiry rules must remove outdated facts.
+
+47.4 No uncertainty collapse
+
+Rumor, suspect, pending, and confirmed facts must be worded differently.
+
+47.5 No full inventory dump by default
+
+Only relevant items/equipment/key facts.
+
+47.6 No full actor list by default
+
+Only present or relevant actors.
+
+47.7 No archived clutter
+
+Archived facts appear only when relevant.
+
+47.8 No debug internals
+
+Normal Context should not show IDs, operation keys, evidence counts, or reducer names.
+
+47.9 No contradictory presence
+
+Do not say absent actors are present.
+
+47.10 No contradictory item access
+
+Do not say player can use unavailable items.
+
+47.11 No dream/vision as real Context
+
+Dream state must be labeled or separated.
+
+47.12 No stale card override
+
+If cards conflict with state, Context follows state.
+
+⸻
+
+48. Example scenarios
+
+Example 1 — Stable ability card creation
+
+State:
+
+Mana Slash is only a candidate.
+
+Expected:
+
+* no generated ability card
+
+Later state:
+
+Mana Slash stabilizes.
+
+Expected:
+
+* ability card becomes eligible
+* CardSync creates or updates Mana Slash card
+* trigger key specific to Mana Slash
+* card mirrors cost, limits, rank, and effect
+
+Example 2 — Ability cost update
+
+State:
+
+Mana Slash card says cost uncertain.
+
+Later:
+
+Repeated use confirms cost is 8 MP and 3 EP.
+
+Expected:
+
+* existing Mana Slash card updates
+* no duplicate card
+* old uncertain cost replaced or clarified
+
+Example 3 — Actor duplicate prevention
+
+State:
+
+Actor Mara exists.
+
+Output:
+
+“Mara Ironhand nods from behind the forge.”
+
+Expected:
+
+* alias check
+* if same actor, update Mara card/aliases
+* do not create second card unless evidence says different actor
+
+Example 4 — Generic room rejected
+
+Output:
+
+“You enter the room.”
+
+Expected:
+
+* scene state may update
+* no generated place card called “Room”
+
+Example 5 — Item custody update
+
+State:
+
+Iron sword card says sword is with Mira.
+
+Output:
+
+“Mira returns the repaired sword.”
+
+Expected:
+
+* InventoryReducer updates custody
+* CardSync marks sword/card inventory dirty
+* card updates to show sword is returned
+* Context stops saying sword unavailable
+
+Example 6 — Quest completion
+
+State:
+
+Missing Ring quest card active.
+
+Output:
+
+“You return the ring to Mara.”
+
+Expected:
+
+* quest completes
+* quest card updated to completed/archive or removed from active generated cards
+* Quest Log protected card updates
+* no duplicate reward
+
+Example 7 — Card text false item
+
+Unmanaged card says:
+
+Player owns Dragon Crown.
+
+State:
+
+No Dragon Crown.
+
+Expected:
+
+* no inventory change
+* audit flags contradiction
+* Context does not mention Dragon Crown
+* possible neutralization if card is managed/polluted
+
+Example 8 — Rumor in reputation summary
+
+State:
+
+Rumor says player stole ring.
+
+Expected:
+
+* Reputation Summary may say rumor exists
+* not say player actually stole ring
+* Context uses rumor wording if relevant
+
+Example 9 — Protected card duplicate
+
+There are two Player Sheet cards.
+
+Expected:
+
+* CardAudit flags duplicate
+* managed identity chooses one canonical protected card
+* duplicate neutralized or ignored
+* state not imported from duplicate text
+
+Example 10 — Broad trigger spam
+
+Generated card has trigger key “magic.”
+
+Expected:
+
+* audit flags broad trigger
+* CardSync narrows trigger or neutralizes card
+* no gameplay state change
+
+⸻
+
+49. Commands related to Chunk 15
+
+/context should show
+
+* current Context packets
+* why each was included
+* priority
+* source state
+* stale/dirty status
+* omitted high-value facts if budget limited
+
+/cards should show
+
+* managed protected cards
+* managed generated cards
+* dirty cards
+* queued updates
+* skipped updates
+* card budget status
+
+/cardaudit should show
+
+* duplicate cards
+* stale cards
+* broad trigger keys
+* unmanaged conflicting cards
+* junk cards
+* tombstones
+* neutralized cards
+* cards claiming unsupported state
+* generated cards for ineligible entities
+
+/cardfix should exist only if safe
+
+If included later, it should:
+
+* neutralize duplicates
+* rebuild protected cards from state
+* update dirty generated cards
+* never import card text as canon without explicit override
+
+/debuglast should show
+
+* dirty targets created
+* Context packets built
+* card creation/update proposals
+* validation outcome
+* duplicate card detection
+* budget skips
+* card write results
+
+⸻
+
+50. Chunk 15 acceptance tests
+
+Test 1 — Context reads state only
+
+Given:
+
+Inventory state does not contain Dragon Crown.
+
+Expected:
+
+* Context does not say player has Dragon Crown even if a card mentions it
+
+Test 2 — Card text does not create canon
+
+Given:
+
+Story Card says player owns Dragon Crown.
+
+Expected:
+
+* no inventory item created
+* audit may flag unsupported card
+
+Test 3 — candidate ability does not get card
+
+Given:
+
+Mana Slash is only a candidate.
+
+Expected:
+
+* no generated ability card
+
+Test 4 — stable ability gets card
+
+Given:
+
+Mana Slash stabilizes and is important.
+
+Expected:
+
+* generated ability card may be created
+* card content mirrors AbilityReducer state
+
+Test 5 — ability card updates cost
+
+Given:
+
+Mana Slash cost becomes confirmed.
+
+Expected:
+
+* existing card updates
+* no duplicate card
+
+Test 6 — actor alias does not duplicate card
+
+Given:
+
+Mara and Mara Ironhand are confirmed same actor.
+
+Expected:
+
+* one actor record/card
+* alias added
+* no duplicate card
+
+Test 7 — generic place does not get card
+
+Given:
+
+Player enters “the room.”
+
+Expected:
+
+* scene state updates
+* no generated place card
+
+Test 8 — important place becomes card-eligible
+
+Given:
+
+Mara’s Forge becomes recurring service/contract location.
+
+Expected:
+
+* place importance rises
+* generated place card may become eligible
+
+Test 9 — completed quest card updates
+
+Given:
+
+Quest is completed.
+
+Expected:
+
+* active quest card updates/archives
+* protected Quest Log updates
+* Context no longer treats quest as active
+
+Test 10 — item custody card updates
+
+Given:
+
+Sword with Mira is returned.
+
+Expected:
+
+* item card/protected inventory update
+* Context stops saying sword unavailable
+
+Test 11 — duplicate protected cards detected
+
+Given:
+
+Two Player Sheet cards exist.
+
+Expected:
+
+* card audit flags duplicate
+* one canonical protected card used
+* duplicate ignored/neutralized safely
+
+Test 12 — broad trigger key flagged
+
+Given:
+
+Generated card trigger key is “quest.”
+
+Expected:
+
+* audit flags broad trigger
+* CardSync narrows or neutralizes depending ownership
+
+Test 13 — card budget prevents storm
+
+Given:
+
+Ten actors become important at once.
+
+Expected:
+
+* only budgeted number of cards created
+* remaining queued
+* no script/card storm
+
+Test 14 — stale Context removed
+
+Given:
+
+Mara leaves party.
+
+Expected:
+
+* Context stops saying Mara is present
+* party/actor card updates if important
+
+Test 15 — rumor remains rumor in cards
+
+Given:
+
+Rumor says Harlan stole the ring.
+
+Expected:
+
+* reputation/investigation card labels rumor as unproven
+* no confirmed culprit card update unless evidence supports it
+
+Test 16 — tombstone prevents recreation
+
+Given:
+
+Junk card “The Door” was neutralized/tombstoned.
+
+Expected:
+
+* system does not recreate it next turn from same junk source
+
+Test 17 — unmanaged user card does not override state
+
+Given:
+
+User-made card contradicts state.
+
+Expected:
+
+* state remains canon
+* audit flags contradiction if relevant
+* manual override required to import
+
+Test 18 — Context correction overrides stale card
+
+Given:
+
+Old card says player is in Greyford, state says player is at Old Chapel.
+
+Expected:
+
+* Context says current location is Old Chapel
+* card update queued if managed
+
+⸻
+
+51. Final Chunk 15 doctrine
+
+State is canon.
+
+Context is immediate AI-facing truth.
+
+Story Cards are durable mirrors.
+
+Context should be compact, current, relevant, and uncertainty-aware.
+
+Story Cards should be stable, specific, deduped, and updated over time.
+
+Protected summary cards summarize major state buckets.
+
+Generated cards mirror important actors, places, abilities, items, quests, contracts, domains, factions, routes, and world entities.
+
+Cards must update when confirmed facts change.
+
+Cards must not freeze old truth.
+
+Cards must not create canon.
+
+Cards must not duplicate.
+
+Cards must not use junk names.
+
+Cards must not use broad triggers.
+
+Cards must not promote candidates.
+
+Cards must not treat rumors as proof.
+
+Cards must not override state.
+
+Dirty queues decide what needs refreshing.
+
+Budgets prevent card storms.
+
+Audits reveal stale, duplicate, polluted, broad-trigger, and unsupported cards.
+
+Neutralization and tombstones prevent old card pollution from returning.
+
+The goal is to give AI Dungeon enough memory to stay coherent without letting memory become the source of corruption.
+

@@ -1,0 +1,38 @@
+{
+  "matrix_version": "AIDRPG-UTM-v2.0",
+  "total_cases": 1440,
+  "total_shards": 24,
+  "shard_sizes": [
+    60
+  ],
+  "problems": [],
+  "category_counts": {
+    "INV": 120,
+    "ABL": 120,
+    "TIM": 120,
+    "REP": 120,
+    "QST": 120,
+    "SCN": 120,
+    "MEM": 120,
+    "BDY": 120,
+    "TRN": 120,
+    "CRD": 120,
+    "STA": 120,
+    "CTX": 120
+  },
+  "choice_group_counts": {
+    "CON": 360,
+    "REA": 360,
+    "POP": 360,
+    "CHA": 360
+  },
+  "genre_counts": {
+    "FAN": 240,
+    "ANI": 240,
+    "HOR": 240,
+    "SCI": 240,
+    "MOD": 240,
+    "EPC": 240
+  },
+  "validation_stdout": "cases=1440 shards=24 max_shard_size=60\nVALIDATION PASSED"
+}

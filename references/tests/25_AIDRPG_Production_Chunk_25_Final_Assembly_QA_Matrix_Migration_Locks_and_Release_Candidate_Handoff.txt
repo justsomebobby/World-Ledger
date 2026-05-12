@@ -1,0 +1,781 @@
+# AIDRPG Production Chunk 25 — Final Assembly, QA Matrix, Migration Locks, and Release Candidate Handoff
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 25 — Final Assembly, QA Matrix, Migration Locks, and Release Candidate Handoff  
+**Production sequence:** 25 of 25 production chunks  
+**Build target:** WorldLedger V0.17.24 advanced-boundaries accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Convert the completed roadmap into an actionable Codepass 1 release-candidate assembly plan, lock source/migration/feature flags, define final QA matrices, define failure-stop conditions, and hand off exact instructions for building the final AI Dungeon script without creating another patch loop.  
+**Status:** Final planning/handoff chunk.  
+**Follows:** Production Chunk 24 — Advanced Combat, Party/Summon Coordination, Absorption/Evolution, and Warfare Activation Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 25 is the final lock.
+
+This chunk does not add another gameplay feature.
+
+It tells the next builder exactly how to begin actual code assembly, what must be frozen, what cannot be improvised, what tests must exist, what blocks release, and how to avoid rebuilding another fragile pile of patches.
+
+The next phase is:
+
+```text
+Codepass 1 — Release Candidate Assembly
+```
+
+The roadmap package is the law for Codepass 1.
+
+---
+
+# 1. Final doctrine
+
+```text
+The build is allowed to be ambitious.
+It is not allowed to be vague.
+Every feature has an owner.
+Every mutation has a validator.
+Every duplicate has a key.
+Every risky source is blocked.
+Every deferred system is honest.
+Every release claim is tested.
+```
+
+This is the difference between a final product and another loop of patching.
+
+---
+
+# 2. What this chunk does
+
+Production Chunk 25 locks:
+
+```text
+final assembly order
+source freeze rules
+old-script reuse and quarantine rules
+AI Dungeon hook order
+schema version lock
+migration lock
+feature flag lock
+command safety lock
+ReleaseCheck registry PC01–PC25
+QA matrix T0–T10
+player-breaker matrix
+long-run stability checks
+acceptance criteria
+failure-stop conditions
+release candidate handoff instructions
+```
+
+Production Chunk 25 does not:
+
+```text
+add new gameplay systems
+activate deferred features
+write final code itself
+approve untested manual shortcuts
+turn dry-run Card Sync live
+allow owner boundaries to be bypassed
+```
+
+---
+
+# 3. Codepass 1 starting target
+
+Recommended working file:
+
+```text
+WorldLedgerV0.18.0_RC_ASSEMBLY_START.txt
+```
+
+Recommended accepted output if Codepass 1 passes:
+
+```text
+WorldLedgerV0.18.0_RC1_ACCEPTED.txt
+```
+
+Recommended failed output if it does not pass:
+
+```text
+WorldLedgerV0.18.0_RC1_BLOCKED_REPORT.txt
+```
+
+Do not call anything final until ReleaseCheck and regression gates pass.
+
+---
+
+# 4. Authority order for implementation
+
+Use this authority order during Codepass 1:
+
+```text
+1. Final Build Control Map
+2. Build Chunks 01–17, especially Build Chunk 17 Foundation Code Pass 1 Plan
+3. Production Chunks 01–25
+4. Uploaded old working scripts, only when they pass owner-boundary review
+5. QA evidence and tester notes
+6. Existing AI Dungeon script behavior, only when compatible with the new pipeline
+7. New code written to fill gaps
+```
+
+If sources conflict:
+
+```text
+owner-boundary / validation / source-blocking rules win
+ReleaseCheck gates win
+safety and corruption prevention win over convenience
+```
+
+---
+
+# 5. Source freeze rules
+
+Before coding, freeze the source package.
+
+Create a source manifest:
+
+```text
+source file name
+role
+trusted/reuse/quarantine/deferred
+hash
+notes
+```
+
+Old scripts may be reused only if:
+
+```text
+the code is understandable
+the code fits the owner reducer model
+the code does not parse command/context/card output as canon
+the code is duplicate-safe or can be wrapped with operation keys
+the code has no manual mutation shortcuts active
+the code can be tested in AI Dungeon hooks
+```
+
+Old scripts must be quarantined if:
+
+```text
+they mutate state directly from raw output
+they treat cards/context as canon
+they do broad cleanup across owners
+they grant items/abilities/stats/XP without validation
+they duplicate rewards or effects on replay
+they silently rewrite schema
+```
+
+---
+
+# 6. AI Dungeon hook order lock
+
+Codepass 1 must define the hook pipeline clearly.
+
+Recommended order:
+
+```text
+1. Input hook receives user input.
+2. CommandRouter checks if input is command.
+3. Commands render display-only output and mark source-blocked.
+4. Non-command input enters EventScannerLite as intent/hint only.
+5. Output hook receives AI Dungeon model output.
+6. SourceClassifier blocks command/context/card/debug/releasecheck output from mutation.
+7. EventScannerLite scans safe input/output for hints.
+8. ProposalBuilder creates local clause proposals.
+9. CanonValidator accepts/rejects/pends proposals.
+10. Resolver binds targets with owner-specific sanitizers.
+11. ReducerRegistry routes accepted proposals to owner reducers.
+12. Owner reducers mutate only owned paths.
+13. OperationLedger records durable/recent keys.
+14. DirtyQueue marks affected displays/context/card mirrors.
+15. InvariantChecker validates state.
+16. ContextBuilder rebuilds filtered context.
+17. CardSyncLite produces dry-run mirrors only.
+18. ReleaseCheck/Regression commands inspect but do not mutate gameplay truth.
+```
+
+No hook may allow context/command/card output to become fresh canon.
+
+---
+
+# 7. Schema and migration lock
+
+Codepass 1 must define:
+
+```text
+schemaVersion
+buildVersion
+migrationVersion
+featureFlagVersion
+stateRootPath
+ownerPaths
+protectedPaths
+quarantinePath
+auditPath
+operationLedgerPath
+```
+
+Migration rules:
+
+```text
+migration may add missing structures
+migration may normalize shape
+migration may quarantine unsafe records
+migration may preserve old data with warnings
+migration may not grant items/XP/abilities/stats/forms/property
+migration may not delete active truth without archive/quarantine
+migration may not silently rewrite owner state
+```
+
+If migration cannot safely convert old state:
+
+```text
+block release
+write migration report
+keep original data in quarantine/archive
+```
+
+---
+
+# 8. Feature flag lock
+
+Every production system must have a feature status.
+
+Statuses:
+
+```text
+active
+shell_only
+display_only
+validator_only
+dry_run_only
+deferred
+disabled
+blocked
+```
+
+Required default locks:
+
+```text
+liveCardSync = disabled/dry_run_only
+manualMutationCommands = disabled
+advancedCombat = shell_only or deferred
+absorptionEvolution = disabled/shell_only
+warfare = disabled/shell_only
+fullFactionReputation = deferred unless PC20 gates active
+fullDomainEconomy = deferred unless owner tests pass
+fullCreatureEcology = shell/active only where PC17 tests pass
+```
+
+Commands must display deferred status honestly.
+
+---
+
+# 9. Owner reducer registry lock
+
+Owner reducers must own exactly their domain.
+
+Minimum owners:
+
+```text
+PlayerIdentityReducer
+BodyReducer
+InventoryReducer
+AbilityReducer
+QuestReducer
+ActorReducer
+PlaceReducer
+TimeReducer
+ProgressionReducer
+Stats/Invariant helpers
+CombatReducer
+FormLogic/BodyForm path
+Threat/Encounter helper
+Lore/Knowledge manager
+ContextBuilder/CardSyncLite
+Creature/Bestiary helper
+EconomyReducer
+CraftingReducer
+Faction/Law helper
+Relationship/Party helper
+ControlledEntity helper
+Domain/Property helper
+AdvancedCoordinator shell
+```
+
+Rules:
+
+```text
+reducers reject unsafe routed data
+reducers mutate only owned paths
+cross-system effects emit owner-routed proposals or split results
+no reducer writes arbitrary other-owner fields
+```
+
+---
+
+# 10. Command safety lock
+
+All command output starts with:
+
+```text
+[AIDRPG]
+```
+
+All command output is non-canon.
+
+Disabled manual mutation commands include:
+
+```text
+/giveitem
+/givegold
+/learn
+/giveability
+/setlevel
+/givexp
+/setstat
+/damage
+/heal
+/kill
+/setrace
+/setform
+/transform
+/spawnencounter
+/setthreat
+/scaleenemies
+/writecard
+/synccards live
+/importascanon
+/owncastle
+/claimkingdom
+/summon active mutation
+/absorb
+/evolve
+/winwar
+/conquer
+```
+
+If any of these mutate gameplay state in Codepass 1, release fails.
+
+---
+
+# 11. ReleaseCheck registry PC01–PC25
+
+The final ReleaseCheck must register gates from every production chunk.
+
+At minimum:
+
+```text
+PC01 foundation/freeze gates
+PC02 command/player setup gates
+PC03 schema readiness gates
+PC04 body/status gates
+PC05 inventory/custody gates
+PC06 ability evidence/stability gates
+PC07 quest/reward gates
+PC08 actor/social/witness gates
+PC09 place/time/deadline gates
+PC10 progression/formula gates
+PC11 stat/invariant gates
+PC12 combat damage/healing gates
+PC13 form/race/constraint gates
+PC14 threat/encounter/no-rubber-band gates
+PC15 lore/knowledge/card/context gates
+PC16 context/card safety gates
+PC17 creature/bestiary gates
+PC18 economy/transaction gates
+PC19 crafting/repair/enchanting gates
+PC20 faction/law/reputation gates
+PC21 romance/party/consent gates
+PC22 controlled entity gates
+PC23 domain/property gates
+PC24 advanced-system activation gates
+PC25 final assembly/QA/migration gates
+```
+
+ReleaseCheck outputs:
+
+```text
+PASS
+WARN
+FAIL
+BLOCKED
+DEFERRED
+```
+
+`WARN` is allowed only when feature is honestly deferred or shell-only.
+
+`FAIL` or `BLOCKED` blocks accepted release.
+
+---
+
+# 12. QA matrix T0–T10
+
+## T0 — Boot and syntax
+
+```text
+script loads in AI Dungeon
+no syntax errors
+no global crashes
+state root initializes
+commands route
+```
+
+## T1 — Runtime and command foundation
+
+```text
+all display commands non-canon
+source blockers work
+state manager works
+migration does not corrupt state
+```
+
+## T2 — Parser/proposal/validator safety
+
+```text
+scanner only hints
+ProposalBuilder creates structured proposals
+CanonValidator rejects unsafe sources
+owner-specific sanitizers work
+```
+
+## T3 — Owner reducers
+
+```text
+each reducer mutates only owned paths
+split results route correctly
+unsafe routed data rejected
+```
+
+## T4 — Duplicate/idempotency
+
+```text
+items not duplicated
+XP not duplicated
+rewards not duplicated
+damage/healing not duplicated
+quests not duplicated
+encounters not duplicated
+transformations not duplicated
+```
+
+## T5 — Context/card/memory
+
+```text
+context filters hidden lore
+candidate states stay candidate
+CardSync dry-run only
+stale context blocked
+```
+
+## T6 — Player-breaker adversarial tests
+
+```text
+user tries to force commands
+user tries context/card exploit
+user repeats output
+user uses ambiguous clauses
+user asks for illegal ownership/rewards/powers
+```
+
+## T7 — Long-run stability
+
+```text
+50-turn travel/inventory/quest loop
+50-turn combat/body loop
+50-turn social/quest loop
+50-turn lore/context loop
+state size remains under AI Dungeon target
+```
+
+## T8 — Deferred systems honesty
+
+```text
+advanced systems display deferred/shell-only
+no fake PASS
+no hidden live activation
+```
+
+## T9 — Migration and recovery
+
+```text
+old saves migrate or quarantine
+bad data does not crash
+repair actions audited
+```
+
+## T10 — Release candidate acceptance
+
+```text
+all critical tests pass
+WARNs documented
+no FAIL/BLOCKED gates
+handoff file generated
+```
+
+---
+
+# 13. Player-breaker minimum tests
+
+The final player-breaker check must include at least:
+
+```text
+command output reimport attempt
+context output reimport attempt
+Story Card owner-state exploit
+duplicate reward replay
+duplicate XP replay
+duplicate damage replay
+failed ability learning exploit
+fake item ownership from visible item
+fake quest payment from promise
+private crime becoming public reputation
+rumor becoming fact
+hidden lore leak
+summon attempt becoming active summon
+base access becoming ownership
+battle victory becoming territory control
+absorption attempt becoming power gain
+manual mutation command attempts
+```
+
+Any success by these attacks is release-blocking.
+
+---
+
+# 14. Long-run test scenarios
+
+Minimum long-run scenarios:
+
+## Scenario A — Low fantasy start
+
+```text
+create player
+start in tavern
+meet actor
+accept quest
+see item
+buy item
+travel
+fight wolf
+return reward
+```
+
+Verifies core RPG flow.
+
+## Scenario B — Transformation/body stress
+
+```text
+human to wolf form
+tool-use constraints
+combat attempt
+reversion
+inventory unchanged
+true race preserved
+```
+
+Verifies body/form safety.
+
+## Scenario C — Lore/context/card stress
+
+```text
+world lore hidden fact
+rumor heard
+context rebuilds
+card mirror dry-run
+secret discovered later
+```
+
+Verifies knowledge boundaries.
+
+## Scenario D — Economy/crafting/domain stress
+
+```text
+shop quote
+purchase
+craft attempt
+material use
+base storage
+construction progress
+income due
+```
+
+Verifies owner routing.
+
+## Scenario E — Advanced boundary stress
+
+```text
+party order
+summon directive
+absorption attempt
+battlefield victory text
+territory claim
+```
+
+Verifies advanced systems stay gated.
+
+---
+
+# 15. Migration acceptance criteria
+
+Migration passes only if:
+
+```text
+valid old data preserved
+unsafe old data quarantined
+missing shapes created
+schema version updated
+operation ledger initialized
+source blockers initialized
+feature flags initialized
+no gameplay rewards granted
+no ownership granted
+no powers granted
+no hidden lore leaked
+```
+
+Migration fails if:
+
+```text
+state crashes
+active truth lost
+manual mutation shortcuts appear
+old card/context prose becomes canon
+schema root splits into competing paths
+```
+
+---
+
+# 16. Final assembly order
+
+Codepass 1 should assemble in this order:
+
+```text
+1. File/module wrapper compatible with AI Dungeon.
+2. Safe state root and schema version.
+3. Source classifier and command non-canon blocker.
+4. CommandRouter and display command shell.
+5. OperationLedger and AuditLogger.
+6. DirtyQueue and protected path helpers.
+7. EventScannerLite hint-only scanner.
+8. ProposalBuilder with local clause summaries.
+9. CanonValidator with source/owner gates.
+10. Resolver and owner-specific sanitizers.
+11. ReducerRegistry and owner reducers.
+12. ContextBuilder with non-canon policy.
+13. CardSyncLite dry-run only.
+14. InvariantChecker and repair/quarantine rules.
+15. ReleaseCheck registry PC01–PC25.
+16. Regression/player-breaker harness.
+17. Migration and cleanup locks.
+18. Final RC acceptance report.
+```
+
+Do not start with advanced features.
+Build foundation first.
+
+---
+
+# 17. Failure-stop conditions
+
+Stop the release immediately if any occur:
+
+```text
+AI Dungeon script syntax/runtime crash
+state root corruption
+context/command/card output mutates gameplay state
+manual mutation command works
+duplicate reward/XP/damage/healing possible
+owner reducer writes another owner path directly
+hidden lore leaks
+quest promise pays reward
+visible item becomes owned
+ability output-only claim becomes stable
+current form overwrites true race
+player level scales world threats
+Story Card creates active encounter or item/property/form/quest
+CardSync writes live cards by default
+cleanup deletes active truth or durable keys
+ReleaseCheck has FAIL/BLOCKED
+```
+
+Do not patch around these casually.
+Fix the owner/gate/source problem.
+
+---
+
+# 18. Release candidate report requirements
+
+A release candidate handoff must include:
+
+```text
+script filename
+schema version
+feature flags
+known active systems
+known deferred systems
+ReleaseCheck result
+regression result
+player-breaker result
+long-run result
+migration result
+state size estimate
+known WARNs
+known blocked features
+next Codepass recommendations
+```
+
+If this report is missing, RC is not accepted.
+
+---
+
+# 19. What “done” means
+
+Done does not mean every feature is fully simulated.
+
+Done means:
+
+```text
+active systems work
+inactive systems are honest
+deferred systems do not pretend to work
+unsafe sources are blocked
+owner boundaries are enforced
+core gameplay loop survives AI Dungeon use
+future systems can be activated without rewrites
+```
+
+The final script can grow after RC, but only by adding owner rules, validators, operation keys, and tests.
+
+---
+
+# 20. Codepass 1 handoff prompt
+
+Use this when starting the actual code conversation:
+
+```text
+We are beginning Codepass 1 — Release Candidate Assembly for AIDRPG / WorldLedger.
+Use the final planning package as law.
+Start from Build Chunk 17 Foundation Code Pass 1 Plan and Production Chunks 01–25.
+Build WorldLedgerV0.18.0_RC_ASSEMBLY_START.
+Do not create new planning chunks.
+Implement the AI Dungeon-compatible script foundation first: state root, source blocking, command router, operation ledger, audit logger, dirty queue, parser/proposal/validator/reducer pipeline, owner reducers, context builder, CardSyncLite dry-run, InvariantChecker, ReleaseCheck, regression and player-breaker harness.
+Reuse old code only after owner-boundary review.
+Keep live Card Sync and manual mutation commands disabled.
+Every mutation must be owner-routed, validator-approved, operation-keyed, and test-covered.
+Stop and report if any ReleaseCheck gate is FAIL or BLOCKED.
+```
+
+---
+
+# 21. Final acceptance rule
+
+```text
+The plan is complete when it can prevent the old failures before they happen.
+The code is accepted only when the tests prove it.
+```
+
+Production planning is complete.
+
+Next phase:
+
+```text
+Codepass 1 — Release Candidate Assembly
+```

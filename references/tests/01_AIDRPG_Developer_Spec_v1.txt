@@ -1,0 +1,2341 @@
+AIDRPG Developer Spec v1
+
+0. Document status
+
+Document name: AIDRPG Developer Spec v1
+Purpose: Convert the repaired AIDRPG Design Bible into a buildable technical blueprint.
+Status: First official developer-facing specification.
+This is not code yet.
+This is the source document that the first script build should follow.
+
+This document defines:
+
+* what the first version of the script should build
+* what should not be built yet
+* which modules exist
+* which module owns which truth
+* what state should look like
+* how AI Dungeon narration becomes validated state
+* how duplicate prevention works
+* how Context and Story Cards should be handled
+* which commands should exist first
+* how the build should be phased
+* what tests must pass before expansion
+
+The main goal is to stop guessing during implementation.
+
+⸻
+
+1. Implementation goal
+
+AIDRPG is a freeform RPG continuity engine for AI Dungeon.
+
+It should not replace AI Dungeon’s narration. It should stabilize it.
+
+The script should:
+
+1. Read player input and AI output.
+2. Detect possible gameplay events.
+3. Convert those events into structured proposals.
+4. Validate proposals against canon state.
+5. Commit only valid changes through owner reducers.
+6. Prevent duplicate changes.
+7. Update protected summaries and Story Cards safely.
+8. Inject compact relevant context back into AI Dungeon.
+9. Provide commands and audits so the user can inspect what happened.
+
+The first real build should prioritize truth safety, state consistency, and debuggability over feature quantity.
+
+⸻
+
+2. Non-goals for v1
+
+Developer Spec v1 does not attempt to fully implement the entire 33-chunk design bible immediately.
+
+The first build should not try to fully implement:
+
+* full economy simulation
+* full domain/base/labor system
+* full crafting system
+* full investigation system
+* full generated Story Card automation
+* full actor/faction/reputation network
+* full anime-style absorption/evolution
+* full multi-protagonist support
+* full marketplace pricing
+* full legal/crime system
+* full weather simulation
+* full route map generation
+* full complex boss phase engine
+* full automated ability balancing for every possible power
+
+These systems are planned, but they should be staged.
+
+The first build should create the stable foundation those systems will later use.
+
+⸻
+
+3. MVP scope
+
+3.1 MVP must include
+
+The first script target should include:
+
+Core state
+
+* player identity
+* race/species text field
+* age text field
+* appearance summary
+* level
+* XP
+* core stats
+* HP / MP / EP
+* injuries
+* conditions
+* fatigue
+* current location
+* current scene summary
+* current time summary
+* inventory items
+* equipped items
+* item ownership/custody/access
+* currency as accessible personal funds
+* abilities as stable/candidate/passive records
+* active quests
+* active actors
+* companion presence
+* operation ledger
+* audit log
+* protected summary card registry
+
+Core modules
+
+* StateManager
+* EventScanner
+* ProposalBuilder
+* CanonValidator
+* OperationLedger
+* ReducerRegistry
+* BodyReducer
+* InventoryReducer
+* AbilityReducer
+* QuestReducer
+* ActorReducer
+* PlaceReducer
+* TimeReducer
+* ProgressionReducer
+* ContextBuilder
+* CardSyncLite
+* CommandRouter
+* AuditLogger
+* CleanupManagerLite
+
+Required commands
+
+* /help
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+* /debuglast
+* /cardaudit
+* /contextaudit
+
+Required protected summaries
+
+* AIDRPG Player Sheet
+* AIDRPG Body Status
+* AIDRPG Abilities
+* AIDRPG Inventory/Equipment
+* AIDRPG Quest Log
+* AIDRPG Social Memory
+* AIDRPG Current Location
+
+Required validation protections
+
+* player input is attempt, not automatic success
+* AI output is proposal, not automatic truth
+* Story Cards do not create truth
+* Context text does not create truth
+* rumors/claims/theories are not confirmed facts
+* operation keys prevent duplicate changes
+* absent actors cannot act
+* inaccessible items cannot be used
+* reward payouts happen once
+* candidate abilities are not stable abilities
+* generated cards are limited or disabled at first
+
+⸻
+
+3.2 MVP should include lightly
+
+The first build may include simplified versions of:
+
+* combat consequence validation
+* ability use costs
+* quest progress
+* actor memory
+* place memory
+* XP rewards
+* basic travel/time advancement
+* basic recovery after rest
+* simple item pickup/drop/use
+* simple currency transactions
+
+These should be conservative and auditable.
+
+⸻
+
+3.3 MVP should defer
+
+The first build should defer:
+
+* advanced economy
+* detailed pricing tables
+* labor/work unit system
+* crafting project engine
+* investigation case engine
+* evidence/custody chain beyond simple quest items
+* generated actor/place/item/quest cards beyond manual-safe examples
+* domain/base management
+* faction standing network
+* title/reputation propagation
+* absorption/evolution engine
+* copy/mimic engine
+* multi-protagonist mode
+* strict combat math
+* full weather/travel maps
+
+Deferred does not mean removed.
+
+It means the foundation must exist first.
+
+⸻
+
+4. Build modes
+
+AIDRPG should support modes through feature flags.
+
+4.1 Narrative Mode
+
+Purpose:
+
+* lightest gameplay enforcement
+* minimal visible numbers
+* many soft-fail outcomes
+* fewer hard rejections
+* best for story-first players
+
+Behavior:
+
+* validates major contradictions
+* avoids duplicate items/rewards
+* tracks basic state
+* combat is mostly narrative severity
+* economy/crafting simplified
+
+4.2 Balanced RPG Mode
+
+Purpose:
+
+* default intended mode
+* resources, XP, inventory, quests, abilities, and combat matter
+* validation is active but not oppressive
+
+Behavior:
+
+* HP/MP/EP tracked
+* costs matter
+* item custody matters
+* quest rewards dedupe
+* ability candidates/stable abilities enforced
+* soft-fail preferred over hard denial
+
+4.3 Strict Simulation Mode
+
+Purpose:
+
+* stronger system enforcement
+* more exact costs, time, injury, crafting, travel, economy
+
+Behavior:
+
+* more frequent audits
+* harder validation
+* stricter resource and time checks
+* more explicit failure states
+
+4.4 Debug Mode
+
+Purpose:
+
+* development and testing
+
+Behavior:
+
+* shows proposals
+* shows validation decisions
+* shows operation keys
+* shows dirty targets
+* shows card/context changes
+* exposes hidden technical state only when safe
+
+4.5 Safe Mode
+
+Purpose:
+
+* emergency stability mode
+
+Behavior:
+
+* disables generated card creation
+* limits card updates
+* limits event parsing to core systems
+* prevents cleanup from deleting important records
+* preserves core protected summaries
+* prioritizes commands and audits
+
+Safe Mode should be available if the script begins drifting or over-writing memory.
+
+⸻
+
+5. Module map
+
+5.1 StateManager
+
+Owns loading, saving, initializing, migrating, and validating global script state.
+
+Responsibilities:
+
+* create default state
+* ensure missing fields are initialized
+* run schema migration
+* provide read/write access to reducers
+* maintain version number
+* prevent direct raw mutation from non-owner modules
+
+Does not:
+
+* decide gameplay truth
+* parse AI output
+* create cards directly
+
+⸻
+
+5.2 EventScanner
+
+Reads player input and AI output for possible events.
+
+Responsibilities:
+
+* identify candidate event phrases
+* detect command input
+* detect likely item, actor, ability, quest, location, time, damage, reward, and resource events
+* mark source hook: input, output, context, command, manual
+* avoid scanning card text as event source
+
+Does not:
+
+* commit state
+* decide truth
+* award XP
+* create cards
+
+EventScanner only finds possible events.
+
+⸻
+
+5.3 ProposalBuilder
+
+Converts raw scanner hits into structured event proposals.
+
+Responsibilities:
+
+* normalize event type
+* attach source text hash
+* attach candidate actor/item/place IDs
+* attach confidence score
+* attach truth status
+* select proposed owner reducer
+* create preliminary operation key
+
+Does not:
+
+* commit the proposal
+* assume success
+* bypass CanonValidator
+
+⸻
+
+5.4 CanonValidator
+
+The central truth gate.
+
+Responsibilities:
+
+* validate proposals
+* reject contradictions
+* soften unsupported outcomes
+* classify facts as confirmed, claimed, rumored, suspected, pending, false, or disputed
+* check ownership
+* check duplicate ledger
+* check actor presence
+* check item custody/access
+* check ability status
+* check resource costs
+* check quest proof
+* check scale plausibility
+* check name hygiene
+* assign validation outcome
+
+Does not:
+
+* directly mutate state except through validation record
+* create cards
+* write context
+
+CanonValidator is the most important module.
+
+⸻
+
+5.5 ReducerRegistry
+
+Routes accepted proposals to the correct owner reducer.
+
+Responsibilities:
+
+* map event types to reducers
+* ensure only owner reducer commits final state
+* reject direct non-owner writes
+
+⸻
+
+5.6 BodyReducer
+
+Owns:
+
+* HP
+* MP
+* EP
+* injuries
+* conditions
+* fatigue
+* unconsciousness/death-boundary state
+* recovery ticks
+* resource costs
+* healing effects
+
+Does not own:
+
+* ability existence
+* inventory items
+* XP rewards
+* enemy state
+
+⸻
+
+5.7 InventoryReducer
+
+Owns:
+
+* items
+* equipment
+* materials
+* currency as item/currency state
+* ownership
+* custody
+* access
+* item condition
+* item quality
+* item acquisition
+* item loss
+* item transfer
+* item destruction
+
+Does not own:
+
+* quest completion
+* reward eligibility
+* crafting project logic
+* actor relationship
+
+⸻
+
+5.8 AbilityReducer
+
+Owns:
+
+* stable abilities
+* candidate abilities
+* passives
+* talents
+* specializations
+* ability rank
+* ability costs
+* ability evidence
+* sealed/unavailable abilities
+* ability aliases
+
+Does not own:
+
+* MP/EP/HP commits
+* XP commits
+* card creation directly
+
+⸻
+
+5.9 QuestReducer
+
+Owns:
+
+* quest records
+* objectives
+* active/blocked/ready/completed/failed status
+* promised rewards
+* reward eligibility
+* quest archive
+* quest duplication/merge
+
+Does not own:
+
+* actual money payment
+* item transfer
+* XP commit
+* actor memory directly
+
+⸻
+
+5.10 ActorReducer
+
+Owns:
+
+* actor identity
+* actor importance
+* actor aliases
+* actor current state
+* actor presence
+* actor relationship summaries
+* actor memories
+* actor location if known
+* companion presence
+
+Does not own:
+
+* public reputation scope
+* investigation evidence truth
+* quest objective completion
+
+⸻
+
+5.11 PlaceReducer
+
+Owns:
+
+* current location
+* places
+* buildings
+* scene state
+* local hazards
+* local exits
+* route records in simple form
+
+Does not own:
+
+* time passage
+* travel duration math, except location state updates after TimeReducer/Travel logic validates arrival
+
+⸻
+
+5.12 TimeReducer
+
+Owns:
+
+* current time summary
+* time jumps
+* rest time
+* travel time
+* deadlines
+* recovery ticks
+* cooldown ticks
+* project ticks in later versions
+
+Does not own:
+
+* place descriptions
+* quest status except deadline events proposed to QuestReducer
+
+⸻
+
+5.13 ProgressionReducer
+
+Owns:
+
+* Level XP
+* Total XP
+* XP to next level
+* stat XP
+* stat increases
+* domain XP in later versions
+* XP anti-farm
+* duplicate XP reward prevention
+
+Does not own:
+
+* quest completion
+* enemy death validation
+* ability existence
+
+⸻
+
+5.14 ContextBuilder
+
+Builds compact context for AI Dungeon.
+
+Responsibilities:
+
+* choose relevant packets
+* prioritize correction notes
+* enforce budget
+* avoid full memory dumps
+* distinguish confirmed/suspected/rumored
+* inject only relevant current truth
+
+Does not:
+
+* create canon
+* update cards
+* mutate gameplay state
+
+⸻
+
+5.15 CardSyncLite
+
+First version of card synchronization.
+
+Responsibilities:
+
+* maintain protected summary cards
+* update only dirty protected summaries
+* optionally create extremely limited generated cards in later stages
+* enforce trigger safety
+* prevent duplicate card creation
+* avoid full card scans every hook
+
+Does not:
+
+* create gameplay truth
+* parse cards as events
+* create many cards per turn
+
+⸻
+
+5.16 CommandRouter
+
+Handles player commands.
+
+Responsibilities:
+
+* detect commands
+* route inspection commands
+* route debug commands
+* route manual override commands if enabled
+* prevent command output from being parsed as story narration
+
+⸻
+
+5.17 AuditLogger
+
+Records recent validation decisions.
+
+Responsibilities:
+
+* last proposals
+* accepted changes
+* rejected changes
+* reasons
+* operation keys
+* dirty targets
+* card/context actions
+
+Must support /debuglast.
+
+⸻
+
+5.18 CleanupManagerLite
+
+Performs conservative cleanup.
+
+Responsibilities:
+
+* remove stale temporary parser candidates
+* compact old audit logs
+* limit recent operation list size
+* prevent dirty queue growth
+* never delete active quests, core state, important actors, important items, or protected summaries
+
+Cleanup must never invent gameplay truth.
+
+⸻
+
+6. Canon event proposal schema
+
+Every detected possible event must become a proposal with the same shape.
+
+Recommended schema:
+
+EventProposal {
+  proposalId: string,
+  turnId: string,
+  sourceHook: 'input' | 'output' | 'command' | 'manual' | 'migration',
+  sourceTextHash: string,
+  rawText: string,
+  eventType: string,
+  subtype?: string,
+  actorId?: string,
+  targetId?: string,
+  itemId?: string,
+  placeId?: string,
+  questId?: string,
+  abilityId?: string,
+  ownerReducer: string,
+  confidence: number,
+  truthStatus: string,
+  evidenceType: string,
+  proposedChanges: object,
+  operationKey: string,
+  validation: null | ValidationResult,
+  dirtyTargets: string[],
+  notes: string[]
+}
+
+6.1 Required fields
+
+Every proposal must have:
+
+* proposalId
+* turnId
+* sourceHook
+* sourceTextHash
+* rawText
+* eventType
+* ownerReducer
+* confidence
+* truthStatus
+* evidenceType
+* proposedChanges
+* operationKey
+
+6.2 Source hooks
+
+Allowed source hooks:
+
+* input: player input
+* output: AI Dungeon output
+* command: explicit command
+* manual: explicit manual override
+* migration: state migration
+
+Disallowed as canon event sources:
+
+* Story Card text
+* Context text
+* debug text
+* examples
+* old archive summaries
+
+These can inform context, but they cannot create new gameplay events by themselves.
+
+⸻
+
+7. Validation result schema
+
+Every proposal receives a validation result.
+
+ValidationResult {
+  outcome: 'accept' | 'reject' | 'pending' | 'soft_fail' | 'hard_deny' | 'merge' | 'archive' | 'supersede' | 'flag',
+  reason: string,
+  confidenceAfterValidation: number,
+  ownerReducer: string,
+  committed: boolean,
+  operationKey: string,
+  duplicate: boolean,
+  dirtyTargets: string[],
+  auditSummary: string
+}
+
+7.1 Outcome meanings
+
+accept
+
+The update is valid and should be committed.
+
+reject
+
+The update is unsupported and should not be committed.
+
+pending
+
+The update may be true but needs more evidence.
+
+soft_fail
+
+The player/story gets a partial result, weaker result, or complication.
+
+hard_deny
+
+The update is invalid, duplicate, unsafe, or canon-breaking.
+
+merge
+
+The proposal matches an existing record and should update/merge with it.
+
+archive
+
+The record should move from active state to archive.
+
+supersede
+
+A stronger confirmed fact replaces older uncertain state.
+
+flag
+
+The event needs audit/context warning but not necessarily state change.
+
+⸻
+
+8. Truth status rules
+
+Every long-term fact should have a truth status.
+
+Allowed statuses:
+
+* confirmed
+* observed
+* claimed
+* rumored
+* suspected
+* supported
+* disputed
+* contradicted
+* false
+* unknown
+* candidate
+* stable
+* sealed
+* unavailable
+
+8.1 Global truth rules
+
+* Rumor is not fact.
+* Claim is not fact.
+* Theory is not fact.
+* Candidate ability is not stable ability.
+* Promised reward is not paid reward.
+* Available loot is not owned inventory.
+* Present actor is not the same as known actor elsewhere.
+* Story Card text is not evidence.
+* Context text is not evidence.
+
+⸻
+
+9. Reducer ownership table
+
+Truth Type	Owner Reducer
+HP / MP / EP	BodyReducer
+injuries / conditions / fatigue	BodyReducer
+healing / recovery	BodyReducer
+items / inventory	InventoryReducer
+equipment	InventoryReducer
+ownership / custody / access	InventoryReducer
+currency	InventoryReducer or EconomyReducer later; MVP stores accessible currency in InventoryReducer
+abilities	AbilityReducer
+ability candidates	AbilityReducer
+passives / talents	AbilityReducer
+ability evidence	AbilityReducer
+level XP	ProgressionReducer
+stat XP	ProgressionReducer
+level-up	ProgressionReducer
+quests	QuestReducer
+quest objectives	QuestReducer
+quest reward eligibility	QuestReducer
+quest reward payment	EconomyReducer later; MVP can route currency reward through InventoryReducer after QuestReducer eligibility
+actors	ActorReducer
+companions	ActorReducer / Party layer later
+actor presence	ActorReducer
+actor relationship summary	ActorReducer
+public reputation	ReputationReducer later; MVP stores simple social notes in ActorReducer/Social summary
+current location	PlaceReducer
+scene state	PlaceReducer
+places/buildings	PlaceReducer
+routes	PlaceReducer MVP, TravelReducer later
+time	TimeReducer
+deadlines	TimeReducer owns clock; QuestReducer owns quest consequence
+context	ContextBuilder
+protected cards	CardSyncLite
+generated cards	CardSync later
+audits	AuditLogger
+duplicate prevention	OperationLedger
+
+If ownership is unclear, CanonValidator must reject direct mutation and create an audit flag.
+
+⸻
+
+10. OperationLedger rules
+
+OperationLedger prevents repeated output from applying the same change more than once.
+
+10.1 Operation key format
+
+Recommended format:
+
+category.action.target.source.turnOrEvent
+
+Examples:
+
+item.add.iron_dagger.craft_project_002.turn_91
+currency.reward.clear_mill_wolves.old_bren.turn_150
+xp.quest.clear_mill_wolves.complete.turn_145
+ability.evidence.mana_slash.success.turn_44
+combat.damage.player.wolf_bite.turn_33
+quest.objective.clear_mill_wolves.wolf_count_3.turn_82
+actor.relationship.mara.trust.saved_brother.turn_201
+card.update.player_sheet.turn_202
+
+10.2 Permanent operation keys
+
+Permanent keys should be kept for:
+
+* quest rewards
+* unique item rewards
+* major card creation
+* major quest completion
+* major case solution later
+* contract payment later
+* source absorption later
+* boss defeat
+* title grants
+* domain project completion later
+
+10.3 Rolling operation keys
+
+Rolling recent keys can be used for:
+
+* ordinary damage
+* minor resource costs
+* minor XP
+* repeated output line protection
+* context/card update dedupe
+* minor actor mentions
+
+Rolling keys should be compacted after enough turns.
+
+10.4 Duplicate behavior
+
+If duplicate detected:
+
+* do not commit again
+* write audit entry
+* do not mark unnecessary dirty targets
+* do not create another card
+* do not pay reward again
+
+⸻
+
+11. Parser confidence model
+
+Every proposal needs a confidence score from 0.0 to 1.0.
+
+11.1 Confidence bands
+
+Score	Meaning
+0.00–0.19	ignore or hard deny
+0.20–0.39	weak, likely pending or reject
+0.40–0.59	possible, needs validation
+0.60–0.79	likely, validate normally
+0.80–1.00	strong, accept if no contradiction
+
+11.2 Confidence increases when
+
+* AI output explicitly confirms event
+* event uses known actor/item/place/ability
+* event matches player input attempt
+* event occurs in current scene
+* event has clear subject and object
+* event has direct consequence language
+* event is not contradicted by state
+* event source is command/manual override
+
+11.3 Confidence decreases when
+
+* phrase is hypothetical
+* phrase is negated
+* phrase is dream/vision/metaphor
+* phrase is quoted dialogue
+* phrase is rumor or claim
+* actor is absent
+* item is inaccessible
+* location mismatch exists
+* event uses generic name
+* event contradicts protected state
+* event comes from card/context/debug/example text
+* similar-name ambiguity exists
+
+11.4 Negation examples
+
+Do not add item:
+
+* “I do not take the sword.”
+* “You almost pick up the coin.”
+* “The key is not in your hand.”
+* “Mara says she never saw the dagger.”
+
+Do not mark death:
+
+* “The wolf looks dead, but then rises.”
+* “You think he might be dead.”
+* “He nearly dies.”
+
+Do not mark quest complete:
+
+* “You are close to finishing the quest.”
+* “Bren says this might be enough.”
+
+⸻
+
+12. Resolver rules
+
+Resolvers match names from text to state records.
+
+Resolvers needed:
+
+* ActorResolver
+* ItemResolver
+* PlaceResolver
+* AbilityResolver
+* QuestResolver
+* CardResolver
+
+12.1 Resolver scoring factors
+
+* exact canonical key match
+* exact display name match
+* alias match
+* current scene presence
+* custody/access relevance
+* quest/case link
+* recent mention
+* type compatibility
+* spelling similarity
+* ambiguity count
+* generic-name penalty
+
+12.2 Ambiguity rule
+
+If two records plausibly match, do not guess blindly.
+
+Preferred outcomes:
+
+* choose current-scene accessible object if confidence is high
+* mark pending if ambiguous
+* create audit warning
+* ask user only if absolutely necessary and command cannot resolve
+
+12.3 Similar-name examples
+
+* “iron key” is not automatically “iron keyring.”
+* “Mara” is not automatically “Mara’s sister.”
+* “Old Chapel Road” is not automatically “Old Chapel.”
+* “Captain Mora” and “Captain Morra” may be alias if same role/location/history.
+* “Mana Slash” and “Blue Crescent” may be alias or variant depending effect/cost/source.
+
+⸻
+
+13. Context budget rules
+
+ContextBuilder must enforce a budget.
+
+The exact character budget depends on AI Dungeon limits, but the system should behave as if context is scarce.
+
+13.1 Context packet order
+
+1. Critical correction packet
+2. Current scene/location packet
+3. Player danger/status packet
+4. Active combat packet
+5. Present actors/companions packet
+6. Item custody/equipment warning packet
+7. Current quest/deadline packet
+8. Current ability limit packet
+9. Current case/lead packet later
+10. Reputation/faction warning packet later
+11. Domain/economy blocker packet later
+12. Relevant archive callback packet only if needed
+
+13.2 MVP context packets
+
+MVP should support:
+
+* correction packet
+* scene/location packet
+* status danger packet
+* actor presence packet
+* inventory custody packet
+* active quest packet
+* ability limit packet
+
+13.3 Context must not include
+
+* full inventory every turn
+* all stats every turn
+* every quest every turn
+* every actor every turn
+* archived cases unless relevant
+* all ability descriptions
+* old transaction history
+* old combat logs
+* uncertain facts without labels
+
+13.4 Context correction examples
+
+Mara is not present; she is at Greyford smithy with the player’s sword.
+Shadow Step is only a candidate and should not work as reliable teleport yet.
+The iron sword is in Mara’s custody for repair and cannot be used right now.
+Lord Veyr is suspected, not proven guilty.
+
+⸻
+
+14. Story Card rules
+
+14.1 Core doctrine
+
+Story Cards mirror state.
+
+Story Cards do not create state.
+
+14.2 Protected cards
+
+Protected cards are the first supported card type.
+
+Required protected cards:
+
+* AIDRPG Player Sheet
+* AIDRPG Body Status
+* AIDRPG Abilities
+* AIDRPG Inventory/Equipment
+* AIDRPG Quest Log
+* AIDRPG Social Memory
+* AIDRPG Current Location
+
+Optional later:
+
+* AIDRPG Case Log
+* AIDRPG Domain Summary
+* AIDRPG Economy Summary
+
+14.3 Generated cards
+
+Generated cards should be disabled or extremely limited during early MVP.
+
+When enabled, generated cards require:
+
+* stable entity
+* importance threshold
+* clean canonical name
+* safe trigger
+* no duplicate canonical key
+* confirmed facts only or clearly labeled uncertainty
+* concise text
+* dirty target marker
+
+14.4 Generated card write limits
+
+Initial limits:
+
+* maximum 1 generated card creation per turn
+* maximum 2 generated card updates per turn
+* no full Story Card scan every hook
+* no generated cards from low-confidence events
+* no generated cards for candidates unless explicitly allowed later
+* no generated cards for random background NPCs/items/places
+
+14.5 Bad triggers
+
+Reject triggers like:
+
+* street
+* road
+* wolf
+* guard
+* sword
+* magic
+* skill
+* quest
+* item
+* shop
+* town
+* forest
+* companion
+* enemy
+
+14.6 Good triggers
+
+Accept triggers like:
+
+* Mara
+* Captain Mora
+* Frostmaw
+* Mana Slash
+* Slimebound Shield
+* Old Mill wolves
+* Blackwood Road
+* Greyford Caravan Escort
+* Dalen murder case
+
+⸻
+
+15. Card identity schema
+
+Every card should have a registry entry.
+
+CardRegistryEntry {
+  cardId: string,
+  canonicalKey: string,
+  cardType: 'protected' | 'actor' | 'place' | 'ability' | 'item' | 'quest' | 'case' | 'faction' | 'domain' | 'contract',
+  displayName: string,
+  triggers: string[],
+  sourceStateIds: string[],
+  protected: boolean,
+  generated: boolean,
+  dirty: boolean,
+  lastUpdatedTurn: string,
+  lastWriteHash: string,
+  status: 'active' | 'archived' | 'disabled' | 'error'
+}
+
+Canonical key examples:
+
+actor:mara
+place:old_mill
+ability:mana_slash
+item:slimebound_shield
+quest:clear_mill_wolves
+faction:greyford_guard
+
+⸻
+
+16. State schema v1
+
+16.1 Root state
+
+AIDRPGState {
+  version: string,
+  mode: string,
+  flags: object,
+  turn: TurnState,
+  player: PlayerState,
+  body: BodyState,
+  progression: ProgressionState,
+  inventory: InventoryState,
+  abilities: AbilityState,
+  quests: QuestState,
+  actors: ActorState,
+  places: PlaceState,
+  time: TimeState,
+  cards: CardState,
+  operationLedger: OperationLedgerState,
+  audits: AuditState,
+  cleanup: CleanupState
+}
+
+⸻
+
+16.2 PlayerState
+
+PlayerState {
+  id: string,
+  name: string,
+  raceSpecies: string,
+  age: string,
+  appearance: string,
+  buildIdentity: string,
+  specialization: string,
+  level: number,
+  stats: {
+    ATK: number,
+    DEF: number,
+    SPD: number,
+    INT: number,
+    LCK: number
+  },
+  notes: string[]
+}
+
+⸻
+
+16.3 BodyState
+
+BodyState {
+  hp: ResourceState,
+  mp: ResourceState,
+  ep: ResourceState,
+  injuries: InjuryRecord[],
+  conditions: ConditionRecord[],
+  fatigue: string,
+  deathBoundary: string,
+  bodyTraits: string[],
+  lastRecoveryTurn: string
+}
+ResourceState {
+  current: number,
+  max: number,
+  percent?: number
+}
+
+⸻
+
+16.4 ProgressionState
+
+ProgressionState {
+  xp: number,
+  totalXp: number,
+  xpToNext: number,
+  statXp: object,
+  recentRewards: string[],
+  antiFarm: object
+}
+
+MVP may use simplified XP.
+
+⸻
+
+16.5 InventoryState
+
+InventoryState {
+  currency: CurrencyState,
+  items: ItemRecord[],
+  equipped: object,
+  containers: object[],
+  recentItemEvents: string[]
+}
+ItemRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  type: string,
+  quantity: number,
+  quality: string,
+  condition: string,
+  owner: string,
+  custody: string,
+  access: 'accessible' | 'nearby' | 'unavailable' | 'stored' | 'lost' | 'sold' | 'destroyed',
+  location?: string,
+  equipped: boolean,
+  questLinked: boolean,
+  cardEligible: boolean,
+  notes: string[],
+  truthStatus: string
+}
+CurrencyState {
+  copperBase: number,
+  display: string,
+  access: 'personal' | 'stored' | 'domain' | 'unknown'
+}
+
+⸻
+
+16.6 AbilityState
+
+AbilityState {
+  abilities: AbilityRecord[],
+  passives: PassiveRecord[],
+  talents: TalentRecord[],
+  candidates: AbilityRecord[],
+  recentEvidence: string[]
+}
+AbilityRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  aliases: string[],
+  category: string,
+  status: 'hint' | 'candidate' | 'unstable' | 'stable' | 'sealed' | 'unavailable',
+  rank: number,
+  source: string,
+  effect: string,
+  cost: string,
+  limits: string,
+  requiredEquipment: string,
+  requiredBody: string,
+  evidence: string[],
+  cardEligible: boolean,
+  truthStatus: string
+}
+
+⸻
+
+16.7 QuestState
+
+QuestState {
+  active: QuestRecord[],
+  blocked: QuestRecord[],
+  readyToTurnIn: QuestRecord[],
+  archived: QuestArchiveRecord[],
+  aliases: object
+}
+QuestRecord {
+  id: string,
+  title: string,
+  canonicalKey: string,
+  type: string,
+  status: string,
+  priority: string,
+  source: string,
+  giver?: string,
+  objectives: QuestObjective[],
+  promisedRewards: RewardRecord[],
+  rewardStatus: string,
+  deadline?: string,
+  proofRequired?: string,
+  blockers: string[],
+  truthStatus: string,
+  cardEligible: boolean
+}
+QuestObjective {
+  id: string,
+  description: string,
+  status: string,
+  currentCount?: number,
+  requiredCount?: number,
+  target?: string,
+  proofRequired?: string
+}
+
+⸻
+
+16.8 ActorState
+
+ActorState {
+  actors: ActorRecord[],
+  activeSceneActors: string[],
+  companions: string[],
+  aliases: object
+}
+ActorRecord {
+  id: string,
+  name: string,
+  canonicalKey: string,
+  aliases: string[],
+  importance: number,
+  type: string,
+  role: string,
+  raceSpecies?: string,
+  appearance?: string,
+  status: string,
+  presence: 'present' | 'nearby' | 'elsewhere' | 'unknown' | 'absent' | 'dead' | 'captured',
+  location?: string,
+  relationship: string,
+  memories: ActorMemoryRecord[],
+  questLinks: string[],
+  itemCustody: string[],
+  cardEligible: boolean,
+  truthStatus: string
+}
+ActorMemoryRecord {
+  summary: string,
+  truthStatus: string,
+  source: string,
+  importance: number
+}
+
+⸻
+
+16.9 PlaceState
+
+PlaceState {
+  currentLocation: LocationState,
+  currentScene: SceneState,
+  places: PlaceRecord[],
+  routes: RouteRecord[]
+}
+LocationState {
+  region?: string,
+  settlement?: string,
+  place?: string,
+  subLocation?: string,
+  route?: string,
+  confidence: string
+}
+SceneState {
+  sceneId: string,
+  summary: string,
+  actorsPresent: string[],
+  visibleItems: string[],
+  hazards: string[],
+  exits: string[],
+  activeCombat: boolean,
+  activeObjective?: string
+}
+
+⸻
+
+16.10 TimeState
+
+TimeState {
+  currentTimeText: string,
+  dayCount?: number,
+  timeOfDay?: string,
+  season?: string,
+  activeDeadlines: DeadlineRecord[],
+  lastTimeAdvance: string
+}
+
+MVP can use text summaries instead of a full calendar.
+
+⸻
+
+16.11 CardState
+
+CardState {
+  registry: CardRegistryEntry[],
+  protectedCards: string[],
+  dirtyCards: string[],
+  generatedCardCreationEnabled: boolean,
+  lastCardAudit: string[]
+}
+
+⸻
+
+16.12 OperationLedgerState
+
+OperationLedgerState {
+  permanentKeys: string[],
+  recentKeys: string[],
+  maxRecentKeys: number,
+  lastCompactedTurn: string
+}
+
+⸻
+
+16.13 AuditState
+
+AuditState {
+  lastTurnSummary: string,
+  recentProposals: EventProposal[],
+  recentValidationResults: ValidationResult[],
+  debugMessages: string[],
+  maxEntries: number
+}
+
+⸻
+
+17. MVP command spec
+
+17.1 /help
+
+Shows available commands and current build limitations.
+
+Must not claim unsupported systems are fully implemented.
+
+17.2 /sheet
+
+Shows:
+
+* name
+* race/species
+* age
+* appearance
+* level
+* XP
+* core stats
+* build identity
+
+17.3 /status
+
+Shows:
+
+* HP
+* MP
+* EP
+* injuries
+* conditions
+* fatigue
+* death-boundary warnings
+
+17.4 /inventory
+
+Shows:
+
+* accessible currency
+* equipped items
+* important items
+* item custody warnings
+* quest items
+
+17.5 /abilities
+
+Shows:
+
+* stable abilities
+* candidate abilities
+* passives
+* talents
+* sealed/unavailable abilities
+
+Must clearly label candidates.
+
+17.6 /quests
+
+Shows:
+
+* active quests
+* blocked quests
+* ready turn-ins
+* promised rewards
+* deadlines if known
+
+17.7 /actors
+
+Shows:
+
+* major actors
+* companions
+* present actors
+* important relationships
+
+17.8 /location
+
+Shows:
+
+* current location
+* current scene
+* present actors
+* visible important items
+* hazards
+* exits if known
+
+17.9 /time
+
+Shows:
+
+* current time summary
+* active deadlines
+* last known time advance
+
+17.10 /debuglast
+
+Shows:
+
+* recent proposals
+* accepted updates
+* rejected updates
+* duplicate skips
+* dirty targets
+* operation keys
+
+17.11 /cardaudit
+
+Shows:
+
+* protected cards updated
+* generated card creation attempts
+* rejected card names/triggers
+* duplicate card prevention
+
+17.12 /contextaudit
+
+Shows:
+
+* context packets selected
+* packets skipped due to budget
+* correction notes injected
+
+⸻
+
+18. Build phases
+
+Phase 0 — Spec lock
+
+Deliverables:
+
+* Developer Spec v1
+* Developer Spec v1.1 correction pass
+* MVP Build Spec v1
+* Test Spec v1
+
+No code yet.
+
+⸻
+
+Phase 1 — Core state and commands
+
+Build:
+
+* StateManager
+* root state schema
+* player/body/inventory/ability/quest/actor/place/time skeletons
+* CommandRouter
+* /help
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /location
+* /time
+* /debuglast
+
+Goal:
+
+The user can inspect clean state.
+
+No advanced parsing required yet.
+
+⸻
+
+Phase 2 — Canon pipeline
+
+Build:
+
+* EventScanner base
+* ProposalBuilder
+* CanonValidator base
+* ReducerRegistry
+* OperationLedger
+* AuditLogger
+
+Goal:
+
+Events can be proposed, accepted/rejected, committed, and audited.
+
+⸻
+
+Phase 3 — Body, inventory, and ability MVP
+
+Build:
+
+* BodyReducer
+* InventoryReducer
+* AbilityReducer
+* resource costs
+* item pickup/drop/equip basics
+* ability candidate versus stable logic
+* custody/access enforcement
+
+Goal:
+
+The system stops the most common state corruption.
+
+⸻
+
+Phase 4 — ContextBuilder and protected cards
+
+Build:
+
+* ContextBuilder packet system
+* protected card update system
+* dirty card queue
+* context audit
+* card audit
+
+Goal:
+
+AI Dungeon receives compact truth reminders without card spam.
+
+⸻
+
+Phase 5 — Quest and actor MVP
+
+Build:
+
+* QuestReducer MVP
+* ActorReducer MVP
+* quest creation/acceptance/progress/reward dedupe basics
+* actor presence
+* companion absence enforcement
+* basic relationship notes
+
+Goal:
+
+Quests and important actors remain coherent.
+
+⸻
+
+Phase 6 — Combat and progression MVP
+
+Build:
+
+* combat event detection
+* simple damage severity validation
+* HP/MP/EP changes
+* basic XP rewards
+* level-up placeholder or simple formula
+* duplicate combat reward prevention
+
+Goal:
+
+Combat consequences become safe and inspectable.
+
+⸻
+
+Phase 7 — Generated CardSync limited beta
+
+Build:
+
+* generated card registry
+* limited actor/place/ability card creation
+* strict trigger rules
+* max card writes
+* duplicate card prevention
+* safe mode fallback
+
+Goal:
+
+Enable generated cards only after protected cards are stable.
+
+⸻
+
+Phase 8 — Advanced systems later
+
+Build after MVP stabilizes:
+
+* crafting
+* economy
+* investigation
+* factions/reputation/titles
+* domain/labor
+* absorption/evolution
+* advanced travel/weather
+* generated cards for all major entity types
+
+⸻
+
+19. Testing gates
+
+No phase should be considered complete until its gate passes.
+
+Gate 1 — State and command gate
+
+Must pass:
+
+* state initializes without error
+* missing fields repair safely
+* commands display current state
+* /help only lists supported commands
+* command output does not mutate story state unless intended
+
+Gate 2 — OperationLedger gate
+
+Must pass:
+
+* repeated item gain applies once
+* repeated XP reward applies once
+* repeated quest reward applies once
+* repeated damage event does not double apply if duplicate
+
+Gate 3 — Inventory custody gate
+
+Must pass:
+
+* seen item is not owned item
+* available loot is not inventory
+* item with NPC cannot be used
+* sold item cannot be sold again
+* equipped item updates correctly
+
+Gate 4 — Ability candidate gate
+
+Must pass:
+
+* candidate ability is not stable
+* stable ability can be used if cost/access valid
+* sealed ability cannot be used
+* unknown ability does not become mastered instantly
+
+Gate 5 — Actor presence gate
+
+Must pass:
+
+* absent companion cannot act
+* present actor can speak/act
+* duplicate actor name merges or flags
+* random NPC does not become generated card
+
+Gate 6 — Quest reward gate
+
+Must pass:
+
+* promised reward is not paid reward
+* objective progress dedupes
+* quest completion and reward payment are separate
+* reward pays once
+
+Gate 7 — Context gate
+
+Must pass:
+
+* context includes current location
+* context includes critical correction
+* context excludes unrelated archives
+* context stays under budget
+* context labels suspected/rumored facts
+
+Gate 8 — Protected card gate
+
+Must pass:
+
+* protected cards update from state
+* protected cards do not create state
+* dirty cards update only when needed
+* card audit explains changes
+
+Gate 9 — Generated card beta gate
+
+Must pass before generated cards are allowed:
+
+* generic triggers rejected
+* duplicate card keys rejected
+* max write limits enforced
+* generated card creation disabled in Safe Mode
+* random guard/shopkeeper/item not carded
+
+⸻
+
+20. Required first regression tests
+
+These are the first tests the script must eventually pass.
+
+Test A — available loot is not inventory
+
+Input/output says:
+
+“The goblin drops a rusty dagger.”
+
+Expected:
+
+* scene item or available loot created
+* not in inventory until player takes it
+
+Test B — item pickup applies once
+
+Output says:
+
+“You pick up the rusty dagger.”
+
+Repeated output processed twice.
+
+Expected:
+
+* dagger added once
+* operation duplicate skipped
+
+Test C — sword at smith cannot be used
+
+State:
+
+Sword custody = Mara.
+
+Player says:
+
+“I draw my sword.”
+
+Expected:
+
+* blocked or corrected
+* no sword attack
+
+Test D — absent companion cannot act
+
+State:
+
+Mara elsewhere.
+
+AI says:
+
+“Mara blocks the arrow.”
+
+Expected:
+
+* rejected/flagged
+* no damage prevention from Mara
+
+Test E — candidate ability not reliable
+
+State:
+
+Shadow Step candidate only.
+
+AI says:
+
+“You teleport perfectly behind him.”
+
+Expected:
+
+* reject or soft-fail
+* candidate evidence possible
+* no stable teleport
+
+Test F — quest reward once
+
+Output:
+
+“Old Bren pays you 15 gold.”
+
+Processed twice.
+
+Expected:
+
+* +15 gold once
+* reward status paid
+* duplicate skipped
+
+Test G — rumor not fact
+
+Output:
+
+“People say Lord Veyr killed Dalen.”
+
+Expected:
+
+* rumor/theory recorded if case system exists
+* actor not marked confirmed murderer
+
+Test H — context correction
+
+State:
+
+Player has low MP.
+
+AI tries to cast major spell.
+
+Expected:
+
+* context/audit warns MP low
+* no free major spell in validation
+
+Test I — generic card trigger rejected
+
+Proposed card:
+
+Name: Wolf
+Trigger: wolf
+
+Expected:
+
+* rejected as generic unless special named entity
+
+Test J — location travel not instant
+
+Player says:
+
+“I head toward the chapel.”
+
+Expected:
+
+* travel/attempt state, not arrival, unless output confirms arrival or location is nearby enough
+
+⸻
+
+21. Formula policy for v1
+
+Developer Spec v1 does not finalize all math formulas.
+
+MVP should use simple formulas and placeholders where necessary.
+
+However, before Phase 6 combat/progression, a formula appendix must be created for:
+
+* XP to next level
+* stat growth expectations
+* HP/MP/EP scaling
+* challenge XP
+* overlevel XP decay
+* ability rank thresholds
+* resource cost classes
+* damage severity conversion
+
+Until then, systems should avoid pretending exact formulas are final.
+
+⸻
+
+22. Cleanup policy v1
+
+CleanupManagerLite may clean:
+
+* old audit logs beyond limit
+* old recent operation keys beyond limit
+* stale parser candidates
+* stale dirty card queue entries already processed
+* temporary scene-only records after scene change
+
+CleanupManagerLite must not delete:
+
+* player state
+* body state
+* inventory items unless explicitly lost/sold/destroyed
+* active quests
+* active important actors
+* protected cards
+* permanent operation keys
+* important archived outcomes
+* manually created records
+
+Cleanup must run conservatively and never create gameplay events.
+
+⸻
+
+23. Manual override policy
+
+Manual override commands may be added later.
+
+When added, they must:
+
+* be explicit
+* be logged as manual source
+* create operation key
+* mark dirty targets
+* show audit summary
+* not silently happen through normal narration
+
+Examples later:
+
+* /sethp
+* /additem
+* /removeitem
+* /setlocation
+* /setability
+* /completequest
+
+Manual override is for repair, not normal gameplay.
+
+⸻
+
+24. Deferred systems list
+
+The following are intentionally deferred after MVP:
+
+24.1 Economy full system
+
+Deferred:
+
+* full price bands
+* wages
+* debt
+* markets
+* business income
+* domain treasury
+
+MVP only needs accessible personal currency and simple transactions.
+
+24.2 Crafting full system
+
+Deferred:
+
+* project lifecycle
+* material reservation
+* quality math
+* enchanting
+* repairs/upgrades
+
+MVP may support simple item notes only.
+
+24.3 Investigation full system
+
+Deferred:
+
+* cases
+* clues
+* evidence strength
+* witness knowledge
+* proof chains
+* solved-case archive
+
+MVP may support simple quest notes and actor claims.
+
+24.4 Faction/reputation full system
+
+Deferred:
+
+* faction standing
+* title grants
+* public rumor spread
+* legal systems
+
+MVP may support simple social notes.
+
+24.5 Domain/labor full system
+
+Deferred:
+
+* workers
+* foremen
+* project WU
+* payroll
+* domain income
+
+MVP may support simple place/base notes only.
+
+24.6 Absorption/evolution full system
+
+Deferred:
+
+* source caps
+* compatibility math
+* adaptation tracks
+* race evolution
+* copy/mimic
+
+MVP may support ability candidates and evidence only.
+
+24.7 Multi-protagonist support
+
+Deferred.
+
+MVP supports one primary protagonist and companions as actors.
+
+⸻
+
+25. Development risk rules
+
+The build must avoid these common failures.
+
+25.1 Do not build everything at once
+
+Large feature jumps will cause regression.
+
+25.2 Do not enable generated cards early
+
+Generated CardSync should wait until protected cards, canonical keys, and duplicate prevention pass tests.
+
+25.3 Do not parse Story Cards as events
+
+Cards are memory, not action.
+
+25.4 Do not let commands become story
+
+Command outputs are inspection/mutation tools only.
+
+25.5 Do not trust AI output blindly
+
+AI output proposes events; CanonValidator decides commits.
+
+25.6 Do not over-inject context
+
+Context must stay compact.
+
+25.7 Do not make every NPC permanent
+
+Use importance filters.
+
+25.8 Do not make every clue/card/item/quest generated
+
+Most details stay in protected summaries or internal state.
+
+25.9 Do not hide failures from audit
+
+Every rejected or softened event should be explainable.
+
+25.10 Do not make validation joyless
+
+Prefer soft-fail or partial success over hard denial when possible.
+
+⸻
+
+26. User-facing behavior doctrine
+
+AIDRPG should feel helpful, not hostile.
+
+When something is unsupported, the system should usually produce a softer truth.
+
+Examples:
+
+Unsupported instant boss kill
+
+Do not simply say:
+
+“Rejected.”
+
+Prefer state outcome:
+
+* boss is scratched
+* boss is staggered
+* boss avoids fatal blow
+* player discovers resistance
+* attack creates opening
+
+Unsupported unknown ability
+
+Do not simply say:
+
+“You cannot.”
+
+Prefer state outcome:
+
+* ability attempt recorded
+* candidate evidence gained
+* weak spark/failure/backlash occurs
+
+Unsupported item gain
+
+Do not put item in inventory.
+
+Prefer:
+
+* item is visible nearby
+* item is available loot
+* player must take it
+
+Unsupported rumor
+
+Do not confirm it.
+
+Prefer:
+
+* rumor recorded as lead
+* actor card remains unconfirmed
+
+Hard denial should be reserved for state corruption, duplication, impossible contradictions, or unsafe invalid records.
+
+⸻
+
+27. Developer Spec v1 final doctrine
+
+AIDRPG should be built as a staged canon engine.
+
+The first priority is not feature count.
+
+The first priority is stable truth flow:
+
+Input/Output
+→ EventScanner
+→ ProposalBuilder
+→ CanonValidator
+→ Owner Reducer
+→ OperationLedger
+→ Dirty Targets
+→ CardSyncLite
+→ ContextBuilder
+→ AuditLogger
+
+Every system must obey ownership.
+
+Every update must be validated.
+
+Every committed update must be deduped.
+
+Every card must mirror state only.
+
+Every context packet must be relevant and compact.
+
+Every important decision must be auditable.
+
+The first script build should prove that foundation before adding advanced gameplay systems.
+
+Once this Developer Spec is corrected into v1.1, the next document should be:
+
+AIDRPG MVP Build Spec v1
+
+That document will be shorter and will say exactly what to code first.

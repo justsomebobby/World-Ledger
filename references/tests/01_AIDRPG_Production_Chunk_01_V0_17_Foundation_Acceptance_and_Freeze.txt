@@ -1,0 +1,276 @@
+# AIDRPG Production Chunk 01 — V0.17 Foundation Acceptance and Freeze
+
+## Document status
+
+Production sequence: 01 of 25 remaining production chunks.
+Build target: WorldLedger V0.17 / AIDRPG Core MVP Foundation Candidate.
+Purpose: Accept, verify, freeze, and protect the V0.17 foundation before feature production begins.
+
+## Doctrine
+
+```text
+Freeze the foundation before adding features.
+Do not build upward from an unstable base.
+Do not treat V0.17 as the full game.
+Do not restart the 1–32 design chunks.
+Do not make the user rediscover old failures manually.
+```
+
+## What V0.17 is allowed to be
+
+Allowed:
+
+```text
+foundation candidate
+hook-orchestration lock
+safe state/runtime/command baseline
+parser/proposal/validator/reducer boundary baseline
+support-layer non-canon baseline
+ReleaseCheck/regression baseline
+```
+
+Not allowed:
+
+```text
+complete full RPG engine
+all 1–32 design chunks implemented
+advanced combat engine
+economy/crafting/reputation/domain engine
+generated card engine
+manual mutation/admin command engine
+```
+
+## Exact acceptance identity
+
+Preserve or clearly evolve from:
+
+```text
+PROJECT_NAME: WorldLedger
+BUILD_NAME: WorldLedger Core MVP
+BUILD_VERSION: 0.17.0-foundation-codepass1-candidate
+BUILD_STAGE: Foundation Code Pass 1 / Foundation Candidate and Hook-Orchestration Lock
+SCHEMA_ID: worldledger.schema.v1.locked
+ROOT_KEY: worldledger
+```
+
+If patched, recommended visible title:
+
+```text
+WorldLedgerV0.17.1 — Core MVP Foundation Script / Accepted Foundation Freeze
+```
+
+Do not rename the root to `aidrpg`. Preserve the bridge:
+
+```text
+AIDRPG = broader RPG-engine project goal.
+WorldLedger = script-engine implementation name for the AIDRPG Core MVP rebuild.
+```
+
+## Foundation acceptance metadata
+
+Add or verify:
+
+```text
+foundationAcceptance: {
+  accepted: boolean,
+  acceptedVersion: string,
+  acceptedFromVersion: string,
+  acceptedStage: string,
+  acceptedAtTurn: number,
+  acceptedByCommand: string,
+  requiredChecks: string[],
+  lastResult: string,
+  warnings: string[],
+  blockers: string[],
+  notes: string[]
+}
+```
+
+Recommended location:
+
+```text
+state.worldledger.meta.foundationAcceptance
+```
+
+This is diagnostic metadata, not gameplay truth.
+
+## Active foundation systems to verify
+
+```text
+Constants and version identity
+Feature flags and safe defaults
+Utility helpers
+State schema defaults
+StateManager
+Runtime hook contract
+AuditLogger
+OperationLedger
+CommandRouter
+Command renderers
+ReleaseCheck foundation and gates
+Resolver and owner-specific sanitizers
+EventScannerLite safe shell
+ProposalBuilder safe shell
+CanonValidator safe shell
+ReducerRegistry
+Core reducer shells / limited reducers
+DirtyQueue
+ContextBuilderLite read-only shell
+CardApiAdapter shell
+CardSyncLite dry-run/protected shell
+Migration/Quarantine conservative shell
+CleanupManagerLite safe caps
+Hook orchestration
+Export/platform binding
+```
+
+If any are shell-only, ReleaseCheck must report honestly.
+
+## Deferred systems that must stay disabled
+
+```text
+full combat automation
+advanced progression scaling
+level 1–1000 full stat engine
+full economy/shop/barter/debt
+crafting/material recipes
+investigation/case/evidence automation
+domain/labor/workers/projects
+reputation/faction/title automation
+absorption/evolution/devour systems
+advanced party/summon controls
+multi-protagonist support
+warfare/group combat/army systems
+generated Story Cards
+manual mutation commands
+live CardSync writes by default
+full old-save conversion from prose
+full WorldStructure settlement/project extraction
+```
+
+## Required command surface
+
+Verify foundation commands are registered, safe, and prefixed with `[AIDRPG]`, including:
+
+```text
+/help /version /sheet /status /inventory /abilities /quests /actors /location /time
+/debuglast /cardaudit /contextaudit /stateaudit /ledger /dirty /migration /quarantine
+/releasecheck /startupaudit /schema /schemaaudit /owners /commandformat /commands
+/statemanager /integrity /repairlog /runtime /hookaudit /runtimecheck /failsoft
+/audit /ledgercheck /commandrouter /commandcheck /parser /parsercheck /proposal
+/proposalcheck /validator /validatorcheck /resolver /resolvercheck /controlmap
+/salvage /borrowledger /supportdepth /supportschemas /supportcheck
+/playerbreakercheck /regressioncheck /runfoundationtests /gatecheck /releaseprofile
+/knownfailures /regressionmatrix /bc16check /foundation /codepass /foundationcheck
+/hookcheck /packagingcheck
+```
+
+Aliases should route safely and not bypass command suppression.
+
+## Hook acceptance
+
+Verify:
+
+```text
+globalThis.WorldLedger
+WorldLedger.onInput
+WorldLedger.onContext
+WorldLedger.onOutput
+WorldLedger.processOutput
+```
+
+Input hook initializes state, routes commands, suppresses command output, and never treats input as completed success.
+
+Context hook builds read-only context and never mutates gameplay state.
+
+Output hook skips command output, skips duplicate output consequences, scans only valid story output, validates before reducer, routes only accepted results, marks dirty targets, runs support-layer caps, and returns original output text.
+
+## PC01 ReleaseCheck gates
+
+```text
+PC01-G01 V0.17 build identity active or accepted freeze version active
+PC01-G02 AIDRPG/WorldLedger bridge present
+PC01-G03 root key remains stable
+PC01-G04 required foundation commands registered
+PC01-G05 hook exports present
+PC01-G06 deferred feature flags disabled
+PC01-G07 CardSync dry-run/generated disabled
+PC01-G08 manual mutation commands disabled
+PC01-G09 command output suppression active
+PC01-G10 duplicate output replay protection active
+PC01-G11 player-breaker minimum set registered and passing
+PC01-G12 regressioncheck registered and passing
+PC01-G13 support layers non-canon
+PC01-G14 ReleaseCheck does not fake PASS
+PC01-G15 foundation accepted marker present only after checks pass
+```
+
+## Required tests
+
+```text
+PC01-001 Build identity stable
+PC01-002 Foundation commands registered
+PC01-003 Hook exports exist
+PC01-004 Deferred flags remain disabled
+PC01-005 Command output non-canon
+PC01-006 Story Card text non-canon
+PC01-007 Context text non-canon
+PC01-008 Player-breaker minimum set passes
+PC01-009 Regression baseline passes
+PC01-010 ReleaseCheck no fake pass
+PC01-011 Duplicate output no repeat effects
+PC01-012 Foundation accepted marker writes once
+```
+
+Minimum player-breaker set:
+
+```text
+denied key -> no item
+failed grab -> no item
+abstract key -> no item
+dream Crown -> no item
+quoted key handoff -> no item
+output-only Moonblade -> no stable ability
+failed Void Lantern Veil -> no stable ability
+visible chapel -> no scene overwrite
+road then enter Drunken Huntsman -> inn, not road
+quoted twenty years pass -> no aging
+death rumor -> no death
+reward promise -> no currency
+reward payment repeated -> paid once
+command/context/card text -> no canon mutation
+```
+
+## Beginner implementation order
+
+```text
+1. Copy the current V0.17 script into a working file.
+2. Fix title/version/freeze metadata only if needed.
+3. Add the acceptance metadata object.
+4. Add acceptance status to /foundationcheck or equivalent.
+5. Extend ReleaseCheck with PC01 gates.
+6. Run foundation command tests.
+7. Run non-canon source tests.
+8. Mark accepted only if clean.
+9. Save as WorldLedgerV0.17.1_FOUNDATION_ACCEPTED_FREEZE.txt.
+10. Move to Production Chunk 02.
+```
+
+## Pass / warn / fail
+
+PASS if hooks, commands, ReleaseCheck, foundationcheck, hookcheck, playerbreakercheck, regressioncheck, supportcheck, and packagingcheck pass with no unsafe active behavior.
+
+WARN only for honest deferred systems or shell limitations.
+
+FAIL if script does not load, exports are missing, commands crash, command/context/card text mutates state, duplicate output repeats effects, manual mutation is enabled, generated cards are enabled, live card writes are enabled by default, or ReleaseCheck fakes PASS.
+
+## Final doctrine
+
+```text
+Accept the baseline.
+Freeze the foundation.
+Preserve the safety gates.
+Keep deferred systems disabled.
+Prove commands, hooks, parser boundaries, support layers, and duplicate locks are safe.
+Then build upward.
+```

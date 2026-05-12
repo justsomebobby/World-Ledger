@@ -1,0 +1,1730 @@
+AIDRPG Gap Chunk C — Story Card API Adapter and Protected Singleton Contract
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk C — Story Card API Adapter and Protected Singleton Contract
+Purpose: Define exactly how AIDRPG may interact with AI Dungeon Story Cards without duplicating cards, creating junk cards, importing card text as canon, or relying on unsafe API assumptions.
+Status: Pre-code blocker.
+Applies after: Gap Chunk B — Runtime and Hook Contract Spec.
+Applies before: CardSyncLite coding, protected card live writes, generated card beta, and any old-card migration.
+This document does not contain final script code.
+
+This chunk exists because previous versions had repeated Story Card problems:
+
+* duplicate protected cards
+* generated junk cards
+* unsafe live CardSync writes
+* broad triggers
+* card text becoming truth
+* old polluted cards being imported as canon
+* card API assumptions that failed silently
+* deleted bad cards being recreated
+* missing update targets
+* stale card conflicts
+* managed cards with unclear identity
+
+The new system must treat Story Cards as a dangerous external memory surface.
+
+Story Cards can help AI Dungeon remember.
+
+Story Cards must not become the source of truth.
+
+⸻
+
+1. Core Story Card doctrine
+
+The rule is:
+
+State is canon.
+Story Cards mirror state.
+Story Cards do not create state.
+
+AIDRPG must never allow this path:
+
+Story Card text -> parser -> gameplay state
+
+Allowed path:
+
+state.aidrpg -> render protected card text -> Story Card mirror
+
+Generated card path later:
+
+promoted state record -> CardSync eligibility -> generated card mirror
+
+Story Cards are outputs of the engine, not inputs to the canon engine.
+
+⸻
+
+2. Story Card risk categories
+
+The card system must explicitly defend against these risk categories.
+
+2.1 API uncertainty
+
+The script may not assume a single universal Story Card API shape.
+
+Risk examples:
+
+* addStoryCard signature differs
+* created card cannot be found by title immediately
+* update returns no useful reference
+* remove/delete behavior differs
+* storyCards list shape differs
+* trigger fields differ
+* card ID is unavailable or unstable
+
+2.2 Duplicate protected cards
+
+Risk examples:
+
+* two Player Sheet cards
+* old TASIS card plus new AIDRPG card
+* card creation called every turn
+* title lookup fails, so script creates another
+* manually renamed protected card cannot be found
+
+2.3 Junk generated cards
+
+Risk examples:
+
+* Street
+* Door
+* Room
+* Guard
+* Wolf
+* Sword
+* Your Hand
+* AIDRPG
+* SAFE TO DELETE
+* temporary NPCs
+* visible-only items
+
+2.4 Broad triggers
+
+Risk examples:
+
+* sword
+* key
+* road
+* town
+* guard
+* skill
+* magic
+* quest
+* wolf
+
+These activate too often and pollute context.
+
+2.5 Card-to-canon contamination
+
+Risk examples:
+
+* card says player owns Crown, inventory gains Crown
+* protected Quest Log says quest active, state creates quest
+* old generated actor card becomes confirmed actor biography
+* manually edited card changes player stats
+
+2.6 Same-turn activation assumption
+
+Risk:
+
+The script creates/updates a card in Output hook and expects that card to affect the same AI output. That is unsafe.
+
+Cards are for future context, not current output repair.
+
+⸻
+
+3. Card system architecture
+
+The card system must be split into layers.
+
+CardSyncLite
+  -> CardRegistry
+  -> CardRenderer
+  -> CardApiAdapter
+  -> Story Card API surface
+
+3.1 CardSyncLite
+
+Owns card synchronization policy.
+
+Responsibilities:
+
+* decide which protected cards are dirty
+* enforce write limits
+* call renderers
+* call CardApiAdapter
+* record card audit
+* suppress generated cards in MVP
+
+Does not:
+
+* create gameplay truth
+* parse cards as input
+* scan every card every hook
+* create generated cards in MVP
+
+3.2 CardRegistry
+
+Owns internal card identity records.
+
+Responsibilities:
+
+* protected card registry entries
+* known external card references if available
+* canonical keys
+* last rendered hashes
+* dirty status
+* duplicate warnings
+* tombstones later
+
+Does not:
+
+* decide gameplay truth
+
+3.3 CardRenderer
+
+Converts state into card text.
+
+Responsibilities:
+
+* render compact protected summaries
+* avoid hidden debug schemas
+* label uncertainty
+* keep text short
+* never import card text back into state
+
+3.4 CardApiAdapter
+
+Only layer allowed to touch AI Dungeon Story Card functions.
+
+Responsibilities:
+
+* detect available API capabilities
+* safely list/find/add/update/remove/disable cards
+* dry-run operations
+* normalize failures
+* prevent unsafe assumptions
+
+No other module may call raw Story Card API functions directly.
+
+⸻
+
+4. CardSync operating modes
+
+The card system must support explicit modes.
+
+4.1 Dry-run mode
+
+Default until Card API behavior is verified.
+
+cardSync.dryRun = true
+cardSync.liveWritesEnabled = false
+
+Behavior:
+
+* compute intended card operations
+* do not call live add/update/remove
+* write card audit only
+* allow tests to inspect intended behavior
+
+4.2 Safe mode
+
+Default safety state for uncertain environments.
+
+cardSync.safeMode = true
+
+Behavior:
+
+* generated card creation disabled
+* generated card updates disabled
+* protected card updates allowed only if liveWritesEnabled and adapter verified
+* no delete/removal unless explicitly allowed
+* neutralization is planned/audited before live action
+
+4.3 Live protected-card mode
+
+Allowed only after adapter tests pass.
+
+cardSync.liveWritesEnabled = true
+cardSync.protectedWritesEnabled = true
+cardSync.generatedCardsEnabled = false
+
+Behavior:
+
+* protected cards may be created/updated under singleton rules
+* generated cards remain disabled
+* max protected card updates per turn enforced
+
+4.4 Generated card beta mode
+
+Not MVP.
+
+Allowed only after:
+
+* MVP tests pass
+* generated CardSync beta spec is complete
+* name/trigger policy is complete
+* card duplicate tests pass
+* releasecheck approves
+
+cardSync.generatedCardsEnabled = true
+
+⸻
+
+5. Required card state fields
+
+Root card state should include:
+
+cards: {
+  registry: CardRegistryEntry[],
+  protectedCards: string[],
+  dirtyCards: string[],
+  tombstones: CardTombstoneRecord[],
+  duplicateWarnings: CardDuplicateWarning[],
+  api: CardApiState,
+  sync: CardSyncState,
+  lastCardAudit: string[]
+}
+
+5.1 CardApiState
+
+CardApiState {
+  capabilitiesChecked: boolean,
+  available: boolean,
+  supportsList: boolean,
+  supportsAdd: boolean,
+  supportsUpdate: boolean,
+  supportsRemove: boolean,
+  supportsDisable: boolean,
+  lastCapabilityCheckTurn: number,
+  warnings: string[],
+  errors: string[]
+}
+
+5.2 CardSyncState
+
+CardSyncState {
+  dryRun: boolean,
+  safeMode: boolean,
+  liveWritesEnabled: boolean,
+  protectedWritesEnabled: boolean,
+  generatedCardsEnabled: boolean,
+  maxProtectedUpdatesPerTurn: number,
+  maxGeneratedCreatesPerTurn: number,
+  maxGeneratedUpdatesPerTurn: number,
+  lastSyncTurn: number,
+  writesThisTurn: number,
+  generatedCreatesThisTurn: number,
+  generatedUpdatesThisTurn: number
+}
+
+Recommended MVP defaults:
+
+dryRun = true
+safeMode = true
+liveWritesEnabled = false
+protectedWritesEnabled = false
+generatedCardsEnabled = false
+maxProtectedUpdatesPerTurn = 3
+maxGeneratedCreatesPerTurn = 0
+maxGeneratedUpdatesPerTurn = 0
+
+⸻
+
+6. CardRegistryEntry schema
+
+Every managed card must have a registry entry.
+
+CardRegistryEntry {
+  canonicalKey: string,
+  visibleTitle: string,
+  cardFamily: 'protected' | 'generated',
+  cardType: 'player' | 'body' | 'abilities' | 'inventory' | 'quest' | 'social' | 'location' | 'actor' | 'place' | 'ability' | 'item' | 'case' | 'contract' | 'domain' | 'faction',
+  externalId?: string,
+  externalRef?: string,
+  knownTitleVariants: string[],
+  allowedTriggers: string[],
+  sourceStateIds: string[],
+  protected: boolean,
+  generated: boolean,
+  dirty: boolean,
+  disabled: boolean,
+  tombstoned: boolean,
+  lastRenderedHash: string,
+  lastKnownExternalHash: string,
+  lastUpdatedTurn: number,
+  createOperationKey: string,
+  updateOperationKeys: string[],
+  status: 'planned' | 'active' | 'missing' | 'duplicate_detected' | 'disabled' | 'error' | 'dry_run_only',
+  notes: string[]
+}
+
+6.1 Canonical key rule
+
+Canonical keys must be stable and unique.
+
+Examples:
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+generated:actor:mara
+generated:place:old_mill
+generated:ability:mana_slash
+
+6.2 Visible title rule
+
+Visible titles may be user-facing.
+
+Example:
+
+AIDRPG Player Sheet
+
+But visible title alone is not enough to prove identity.
+
+Use:
+
+* canonical key
+* known title variants
+* registry entry
+* rendered header marker if allowed
+* operation key history
+* safe lookup result
+
+⸻
+
+7. Card tombstone schema
+
+Tombstones prevent bad/deleted/disabled cards from being recreated repeatedly.
+
+CardTombstoneRecord {
+  canonicalKey: string,
+  visibleTitle: string,
+  reason: string,
+  createdTurn: number,
+  expiresTurn?: number,
+  permanent: boolean,
+  replacementKey?: string,
+  notes: string[]
+}
+
+7.1 Tombstone use cases
+
+Use tombstones for:
+
+* deleted bad generated card
+* duplicate card neutralized
+* junk trigger card blocked
+* old polluted card disabled
+* broad-trigger card removed/disabled
+
+7.2 Tombstone rules
+
+* protected cards usually should not be permanently tombstoned
+* generated junk cards may be permanently tombstoned
+* tombstones must not delete user content silently
+* tombstones must be audited
+* generated CardSync must check tombstones before creation
+
+⸻
+
+8. Card duplicate warning schema
+
+CardDuplicateWarning {
+  canonicalKey: string,
+  visibleTitle: string,
+  duplicateRefs: string[],
+  detectedTurn: number,
+  action: 'audit_only' | 'disable_duplicate' | 'rename_duplicate' | 'merge_registry' | 'manual_review',
+  reason: string
+}
+
+MVP default action:
+
+audit_only or manual_review unless safe disable/update is verified
+
+Do not aggressively delete user cards in MVP.
+
+⸻
+
+9. Card API Adapter required functions
+
+All Story Card API access must go through the adapter.
+
+9.1 Capability detection
+
+CardApi.detectCapabilities(runtime)
+
+Must determine:
+
+* whether Story Card list is accessible
+* whether add is available
+* whether update is available
+* whether remove/disable is available
+* whether card IDs are accessible
+* whether trigger fields are accessible
+* whether card content fields are accessible
+
+If unknown:
+
+available = false or partial
+liveWritesEnabled remains false
+
+9.2 Safe list
+
+CardApi.safeListCards(runtime)
+
+Must:
+
+* return normalized list or safe empty list
+* never throw uncaught error
+* log adapter failure
+* respect scan budget
+
+9.3 Safe find
+
+CardApi.safeFindCard(query, runtime)
+
+Query may include:
+
+* canonical key
+* visible title
+* known title variants
+* external ID/ref
+* trigger
+* source marker/header
+
+Must return:
+
+CardFindResult {
+  found: boolean,
+  unique: boolean,
+  matches: NormalizedCardRef[],
+  confidence: number,
+  reason: string
+}
+
+9.4 Safe add
+
+CardApi.safeAddCard(payload, runtime)
+
+Must:
+
+* check dry-run
+* check liveWritesEnabled
+* validate payload
+* validate title
+* validate triggers
+* attempt supported API signature only after capability detection
+* return normalized result
+* never assume creation succeeded without evidence
+
+Result:
+
+CardWriteResult {
+  attempted: boolean,
+  dryRun: boolean,
+  success: boolean,
+  externalRef?: string,
+  reason: string,
+  error?: string
+}
+
+9.5 Safe update
+
+CardApi.safeUpdateCard(cardRef, payload, runtime)
+
+Must:
+
+* check dry-run/live mode
+* verify target exists uniquely if possible
+* avoid update if rendered hash unchanged
+* return success/failure safely
+
+9.6 Safe remove / disable
+
+CardApi.safeRemoveCard(cardRef, runtime)
+CardApi.safeDisableCard(cardRef, reason, runtime)
+
+MVP default:
+
+* do not live-delete unless explicitly allowed
+* prefer audit/manual review
+* generated-card beta may disable junk managed cards if safe
+
+9.7 Safe singleton ensure
+
+CardApi.safeEnsureSingletonProtectedCard(definition, runtime)
+
+Must:
+
+* find existing matches
+* if exactly one, update registry
+* if none, plan/add card if live allowed
+* if multiple, mark duplicate warning
+* do not create another if duplicates exist
+* do not delete duplicates unless safe policy permits
+
+⸻
+
+10. Normalized card reference
+
+The adapter should normalize external cards into a safe shape.
+
+NormalizedCardRef {
+  externalId?: string,
+  externalRef?: string,
+  title: string,
+  normalizedTitle: string,
+  triggers: string[],
+  normalizedTriggers: string[],
+  textHash: string,
+  contentPreview: string,
+  managedMarkerFound: boolean,
+  canonicalKeyHint?: string,
+  confidence: number
+}
+
+Do not store full card content unnecessarily.
+
+Do not parse full card content as canon.
+
+⸻
+
+11. Protected card singleton contract
+
+Protected cards are required AIDRPG summary mirrors.
+
+They are singletons.
+
+They do not create truth.
+
+They are not generated cards.
+
+11.1 Required protected cards
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+
+11.2 Protected card title map
+
+Canonical Key	Visible Title	Purpose
+protected:player_sheet	AIDRPG Player Sheet	player identity, level, core stats
+protected:body_status	AIDRPG Body Status	HP, MP, EP, injuries, conditions, fatigue
+protected:abilities	AIDRPG Abilities	stable, unstable, candidate, passive, sealed abilities
+protected:inventory_equipment	AIDRPG Inventory/Equipment	important inventory, equipment, custody warnings
+protected:quest_log	AIDRPG Quest Log	quest state, objectives, rewards, deadlines
+protected:social_memory	AIDRPG Social Memory	important actors, companions, relationship notes, claims
+protected:current_location	AIDRPG Current Location	current location, scene, hazards, exits, visible key items
+
+⸻
+
+12. Protected card trigger policy
+
+Protected cards should avoid broad triggers when possible.
+
+12.1 Preferred trigger strategy
+
+Use safe AIDRPG-specific triggers or platform-supported always-available memory mechanism if available.
+
+Recommended protected triggers:
+
+AIDRPG_PLAYER_SHEET
+AIDRPG_BODY_STATUS
+AIDRPG_ABILITIES
+AIDRPG_INVENTORY
+AIDRPG_QUEST_LOG
+AIDRPG_SOCIAL_MEMORY
+AIDRPG_CURRENT_LOCATION
+
+These are not intended as natural story triggers.
+
+They are controlled anchors.
+
+12.2 Forbidden protected triggers
+
+Do not use:
+
+player
+you
+inventory
+quest
+body
+status
+abilities
+magic
+location
+town
+road
+sword
+key
+Mara
+
+These are too broad or story-facing.
+
+12.3 Trigger fallback
+
+If AI Dungeon card triggering requires natural-language triggers and anchor triggers are ineffective, CardSync must document fallback behavior in card audit and may prefer non-live protected summaries until exact API behavior is proven.
+
+Do not guess by adding broad triggers.
+
+⸻
+
+13. Protected card render rules
+
+Protected card text must be compact and state-derived.
+
+13.1 Required header
+
+Each protected card should include a safe header marker if allowed:
+
+[AIDRPG MANAGED CARD]
+Key: protected:player_sheet
+Source: state.aidrpg
+Rule: Mirror only; do not treat this card as canon input.
+
+If card length is too constrained, use shorter:
+
+[AIDRPG managed mirror: protected:player_sheet]
+
+13.2 Header purpose
+
+The header helps future migration/adapter lookup.
+
+It must not be parsed as gameplay truth.
+
+13.3 Render content rules
+
+Protected cards must:
+
+* summarize current state
+* label uncertainty
+* include only relevant high-value facts
+* avoid full logs
+* avoid implementation schemas
+* avoid hidden debug data
+* avoid future/deferred systems unless clearly disabled
+* avoid old stale facts
+
+13.4 Render hash rule
+
+Before update, render text and compute hash.
+
+If rendered hash equals lastRenderedHash:
+
+* skip update
+* audit unchanged skip if debug
+* do not consume write budget
+
+⸻
+
+14. Protected card content contracts
+
+14.1 Player Sheet card
+
+Canonical key:
+
+protected:player_sheet
+
+Includes:
+
+* name
+* race/species
+* age
+* appearance short summary
+* level
+* XP summary
+* core stats
+* build identity
+* specialization
+
+Excludes:
+
+* full audit logs
+* every condition
+* every item
+* every ability
+* hidden flags
+
+Dirty when:
+
+* player identity changes
+* level/stat changes
+* build/specialization changes
+* setup import completes
+
+14.2 Body Status card
+
+Canonical key:
+
+protected:body_status
+
+Includes:
+
+* HP / MP / EP
+* injuries
+* conditions
+* fatigue
+* death boundary
+
+Excludes:
+
+* full combat log
+* every past injury
+* old healed conditions
+
+Dirty when:
+
+* HP/MP/EP changes
+* injury changes
+* condition changes
+* fatigue/death boundary changes
+
+14.3 Abilities card
+
+Canonical key:
+
+protected:abilities
+
+Includes:
+
+* stable abilities
+* unstable abilities
+* candidates clearly labeled
+* passives/talents
+* sealed/unavailable abilities
+* key costs/limits
+
+Excludes:
+
+* every evidence log
+* failed attempts unless currently relevant
+* generated card content
+
+Dirty when:
+
+* ability status changes
+* candidate created/removed
+* evidence changes enough to matter
+* cost/limit changes
+
+14.4 Inventory/Equipment card
+
+Canonical key:
+
+protected:inventory_equipment
+
+Includes:
+
+* equipped items
+* important held/stored items
+* personal currency
+* quest items
+* custody warnings
+* unavailable important items
+
+Separates:
+
+Inventory
+Equipped
+Available Nearby
+Unavailable / In Custody
+
+Excludes:
+
+* every trivial item if too long
+* visible-only clutter
+* transaction logs
+
+Dirty when:
+
+* item acquired/lost/equipped/transferred
+* currency changes
+* custody/access changes
+
+14.5 Quest Log card
+
+Canonical key:
+
+protected:quest_log
+
+Includes:
+
+* active quests
+* offered/rumored if important
+* blocked quests
+* ready-to-turn-in quests
+* promised/ready/paid reward status
+* deadline notes
+
+Excludes:
+
+* old archived quest details unless directly relevant
+* full quest history
+
+Dirty when:
+
+* quest status/objective/reward/deadline changes
+
+14.6 Social Memory card
+
+Canonical key:
+
+protected:social_memory
+
+Includes:
+
+* important actors
+* companions
+* current presence summaries
+* relationship notes
+* important claims labeled as claimed/rumored/suspected
+* item custody by actor
+
+Excludes:
+
+* random scene-only NPCs
+* unimportant one-line conversations
+* rumors as confirmed facts
+
+Dirty when:
+
+* important actor added/updated
+* companion presence changes
+* relationship/custody changes
+* major claim added
+
+14.7 Current Location card
+
+Canonical key:
+
+protected:current_location
+
+Includes:
+
+* current location
+* current scene summary
+* present actors
+* important visible/available items
+* hazards
+* exits
+* travel intent if active
+* time note if relevant
+
+Excludes:
+
+* whole world map
+* old routes unless relevant
+* every place known
+
+Dirty when:
+
+* location changes
+* scene changes
+* present actors change
+* visible key items/hazards/exits change
+
+⸻
+
+15. Protected card update priority
+
+When more protected cards are dirty than can be updated, use priority order.
+
+Default priority:
+
+1. Current Location
+2. Body Status
+3. Inventory/Equipment
+4. Quest Log
+5. Abilities
+6. Social Memory
+7. Player Sheet
+
+Reason:
+
+* immediate scene and danger are most useful to AI output
+* player sheet changes less often
+
+15.1 Update limit
+
+MVP default:
+
+maxProtectedUpdatesPerTurn = 3
+
+If more are dirty:
+
+* update highest priority first
+* keep remaining dirty
+* audit skipped due to budget
+
+⸻
+
+16. Protected card singleton resolution
+
+When ensuring a protected card:
+
+16.1 No match
+
+If no existing card matches:
+
+* if dry-run: audit planned creation
+* if live protected writes enabled: create once
+* add operation key
+* update registry
+
+16.2 One match
+
+If exactly one match:
+
+* attach externalRef if missing
+* update registry
+* update if dirty and hash changed
+
+16.3 Multiple matches
+
+If multiple matches:
+
+* do not create another
+* mark duplicate warning
+* choose safest primary only if confidence high
+* audit duplicates
+* optional neutralization only if policy allows
+
+MVP default:
+
+manual_review or audit_only
+
+Do not delete user content blindly.
+
+16.4 Missing external ref but registry exists
+
+If registry says card exists but adapter cannot find it:
+
+* mark status missing
+* if protected and live writes enabled, restore once only
+* use card create operation key
+* audit restore
+
+16.5 Deleted protected card
+
+If a protected card appears deleted:
+
+* do not panic
+* mark missing
+* restore only if safe
+* do not restore repeatedly every turn
+* use cooldown/operation key
+
+⸻
+
+17. Protected card duplicate neutralization policy
+
+Neutralization means making duplicate managed cards stop interfering.
+
+Possible actions:
+
+* audit only
+* rename duplicate title
+* clear unsafe triggers
+* disable if supported
+* add tombstone
+* manual review
+
+17.1 MVP default
+
+MVP should prefer:
+
+audit_only
+manual_review
+
+Live disabling/renaming only after Card API Adapter proves safety.
+
+17.2 Never neutralize blindly
+
+Do not remove or rewrite user-created non-managed cards unless:
+
+* clearly managed by AIDRPG/TASIS old marker
+* duplicate of protected canonical key
+* safe policy is enabled
+* audit records action
+
+⸻
+
+18. Card write operation keys
+
+Every card create/update/disable/restore must use operation keys.
+
+18.1 Protected create key
+
+card.create.protected.player_sheet
+
+18.2 Protected update key
+
+card.update.protected.player_sheet.hash_{renderHash}
+
+18.3 Duplicate warning key
+
+card.duplicate.protected.player_sheet.turn_{turn}
+
+18.4 Restore key
+
+card.restore.protected.player_sheet.turn_{turnOrCooldown}
+
+18.5 Generated card create key later
+
+card.create.generated.actor.mara
+
+Generated card keys never expire once creation succeeds.
+
+⸻
+
+19. CardSyncLite flow
+
+CardSyncLite must follow this order.
+
+1. Runtime confirms hook is allowed.
+2. Ensure card state defaults.
+3. Check CardApi capabilities if needed and budget allows.
+4. Ensure protected registry definitions exist.
+5. Process dirty protected cards by priority.
+6. Render state-derived card text.
+7. Compare render hash.
+8. If unchanged, skip.
+9. If dry-run, audit planned update.
+10. If live allowed, adapter safely updates/creates singleton.
+11. Record result.
+12. Leave unresolved dirty cards queued.
+13. Suppress generated cards in MVP.
+
+19.1 Hooks allowed to run CardSyncLite
+
+MVP recommended:
+
+Output hook only
+
+Reason:
+
+* Output is where state changes commit
+* Context must remain read-only
+* Input should not write cards
+
+Manual command may trigger dry-run audit later.
+
+19.2 Context hook restriction
+
+Context hook may read card registry metadata for diagnostics only if needed.
+
+Context hook may not write cards.
+
+⸻
+
+20. Card API failure behavior
+
+If card API call fails:
+
+* do not crash hook
+* do not retry endlessly
+* log card error
+* leave dirty status if update still needed
+* set adapter warning
+* mark releasecheck warning
+* continue gameplay state safely
+
+20.1 Add failure
+
+If add fails:
+
+* registry remains planned/missing/error
+* no externalRef assigned unless confirmed
+* operation key not marked successful
+* audit failure
+
+20.2 Update failure
+
+If update fails:
+
+* keep card dirty
+* increment attempt count if tracked
+* audit failure
+* avoid repeated attempts every hook without cooldown
+
+20.3 Remove/disable failure
+
+If disable fails:
+
+* leave duplicate warning
+* audit manual review
+* do not assume card is disabled
+
+⸻
+
+21. Card scan budget
+
+Do not scan every Story Card every hook.
+
+21.1 Allowed scan types
+
+* startup capability scan
+* protected singleton check
+* manual /cardaudit scan
+* migration scan
+* limited dirty-card lookup
+
+21.2 Forbidden behavior
+
+* full Story Card scan every Input hook
+* full Story Card scan every Context hook
+* full Story Card scan every Output hook
+* scanning cards as possible gameplay events
+* parsing card body text for inventory/quests/actors
+
+21.3 Recommended scan limits
+
+maxCardListScansPerTurn = 1
+maxCardRefsInspectedPerScan = 50 initially
+maxProtectedSingletonChecksPerTurn = 3
+maxLiveCardWritesPerTurn = 3 protected, 0 generated in MVP
+
+If limits are exceeded:
+
+* skip remaining
+* audit budget skip
+* do not force scan
+
+⸻
+
+22. Generated cards remain disabled in MVP
+
+MVP hard rule:
+
+generatedCardsEnabled = false
+
+If any generated card proposal occurs:
+
+* suppress it
+* audit suppression
+* do not create card
+* releasecheck should confirm generated cards disabled
+
+22.1 Generated card beta prerequisites
+
+Before generated cards can be enabled:
+
+* MVP Gates 1–8 pass
+* Story Card API Adapter tests pass
+* Name/Trigger Policy tests pass
+* Resolver tests pass
+* Protected singleton tests pass
+* Generated CardSync Beta Spec exists
+* Full Regression Matrix includes card stress tests
+* releasecheck approves beta mode
+
+⸻
+
+23. Old managed card migration policy
+
+Old AIDRPG/TASIS cards may exist.
+
+Do not trust them as canon.
+
+23.1 Old card detection
+
+Old card may be detected by:
+
+* old title pattern
+* old marker/header
+* old trigger namespace
+* old managed key
+* content marker
+* registry from old state
+
+23.2 Old card actions
+
+Possible actions:
+
+* ignore
+* link to new protected card if exact safe match
+* neutralize duplicate if safe
+* tombstone junk generated card
+* quarantine card reference
+* manual review
+
+23.3 Migration rule
+
+Old card text is not imported as confirmed state.
+
+At most, old card text may be quarantined for user review or migration notes.
+
+23.4 Required old-card tests
+
+* old Player Summary does not create new player identity
+* old Inventory card does not add items
+* old Quest card does not create active quest
+* old generated actor card does not create actor biography
+* duplicate old protected card does not cause another new card
+
+⸻
+
+24. Manual card edits policy
+
+Users may edit Story Cards manually.
+
+Manual edits must not become canon automatically.
+
+24.1 Protected card manual edit
+
+If a protected card is manually edited:
+
+* CardSync should overwrite from state on next update if live allowed
+* or audit mismatch if dry-run/safe mode
+* do not import manual text as state
+
+24.2 Generated card manual edit later
+
+Generated cards are deferred.
+
+Later policy should decide whether manual edits are:
+
+* ignored
+* preserved as prose only
+* flagged for review
+* allowed through explicit import command
+
+MVP default:
+
+manual card edits never mutate state
+
+⸻
+
+25. /cardaudit command contract
+
+/cardaudit must explain card status without mutating gameplay state.
+
+25.1 Required output fields
+
+* CardSync mode
+* dry-run/live status
+* safe mode status
+* generated cards enabled/disabled
+* API capability status
+* protected card registry status
+* dirty cards
+* planned card operations
+* skipped operations
+* duplicate warnings
+* tombstones
+* recent card errors
+* write budget status
+
+25.2 Example output shape
+
+AIDRPG Card Audit
+Mode: Dry-run / Safe Mode
+Generated Cards: Disabled
+Protected Cards: 7 registered, 0 live writes this turn
+Dirty Cards: Body Status, Inventory/Equipment
+Skipped: Quest Log due to write budget
+Warnings: Duplicate old Player Sheet detected; manual review required
+
+25.3 Command safety
+
+/cardaudit output must not be parsed as story.
+
+⸻
+
+26. /releasecheck card requirements
+
+/releasecheck must fail or warn for card issues.
+
+26.1 Hard fail
+
+Hard fail if:
+
+* generated cards enabled in MVP
+* CardSync can read card text as canon
+* Context hook can write cards
+* duplicate protected card creation is possible without detection
+* live writes enabled without capability check
+* card API failures are uncaught
+* protected card definitions missing
+* broad protected triggers are configured
+
+26.2 Warning
+
+Warn if:
+
+* duplicate old cards detected but not neutralized
+* dry-run mode still active when live mode expected
+* card API partially unavailable
+* dirty cards pending too long
+* protected card missing but restore disabled
+
+⸻
+
+27. Story Card tests
+
+These tests must exist before CardSyncLite is considered safe.
+
+C001 — Card API capability detection safe
+
+Setup:
+
+Story Card API unavailable or partially mocked.
+
+Expected:
+
+* no crash
+* capabilities recorded
+* liveWritesEnabled remains false
+* card audit reports unavailable/partial API
+
+Fail if:
+
+* script assumes API exists and crashes
+
+⸻
+
+C002 — Protected cards registered once
+
+Setup:
+
+No protected cards in registry.
+
+Action:
+
+Run CardSyncLite ensure protected definitions.
+
+Expected:
+
+* seven protected registry entries
+* no generated cards
+* dry-run planned creations if no external cards exist
+
+Fail if:
+
+* duplicate protected registry entries
+* generated cards created
+
+⸻
+
+C003 — Player Sheet singleton no duplicate
+
+Setup:
+
+One existing Player Sheet card found.
+
+Action:
+
+Ensure singleton.
+
+Expected:
+
+* registry attaches existing reference
+* no new Player Sheet created
+
+Fail if:
+
+* second Player Sheet is created
+
+⸻
+
+C004 — Duplicate Player Sheet detected
+
+Setup:
+
+Two cards matching Player Sheet.
+
+Action:
+
+Ensure singleton.
+
+Expected:
+
+* no third card created
+* duplicate warning recorded
+* manual review or safe neutralization planned
+
+Fail if:
+
+* third card created
+* duplicates ignored silently
+
+⸻
+
+C005 — Deleted protected card restore controlled
+
+Setup:
+
+Registry says Player Sheet exists, external card missing.
+
+Expected:
+
+* status marked missing
+* restore planned only if safe/live allowed
+* restore does not repeat every turn
+
+Fail if:
+
+* card recreated every turn
+* state crashes
+
+⸻
+
+C006 — Protected card text does not create state
+
+Setup:
+
+Protected Quest Log card says:
+
+Active Quest: Clear the Mill Wolves
+
+State has no quest.
+
+Expected:
+
+* no quest created
+* card text ignored as canon source
+
+Fail if:
+
+* quest appears from card text
+
+⸻
+
+C007 — Manual edit does not mutate state
+
+Setup:
+
+User edits Player Sheet card to say Level 99.
+
+State says Level 1.
+
+Expected:
+
+* state remains Level 1
+* CardSync may overwrite card from state or audit mismatch
+
+Fail if:
+
+* player becomes Level 99 from card text
+
+⸻
+
+C008 — Generated cards disabled in MVP
+
+Setup:
+
+Generated card proposal:
+
+generated:actor:mara
+
+State:
+
+generatedCardsEnabled = false
+
+Expected:
+
+* creation suppressed
+* card audit explains disabled generated cards
+
+Fail if:
+
+* generated card created
+
+⸻
+
+C009 — Bad trigger rejected
+
+Setup:
+
+Generated card proposal with trigger:
+
+wolf
+
+Expected:
+
+* rejected by trigger policy
+* no card created
+
+Fail if:
+
+* generic wolf trigger card created
+
+⸻
+
+C010 — Card update hash skip
+
+Setup:
+
+Body Status rendered hash unchanged.
+
+Action:
+
+CardSync runs.
+
+Expected:
+
+* no update operation
+* no write budget consumed
+
+Fail if:
+
+* unchanged card rewrites every turn
+
+⸻
+
+C011 — Card API add failure fail-soft
+
+Setup:
+
+Mock add failure.
+
+Expected:
+
+* no crash
+* no externalRef falsely stored
+* audit error
+* dirty state remains if needed
+
+Fail if:
+
+* script marks card active despite failure
+
+⸻
+
+C012 — Card write budget enforced
+
+Setup:
+
+All seven protected cards dirty.
+
+Expected:
+
+* max 3 protected card updates planned/applied
+* remaining stay dirty
+* card audit shows budget skip
+
+Fail if:
+
+* all seven write in one turn despite limit
+
+⸻
+
+C013 — Old card not imported as canon
+
+Setup:
+
+Old TASIS Inventory card says:
+
+Player owns Crown of Dawn.
+
+State inventory has no Crown.
+
+Expected:
+
+* no Crown added
+* old card quarantined/ignored/manual review
+
+Fail if:
+
+* Crown added from card prose
+
+⸻
+
+C014 — Broad protected trigger rejected
+
+Setup:
+
+Protected Inventory card configured with trigger:
+
+inventory
+
+Expected:
+
+* releasecheck warning/fail
+* trigger policy rejects broad trigger
+
+Fail if:
+
+* broad trigger accepted silently
+
+⸻
+
+28. CardSyncLite blocker checklist
+
+Before coding CardSyncLite live behavior, all must be true:
+
+* Card API Adapter functions defined
+* dry-run mode defined
+* safe mode defined
+* live write gate defined
+* protected card registry schema defined
+* protected singleton contract defined
+* protected title map defined
+* protected trigger policy defined
+* render hash skip defined
+* duplicate warning behavior defined
+* tombstone behavior defined
+* old card migration policy defined
+* manual edit policy defined
+* /cardaudit output defined
+* /releasecheck card checks defined
+* tests C001–C014 accepted
+
+⸻
+
+29. Relationship to later Generated CardSync Beta
+
+This chunk does not enable generated cards.
+
+It only prepares the safe foundation.
+
+Generated cards require a future beta spec that defines:
+
+* promotion rules
+* safe triggers
+* max generated card counts
+* generated card cooldowns
+* stale generated card archive rules
+* actor/place/ability-only first beta
+* duplicate generated card merge rules
+* generated card regression tests
+
+Until then:
+
+generatedCardsEnabled = false
+
+⸻
+
+30. Final Gap Chunk C doctrine
+
+The old card systems tried to solve real memory problems, but they also created some of the most dangerous failure modes.
+
+The new doctrine is:
+
+Cards are mirrors.
+Cards are not canon.
+Cards are not parsers.
+Cards are not commands.
+Cards are not same-turn fixes.
+Cards are not allowed to multiply.
+
+Protected cards may exist first.
+
+Generated cards wait.
+
+Live writes wait until the adapter proves safety.
+
+The next required gap chunk is:
+
+Gap Chunk D — Parser Rulebook + Resolver + Name/Trigger Policy

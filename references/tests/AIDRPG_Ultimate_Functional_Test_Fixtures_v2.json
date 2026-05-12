@@ -1,0 +1,89 @@
+{
+  "schema_version": "AIDRPG-UTM-v2.0",
+  "fixtures": {
+    "clean_state": {
+      "description": "Default blank AI Dungeon script state."
+    },
+    "party_split_witness_fixture": {
+      "description": "Player has ally in party roster, but ally is away/non-present unless case output says present.",
+      "state_hint": {
+        "actors": {
+          "localIds": [],
+          "party": [
+            "ally"
+          ]
+        }
+      }
+    },
+    "known_route_fixture": {
+      "description": "Base route time already known so contradictions/delays can be checked.",
+      "state_hint": {
+        "time": {
+          "routes": {
+            "knownTravelTimes": {
+              "A|B": {
+                "minutes": 45
+              }
+            }
+          }
+        }
+      }
+    },
+    "corrupted_items_string_fixture": {
+      "description": "items.byId intentionally corrupted into a string before hook.",
+      "state_patch": {
+        "aidrpg": {
+          "items": {
+            "byId": "corrupted"
+          }
+        }
+      }
+    },
+    "stale_pending_fixture": {
+      "description": "pending ability/item candidate from an old turn exists before current turn.",
+      "state_patch": {
+        "aidrpg": {
+          "pending": {
+            "abilityCandidate": {
+              "name": "stale"
+            },
+            "itemCandidate": {
+              "name": "stale"
+            }
+          }
+        }
+      }
+    },
+    "future_schema_fixture": {
+      "description": "state.aidrpg.meta.version set beyond supported schema.",
+      "state_patch": {
+        "aidrpg": {
+          "meta": {
+            "version": 999
+          }
+        }
+      }
+    },
+    "oversized_debug_payload_fixture": {
+      "description": "large/circular-looking nonessential payload is simulated for safe serialization tests.",
+      "state_hint": {
+        "logs": {
+          "debugPayload": "oversized"
+        }
+      }
+    },
+    "cardsync_safe_fixture": {
+      "description": "CardSync safe mode enabled before the turn.",
+      "state_patch": {
+        "aidrpg": {
+          "cards": {
+            "config": {
+              "cardSafeMode": true,
+              "liveWrites": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

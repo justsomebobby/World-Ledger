@@ -1,0 +1,1953 @@
+AIDRPG Gap Chunk A — Old Fix Salvage Matrix
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk A — Old Fix Salvage Matrix
+Purpose: Map every known old AIDRPG repair/fix system into the new architecture so no tested safeguard is accidentally lost.
+Status: Pre-code blocker.
+Applies after: AIDRPG Gap Closure Addendum v1.
+Applies before: Runtime and Hook Contract Spec, Story Card API Adapter Spec, Parser Rulebook, and Script v0.1 coding.
+This document does not contain final script code.
+
+This matrix answers:
+
+* what each old fix/system was trying to protect
+* what went wrong with the old approach
+* whether the idea should be kept, rewritten, deferred, discarded, or kept only as a test
+* which new module owns the repaired version
+* whether it belongs in MVP or later
+* which test proves the old issue will not return
+
+The goal is not to copy old code.
+
+The goal is to preserve every useful safety lesson.
+
+⸻
+
+1. Salvage doctrine
+
+Old AIDRPG/TASIS versions became unstable because useful fixes were added as patches, wrappers, or late repair layers instead of being absorbed into one controlled canon pipeline.
+
+The new doctrine is:
+
+Do not paste old systems back in whole.
+Extract the useful rule.
+Assign it to one owner module.
+Route it through the event/proposal/validation/reducer pipeline.
+Add an audit surface.
+Add a regression test.
+
+No old fix is considered preserved unless it has:
+
+1. a named issue it prevents
+2. a new owner module
+3. a validation/non-canon rule
+4. a reducer or read-only boundary
+5. an audit/debug surface
+6. at least one regression test
+
+⸻
+
+2. Decision labels
+
+Each old system receives one of these decisions.
+
+KEEP IN MVP
+
+The concept is required in the first MVP and should be implemented in the new architecture.
+
+REWRITE IN MVP
+
+The old concept is required, but the old implementation style is unsafe. Rebuild it under the new architecture.
+
+DEFER WITH MINI-SPEC
+
+The concept is valid, but it is too advanced for MVP and requires its own mini-spec before implementation.
+
+DISCARD IMPLEMENTATION, KEEP TEST
+
+The old implementation should not be reused, but the bug it exposed must remain a regression test.
+
+DISCARD
+
+The old behavior is obsolete, redundant, or harmful and should not be carried forward.
+
+⸻
+
+3. MVP owner modules in the new architecture
+
+The new MVP architecture uses these owners:
+
+StateManager
+RuntimeHookContract
+CommandRouter
+EventScannerLite
+ProposalBuilder
+CanonValidator
+ReducerRegistry
+OperationLedger
+BodyReducer
+InventoryReducer
+AbilityReducer
+QuestReducerLite
+ActorReducerLite
+PlaceReducerLite
+TimeReducerLite
+ProgressionReducerLite
+ContextBuilderLite
+CardSyncLite
+AuditLogger
+CleanupManagerLite
+
+Deferred owners:
+
+EconomyReducer
+CraftingReducer
+InvestigationReducer
+ReputationReducer
+FactionReducer
+DomainReducer
+LaborReducer
+PartySystem
+ScaleCombatSystem
+GeneratedCardSync
+AbsorptionEvolutionSystem
+AdvancedBodySystem
+AdvancedAbilitySystem
+WholeSystemTester
+
+⸻
+
+4. High-level old issue categories and new homes
+
+Old Issue Category	New Home
+hook failure / invalid runtime	RuntimeHookContract + StateManager + AuditLogger
+duplicate output consequences	OperationLedger + CanonValidator
+direct parser mutation	EventScannerLite + ProposalBuilder + CanonValidator
+item false positives	Parser Rulebook + InventoryReducer + Resolver
+actual handoff vs quoted command	Natural Confirmation Spec + InventoryReducer
+Story Card creates canon	Non-Canon Source Spec + CardSyncLite
+duplicate Story Cards	Story Card API Adapter + Protected Singleton Contract
+generated junk cards	Generated CardSync Beta Spec + Name/Trigger Policy
+context mutates state	ContextNoWrite rule + ContextBuilderLite
+player identity drift	Player Identity Drift Spec + StateManager
+ability candidates becoming stable	AbilityReducer + Ability Formation Spec
+XP over-award / duplicate XP	ProgressionReducerLite + OperationLedger + XPBudget rules
+quest reward duplication	QuestReducerLite + OperationLedger + InventoryReducer
+actor/place duplicate identities	Resolver Spec + ActorReducerLite + PlaceReducerLite
+cleanup deleting truth	CleanupManagerLite + Dirty Queue Spec
+old polluted save import	Legacy Migration Spec + Quarantine
+dishonest commands	CommandRouter + Command Honesty Spec
+long-run state bloat	CleanupManagerLite + Performance Budget Spec
+advanced economy/crafting/domain/investigation	deferred mini-specs
+
+⸻
+
+5. Old Fix Salvage Matrix
+
+5.1 RuntimeGate
+
+Original purpose: Validate hook inputs and fail softly instead of crashing AI Dungeon.
+
+Old problem: Runtime checks existed, but they were layered alongside many systems and could not guarantee the rest of the hook stayed clean.
+
+Decision: REWRITE IN MVP.
+
+New owner: RuntimeHookContract + StateManager + AuditLogger.
+
+MVP or deferred: MVP blocker.
+
+New implementation rule: Every hook validates runtime inputs before touching gameplay logic. On failure, return safe text, log the issue, and do not partially mutate state.
+
+Required validator/non-canon rule: Invalid runtime blocks gameplay proposals.
+
+Required audit: Runtime failure entry in /debuglast or /stateaudit.
+
+Required tests:
+
+* invalid state fails softly
+* invalid text fails softly
+* context hook missing info does not crash
+* hook never returns undefined
+
+Risk if skipped: One bad hook call can corrupt state or crash the script.
+
+⸻
+
+5.2 TurnEngine
+
+Original purpose: Track hook order, current turn, hashes, duplicate output, and hook lifecycle.
+
+Old problem: Turn identity existed but was not cleanly separated from patch layers and output replay handling.
+
+Decision: REWRITE IN MVP.
+
+New owner: RuntimeHookContract + OperationLedger.
+
+MVP or deferred: MVP blocker.
+
+New implementation rule: Turn state must include current hook, turn index, input hash, output hash, last applied output hash, and command suppression flags.
+
+Required validator/non-canon rule: Same output hash cannot apply the same consequences twice.
+
+Required audit: Duplicate output replay audit.
+
+Required tests:
+
+* Retry/Continue replay does not duplicate item
+* repeated output does not duplicate XP
+* output hash skip works
+* command output replay is ignored
+
+Risk if skipped: Duplicate rewards, duplicate damage, duplicate card writes, duplicate XP.
+
+⸻
+
+5.3 CoreState
+
+Original purpose: Create, validate, migrate, and repair root state.
+
+Old problem: State shape changed across versions and required repair buckets/quarantine to survive bad data.
+
+Decision: REWRITE IN MVP.
+
+New owner: StateManager.
+
+MVP or deferred: MVP.
+
+New implementation rule: StateManager owns state.aidrpg, schema version, default creation, migration, integrity warnings, and safe missing-field repair.
+
+Required validator/non-canon rule: No module writes state before StateManager initializes and validates it.
+
+Required audit: State migration/repair audit.
+
+Required tests:
+
+* missing root initializes
+* missing fields repair without deleting inventory
+* malformed containers quarantine
+* old version migration is idempotent
+
+Risk if skipped: Old-state crashes, lost inventory, broken saves, version confusion.
+
+⸻
+
+5.4 PatchInventory / patch inventory record
+
+Original purpose: Record late wrapper repairs and assign them back to core systems.
+
+Old problem: Useful fixes were added late as wrapper layers instead of being native architecture.
+
+Decision: DISCARD IMPLEMENTATION, KEEP TEST.
+
+New owner: Old Fix Salvage Matrix + ReleaseCheck.
+
+MVP or deferred: MVP planning artifact only.
+
+New implementation rule: No PatchInventory runtime system. Its useful records become this matrix and permanent regression tests.
+
+Required tests:
+
+* no late hook wrapper changes version identity
+* no patch layer bypasses CanonValidator
+* old fixes mapped to owners
+
+Risk if skipped: Old patch pile returns under new names.
+
+⸻
+
+5.5 EventPipeline
+
+Original purpose: Convert text into event-like structures before consequences are applied.
+
+Old problem: Event parsing and state mutation were not always cleanly separated.
+
+Decision: REWRITE IN MVP.
+
+New owner: EventScannerLite + ProposalBuilder.
+
+MVP or deferred: MVP.
+
+New implementation rule: EventScanner finds possible events only. ProposalBuilder creates EventProposal objects. Neither can mutate gameplay state.
+
+Required validator/non-canon rule: All proposals must pass CanonValidator before reducers commit.
+
+Required audit: Proposal list in /debuglast.
+
+Required tests:
+
+* output creates proposal, not direct item
+* player input creates intent only
+* parser cannot write inventory directly
+
+Risk if skipped: Parser false positives directly corrupt state.
+
+⸻
+
+5.6 EventReducer
+
+Original purpose: Apply detected events to state.
+
+Old problem: Reducer boundaries were not always strict enough, and patch systems could mutate state outside the reducer flow.
+
+Decision: REWRITE IN MVP.
+
+New owner: ReducerRegistry + owner reducers.
+
+MVP or deferred: MVP.
+
+New implementation rule: ReducerRegistry routes only validated proposals to the owner reducer. Unknown owners hard-deny.
+
+Required validator/non-canon rule: Reducers do not validate broad canon; they commit already-validated changes.
+
+Required audit: Commit audit with owner reducer and dirty targets.
+
+Required tests:
+
+* unknown reducer rejected
+* inventory event only InventoryReducer commits item
+* quest reward eligibility does not directly mutate currency without routing
+
+Risk if skipped: Multiple systems write the same truth and conflict.
+
+⸻
+
+5.7 CanonEligibilitySystem
+
+Original purpose: Decide whether a hook/action/source can mutate canon.
+
+Old problem: Good concept, but it lived as a broad guard rather than the central validator contract.
+
+Decision: REWRITE IN MVP.
+
+New owner: CanonValidator + Non-Canon Source Spec.
+
+MVP or deferred: MVP.
+
+New implementation rule: CanonValidator decides source eligibility, truth status, confidence, duplicate status, and ownership before any state mutation.
+
+Required rules:
+
+* input intent is not success
+* output is proposal, not automatic truth
+* context cannot mutate state
+* Story Cards cannot mutate state
+* command output cannot mutate state
+* quoted/rumored/dream/hypothetical text cannot become confirmed truth
+
+Required audit: ValidationResult for each proposal.
+
+Required tests:
+
+* card says player owns Crown; inventory unchanged
+* context says quest active; quest state unchanged
+* rumor death does not kill actor
+* dream travel does not change real location
+
+Risk if skipped: Non-canon text becomes real again.
+
+⸻
+
+5.8 ParserSafetySystem
+
+Original purpose: Block parser false positives, especially quoted speech, failed attempts, wrong handoffs, and unsafe canon inference.
+
+Old problem: It became a late quarantine/repair layer instead of first-class parser rules.
+
+Decision: REWRITE IN MVP.
+
+New owner: Parser Rulebook v1 + EventScannerLite + CanonValidator.
+
+MVP or deferred: MVP blocker before parser expansion.
+
+New implementation rule: Every parser hit must carry flags for completedAction, negated, hypothetical, quotedSpeech, dreamOrVision, rumorOrClaim, attemptOnly, failedOrRevoked, and confidence.
+
+Required tests:
+
+* quoted item command rejected
+* failed ability does not stabilize
+* negated pickup does not add item
+* hypothetical item does not add item
+* actual handoff accepted
+
+Risk if skipped: The old false-positive bugs return immediately.
+
+⸻
+
+5.9 LongRunStabilitySystem
+
+Original purpose: Prevent long-run state rot, bloated logs, stale candidates, and accumulated unsafe pending data.
+
+Old problem: Stability was added after complexity instead of designed into queues, budgets, and cleanup.
+
+Decision: REWRITE IN MVP.
+
+New owner: CleanupManagerLite + Dirty Queue Spec + Performance Budget Spec.
+
+MVP or deferred: MVP for basic cleanup; full long-run testing deferred to Whole-System Tester.
+
+New implementation rule: Cleanup is budgeted, conservative, audited, and never creates truth.
+
+Required tests:
+
+* old visible loot clears after scene change
+* important actor retained
+* audit logs capped
+* dirty queue capped
+* cleanup does not invent item/quest/XP
+
+Risk if skipped: Long campaigns slowly rot and become untrustworthy.
+
+⸻
+
+5.10 CoreAuthoritySystem
+
+Original purpose: Centralize truth authority and prevent broad patch systems from writing state.
+
+Old problem: Authority existed late and had to police already-existing broad systems.
+
+Decision: REWRITE IN MVP.
+
+New owner: CanonValidator + ReducerRegistry + StateManager.
+
+MVP or deferred: MVP.
+
+New implementation rule: One owner per truth type. Broad systems cannot directly write gameplay state.
+
+Required audit: /releasecheck must fail if multiple writers exist for XP, HP, items, quests, cards, or context.
+
+Required tests:
+
+* parser cannot directly mutate inventory
+* CardSync cannot mutate gameplay state
+* ContextBuilder cannot mutate gameplay state
+* releasecheck detects missing owner boundaries
+
+Risk if skipped: Patch pile returns through “helper” systems.
+
+⸻
+
+5.11 LongRunPolishSystem
+
+Original purpose: Smooth long-run behavior, cleanup, UX, and diagnostics.
+
+Old problem: Polish can hide bugs if it silently repairs instead of surfacing problems.
+
+Decision: DISCARD IMPLEMENTATION, KEEP SELECTIVE TESTS.
+
+New owner: AuditLogger + CleanupManagerLite + ReleaseCheck.
+
+MVP or deferred: MVP diagnostics; polish deferred.
+
+New implementation rule: No hidden broad polish mutator. Any repair must be owned, logged, and testable.
+
+Required tests:
+
+* cleanup repair logged
+* no hidden item/XP/quest creation
+* command output states what was skipped or repaired
+
+Risk if skipped: Hidden fixes mask root-cause bugs.
+
+⸻
+
+5.12 StartupIdentityImporter
+
+Original purpose: Import player setup details like name, race/species, age, appearance, starting location, starting items, and starting abilities.
+
+Old problem: Setup import could risk overwriting identity or interpreting vague prose as confirmed setup.
+
+Decision: REWRITE IN GAP CHUNK G BEFORE CODE.
+
+New owner: Startup Setup Import Spec + StateManager + Player Identity Drift Spec.
+
+MVP or deferred: MVP for one-time safe setup; full complex import deferred.
+
+New implementation rule: Startup import runs once, before gameplay lock, and never overwrites active identity unless explicit manual override.
+
+Required tests:
+
+* setup imports once
+* NPC name does not become player name
+* starting item only if explicit
+* vague opening prose does not create stable ability
+* candidate ability remains candidate
+
+Risk if skipped: Player sheet drift and false starting inventory/abilities.
+
+⸻
+
+5.13 SettingsSystem
+
+Original purpose: Store script modes/settings.
+
+Old problem: Settings can enable unsafe advanced features too early.
+
+Decision: REWRITE IN MVP.
+
+New owner: StateManager flags + CommandRouter.
+
+MVP or deferred: MVP.
+
+New implementation rule: Settings are explicit flags. Deferred systems remain false by default and cannot be enabled by hidden legacy commands.
+
+Required tests:
+
+* generatedCardsEnabled false by default
+* economy/crafting/investigation/domain/absorption false by default
+* old live CardSync command disabled until beta
+
+Risk if skipped: Dangerous systems activate early.
+
+⸻
+
+5.14 RegressionHardeningSystem
+
+Original purpose: Add known old bug tests and hardening rules.
+
+Old problem: Hardening was attached to runtime rather than maintained as formal regression matrix.
+
+Decision: DISCARD IMPLEMENTATION, KEEP TESTS.
+
+New owner: Test Spec v1 + Full Regression Matrix v1 + Whole-System Tester.
+
+MVP or deferred: MVP for core tests; full matrix before expansion.
+
+New implementation rule: Old regressions become named tests, not hidden runtime patches.
+
+Required tests:
+
+* negative acquisition
+* failed ability
+* duplicate card
+* polluted save
+* card text cannot create canon
+
+Risk if skipped: Old bugs return without detection.
+
+⸻
+
+5.15 BootstrapOnceGate
+
+Original purpose: Ensure setup/bootstrap runs only once.
+
+Old problem: Bootstrapping across hooks could repeat or overwrite state.
+
+Decision: REWRITE IN MVP.
+
+New owner: StateManager + Startup Setup Import Spec.
+
+MVP or deferred: MVP.
+
+New implementation rule: Bootstrap has a permanent operation key and setup lock.
+
+Required tests:
+
+* bootstrap runs once
+* same opening processed twice does not duplicate starting items
+* setup does not overwrite after turn one
+
+Risk if skipped: Duplicate starting state and identity overwrite.
+
+⸻
+
+5.16 ContextNoWritePolicy
+
+Original purpose: Prevent Context hook/text from creating gameplay truth.
+
+Old problem: Needed as a guard because context and state mutation were not sufficiently separated.
+
+Decision: KEEP IN MVP AS RULE, REWRITE IMPLEMENTATION.
+
+New owner: ContextBuilderLite + Non-Canon Source Spec + CanonValidator.
+
+MVP or deferred: MVP.
+
+New implementation rule: ContextBuilder is read-only. Context packets cannot create proposals.
+
+Required tests:
+
+* context says player owns Crown; no inventory item
+* context says quest active; no quest state
+* context does not increment time
+* context does not mark actors present
+
+Risk if skipped: Context becomes a second hidden canon source.
+
+⸻
+
+5.17 PlayerIdentityGuard
+
+Original purpose: Prevent player identity from drifting due to NPC names, narration, setup confusion, or transformations.
+
+Old problem: Identity protection existed as guard patches rather than state authority.
+
+Decision: REWRITE IN GAP CHUNK G.
+
+New owner: Player Identity Drift Spec + StateManager + ActorResolver.
+
+MVP or deferred: MVP for basic protection.
+
+New implementation rule: Player name/race/species/age/appearance are protected fields with separate temporary disguise/transformation records.
+
+Required tests:
+
+* NPC name does not overwrite player
+* title does not overwrite name
+* dream transformation does not persist
+* confirmed transformation updates correctly
+* time skip ages once
+
+Risk if skipped: Player sheet becomes unreliable.
+
+⸻
+
+5.18 ActorNameExtractionGuard
+
+Original purpose: Prevent bad actor names and fragments from becoming persistent actor records.
+
+Old problem: Actor extraction could promote junk or relation phrases.
+
+Decision: REWRITE IN MVP.
+
+New owner: ActorReducerLite + Resolver Spec + Name/Trigger Policy.
+
+MVP or deferred: MVP.
+
+New implementation rule: Only named/important actors persist. Scene-only actors expire. Relation phrases do not overwrite actor identity.
+
+Required tests:
+
+* random guard scene-only
+* Mara’s sister is not Mara
+* someone not persistent actor
+* named recurring captain persists
+
+Risk if skipped: Actor memory fills with junk and duplicates.
+
+⸻
+
+5.19 AbilityCandidateSanitizer
+
+Original purpose: Prevent junk ability candidates and failed attempts from becoming real powers.
+
+Old problem: Ability candidates could be created too freely or stabilized too quickly.
+
+Decision: REWRITE IN MVP.
+
+New owner: AbilityReducer + Parser Rulebook + Ability Formation Spec.
+
+MVP or deferred: MVP for candidate/stable split; advanced formation deferred.
+
+New implementation rule: Unknown/failed powers become no effect, hint, or candidate only if supported. Candidate does not equal stable.
+
+Required tests:
+
+* failed Mana Slash does not stabilize
+* pretend Dragonfire creates no candidate
+* unknown anime power becomes hint/candidate at most
+* candidate does not get generated card
+
+Risk if skipped: Freeform power attempts become infinite free abilities.
+
+⸻
+
+5.20 ContextBudgetSystem
+
+Original purpose: Prevent context bloat and keep important truth visible.
+
+Old problem: Budgeting was added to manage complexity after many systems existed.
+
+Decision: REWRITE IN MVP.
+
+New owner: ContextBuilderLite + Context Packet Serializer Spec.
+
+MVP or deferred: MVP.
+
+New implementation rule: Context packets are prioritized, capped, hashed, and audited.
+
+Required tests:
+
+* context includes current location
+* context includes custody warning
+* context labels rumors
+* context avoids full inventory dump
+* skipped packets visible in /contextaudit
+
+Risk if skipped: AI Dungeon forgets key truth or gets flooded.
+
+⸻
+
+5.21 NameSanitizerSystem
+
+Original purpose: Prevent junk names for actors, places, items, abilities, cards, and triggers.
+
+Old problem: Sanitizer existed but needed stronger owner integration.
+
+Decision: REWRITE IN MVP.
+
+New owner: Name/Trigger Policy + Resolver Spec + CardSyncLite.
+
+MVP or deferred: MVP for entity names; generated card trigger enforcement deferred until beta.
+
+New implementation rule: Every persistent entity and card trigger passes name hygiene before promotion.
+
+Required tests:
+
+* no Street card
+* no Door place card
+* no Your Hand item
+* no AIDRPG actor
+* no generic Wolf card unless named/promoted
+
+Risk if skipped: Junk cards and junk entities return.
+
+⸻
+
+5.22 EntityIdentityResolver
+
+Original purpose: Resolve references to existing actors/items/places/abilities and avoid duplicates.
+
+Old problem: Similar-name confusion could merge wrong entities or create duplicates.
+
+Decision: REWRITE IN MVP.
+
+New owner: Resolver / Alias / Similar-Name Spec.
+
+MVP or deferred: MVP for item/actor/place/ability basics.
+
+New implementation rule: Resolver returns matchedId, confidence, ambiguity, candidates, rejected candidates, reason, and match type.
+
+Required tests:
+
+* iron key not keyring
+* Old Chapel Road not Old Chapel
+* Mara’s sister not Mara
+* Frostmaw not generic wolf
+* ambiguous sword not randomly selected
+
+Risk if skipped: Wrong items/actors/places update.
+
+⸻
+
+5.23 XPBudgetGuardSystem
+
+Original purpose: Prevent XP over-awards, duplicate XP, and farming.
+
+Old problem: XP rules were patched after other systems could award XP.
+
+Decision: REWRITE IN MVP / FORMULA APPENDIX.
+
+New owner: ProgressionReducerLite + OperationLedger + Formula Appendix.
+
+MVP or deferred: MVP for duplicate/simple XP; advanced challenge XP after Formula Appendix.
+
+New implementation rule: XP awards require operation keys, challenge context, and anti-farm modifiers when automated.
+
+Required tests:
+
+* repeated output gives XP once
+* trivial overleveled enemy gives low/no XP
+* quest XP operation key prevents duplicate
+
+Risk if skipped: Infinite XP farming and duplicate rewards.
+
+⸻
+
+5.24 AbilityUseResolver
+
+Original purpose: Decide whether an ability can be used based on status, cost, equipment, body, and context.
+
+Old problem: Ability usage was patched around candidates/costs instead of fully owned by AbilityReducer + Body/Inventory reducers.
+
+Decision: REWRITE IN MVP.
+
+New owner: AbilityReducer + BodyReducer + InventoryReducer + CanonValidator.
+
+MVP or deferred: MVP for basic use checks; advanced costs later.
+
+New implementation rule: Stable abilities can be used only if status, resource cost, equipment, body, and context checks pass.
+
+Required tests:
+
+* stable Mana Slash costs MP/EP
+* sword-required ability fails if sword in NPC custody
+* sealed ability cannot be used
+* candidate teleport is not reliable
+
+Risk if skipped: Abilities bypass costs and requirements.
+
+⸻
+
+5.25 PlayerSystem
+
+Original purpose: Track player identity and sheet.
+
+Old problem: Player state could be affected by setup/import/narrative drift and not cleanly protected.
+
+Decision: REWRITE IN MVP.
+
+New owner: StateManager + PlayerState + PlayerIdentityGuard rules.
+
+MVP or deferred: MVP.
+
+New implementation rule: PlayerSystem as old module becomes PlayerState plus commands and protected card rendering.
+
+Required tests:
+
+* /sheet displays true state
+* player name not overwritten by NPC
+* protected Player Sheet mirrors state only
+
+Risk if skipped: Player sheet cannot be trusted.
+
+⸻
+
+5.26 BuildIdentitySystem
+
+Original purpose: Track build identity, specialization, archetype, and stat bias.
+
+Old problem: Build identity can become vague or over-automated from narration.
+
+Decision: KEEP LIGHTLY IN MVP, DEFER ADVANCED.
+
+New owner: PlayerState + Formula Appendix + future Build/Archetype Spec.
+
+MVP or deferred: MVP field only; advanced build logic deferred.
+
+New implementation rule: MVP stores buildIdentity/specialization as display fields. No automatic hard build changes from vague narration.
+
+Required tests:
+
+* /sheet shows build identity
+* vague “you feel rogue-like” does not alter build
+* explicit setup can set build once
+
+Risk if skipped: Build identity drifts or becomes meaningless.
+
+⸻
+
+5.27 ProgressionSystem
+
+Original purpose: Track XP, level, stat growth, and progression.
+
+Old problem: Multiple systems could award progression or duplicate XP.
+
+Decision: REWRITE IN MVP.
+
+New owner: ProgressionReducerLite + Formula Appendix + OperationLedger.
+
+MVP or deferred: MVP for simple XP; automated combat/level math after formula tests.
+
+New implementation rule: ProgressionReducer is the only owner of XP and level state.
+
+Required tests:
+
+* XP gain applies once
+* repeated reward output does not double XP
+* Formula Appendix tests pass before automation
+
+Risk if skipped: Progression becomes inconsistent and farmable.
+
+⸻
+
+5.28 StatBenchmarkSystem
+
+Original purpose: Estimate level/stat benchmarks and scaling.
+
+Old problem: Benchmarks existed but needed exact formulas and safe caps.
+
+Decision: REWRITE THROUGH FORMULA APPENDIX.
+
+New owner: Formula Appendix + ProgressionReducerLite.
+
+MVP or deferred: Formula exists; automation deferred until combat/progression expansion.
+
+New implementation rule: Use fixed formulas for expected stats/resources instead of improvising in code.
+
+Required tests:
+
+* Level 1000 stats finite
+* XP-to-next increases with level
+* overleveled XP decay works
+
+Risk if skipped: Scaling becomes arbitrary and impossible to balance.
+
+⸻
+
+5.29 ActorThreatProfileSystem
+
+Original purpose: Estimate actor/enemy threat or level.
+
+Old problem: Threat profiles can over-canonize enemies or conflict with combat scaling.
+
+Decision: DEFER WITH MINI-SPEC.
+
+New owner: Combat/Progression v0.2 Expansion + Scale/Group Combat Spec.
+
+MVP or deferred: Deferred.
+
+New implementation rule: MVP can store actor importance/status, but not full threat profiles.
+
+Required tests later:
+
+* generic wolf threat not Frostmaw
+* boss threat persists
+* enemy level used for XP only after validation
+
+Risk if skipped in future: Combat and XP estimates are inconsistent.
+
+⸻
+
+5.30 InventorySystem
+
+Original purpose: Track inventory, item ownership, equipment, custody, and item changes.
+
+Old problem: Inventory false positives were a major issue: visible items, quoted pickups, hypotheticals, and command output could become owned items.
+
+Decision: REWRITE IN MVP.
+
+New owner: InventoryReducer + Parser Rulebook + Natural Confirmation Spec + Resolver.
+
+MVP or deferred: MVP.
+
+New implementation rule: Separate visible, available_loot, held, equipped, stored, npc_custody, inaccessible, lost, sold, destroyed, consumed.
+
+Required tests:
+
+* visible ring not inventory
+* goblin drops dagger as available loot only
+* pickup moves loot to inventory once
+* item in NPC custody cannot be used
+* command output does not duplicate item
+
+Risk if skipped: Inventory becomes fictionally false immediately.
+
+⸻
+
+5.31 PatchInventory item false-positive repair layers
+
+Original purpose: Patch quest-objective item false positives and inventory parsing issues.
+
+Old problem: Inventory repairs happened after false positives instead of preventing them.
+
+Decision: DISCARD IMPLEMENTATION, KEEP TESTS.
+
+New owner: InventoryReducer + Parser Rulebook + Resolver.
+
+MVP or deferred: MVP tests.
+
+Required tests:
+
+* quest objective mention does not add item
+* quoted pickup does not add item
+* idea of key does not add key
+* price quote does not spend money
+
+Risk if skipped: Old inventory false positives return.
+
+⸻
+
+5.32 SceneStateSystem
+
+Original purpose: Track current scene, present actors, hazards, visible items, and immediate location state.
+
+Old problem: Scene state could over-promote temporary places/actors or drift from real location.
+
+Decision: REWRITE IN MVP.
+
+New owner: PlaceReducerLite + ActorReducerLite + InventoryReducer sceneItems.
+
+MVP or deferred: MVP.
+
+New implementation rule: Scene state is temporary. Durable actors/places/items require promotion rules.
+
+Required tests:
+
+* generic room creates scene only, no place card
+* random guard scene-only
+* visible scene item not inventory
+* scene change clears stale visible loot
+
+Risk if skipped: Temporary details pollute long-term memory.
+
+⸻
+
+5.33 WorldEntitySystem
+
+Original purpose: Track major world entities and large-scale supernatural systems.
+
+Old problem: World entities can bloat state and card memory if created too easily.
+
+Decision: DEFER WITH MINI-SPEC.
+
+New owner: World Entity Mini-Spec later + Place/Quest/Faction links.
+
+MVP or deferred: Deferred.
+
+New implementation rule: MVP may record simple place/world notes only; no durable world entity cards.
+
+Required tests later:
+
+* rumor of demon seal does not create confirmed world entity
+* confirmed world entity gets one record
+* world entity card only after generated card beta
+
+Risk if skipped in future: World memory becomes bloated and speculative.
+
+⸻
+
+5.34 TimeTravelSystem
+
+Original purpose: Track time passage, travel, routes, deadlines, and recovery ticks.
+
+Old problem: Travel intent could become arrival, replay could advance time twice, and route baselines needed protection.
+
+Decision: REWRITE LITE IN MVP; FULL DEFERRED.
+
+New owner: TimeReducerLite + PlaceReducerLite; future TravelReducer.
+
+MVP or deferred: MVP for text time and arrival/intent distinction; full travel deferred.
+
+New implementation rule: “Head toward” is intent. Arrival requires confirmed output or explicit command/manual override. Time advances only from confirmed passage.
+
+Required tests:
+
+* head toward chapel does not arrive
+* confirmed arrival updates location
+* dream travel does not update real location
+* repeated output does not advance time twice
+
+Risk if skipped: Player teleports and deadlines break.
+
+⸻
+
+5.35 ReputationSystem
+
+Original purpose: Track reputation, social standing, titles, public/private awareness.
+
+Old problem: Private deeds, single witnesses, and rumors could become public reputation too easily.
+
+Decision: DEFER WITH MINI-SPEC; LIGHT SOCIAL NOTES IN MVP.
+
+New owner: ActorReducerLite for MVP notes; future ReputationReducer.
+
+MVP or deferred: Deferred except simple actor relationship notes.
+
+New implementation rule: MVP stores relationship/social notes only. Public reputation/title systems require mini-spec.
+
+Required tests later:
+
+* private deed not public fame
+* one witness creates pending report, not town-wide reputation
+* rumor accusation not confirmed reputation
+* title requires authority/source
+
+Risk if skipped in future: Reputation becomes unrealistic and too easy to corrupt.
+
+⸻
+
+5.36 QuestLogSystem
+
+Original purpose: Track quests, objectives, rewards, and archives.
+
+Old problem: Quest rumors could become active quests, reward promises could become paid rewards, and duplicates could apply.
+
+Decision: REWRITE IN MVP.
+
+New owner: QuestReducerLite + OperationLedger + InventoryReducer for reward payment.
+
+MVP or deferred: MVP for quest lite; contracts/deep quest logic deferred.
+
+New implementation rule: Rumored, offered, active, blocked, ready_to_turn_in, completed, rewarded are separate. Promised reward is not paid reward.
+
+Required tests:
+
+* rumor not active quest
+* offered quest becomes active only after acceptance
+* objective complete does not auto-pay
+* reward pays once
+
+Risk if skipped: Quest log becomes over-eager and rewards duplicate.
+
+⸻
+
+5.37 CardSyncSystem
+
+Original purpose: Keep Story Cards synchronized with state.
+
+Old problem: CardSync policies were late wrappers, and prior card systems could assume unsafe API behavior or create duplicate/junk cards.
+
+Decision: REWRITE IN MVP AS CardSyncLite; GENERATED DEFERRED.
+
+New owner: CardSyncLite + Story Card API Adapter + Protected Singleton Contract.
+
+MVP or deferred: Protected cards MVP; generated cards deferred.
+
+New implementation rule: Cards mirror state only. Protected cards are singleton. Generated cards disabled until beta.
+
+Required tests:
+
+* protected cards created once
+* duplicate Player Sheet neutralized
+* card text does not create state
+* generated card creation suppressed
+* card API failure fail-softs
+
+Risk if skipped: Card duplication and false canon return.
+
+⸻
+
+5.38 TransactionLedgerSystem
+
+Original purpose: Track transactions, payouts, purchases, sales, and duplicate economy events.
+
+Old problem: Economy systems are too interconnected for MVP, but reward/payment duplication still matters.
+
+Decision: SPLIT: OperationLedger IN MVP, Economy Mini-Spec DEFERRED.
+
+New owner: OperationLedger for duplicate keys; future EconomyReducer.
+
+MVP or deferred: MVP for reward/payment duplicate keys; full economy deferred.
+
+New implementation rule: Quest rewards use rewardKeys. Full transactions wait for Economy Mini-Spec.
+
+Required tests:
+
+* quest payment once
+* price quote does not spend
+* purchase event later requires funds and item transfer
+
+Risk if skipped: Coin rewards and transactions duplicate or spend incorrectly.
+
+⸻
+
+5.39 MaterialRequirementSystem
+
+Original purpose: Track materials required for crafting/projects.
+
+Old problem: Materials and crafting are too advanced for MVP and depend on inventory ownership/access.
+
+Decision: DEFER WITH CRAFTING MINI-SPEC.
+
+New owner: CraftingReducer later + InventoryReducer.
+
+MVP or deferred: Deferred.
+
+New implementation rule: MVP may track materials as inventory items only; no crafting requirement automation.
+
+Required tests later:
+
+* visible material not owned
+* material reservation consumes/accesses only owned material
+* unavailable material cannot be used
+
+Risk if skipped in future: Crafting creates items from non-owned materials.
+
+⸻
+
+5.40 CraftingSystem
+
+Original purpose: Track crafting, recipes, item quality, repairs, upgrades.
+
+Old problem: Crafting can create duplicate items, consume unavailable materials, or complete instantly from intent.
+
+Decision: DEFER WITH MINI-SPEC.
+
+New owner: CraftingReducer later.
+
+MVP or deferred: Deferred.
+
+New implementation rule: No active crafting logic in MVP. Future crafting must use project lifecycle and material reservation.
+
+Required tests later:
+
+* repair updates existing item, not duplicate
+* failed craft does not create output
+* completed craft creates once
+* material consumed once
+
+Risk if skipped in future: Crafting becomes a duplication engine.
+
+⸻
+
+5.41 DomainManagementSystem
+
+Original purpose: Track base/domain projects, workers, foremen, holdings, resources.
+
+Old problem: Domain systems can explode state and require time/labor/economy integration.
+
+Decision: DEFER WITH DOMAIN/LABOR MINI-SPEC.
+
+New owner: DomainReducer + LaborReducer later.
+
+MVP or deferred: Deferred.
+
+New implementation rule: MVP can store simple place/base notes only; no worker/project automation.
+
+Required tests later:
+
+* hiring worker requires payment/availability
+* project progress uses time/materials/labor
+* project completion applies once
+* domain treasury separate from purse
+
+Risk if skipped in future: Instant buildings and free labor return.
+
+⸻
+
+5.42 InvestigationSystem
+
+Original purpose: Track cases, clues, evidence, witness knowledge, solved archive.
+
+Old problem: Rumors/claims/theories can become proof if not carefully separated.
+
+Decision: DEFER WITH INVESTIGATION MINI-SPEC.
+
+New owner: InvestigationReducer later.
+
+MVP or deferred: Deferred except simple actor/quest notes.
+
+New implementation rule: No full case engine in MVP. Claims may be actor memories with truthStatus only.
+
+Required tests later:
+
+* witness claim not proof
+* clue collected once
+* rumor culprit does not solve case
+* confession validates only with credible source/context
+
+Risk if skipped in future: Mysteries solve themselves falsely.
+
+⸻
+
+5.43 FinalGameplayPolishSystem
+
+Original purpose: Improve gameplay feel and smooth final interactions.
+
+Old problem: Final polish can become an unowned writer if it changes gameplay state.
+
+Decision: DISCARD IMPLEMENTATION, KEEP UX PRINCIPLES.
+
+New owner: AuditLogger + CommandRouter + ContextBuilderLite.
+
+MVP or deferred: MVP style only.
+
+New implementation rule: Polish may format output or audits, but cannot mutate gameplay truth.
+
+Required tests:
+
+* polish does not add item/XP/quest
+* debug explains instead of hiding invalid events
+
+Risk if skipped: Hidden mutators return under “polish.”
+
+⸻
+
+5.44 ScaleMultiplayerSystem
+
+Original purpose: Support scale, multiple protagonists, possibly group/large-scale gameplay.
+
+Old problem: Multi-protagonist and scale systems affect every reducer and cannot be safely active in MVP.
+
+Decision: DEFER WITH PARTY/SCALE/MULTI-PROTAGONIST SPECS.
+
+New owner: PartySystem + ScaleCombatSystem later.
+
+MVP or deferred: Deferred.
+
+New implementation rule: MVP supports one primary protagonist and companions as actors.
+
+Required tests later:
+
+* multi-protagonist disabled in MVP
+* you resolves to active protagonist only when enabled
+* group combat count not duplicated
+
+Risk if skipped in future: “You” confusion and group combat corruption.
+
+⸻
+
+5.45 PartySystem
+
+Original purpose: Track party members, companions, followers, summons.
+
+Old problem: Absent companions could act; followers/summons could become permanent helpers incorrectly.
+
+Decision: DEFER FULL PARTY; KEEP COMPANION PRESENCE IN MVP.
+
+New owner: ActorReducerLite for MVP; PartySystem later.
+
+MVP or deferred: Companion presence MVP; full party deferred.
+
+New implementation rule: ActorReducerLite owns companion presence and absent-companion denial. Full party inventory/XP/summon duration later.
+
+Required tests:
+
+* absent companion cannot act
+* present companion can act
+* random ally not companion automatically
+* summon duration later
+
+Risk if skipped: Companions teleport and party state lies.
+
+⸻
+
+5.46 AbilityFormationHardening
+
+Original purpose: Harden ability creation/formation, especially candidates and variations.
+
+Old problem: Ability formation could be over-eager and card-facing.
+
+Decision: REWRITE IN MVP/DEFER ADVANCED.
+
+New owner: AbilityReducer + Ability Formation Spec.
+
+MVP or deferred: MVP basic; advanced deferred.
+
+New implementation rule: Ability formation is evidence-based. Candidate/unstable/stable thresholds apply.
+
+Required tests:
+
+* candidate not stable
+* failed attempt no stable card
+* variants merge or remain variants based on evidence
+
+Risk if skipped: Ability list fills with junk powers.
+
+⸻
+
+5.47 AbilitySystem
+
+Original purpose: Track abilities, candidates, passives, costs, use.
+
+Old problem: AbilitySystem had to interact with parser, costs, cards, and candidate sanitizers.
+
+Decision: REWRITE IN MVP.
+
+New owner: AbilityReducer + BodyReducer + InventoryReducer + Formula Appendix.
+
+MVP or deferred: MVP for ability records/use checks; advanced ranks/cooldowns later.
+
+New implementation rule: AbilityReducer owns ability state. Costs are proposed to BodyReducer. Equipment checks use InventoryReducer.
+
+Required tests:
+
+* stable ability costs resource
+* unknown power not mastered
+* sealed ability rejected
+* required equipment unavailable blocks use
+
+Risk if skipped: Freeform abilities become uncontrolled.
+
+⸻
+
+5.48 PersistentTraitSystem
+
+Original purpose: Track traits, passives, persistent changes.
+
+Old problem: Traits can be created too easily from vague narration or transformation scenes.
+
+Decision: DEFER ADVANCED; KEEP SIMPLE PASSIVE RECORDS IN MVP.
+
+New owner: AbilityReducer for passives/talents; future Trait/Evolution Spec.
+
+MVP or deferred: MVP display only; advanced traits deferred.
+
+New implementation rule: MVP may store explicit passive/talent records. No automatic trait gain from vague narration.
+
+Required tests:
+
+* “you feel stronger” does not create permanent trait
+* explicit stable passive can display
+* transformation trait requires validated event later
+
+Risk if skipped: Trait list becomes junk and power creep.
+
+⸻
+
+5.49 StatusInteractionSystem
+
+Original purpose: Handle conditions, statuses, and interactions.
+
+Old problem: Status interactions require body compatibility and can over-automate conditions.
+
+Decision: DEFER ADVANCED; BODY LITE IN MVP.
+
+New owner: BodyReducer for MVP; AdvancedBodySystem later.
+
+MVP or deferred: MVP tracks simple conditions; full interactions deferred.
+
+New implementation rule: Conditions can be added/removed only when validated. Complex body compatibility later.
+
+Required tests:
+
+* simple poison/bleed condition added only if output supports
+* dream condition not real
+* skeleton bleeding handled later by body compatibility spec
+
+Risk if skipped: Conditions become biologically/contextually wrong.
+
+⸻
+
+5.50 NonCanonGuardSystem
+
+Original purpose: Prevent non-canon sources from mutating state.
+
+Old problem: Multiple surfaces could feed parser state indirectly.
+
+Decision: KEEP IN MVP AS ARCHITECTURE RULE.
+
+New owner: Non-Canon Source Spec + CanonValidator.
+
+MVP or deferred: MVP.
+
+New implementation rule: Only validated AI output, manual override, migration, and startup import may mutate. Context, cards, commands, debug, examples, and archives are non-canon sources.
+
+Required tests:
+
+* card text no item
+* context text no quest
+* command output no duplicate item
+* archived summary no reactivation
+
+Risk if skipped: Every memory surface becomes a gameplay writer.
+
+⸻
+
+5.51 SpecializationSystem
+
+Original purpose: Track specializations and build identity.
+
+Old problem: Specializations can drift from vague text or duplicate with talents/passives.
+
+Decision: KEEP FIELD IN MVP; ADVANCED DEFERRED.
+
+New owner: PlayerState + AbilityReducer later.
+
+MVP or deferred: MVP display field only.
+
+New implementation rule: Specialization changes require explicit setup/manual or validated milestone later.
+
+Required tests:
+
+* specialization displays
+* vague narration does not change specialization
+* explicit setup can assign once
+
+Risk if skipped: Build identity becomes unstable.
+
+⸻
+
+5.52 ActorProfileSystem
+
+Original purpose: Store actor identity, role, status, relationship, and profile data.
+
+Old problem: Actor profiles could be created from junk names or unsupported card text.
+
+Decision: REWRITE IN MVP.
+
+New owner: ActorReducerLite + Resolver + Name Policy.
+
+MVP or deferred: MVP for important actors.
+
+New implementation rule: Only important/named/promoted actors persist. Scene-only actors expire.
+
+Required tests:
+
+* random guard scene-only
+* Captain Mora persists
+* card text cannot create actor
+* actor alias merge requires evidence
+
+Risk if skipped: Actor memory bloat and duplicates.
+
+⸻
+
+5.53 MajorActorMemorySystem
+
+Original purpose: Store durable memory for major actors.
+
+Old problem: Major actor memory can absorb rumors as facts or overtrack minor NPCs.
+
+Decision: REWRITE LITE IN MVP; ADVANCED DEFERRED.
+
+New owner: ActorReducerLite.
+
+MVP or deferred: MVP basic memories; advanced social memory deferred.
+
+New implementation rule: Actor memories require truthStatus and importance. Rumor/claim remains labeled.
+
+Required tests:
+
+* Mara claim stored as claimed
+* rumor biography not confirmed
+* minor NPC memory expires
+
+Risk if skipped: NPC memory becomes false canon.
+
+⸻
+
+5.54 Step6ContinuitySystem
+
+Original purpose: Continuity safeguards across later-stage systems.
+
+Old problem: Step-based continuity patches are too vague and broad for new architecture.
+
+Decision: DISCARD IMPLEMENTATION, KEEP TEST INTENT.
+
+New owner: ContextBuilderLite + OperationLedger + Resolver + Tests.
+
+MVP or deferred: MVP principles.
+
+New implementation rule: Continuity is achieved through state truth, context packets, and ledger, not a broad continuity mutator.
+
+Required tests:
+
+* item custody remains consistent
+* actor presence remains consistent
+* current location remains consistent
+
+Risk if skipped: Continuity fixes become hidden writers.
+
+⸻
+
+5.55 Step7FinalizationSystem
+
+Original purpose: Final-stage repair/finalization.
+
+Old problem: Finalization layers can hide unfinished architecture.
+
+Decision: DISCARD IMPLEMENTATION, KEEP RELEASECHECK TESTS.
+
+New owner: ReleaseCheck + Full Regression Matrix.
+
+MVP or deferred: Release diagnostics only.
+
+New implementation rule: No finalization mutator. If a system is unsafe, releasecheck fails.
+
+Required tests:
+
+* releasecheck fails missing ledger
+* releasecheck fails dishonest help
+* releasecheck fails unsafe CardSync
+
+Risk if skipped: Bugs get patched over instead of fixed.
+
+⸻
+
+5.56 ContextPacketSystem
+
+Original purpose: Build context from state summaries.
+
+Old problem: Context needed strict read-only and budget controls.
+
+Decision: REWRITE IN MVP.
+
+New owner: ContextBuilderLite + Context Packet Serializer Spec.
+
+MVP or deferred: MVP.
+
+New implementation rule: Context packets are serialized from state only, prioritized, budgeted, and hashed.
+
+Required tests:
+
+* current location included
+* custody warning included
+* uncertainty preserved
+* no full dump
+* context cannot create state
+
+Risk if skipped: AI lacks consistent truth or context corrupts state.
+
+⸻
+
+5.57 AdminDebugSystem
+
+Original purpose: Provide debug/admin commands.
+
+Old problem: Commands could be too broad, dishonest, or potentially mutate unintentionally.
+
+Decision: REWRITE IN MVP.
+
+New owner: CommandRouter + AuditLogger + Command Honesty Spec.
+
+MVP or deferred: MVP for inspection/debug; manual mutation deferred.
+
+New implementation rule: MVP commands are inspect-only except explicit future manual commands. Command output cannot be parsed as narration.
+
+Required tests:
+
+* /help honest
+* /debuglast works with no events
+* /inventory does not duplicate item
+* disabled commands do not crash
+
+Risk if skipped: Testing becomes confusing and commands corrupt state.
+
+⸻
+
+5.58 CatRegressionRepairSystem
+
+Original purpose: Specific regression repair layer, likely for a known false-positive or edge-case family.
+
+Old problem: Cat-specific or narrow repair systems are patch-layer style and should not remain runtime modules unless generalized.
+
+Decision: DISCARD IMPLEMENTATION, KEEP TEST IF IDENTIFIED.
+
+New owner: Full Regression Matrix.
+
+MVP or deferred: Test-only.
+
+New implementation rule: Extract the scenario it fixed and add it as a regression test. Do not keep a special-case runtime repair unless it generalizes into parser/validator rules.
+
+Required tests:
+
+* specific old regression scenario must be identified before deletion from coverage
+* equivalent parser/validator test added
+
+Risk if skipped: A known edge case may be forgotten.
+
+⸻
+
+5.59 Regression / false-positive audit commands
+
+Original purpose: Surface false positives and verify parser/card safety.
+
+Old problem: Audit commands existed in late QA but were not fully part of formal command contract.
+
+Decision: REWRITE IN MVP/RELEASECHECK.
+
+New owner: AuditLogger + Release Check and Audit Command Spec.
+
+MVP or deferred: MVP diagnostics.
+
+New implementation rule: /falsepositiveaudit, /stateaudit, /cardaudit, /releasecheck, and /debuglast must expose safety decisions without mutating state.
+
+Required tests:
+
+* false-positive audit reports rejected quote/hypothetical/failed attempts
+* releasecheck fails unsafe configuration
+* audit command output is non-canon
+
+Risk if skipped: Bugs become invisible.
+
+⸻
+
+5.60 Card UI / ability cost UI repairs
+
+Original purpose: Improve display of card UI and ability costs.
+
+Old problem: UI/cost display can become confused with state mutation or final balance.
+
+Decision: SPLIT.
+
+New owner: AbilityReducer + BodyReducer + Formula Appendix + CommandRouter.
+
+MVP or deferred: MVP for cost labels; advanced UI/card display deferred.
+
+New implementation rule: Ability costs are state/formula-backed and displayed by commands/context/cards. Display never applies cost by itself.
+
+Required tests:
+
+* stable ability use creates cost proposal
+* /abilities shows cost label
+* card display does not spend resource
+
+Risk if skipped: UI text becomes gameplay effect or cost-free casting returns.
+
+⸻
+
+5.61 World structure / node dedupe repairs
+
+Original purpose: Dedupe world structure nodes and keep current node/location stable.
+
+Old problem: World/place structure could duplicate or misassign current location.
+
+Decision: DEFER FULL; LITE PLACE DEDUPE IN MVP.
+
+New owner: PlaceReducerLite + Resolver Spec; future World/Route Spec.
+
+MVP or deferred: MVP for current location and simple place records; full world graph deferred.
+
+New implementation rule: Current location uses explicit LocationState. Place names require resolver confidence. Full node graph not active in MVP.
+
+Required tests:
+
+* Old Chapel Road not Old Chapel
+* generic room not durable place
+* current location not changed by dream
+
+Risk if skipped: Place memory duplicates and location drift.
+
+⸻
+
+5.62 Personal item naming / named item repairs
+
+Original purpose: Allow a player’s item to gain a personal name while preserving base item identity.
+
+Old problem: Named item parsing can rename wrong item or create duplicate items.
+
+Decision: DEFER ADVANCED; KEEP TEST.
+
+New owner: InventoryReducer + Resolver Spec + Item/Equipment later.
+
+MVP or deferred: Deferred unless explicit manual item rename command later.
+
+New implementation rule: A named item should have baseDisplayName and personalName, not overwrite canonical item identity. Requires explicit validated event or command.
+
+Required tests later:
+
+* “my sword is called Dawn” renames existing sword, not creates new sword
+* vague “a sword called Dawn” does not rename player’s item
+* personal name does not break resolver
+
+Risk if skipped in future: Named items duplicate or lose base identity.
+
+⸻
+
+6. Cross-cutting safeguards that must be preserved
+
+6.1 No broad patch systems
+
+Old broad systems like final polish, hardening, continuity, and repair layers must become tests, audits, or specific owner rules.
+
+No future system may be allowed to say:
+
+I repair everything after the fact.
+
+Every repair must have an owner and test.
+
+⸻
+
+6.2 No direct parser writes
+
+All old parser-style behavior must become:
+
+raw text -> scanner hit -> EventProposal -> CanonValidator -> owner reducer
+
+Never:
+
+raw text -> inventory/quest/XP mutation
+
+⸻
+
+6.3 No card-to-canon path
+
+CardSync, protected cards, generated cards, card UI, ability cards, and old managed cards must never become event sources.
+
+⸻
+
+6.4 No hidden live CardSync
+
+Live CardSync writes require explicit safe mode exit, dry-run success, singleton contract, API adapter, and card tests.
+
+Generated cards stay off until beta.
+
+⸻
+
+6.5 No cleanup that invents or deletes truth
+
+Cleanup can prune stale temporary records and logs.
+
+Cleanup cannot create XP/items/quests/actors/cards, and cannot delete active important truth.
+
+⸻
+
+6.6 No command dishonesty
+
+If the feature is partial, /help must say partial.
+
+If the feature is disabled, command output must say disabled.
+
+If CardSync skipped due to budget, card audit must say skipped.
+
+⸻
+
+7. Required old-fix regression families
+
+The following regression families must exist before the old fixes are considered preserved.
+
+7.1 Parser false-positive regressions
+
+* quoted item pickup
+* negated item pickup
+* hypothetical item pickup
+* dream item acquisition
+* failed ability
+* pretend ability
+* rumor death
+* rumor quest completion
+* price quote purchase false positive
+
+7.2 Duplicate replay regressions
+
+* duplicate item pickup
+* duplicate XP
+* duplicate quest reward
+* duplicate time passage
+* duplicate damage
+* duplicate card write
+* duplicate actor promotion
+
+7.3 Card regressions
+
+* duplicate protected card
+* deleted protected card restoration
+* generated cards disabled
+* card API failure fail-soft
+* card text cannot create state
+* broad trigger rejected
+* junk card name rejected
+
+7.4 Resolver regressions
+
+* key versus keyring
+* Mara versus Mara’s sister
+* Old Chapel versus Old Chapel Road
+* Frostmaw versus wolf
+* sword versus sword hilt
+* actor alias merge evidence
+
+7.5 Identity regressions
+
+* NPC name not player name
+* title not name
+* disguise not permanent appearance
+* dream transformation not real
+* confirmed transformation updates body
+* time skip aging once
+
+7.6 Quest/reward regressions
+
+* rumor not active quest
+* offered not accepted
+* promised not paid
+* complete not rewarded
+* reward paid once
+* stored promise used safely
+
+7.7 Context regressions
+
+* context read-only
+* current location included
+* custody warning included
+* uncertainty preserved
+* no full dump
+* packet skip audited
+
+7.8 Migration/cleanup regressions
+
+* old malformed state quarantined
+* old cards not imported as canon
+* duplicate cards neutralized
+* important actor retained
+* active item retained
+* stale temporary scene records cleaned
+
+⸻
+
+8. MVP versus deferred summary
+
+MVP required rewrite/keep
+
+* RuntimeGate -> RuntimeHookContract
+* TurnEngine -> RuntimeHookContract + OperationLedger
+* CoreState -> StateManager
+* EventPipeline -> EventScannerLite + ProposalBuilder
+* EventReducer -> ReducerRegistry + owner reducers
+* CanonEligibilitySystem -> CanonValidator
+* ParserSafetySystem -> Parser Rulebook + CanonValidator
+* ContextNoWritePolicy -> Non-Canon Source Spec + ContextBuilderLite
+* ContextBudgetSystem -> ContextBuilderLite
+* NameSanitizerSystem -> Name/Trigger Policy
+* EntityIdentityResolver -> Resolver Spec
+* PlayerIdentityGuard -> Identity Drift Spec
+* ActorNameExtractionGuard -> ActorReducerLite + Resolver
+* AbilityCandidateSanitizer -> AbilityReducer
+* AbilityUseResolver -> AbilityReducer + Body/Inventory reducers
+* XPBudgetGuardSystem -> ProgressionReducerLite + Formula Appendix + OperationLedger
+* InventorySystem -> InventoryReducer
+* SceneStateSystem -> PlaceReducerLite/ActorReducerLite/InventoryReducer
+* TimeTravelSystem lite -> TimeReducerLite + PlaceReducerLite
+* QuestLogSystem lite -> QuestReducerLite
+* CardSyncSystem lite -> CardSyncLite protected cards only
+* AdminDebugSystem -> CommandRouter + AuditLogger
+* BootstrapOnceGate -> StateManager setup lock
+* SettingsSystem -> flags
+* LongRunStabilitySystem lite -> CleanupManagerLite
+
+Deferred with mini-spec
+
+* GeneratedCardSync
+* TransactionLedger/Economy
+* MaterialRequirement/Crafting
+* Investigation
+* Reputation/Factions/Titles
+* Domain/Labor
+* Party full system
+* Scale/Group combat
+* WorldEntity full system
+* Advanced body compatibility/death
+* Advanced ability formation/variants
+* Absorption/Evolution
+* Multi-protagonist
+
+Discard implementation, keep tests
+
+* PatchInventory as runtime
+* RegressionHardeningSystem as runtime
+* FinalGameplayPolishSystem as mutator
+* LongRunPolishSystem as mutator
+* Step6ContinuitySystem as mutator
+* Step7FinalizationSystem as mutator
+* CatRegressionRepairSystem unless a specific test is extracted
+* old broad TASIS auto-card generation logic without new CardSync eligibility gates
+
+⸻
+
+9. Gap Chunk A completion checklist
+
+Gap Chunk A is complete when:
+
+* every known old system has a decision
+* every useful old fix has a new owner
+* every dangerous old implementation is marked not to paste
+* every deferred system has a mini-spec requirement
+* every old false-positive family has a regression category
+* every card-related fix has CardSync/adapter/singleton ownership
+* every parser-related fix has Parser Rulebook/Validator ownership
+* every duplicate-related fix has OperationLedger ownership
+* every identity-related fix has StateManager/Identity ownership
+* every command-related fix has CommandRouter/Audit ownership
+* every cleanup/migration fix has Cleanup/Migration ownership
+
+This matrix does not mean coding can start yet.
+
+It means the old fixes have been accounted for and assigned.
+
+Next required gap chunk:
+
+Gap Chunk B — Runtime and Hook Contract Spec
+
+⸻
+
+10. Final Gap Chunk A doctrine
+
+The old systems were not useless.
+
+They were evidence.
+
+They proved what breaks.
+
+This matrix keeps that evidence without keeping the unstable patch pile.
+
+The new build must not be:
+
+old code + more patches
+
+It must be:
+
+old lessons -> clean rules -> owner modules -> validation -> reducers -> audits -> tests
+
+That is how the project avoids restarting the same cycle.

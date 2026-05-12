@@ -1,0 +1,2234 @@
+AIDRPG Test Spec v1
+
+0. Document status
+
+Document name: AIDRPG Test Spec v1
+Purpose: Define the required tests for AIDRPG Core MVP v0.1.
+Status: Required pre-code testing specification.
+Applies to: AIDRPG MVP Build Spec v1.
+Next step after this: Formula Appendix v1, then Script v0.1 Phase 1.
+
+This document defines the exact tests the MVP must pass before the build can expand.
+
+The goal is not to test every future feature.
+
+The goal is to prove the first script foundation is stable:
+
+* state initializes safely
+* commands inspect state without mutating it
+* parser output becomes proposals, not direct canon
+* CanonValidator blocks unsafe changes
+* OperationLedger prevents duplicates
+* inventory custody is respected
+* actor presence is respected
+* candidate abilities stay candidates
+* quest rewards do not duplicate
+* context stays compact
+* protected cards mirror state only
+* generated cards remain disabled
+
+If these tests fail, the MVP is not stable enough for advanced systems.
+
+⸻
+
+1. Authority order
+
+Testing authority order:
+
+1. AIDRPG Test Spec v1
+2. AIDRPG MVP Build Spec v1
+3. AIDRPG Developer Spec v1.1 Correction Pass
+4. AIDRPG Developer Spec v1
+5. Chunk 33 Final Pre-Build Lockdown
+6. Design Bible Chunks 1–32
+
+If this Test Spec says a test must pass, the implementation is not complete until it passes.
+
+If a feature is deferred by MVP Build Spec v1, do not test it as active gameplay in Test Spec v1.
+
+⸻
+
+2. Test philosophy
+
+AIDRPG must be tested like a canon engine, not like a normal RPG damage calculator.
+
+The most important question is not:
+
+Did the story sound cool?
+
+The important questions are:
+
+Did state change only when it should?
+Did the correct owner reducer commit the change?
+Did duplicates get blocked?
+Did uncertain information stay uncertain?
+Did commands avoid mutating state?
+Did Context and Story Cards avoid creating truth?
+
+The MVP must prefer safe partial behavior over clever but unstable automation.
+
+⸻
+
+3. Test case format
+
+Every test case should use this structure.
+
+Test ID:
+Name:
+Gate:
+Purpose:
+Starting State:
+Input:
+AI Output:
+Expected Proposals:
+Expected Validation:
+Expected State Changes:
+Expected No-Changes:
+Expected Audit:
+Expected Context/Card Behavior:
+Pass Conditions:
+Fail Conditions:
+
+Not every field is needed for every command-only test, but every test must clearly define:
+
+* setup
+* action
+* expected result
+* what must not happen
+
+⸻
+
+4. Required test harness assumptions
+
+The test harness should be able to:
+
+1. Initialize a fresh AIDRPG state.
+2. Load a specific starting state.
+3. Run a command input.
+4. Run a normal player input.
+5. Run an AI output through the Output hook.
+6. Run the same AI output twice.
+7. Inspect final state.
+8. Inspect recent proposals.
+9. Inspect validation results.
+10. Inspect OperationLedger buckets.
+11. Inspect audit output.
+12. Inspect generated context packets.
+13. Inspect protected card registry and dirty card queue.
+
+If the platform does not support a formal test runner, these tests can be run manually through controlled stories and debug commands.
+
+⸻
+
+5. Default clean test state
+
+Unless a test defines a custom state, use this baseline.
+
+AIDRPGState {
+  version: '0.1.0-mvp',
+  schemaVersion: 1,
+  mode: 'balanced',
+  flags: {
+    narrativeMode: false,
+    balancedMode: true,
+    strictMode: false,
+    debugMode: true,
+    safeMode: false,
+    generatedCardsEnabled: false,
+    economyEnabled: false,
+    craftingEnabled: false,
+    investigationEnabled: false,
+    reputationEnabled: false,
+    domainEnabled: false,
+    absorptionEnabled: false,
+    multiProtagonistEnabled: false
+  },
+  player: {
+    id: 'player',
+    name: 'Test Hero',
+    raceSpecies: 'human',
+    age: 'adult',
+    appearance: 'plain test character',
+    buildIdentity: 'unassigned',
+    specialization: 'none',
+    level: 1,
+    stats: { ATK: 10, DEF: 10, SPD: 10, INT: 10, LCK: 10 },
+    notes: []
+  },
+  body: {
+    hp: { current: 100, max: 100 },
+    mp: { current: 100, max: 100 },
+    ep: { current: 100, max: 100 },
+    injuries: [],
+    conditions: [],
+    fatigue: 'normal',
+    deathBoundary: 'safe',
+    bodyTraits: [],
+    lastRecoveryTurn: ''
+  },
+  progression: {
+    xp: 0,
+    totalXp: 0,
+    xpToNext: 100,
+    statXp: {},
+    recentRewards: [],
+    antiFarm: {},
+    formulaStatus: 'placeholder'
+  },
+  inventory: {
+    currency: { copperBase: 0, display: '0 copper', access: 'personal' },
+    items: [],
+    equipped: {},
+    sceneItems: [],
+    recentItemEvents: []
+  },
+  abilities: {
+    abilities: [],
+    candidates: [],
+    passives: [],
+    talents: [],
+    recentEvidence: []
+  },
+  quests: {
+    quests: [],
+    archived: [],
+    aliases: {}
+  },
+  actors: {
+    actors: [],
+    sceneActors: [],
+    companions: [],
+    aliases: {}
+  },
+  places: {
+    currentLocation: {
+      settlement: 'Test Town',
+      place: 'Training Yard',
+      confidence: 'confirmed'
+    },
+    currentScene: {
+      sceneId: 'scene_test_yard',
+      summary: 'A quiet training yard used for tests.',
+      actorsPresent: [],
+      visibleItems: [],
+      hazards: [],
+      exits: ['street'],
+      activeCombat: false
+    },
+    places: [],
+    routes: []
+  },
+  time: {
+    currentTimeText: 'Morning, Day 1',
+    activeDeadlines: [],
+    lastTimeAdvance: ''
+  },
+  cards: {
+    registry: [],
+    protectedCards: [],
+    dirtyCards: [],
+    generatedCardCreationEnabled: false,
+    lastCardAudit: []
+  },
+  operationLedger: {
+    permanentKeys: [],
+    recentKeys: [],
+    rewardKeys: [],
+    cardKeys: [],
+    sourceUseKeys: [],
+    maxRecentKeys: 250,
+    maxAuditLinkedKeys: 100,
+    lastCompactedTurn: ''
+  },
+  audits: {
+    lastTurnSummary: '',
+    recentProposals: [],
+    recentValidationResults: [],
+    debugMessages: [],
+    maxEntries: 50
+  }
+}
+
+⸻
+
+6. Gate 1 — State and command tests
+
+Gate 1 proves the script can initialize state and show it without accidental mutation.
+
+⸻
+
+T001 — Fresh state initializes
+
+Gate: 1
+Purpose: Prove StateManager creates a complete MVP state.
+
+Starting State:
+
+state.aidrpg is missing
+
+Input:
+
+/help
+
+Expected Proposals:
+
+None.
+
+Expected Validation:
+
+None required.
+
+Expected State Changes:
+
+* state.aidrpg is created.
+* version = '0.1.0-mvp'.
+* all required root fields exist.
+* generated cards are disabled.
+* debug command output is safe.
+
+Expected No-Changes:
+
+* no inventory item created.
+* no quest created.
+* no actor created.
+* no generated card created.
+
+Expected Audit:
+
+* initialization message or debug-safe notice.
+
+Pass Conditions:
+
+State exists and all required MVP fields are present.
+
+Fail Conditions:
+
+Missing root fields, generated cards enabled by default, or command creates gameplay state.
+
+⸻
+
+T002 — Missing fields repair safely
+
+Gate: 1
+Purpose: Prove migration/default repair does not erase valid state.
+
+Starting State:
+
+State exists but is missing:
+
+operationLedger.rewardKeys
+cards.dirtyCards
+body.ep
+
+State already has:
+
+inventory.items = [{ name: 'Old Knife', owner: 'player', custody: 'player', access: 'held' }]
+
+Input:
+
+/status
+
+Expected State Changes:
+
+* missing fields are added with defaults.
+* existing Old Knife remains unchanged.
+
+Expected No-Changes:
+
+* no inventory reset.
+* no player reset.
+* no quest reset.
+
+Pass Conditions:
+
+Defaults are repaired without deleting existing valid records.
+
+Fail Conditions:
+
+Any valid existing state is erased.
+
+⸻
+
+T003 — /help lists only MVP-supported systems
+
+Gate: 1
+
+Input:
+
+/help
+
+Expected Output Behavior:
+
+Shows MVP commands:
+
+* /help
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+* /debuglast
+* /cardaudit
+* /contextaudit
+
+Shows disabled/deferred systems:
+
+* economy
+* crafting
+* investigation
+* reputation/factions
+* domain/labor
+* absorption/evolution
+* generated cards
+* multi-protagonist
+
+Expected No-Changes:
+
+No gameplay state changes.
+
+Pass Conditions:
+
+Help text is accurate and does not claim future systems are active.
+
+Fail Conditions:
+
+Help text claims full economy/crafting/investigation/generated cards are implemented.
+
+⸻
+
+T004 — /inventory does not duplicate displayed items
+
+Gate: 1 and 3
+
+Starting State:
+
+inventory.items = [
+  { id: 'item_dagger_1', name: 'Rusty Dagger', owner: 'player', custody: 'player', access: 'held', quantity: 1 }
+]
+
+Input:
+
+/inventory
+
+Expected Proposals:
+
+None from command output.
+
+Expected State Changes:
+
+None, except command/audit metadata.
+
+Expected No-Changes:
+
+* no second dagger.
+* no new item event.
+* no inventory mutation.
+
+Expected Audit:
+
+May say command output scan suppressed.
+
+Pass Conditions:
+
+Inventory still has exactly one Rusty Dagger.
+
+Fail Conditions:
+
+Inventory gains a duplicate dagger after command display.
+
+⸻
+
+T005 — /debuglast works with no prior events
+
+Gate: 1
+
+Starting State:
+
+Fresh initialized state with no proposals.
+
+Input:
+
+/debuglast
+
+Expected Output Behavior:
+
+Shows a safe message such as:
+
+No recent proposals or validations.
+
+Expected No-Changes:
+
+No gameplay mutation.
+
+Pass Conditions:
+
+No crash and no false events.
+
+Fail Conditions:
+
+Command crashes or creates fake proposal records.
+
+⸻
+
+7. Gate 2 — Pipeline and OperationLedger tests
+
+Gate 2 proves proposals, validation, reducer routing, duplicate skipping, and audits work.
+
+⸻
+
+T006 — Output creates proposal, not direct state
+
+Gate: 2
+
+Starting State:
+
+Default clean state.
+
+AI Output:
+
+You pick up the small pebble from the ground.
+
+Expected Proposals:
+
+One proposal:
+
+eventType: inventory.item_pickup
+completedAction: true
+ownerReducer: InventoryReducer
+
+Expected Validation:
+
+If pebble was not visible/available, result should be pending or soft_fail unless the implementation allows simple pickup creation from clear output.
+
+Expected State Changes:
+
+Only after validation.
+
+Expected Audit:
+
+Shows proposal and validation result.
+
+Pass Conditions:
+
+No direct state mutation occurs before validation.
+
+Fail Conditions:
+
+Item appears in inventory without proposal/validation/audit.
+
+⸻
+
+T007 — Duplicate operation key skips repeated output
+
+Gate: 2
+
+Starting State:
+
+Scene has available loot:
+
+sceneItems = [{ id: 'scene_dagger_1', name: 'Rusty Dagger', access: 'available_loot' }]
+
+AI Output:
+
+You pick up the rusty dagger.
+
+Run same output twice.
+
+Expected First Run:
+
+* proposal accepted
+* dagger added to inventory
+* operation key added to recentKeys
+
+Expected Second Run:
+
+* duplicate detected
+* no second dagger
+* audit records duplicate skip
+
+Pass Conditions:
+
+Exactly one dagger exists after both runs.
+
+Fail Conditions:
+
+Two daggers exist.
+
+⸻
+
+T008 — Unknown owner reducer rejected
+
+Gate: 2
+
+Starting State:
+
+Default clean state.
+
+Injected Proposal:
+
+ownerReducer: 'FakeReducer'
+eventType: inventory.item_pickup
+
+Expected Validation:
+
+outcome: hard_deny or reject
+reason: unknown owner reducer
+committed: false
+
+Expected State Changes:
+
+None.
+
+Pass Conditions:
+
+Unknown reducer cannot commit.
+
+Fail Conditions:
+
+Proposal mutates state anyway.
+
+⸻
+
+8. Gate 3 — Inventory and custody tests
+
+Gate 3 proves item state is separated into visible, available loot, owned, held, equipped, stored, custody, lost, sold, destroyed, and consumed.
+
+⸻
+
+T009 — Visible item is not inventory
+
+Gate: 3
+
+AI Output:
+
+You see a silver ring on the table.
+
+Expected Proposals:
+
+inventory.scene_item_visible
+
+Expected State Changes:
+
+Scene item created:
+
+name: Silver Ring
+access: visible
+custody: scene
+
+Expected No-Changes:
+
+* no inventory item owned by player.
+* no equipped item.
+
+Pass Conditions:
+
+Ring is visible/scene item only.
+
+Fail Conditions:
+
+Ring appears in player inventory.
+
+⸻
+
+T010 — Available loot is not inventory
+
+Gate: 3
+
+AI Output:
+
+The goblin drops a rusty dagger.
+
+Expected Proposals:
+
+inventory.scene_item_available_loot
+
+Expected State Changes:
+
+Scene item created:
+
+name: Rusty Dagger
+access: available_loot
+custody: scene
+owner: none or unknown
+
+Expected No-Changes:
+
+No player inventory dagger.
+
+Pass Conditions:
+
+Dagger is available nearby, not owned.
+
+Fail Conditions:
+
+Dagger enters inventory before pickup.
+
+⸻
+
+T011 — Pickup of available loot moves item to inventory
+
+Gate: 3
+
+Starting State:
+
+sceneItems = [
+  { id: 'scene_dagger_1', name: 'Rusty Dagger', access: 'available_loot', custody: 'scene' }
+]
+
+AI Output:
+
+You pick up the rusty dagger.
+
+Expected State Changes:
+
+* scene item removed or marked acquired.
+* inventory item added:
+
+owner: player
+custody: player
+access: held or stored
+
+Expected Audit:
+
+* operation key recorded.
+
+Pass Conditions:
+
+Dagger moves from scene loot to player inventory.
+
+Fail Conditions:
+
+Dagger exists both as active scene loot and duplicated inventory, unless intentionally linked/marked acquired.
+
+⸻
+
+T012 — Inaccessible custody blocks item use
+
+Gate: 3
+
+Starting State:
+
+inventory.items = [
+  {
+    id: 'item_sword_1',
+    name: 'Iron Sword',
+    owner: 'player',
+    custody: 'actor:mara',
+    access: 'npc_custody',
+    equipped: false
+  }
+]
+actors.actors = [
+  { id: 'actor_mara', name: 'Mara', presence: 'elsewhere', itemCustody: ['item_sword_1'] }
+]
+
+Player Input:
+
+I draw my sword.
+
+Expected Proposals:
+
+Input intent may identify sword use attempt.
+
+Expected Validation:
+
+Rejected or flagged:
+
+reason: item is in npc_custody
+
+Expected State Changes:
+
+None.
+
+Expected Context:
+
+May include:
+
+The Iron Sword is in Mara's custody and cannot be used right now.
+
+Pass Conditions:
+
+Sword is not equipped or used.
+
+Fail Conditions:
+
+Player attacks with unavailable sword.
+
+⸻
+
+T013 — Sold item cannot be used
+
+Gate: 3
+
+Starting State:
+
+inventory.items = [
+  { id: 'item_ring_1', name: 'Copper Ring', owner: 'player', custody: 'none', access: 'sold' }
+]
+
+Player Input:
+
+I put on the copper ring.
+
+Expected Validation:
+
+Reject/flag:
+
+reason: item access is sold
+
+Expected State Changes:
+
+No equip.
+
+Pass Conditions:
+
+Sold item remains unusable.
+
+Fail Conditions:
+
+Sold item becomes equipped.
+
+⸻
+
+9. Gate 4 — Ability status tests
+
+Gate 4 proves candidate abilities are not stable, unknown powers are not mastered instantly, and unavailable abilities cannot be used.
+
+⸻
+
+T014 — Candidate ability is not stable
+
+Gate: 4
+
+Starting State:
+
+abilities.candidates = [
+  { id: 'ab_shadow_step', name: 'Shadow Step', status: 'candidate', evidence: [] }
+]
+
+AI Output:
+
+You teleport perfectly behind the bandit with Shadow Step.
+
+Expected Validation:
+
+Soft_fail, pending, or partial.
+
+Expected State Changes:
+
+Allowed:
+
+* evidence added
+* candidate remains candidate
+* possible strain/backlash note
+
+Not allowed:
+
+* status becomes stable automatically
+* reliable teleport accepted fully
+* generated ability card created
+
+Pass Conditions:
+
+Shadow Step does not become stable.
+
+Fail Conditions:
+
+Shadow Step becomes stable from one unsupported output.
+
+⸻
+
+T015 — Stable ability can request resource cost
+
+Gate: 4
+
+Starting State:
+
+abilities.abilities = [
+  { id: 'ab_mana_slash', name: 'Mana Slash', status: 'stable', costLabel: 'moderate', requiredEquipment: 'blade' }
+]
+inventory.items = [
+  { id: 'item_blade_1', name: 'Iron Sword', owner: 'player', custody: 'player', access: 'equipped', equipped: true }
+]
+body.mp.current = 100
+body.ep.current = 100
+
+AI Output:
+
+You unleash Mana Slash, sending a crescent of force across the yard.
+
+Expected Proposals:
+
+* ability.use_confirmed
+* ability.resource_cost_request
+* body.resource_cost
+
+Expected Validation:
+
+Accept if cost can be paid.
+
+Expected State Changes:
+
+* MP/EP reduced according to MVP cost placeholder.
+* audit records cost.
+
+Expected No-Changes:
+
+No new ability created.
+
+Pass Conditions:
+
+Stable ability works with cost and equipment check.
+
+Fail Conditions:
+
+Ability works without cost check, or duplicate ability is created.
+
+⸻
+
+T016 — Sealed ability cannot be used
+
+Gate: 4
+
+Starting State:
+
+abilities.abilities = [
+  { id: 'ab_dragon_roar', name: 'Dragon Roar', status: 'sealed', costLabel: 'heavy' }
+]
+
+AI Output:
+
+You use Dragon Roar and shake the battlefield.
+
+Expected Validation:
+
+Reject or soft_fail:
+
+reason: ability is sealed
+
+Expected State Changes:
+
+No full ability use.
+
+Pass Conditions:
+
+Sealed ability does not function normally.
+
+Fail Conditions:
+
+Sealed ability works as stable.
+
+⸻
+
+T017 — Unknown power attempt does not create mastered ability
+
+Gate: 4
+
+Player Input:
+
+I use Void Emperor Oblivion Wave.
+
+AI Output:
+
+A faint dark spark flickers around your hand, then vanishes.
+
+Expected State Changes:
+
+Allowed:
+
+* hint/candidate created if context supports
+* evidence note added
+
+Not allowed:
+
+* stable Void Emperor Oblivion Wave
+* high-rank ability
+* generated card
+
+Pass Conditions:
+
+Unknown power remains hint/candidate at most.
+
+Fail Conditions:
+
+Unknown power becomes stable/mastered.
+
+⸻
+
+10. Gate 5 — Actor and location tests
+
+Gate 5 proves actors do not teleport, absent companions cannot act, scene-only actors do not become permanent automatically, and location intent is not arrival.
+
+⸻
+
+T018 — Absent companion cannot act
+
+Gate: 5
+
+Starting State:
+
+actors.actors = [
+  { id: 'actor_mara', name: 'Mara', type: 'companion', presence: 'elsewhere', location: 'Greyford Smithy' }
+]
+actors.companions = ['actor_mara']
+
+AI Output:
+
+Mara leaps in front of the arrow and blocks it with her blade.
+
+Expected Validation:
+
+Reject/flag:
+
+reason: Mara is not present
+
+Expected State Changes:
+
+* Mara remains elsewhere.
+* no damage prevention from Mara.
+
+Expected Context:
+
+May include correction:
+
+Mara is not present; she cannot block attacks in this scene.
+
+Pass Conditions:
+
+Absent companion action is blocked.
+
+Fail Conditions:
+
+Mara acts while elsewhere.
+
+⸻
+
+T019 — Present actor can act
+
+Gate: 5
+
+Starting State:
+
+actors.actors = [
+  { id: 'actor_mara', name: 'Mara', type: 'companion', presence: 'present', location: 'Training Yard' }
+]
+places.currentScene.actorsPresent = ['actor_mara']
+
+AI Output:
+
+Mara raises her blade and warns you to stay behind her.
+
+Expected Validation:
+
+Accept actor scene action/dialogue note.
+
+Expected State Changes:
+
+Allowed:
+
+* actor memory note if important.
+* scene remains consistent.
+
+Pass Conditions:
+
+Present actor can act.
+
+Fail Conditions:
+
+Present actor is rejected as absent.
+
+⸻
+
+T020 — Scene-only guard does not become persistent automatically
+
+Gate: 5
+
+AI Output:
+
+A guard waves you through the gate.
+
+Expected State Changes:
+
+Allowed:
+
+* temporary SceneActorRecord.
+
+Not allowed:
+
+* persistent ActorRecord with generated card eligibility.
+
+Pass Conditions:
+
+Guard remains scene-only unless promoted by importance.
+
+Fail Conditions:
+
+Random guard becomes permanent major actor.
+
+⸻
+
+T021 — Named recurring actor can persist
+
+Gate: 5
+
+AI Output:
+
+Captain Mora, the guard captain, stops you and says she remembers your help at the mill.
+
+Expected State Changes:
+
+Allowed:
+
+* persistent ActorRecord for Captain Mora.
+* importance at least supporting if quest/social context exists.
+* memory note with observed/claimed truth as appropriate.
+
+Not allowed:
+
+* generated actor card in MVP.
+
+Pass Conditions:
+
+Important named actor persists without generated card creation.
+
+Fail Conditions:
+
+No actor record despite clear importance, or generated card is created while disabled.
+
+⸻
+
+T022 — Actor relation does not resolve as actor
+
+Gate: 5
+
+Starting State:
+
+actors.actors = [
+  { id: 'actor_mara', name: 'Mara', presence: 'present' }
+]
+
+AI Output:
+
+Mara's sister appears at the doorway.
+
+Expected Resolver:
+
+* does not match actor_mara as the sister.
+* may create temporary scene actor Mara's sister if appropriate.
+
+Expected No-Changes:
+
+* Mara is not replaced by her sister.
+* Mara identity is not overwritten.
+
+Pass Conditions:
+
+Actor relation handled correctly.
+
+Fail Conditions:
+
+Mara becomes “Mara’s sister” or sister action is assigned to Mara.
+
+⸻
+
+T023 — Location intent is not arrival
+
+Gate: 5
+
+Starting State:
+
+currentLocation.place = 'Training Yard'
+
+Player Input:
+
+I head toward the chapel.
+
+Expected Proposals:
+
+place.location_intent
+completedAction: false
+
+Expected State Changes:
+
+* current location remains Training Yard.
+* optional travel intent note may be added.
+
+Pass Conditions:
+
+Location does not change to chapel.
+
+Fail Conditions:
+
+Current location becomes chapel from input alone.
+
+⸻
+
+T024 — Output arrival can change location
+
+Gate: 5
+
+Starting State:
+
+currentLocation.place = 'Training Yard'
+
+AI Output:
+
+After a short walk, you arrive at the chapel door.
+
+Expected Proposals:
+
+place.location_arrive
+time.advance_text maybe
+
+Expected Validation:
+
+Accept if no contradiction.
+
+Expected State Changes:
+
+currentLocation.place = 'Chapel'
+currentLocation.confidence = confirmed
+
+Pass Conditions:
+
+Confirmed arrival changes location.
+
+Fail Conditions:
+
+Location never updates despite clear arrival, or updates without audit.
+
+⸻
+
+T025 — Place substring resolution
+
+Gate: 5
+
+Starting State:
+
+places = [
+  { id: 'place_old_chapel', name: 'Old Chapel' },
+  { id: 'route_old_chapel_road', name: 'Old Chapel Road' }
+]
+
+AI Output:
+
+You walk along Old Chapel Road.
+
+Expected Resolver:
+
+Matches Old Chapel Road, not Old Chapel.
+
+Pass Conditions:
+
+Route/place phrase resolves to full phrase.
+
+Fail Conditions:
+
+Old Chapel building is selected incorrectly.
+
+⸻
+
+11. Gate 6 — Quest reward tests
+
+Gate 6 proves quests are simple but safe: rumors do not become active quests, reward promises are not payments, and rewards pay once.
+
+⸻
+
+T026 — Rumor does not become active quest
+
+Gate: 6
+
+AI Output:
+
+The innkeeper mentions that wolves have been seen near the old mill.
+
+Expected State Changes:
+
+Allowed:
+
+* rumored quest or note.
+
+Not allowed:
+
+* active quest.
+* promised reward.
+* reward payment.
+
+Pass Conditions:
+
+Rumor stays rumor/offered at most.
+
+Fail Conditions:
+
+Active quest created without request/acceptance.
+
+⸻
+
+T027 — Offered quest can become active after acceptance
+
+Gate: 6
+
+AI Output 1:
+
+Old Bren asks you to clear the wolves from the old mill and promises 15 gold.
+
+Expected after Output 1:
+
+* quest status: offered
+* promisedRewards includes 15 gold
+* rewardStatus: promised
+* no currency added
+
+Player Input:
+
+I accept the job.
+
+AI Output 2:
+
+Old Bren nods and says he'll wait for your return.
+
+Expected after Output 2:
+
+* quest status: active
+* reward still unpaid
+
+Pass Conditions:
+
+Offer and acceptance are separate.
+
+Fail Conditions:
+
+Quest becomes rewarded or paid at offer time.
+
+⸻
+
+T028 — Promised reward is not paid reward
+
+Gate: 6
+
+AI Output:
+
+Old Bren promises you 15 gold if you clear the wolves.
+
+Expected State Changes:
+
+promisedRewards = 15 gold
+rewardStatus = promised
+
+Expected No-Changes:
+
+currency unchanged
+
+Pass Conditions:
+
+No money added.
+
+Fail Conditions:
+
+Player receives 15 gold immediately.
+
+⸻
+
+T029 — Objective complete does not auto-pay
+
+Gate: 6
+
+Starting State:
+
+Active quest:
+
+Clear the Mill Wolves
+rewardStatus = promised
+objective = defeat wolves
+
+AI Output:
+
+The last wolf flees into the woods, leaving the mill safe.
+
+Expected State Changes:
+
+* objective complete or quest ready_to_turn_in/completed.
+* rewardStatus becomes ready or remains promised depending implementation.
+
+Expected No-Changes:
+
+* no currency added unless payment occurs.
+
+Pass Conditions:
+
+Completion and payment remain separate.
+
+Fail Conditions:
+
+Gold added automatically without payer/payment event.
+
+⸻
+
+T030 — Reward payment applies once
+
+Gate: 6
+
+Starting State:
+
+Quest:
+
+Clear the Mill Wolves
+status = completed or ready_to_turn_in
+rewardStatus = ready
+promisedRewards = 15 gold
+
+AI Output:
+
+Old Bren pays you 15 gold for clearing the mill.
+
+Process same output twice.
+
+Expected First Run:
+
+* currency +15 gold
+* rewardStatus = paid
+* reward key added to rewardKeys
+
+Expected Second Run:
+
+* duplicate skipped
+* no additional gold
+
+Pass Conditions:
+
+Player gains exactly 15 gold total.
+
+Fail Conditions:
+
+Player gains 30 gold.
+
+⸻
+
+12. Gate 7 — Context tests
+
+Gate 7 proves ContextBuilder injects compact, relevant truth and avoids memory dumps.
+
+⸻
+
+T031 — Context includes current location
+
+Gate: 7
+
+Starting State:
+
+currentLocation.place = 'Old Mill'
+currentScene.summary = 'The mill yard is muddy and quiet.'
+
+Context Hook Expected Packet:
+
+Includes short location/scene line.
+
+Expected No-Content:
+
+* full inventory
+* full quest archive
+* all actors
+
+Pass Conditions:
+
+Context contains current location and stays compact.
+
+Fail Conditions:
+
+Context omits location or dumps huge state.
+
+⸻
+
+T032 — Context includes custody correction
+
+Gate: 7
+
+Starting State:
+
+Player sword is in Mara’s custody.
+
+Recent Player Input:
+
+I draw my sword.
+
+Expected Context:
+
+The Iron Sword is in Mara's custody and cannot be used right now.
+
+Pass Conditions:
+
+Context includes concise correction.
+
+Fail Conditions:
+
+Context ignores the custody issue.
+
+⸻
+
+T033 — Context labels uncertainty
+
+Gate: 7
+
+Starting State:
+
+Actor memory:
+
+Lord Veyr killed Dalen
+truthStatus = rumored
+
+Expected Context:
+
+Lord Veyr is rumored or suspected, not proven guilty.
+
+Expected No-Content:
+
+No confirmed guilt statement.
+
+Pass Conditions:
+
+Uncertainty remains labeled.
+
+Fail Conditions:
+
+Context says Lord Veyr is confirmed murderer.
+
+⸻
+
+T034 — Context avoids full dumps
+
+Gate: 7
+
+Starting State:
+
+Inventory has 30 items. Actors has 20 actors. Quests has 10 quests.
+
+Context Hook Expected Behavior:
+
+* include only current scene and critical relevant facts.
+* do not list all items/actors/quests.
+
+Pass Conditions:
+
+Context remains compact.
+
+Fail Conditions:
+
+Context dumps all records.
+
+⸻
+
+13. Gate 8 — Protected card tests
+
+Gate 8 proves protected cards mirror state only and generated cards stay disabled.
+
+⸻
+
+T035 — Protected cards are created and registered
+
+Gate: 8
+
+Starting State:
+
+No card registry.
+
+Action:
+
+Run CardSyncLite ensure protected cards.
+
+Expected State Changes:
+
+Registry entries created for:
+
+* AIDRPG Player Sheet
+* AIDRPG Body Status
+* AIDRPG Abilities
+* AIDRPG Inventory/Equipment
+* AIDRPG Quest Log
+* AIDRPG Social Memory
+* AIDRPG Current Location
+
+Expected No-Changes:
+
+* no generated actor/place/item cards.
+
+Pass Conditions:
+
+Protected cards exist in registry.
+
+Fail Conditions:
+
+Generated cards are created or protected cards missing.
+
+⸻
+
+T036 — Protected cards do not create state
+
+Gate: 8
+
+Starting State:
+
+Quest state has no quests.
+
+Protected Quest Log text says:
+
+Active Quest: Clear the Mill Wolves
+
+Action:
+
+Run normal event scan/output hook.
+
+Expected Behavior:
+
+Card text is not parsed as event source.
+
+Expected State Changes:
+
+No quest created.
+
+Pass Conditions:
+
+State remains source of truth.
+
+Fail Conditions:
+
+Quest appears because card text mentioned it.
+
+⸻
+
+T037 — Dirty protected card updates only when needed
+
+Gate: 8
+
+Starting State:
+
+Body Status card clean.
+
+AI Output:
+
+The wolf bites your arm, leaving a shallow wound.
+
+Expected State Changes:
+
+* injury added if validated.
+* Body Status dirty.
+* Body Status protected card updated.
+
+Expected No-Changes:
+
+* unrelated protected cards not rewritten unless also dirty.
+
+Pass Conditions:
+
+Only relevant dirty card updates.
+
+Fail Conditions:
+
+All protected cards rewrite every turn.
+
+⸻
+
+T038 — Max protected card updates per turn enforced
+
+Gate: 8
+
+Starting State:
+
+All seven protected cards dirty.
+
+Action:
+
+Run CardSyncLite update.
+
+Expected Behavior:
+
+* maximum 3 protected cards update this turn.
+* remaining dirty cards stay queued.
+
+Pass Conditions:
+
+Update cap enforced.
+
+Fail Conditions:
+
+All cards update at once despite limit.
+
+⸻
+
+T039 — Generated card creation disabled
+
+Gate: 8
+
+Starting State:
+
+generatedCardsEnabled = false
+
+Injected Proposal:
+
+generated_card.create actor:mara
+
+Expected Validation:
+
+Reject/suppress:
+
+reason: generated cards disabled
+
+Expected State Changes:
+
+No generated card.
+
+Expected Audit:
+
+Card audit explains suppression.
+
+Pass Conditions:
+
+No generated card created.
+
+Fail Conditions:
+
+Generated actor card appears.
+
+⸻
+
+14. Cross-system regression tests
+
+These tests combine multiple systems and catch hidden interaction bugs.
+
+⸻
+
+T040 — Quest reward plus inventory ledger integration
+
+Purpose: Reward payment requires quest eligibility and inventory currency commit.
+
+Starting State:
+
+Quest ready for reward:
+
+quest.status = ready_to_turn_in
+quest.rewardStatus = ready
+promisedRewards = [{ type: 'currency', amount: 15, unit: 'gold' }]
+currency = 0
+
+AI Output:
+
+Old Bren pays you 15 gold.
+
+Expected Flow:
+
+1. EventScanner detects reward payment.
+2. ProposalBuilder creates quest.reward_paid / inventory.currency_gain_simple.
+3. CanonValidator checks quest eligibility.
+4. QuestReducer updates rewardStatus.
+5. InventoryReducer commits currency.
+6. OperationLedger stores reward key.
+7. Quest Log and Inventory cards marked dirty.
+
+Pass Conditions:
+
+All owner boundaries respected.
+
+Fail Conditions:
+
+Inventory adds money without quest eligibility check, or QuestReducer directly mutates currency without routing.
+
+⸻
+
+T041 — Ability use with item custody correction
+
+Starting State:
+
+Ability:
+
+Mana Slash stable, requires blade
+
+Item:
+
+Iron Sword owner = player
+custody = Mara
+access = npc_custody
+
+AI Output:
+
+You unleash Mana Slash with your iron sword.
+
+Expected Validation:
+
+Reject or soft_fail because required equipment inaccessible.
+
+Expected State Changes:
+
+* no full ability use.
+* no MP/EP cost unless partial attempt costs resources by design.
+* context correction about sword custody.
+
+Pass Conditions:
+
+Ability respects item custody.
+
+Fail Conditions:
+
+Mana Slash fully works with inaccessible weapon.
+
+⸻
+
+T042 — Command output cannot trigger protected card update as gameplay
+
+Starting State:
+
+Inventory contains Rusty Dagger.
+
+Input:
+
+/inventory
+
+Expected Output:
+
+Inventory display mentions Rusty Dagger.
+
+Expected No-Changes:
+
+* no item pickup event.
+* no duplicate dagger.
+* no new protected card dirty mark unless command itself changes display state.
+
+Pass Conditions:
+
+Command display remains non-canon.
+
+Fail Conditions:
+
+Displayed text is parsed as new event.
+
+⸻
+
+T043 — Actor claim creates claim, not fact or quest completion
+
+AI Output:
+
+Mara says, "I killed Frostmaw before I came here."
+
+Expected Proposal:
+
+actor.memory_add
+truthStatus = claimed
+quotedSpeech = true
+
+Expected No-Changes:
+
+* no Frostmaw defeat committed.
+* no quest completion.
+* no XP.
+* no reward.
+
+Pass Conditions:
+
+Claim remains claim.
+
+Fail Conditions:
+
+Frostmaw becomes defeated because Mara said so.
+
+⸻
+
+T044 — Time intent does not advance time
+
+Player Input:
+
+I plan to rest until morning.
+
+Expected Proposal:
+
+Intent only or no completed time event.
+
+Expected State Changes:
+
+No time advance.
+
+Pass Conditions:
+
+Time unchanged.
+
+Fail Conditions:
+
+Time jumps to morning from plan alone.
+
+⸻
+
+T045 — Confirmed rest advances time and may recover resources
+
+AI Output:
+
+You sleep through the night and wake at dawn.
+
+Expected Proposals:
+
+* time.rest
+* time.advance_text
+* body.resource_recover maybe
+
+Expected State Changes:
+
+* currentTimeText updates to dawn/morning.
+* MP/EP may recover by placeholder rules.
+* severe injuries do not vanish unless healing supports it.
+
+Pass Conditions:
+
+Rest updates time and limited recovery.
+
+Fail Conditions:
+
+All conditions/injuries vanish automatically.
+
+⸻
+
+15. Negative tests
+
+Negative tests prove the system refuses bad input.
+
+⸻
+
+T046 — Story Card text cannot create item
+
+Setup:
+
+A protected or story card contains:
+
+The player owns the Crown of Dawn.
+
+Inventory state has no Crown of Dawn.
+
+Action:
+
+Run normal hook cycle.
+
+Expected State Changes:
+
+None.
+
+Pass Conditions:
+
+No Crown of Dawn appears in inventory.
+
+Fail Conditions:
+
+Card text creates item.
+
+⸻
+
+T047 — Context text cannot create quest
+
+Setup:
+
+Context packet says:
+
+Rumor: wolves near the mill.
+
+Quest state has no active quest.
+
+Action:
+
+Run output hook with unrelated output.
+
+Expected State Changes:
+
+No active wolf quest.
+
+Pass Conditions:
+
+Context does not become event source.
+
+Fail Conditions:
+
+Active quest appears from context text.
+
+⸻
+
+T048 — Generic generated card trigger rejected
+
+Setup:
+
+Generated cards are disabled anyway.
+
+Injected Proposal:
+
+generated_card.create
+name = Wolf
+trigger = wolf
+
+Expected Validation:
+
+Hard deny/suppress.
+
+Expected Audit:
+
+* generated cards disabled
+* trigger generic
+
+Pass Conditions:
+
+No generated card.
+
+Fail Conditions:
+
+Wolf card created.
+
+⸻
+
+T049 — Hypothetical item does not appear
+
+AI Output:
+
+You could take the jeweled cup if you wanted.
+
+Expected Proposal:
+
+Either none or visible item with hypothetical/pending status, depending implementation.
+
+Expected No-Changes:
+
+No owned jeweled cup.
+
+Pass Conditions:
+
+Cup not added to inventory.
+
+Fail Conditions:
+
+Cup becomes owned.
+
+⸻
+
+T050 — Negated pickup does not add item
+
+AI Output:
+
+You do not take the sword.
+
+Expected Proposal:
+
+Negated inventory pickup, rejected/ignored.
+
+Expected State Changes:
+
+No sword added.
+
+Pass Conditions:
+
+Inventory unchanged.
+
+Fail Conditions:
+
+Sword added.
+
+⸻
+
+16. Stress and fuzz tests
+
+These tests are lower priority than gates but should be run before expanding MVP.
+
+⸻
+
+T051 — Repeated output stress
+
+Run same output 10 times:
+
+You pick up the rusty dagger.
+
+Expected:
+
+* one dagger only.
+* duplicate skips recorded.
+* no audit overflow crash.
+
+⸻
+
+T052 — Many visible items stress
+
+AI output lists 10 visible items.
+
+Expected:
+
+* scene items may be created if parser supports.
+* none become inventory without pickup.
+* context does not dump all 10 unless relevant.
+
+⸻
+
+T053 — Many dirty cards stress
+
+Mark all protected cards dirty.
+
+Expected:
+
+* max 3 updates this turn.
+* rest remain dirty.
+* no generated cards.
+
+⸻
+
+T054 — Ambiguous generic item stress
+
+Scene has:
+
+* iron sword
+* silver sword
+* broken sword
+
+Input:
+
+I pick up the sword.
+
+Expected:
+
+* ambiguity flagged.
+* no blind pickup unless one sword is clearly current target.
+
+⸻
+
+T055 — Audit size stress
+
+Generate more than 50 audit entries.
+
+Expected:
+
+* audit compacts/limits old entries.
+* no crash.
+* recent important entries remain.
+
+⸻
+
+17. Pass/fail policy
+
+17.1 Test pass
+
+A test passes only if:
+
+* expected state changes occur
+* expected no-changes remain unchanged
+* audit records important decisions
+* duplicate prevention works when relevant
+* no deferred system activates
+
+17.2 Test fail
+
+A test fails if:
+
+* state changes without proposal/validation
+* duplicate items/rewards/XP appear
+* command output mutates gameplay state
+* Story Card or Context text creates canon
+* generated card appears while disabled
+* actor presence/custody rules are violated
+* rumors/claims become confirmed facts
+* protected cards create state
+
+17.3 Soft pass
+
+A soft pass is allowed only when the exact state implementation differs but the safety rule holds.
+
+Example:
+
+For a visible ring, implementation may store it as sceneItems.visible or as a scene note, as long as it does not enter inventory.
+
+Soft passes must be recorded.
+
+17.4 Blocker fail
+
+These failures block further development immediately:
+
+* duplicate reward payment
+* generated card creation while disabled
+* command output parsed as story
+* Story Card creates state
+* context creates state
+* item custody ignored
+* absent companion acts
+* state reset during migration
+
+⸻
+
+18. Test execution order
+
+Run tests in this order:
+
+1. Gate 1 tests T001–T005
+2. Gate 2 tests T006–T008
+3. Gate 3 tests T009–T013
+4. Gate 4 tests T014–T017
+5. Gate 5 tests T018–T025
+6. Gate 6 tests T026–T030
+7. Gate 7 tests T031–T034
+8. Gate 8 tests T035–T039
+9. Cross-system tests T040–T045
+10. Negative tests T046–T050
+11. Stress tests T051–T055
+
+Do not proceed to advanced systems until all blocker tests pass.
+
+⸻
+
+19. MVP readiness checklist
+
+Before coding beyond MVP Core v0.1, confirm:
+
+* Gate 1 passed.
+* Gate 2 passed.
+* Gate 3 passed.
+* Gate 4 passed.
+* Gate 5 passed.
+* Gate 6 passed.
+* Gate 7 passed.
+* Gate 8 passed.
+* Cross-system tests passed or have documented safe soft passes.
+* Negative tests passed.
+* No blocker fails remain.
+* Generated cards are still disabled.
+* Deferred systems are still inert.
+* Audit output is readable.
+* Context output is compact.
+* Protected cards mirror state only.
+
+⸻
+
+20. What this Test Spec does not cover yet
+
+Test Spec v1 does not cover full versions of:
+
+* combat scaling
+* Level 1000 stat matrix
+* advanced XP formulas
+* full economy
+* full crafting
+* full investigation
+* factions/reputation/titles
+* domain/labor
+* absorption/evolution
+* generated card ecosystem
+* weather/travel simulation
+* multi-protagonist mode
+
+Those systems require later test specs after their mini-specs exist.
+
+⸻
+
+21. Final Test Spec doctrine
+
+AIDRPG MVP must prove stability before ambition.
+
+The first tests are not about making the game huge.
+
+They are about proving the system does not lie to itself.
+
+If the MVP can keep inventory, actors, quests, abilities, context, protected cards, and audits stable, then the advanced systems can be built safely later.
+
+If the MVP cannot pass these tests, adding more systems will only multiply the failure points.
+
+Therefore:
+
+No advanced systems until Test Spec v1 passes.
+
+That is the purpose of AIDRPG Test Spec v1.

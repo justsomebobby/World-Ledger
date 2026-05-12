@@ -1,0 +1,2438 @@
+AIDRPG Design Bible — Chunk 7: Combat Matrix and Consequence Model
+
+1. Purpose of this chunk
+
+Chunk 7 defines how combat should work.
+
+This chunk answers:
+
+What does combat mean in AIDRPG?
+
+How does the system judge whether a combat result is believable?
+
+How do stats, level, equipment, abilities, injuries, resources, terrain, and enemy threat work together?
+
+When should damage be accepted?
+
+When should victory be accepted?
+
+When should victory be softened?
+
+When should defeat, unconsciousness, capture, or death be allowed?
+
+How does combat reward progression without becoming farmable?
+
+How does AIDRPG keep combat dramatic and realistic without becoming a rigid turn-based simulator?
+
+The main rule is:
+
+AIDRPG combat is a consequence referee, not a full tactical combat engine.
+
+AI Dungeon still writes the scene. AIDRPG decides which consequences are safe and believable enough to persist.
+
+⸻
+
+2. What combat is
+
+Combat is any scene where hostile force, direct danger, violence, defense, survival, or tactical confrontation matters.
+
+Combat includes:
+
+* sword fights
+* monster attacks
+* ambushes
+* duels
+* brawls
+* ranged attacks
+* spell combat
+* defensive standoffs
+* chases under threat
+* battlefield exchanges
+* assassination attempts
+* boss fights
+* group fights
+* desperate escapes
+* capture attempts
+* magical clashes
+* environmental fighting
+
+Combat should track persistent consequences, not every tiny action.
+
+Persistent combat consequences include:
+
+* HP loss
+* MP loss
+* EP loss
+* injuries
+* conditions
+* fatigue
+* item/equipment damage
+* enemy injury
+* enemy death
+* enemy retreat
+* player retreat
+* capture
+* unconsciousness
+* death-boundary state
+* loot
+* XP
+* quest progress
+* reputation
+* actor memory
+* scene hazards
+* group state
+
+Combat should not require the player to use menu commands.
+
+The player should still be able to write:
+
+“I duck under the ogre’s swing and drive my spear toward its knee.”
+
+AIDRPG should then judge the AI’s narrated result.
+
+⸻
+
+3. Combat design philosophy
+
+Combat should feel:
+
+* dangerous when the story says it is dangerous
+* fair enough to trust
+* flexible enough for creativity
+* meaningful enough to affect state
+* forgiving enough to avoid bad AI one-line disasters
+* strict enough to block impossible or unsupported outcomes
+* transparent enough to debug
+
+Combat should not feel:
+
+* like a spreadsheet every turn
+* like the script is fighting the AI
+* like stats ignore story context
+* like the AI can randomly kill the player from a rumor
+* like the player can instantly defeat anything with a cool sentence
+* like every scratch becomes permanent death
+* like every victory grants huge XP
+
+The system should bias consequences toward believable outcomes.
+
+It should not force deterministic results.
+
+⸻
+
+4. Combat truth flow
+
+Combat follows the same canon law as every other feature.
+
+Player input creates combat intent.
+
+AI output creates possible combat consequences.
+
+EventPipeline proposes events.
+
+CanonValidator judges them.
+
+Reducers commit accepted consequences.
+
+Context reports current combat truth.
+
+CardSync mirrors only stable important state.
+
+Example:
+
+Player input:
+
+“I slash at the wolf’s neck.”
+
+This creates intent:
+
+* attack intent
+* target: wolf
+* method: blade slash
+
+AI output:
+
+“The wolf lunges low. Your blade cuts across its shoulder, but its teeth clamp down on your forearm.”
+
+Possible events:
+
+* enemy.damage
+* body.damage
+* body.injury.add
+* resource.ep.change
+* combat.exchange
+
+Validator decides whether each consequence is supported.
+
+Reducers commit accepted damage, injury, enemy state, and progression.
+
+⸻
+
+5. Combat should judge consequences, not pre-decide scenes
+
+AIDRPG should not usually decide the entire fight before AI Dungeon narrates.
+
+Instead, it should guide and validate.
+
+Before output, Context can help the AI by saying:
+
+* the player is wounded
+* the enemy is dangerous
+* the player is low on EP
+* the player has a shield
+* the wolf is already injured
+* the player is outnumbered
+* direct victory is unlikely without leverage
+
+After output, CanonValidator checks whether the narrated consequence fits.
+
+This allows AI Dungeon to stay creative while AIDRPG keeps the persistent state believable.
+
+⸻
+
+6. Combat participants
+
+Combat must identify participants.
+
+Participant types:
+
+* player
+* companion
+* party member
+* follower group
+* summon
+* named actor
+* generic enemy
+* enemy group
+* beast
+* monster
+* faction unit
+* environmental hazard
+* trap
+* structure
+* vehicle or mount
+
+Each participant should have at least:
+
+* display name or label
+* type
+* side
+* threat tier
+* current status
+* location or scene relevance
+* whether they are individual or group
+* whether they are important enough to persist
+
+Generic enemies do not always need full actor records.
+
+Example:
+
+“three bandits” can be a temporary enemy group.
+
+“Captain Jora” should be a named actor.
+
+“The Ash Wolf” may be a major actor or boss entity.
+
+⸻
+
+7. Combat event families
+
+Combat should use events from multiple owners rather than one giant CombatReducer that writes everything.
+
+Combat itself can be a coordinating interpretation layer, but consequences route to owners.
+
+Important combat-related event families:
+
+* intent.attack
+* intent.defend
+* intent.evade
+* intent.flee
+* intent.cast
+* intent.useAbility
+* intent.commandParty
+* combat.exchange
+* combat.advantage.shift
+* combat.victory.claim
+* combat.defeat.claim
+* body.damage
+* body.injury.add
+* body.condition.add
+* resource.hp.change
+* resource.mp.change
+* resource.ep.change
+* ability.use
+* ability.fail
+* progression.xp.gain
+* progression.statTraining.gain
+* progression.domainXp.gain
+* inventory.item.damage
+* inventory.item.lose
+* actor.status.update
+* actor.injury.add
+* actor.death.confirm
+* scale.group.update
+* scale.casualties.apply
+* reputation.witness.add
+* quest.progress
+* scene.hazard.add
+* travel.escape
+
+Combat interpretation may propose many events, but each owner commits its own truth.
+
+⸻
+
+8. Threat tiers
+
+Every enemy, hazard, or hostile situation should have a threat tier.
+
+Threat tier is not just level.
+
+It represents danger relative to normal adventuring.
+
+Tier 0 — Harmless
+
+Examples:
+
+* frightened civilian
+* harmless animal
+* broken training dummy
+* non-hostile child
+* weak obstacle
+
+Combat consequence:
+
+Usually no real threat unless context changes.
+
+Tier 1 — Trivial
+
+Examples:
+
+* rat
+* drunk weak thug
+* minor pest
+* unarmed coward
+* badly wounded weak enemy
+
+Combat consequence:
+
+Danger to a normal adult is low.
+
+Can still matter in swarms, disease, surprise, or environmental danger.
+
+Tier 2 — Weak
+
+Examples:
+
+* lone goblin
+* stray wolf
+* novice bandit
+* minor undead
+* weak guard
+
+Combat consequence:
+
+Dangerous to novices.
+
+Manageable for trained characters.
+
+Tier 3 — Standard
+
+Examples:
+
+* trained guard
+* wolf pack member
+* competent bandit
+* lesser monster
+* ordinary soldier
+
+Combat consequence:
+
+A meaningful fight for low-level characters.
+
+Can injure even capable characters if conditions are bad.
+
+Tier 4 — Dangerous
+
+Examples:
+
+* veteran soldier
+* large wolf
+* ogre youth
+* skilled assassin
+* battle mage apprentice
+* dangerous beast
+
+Combat consequence:
+
+Requires care.
+
+Clean victory without cost should need advantage, skill, or strong context.
+
+Tier 5 — Elite
+
+Examples:
+
+* knight captain
+* ogre
+* trained mage
+* elite monster
+* assassin leader
+* veteran monster hunter
+
+Combat consequence:
+
+Strong threat.
+
+Unsupported quick victory should usually be softened.
+
+Tier 6 — Boss
+
+Examples:
+
+* named champion
+* troll
+* powerful mage
+* elite demon
+* major quest monster
+* faction commander
+
+Combat consequence:
+
+Major fight.
+
+Should involve costs, leverage, tactics, or multiple exchanges.
+
+Tier 7 — Overwhelming
+
+Examples:
+
+* dragonling
+* ancient knight
+* demon lord’s lieutenant
+* war giant
+* archmage
+* legendary assassin
+
+Combat consequence:
+
+Clean victory requires major leverage.
+
+Retreat, injury, partial success, or survival may be more believable than victory.
+
+Tier 8 — Legendary
+
+Examples:
+
+* adult dragon
+* ancient lich
+* demigod beast
+* army-breaking champion
+* mythical guardian
+
+Combat consequence:
+
+Usually impossible for ordinary builds without artifacts, allies, terrain, preparation, ritual, prior weakening, or high-level power.
+
+Tier 9 — Mythic
+
+Examples:
+
+* god-touched avatar
+* world-scale monster
+* ancient primordial
+* immortal warlord
+* reality-warping entity
+
+Combat consequence:
+
+Direct combat is usually a story arc, not a single exchange.
+
+Requires major setup.
+
+Tier 10 — Impossible without leverage
+
+Examples:
+
+* deity in full power
+* cosmic entity
+* invulnerable sealed titan
+* army when alone and unprepared
+* mountain-sized monster for normal character
+
+Combat consequence:
+
+A clean direct victory should be rejected unless the story has already established extraordinary leverage.
+
+⸻
+
+9. Player combat capability
+
+Player combat capability is not a single number, but the system needs a way to estimate it.
+
+Combat capability should consider:
+
+* level
+* effective ATK
+* effective DEF
+* effective SPD
+* effective INT
+* effective LCK
+* HP percentage
+* MP percentage
+* EP percentage
+* injuries
+* conditions
+* equipment
+* armor
+* shield
+* weapon quality
+* active abilities
+* relevant talents
+* relevant passives
+* domain ranks
+* party support
+* summons/followers
+* terrain advantage
+* preparation
+* surprise
+* enemy weakness knowledge
+* current intent
+* prior enemy damage
+* story leverage
+
+Level gives broad maturity.
+
+Stats give method.
+
+Resources show current capacity.
+
+Equipment and abilities provide leverage.
+
+Injuries and conditions reduce current effectiveness.
+
+Terrain and preparation can overcome raw disadvantage.
+
+⸻
+
+10. Combat posture labels
+
+Before validating outcomes, the system should estimate the player’s current posture.
+
+Possible posture labels:
+
+Strong
+
+The player is healthy, equipped, resourced, and acting within their strengths.
+
+Example:
+
+A skilled shield fighter with full EP, good armor, and a shield facing a wolf.
+
+Stable
+
+The player is in decent condition and not under major disadvantage.
+
+Example:
+
+A rested adventurer fighting a standard bandit.
+
+Pressured
+
+The player can fight, but there are meaningful risks.
+
+Examples:
+
+* low EP
+* minor injury
+* outnumbered
+* bad terrain
+* enemy has reach
+* ability cost pressure
+
+Strained
+
+The player is fighting at a disadvantage.
+
+Examples:
+
+* serious injury
+* low HP
+* low MP for a caster
+* exhausted
+* surrounded
+* poor weapon matchup
+
+Critical
+
+The player is near collapse, defeat, or death-boundary.
+
+Examples:
+
+* 0 EP and wounded
+* HP below 25%
+* poisoned
+* weapon broken
+* trapped
+* boss enemy pressing advantage
+
+Combat posture affects what outcomes are believable.
+
+A strong posture can justify clean success.
+
+A critical posture should make clean victory unlikely unless major leverage exists.
+
+⸻
+
+11. Matchup labels
+
+The combat matchup compares player capability against enemy threat and scene factors.
+
+Use these labels:
+
+Player overwhelms
+
+The player is far stronger or has decisive leverage.
+
+Expected outcomes:
+
+* clean hit accepted
+* quick victory plausible
+* minor or no damage plausible
+* enemy rout plausible
+* capture/disarm plausible
+
+Still not automatic if enemy has special defense, hostage leverage, or narrative protection.
+
+Player favored
+
+The player has clear advantage.
+
+Expected outcomes:
+
+* victory plausible
+* minor injury possible
+* resource cost possible
+* enemy can still harm player with surprise or special trait
+
+Slightly favored
+
+The player has some advantage, but not enough to ignore risk.
+
+Expected outcomes:
+
+* success plausible
+* trade of blows plausible
+* minor/moderate cost plausible
+
+Even
+
+The fight is balanced.
+
+Expected outcomes:
+
+* uncertain outcome
+* injuries plausible
+* resource cost likely
+* partial victory common
+* tactics matter
+
+Dangerous
+
+The enemy or situation is meaningfully dangerous.
+
+Expected outcomes:
+
+* victory requires cost or leverage
+* clean no-cost win should be suspicious
+* injury, fatigue, or resource loss likely
+
+Player disadvantaged
+
+The player is weaker or in bad circumstances.
+
+Expected outcomes:
+
+* survival, retreat, partial success, or tactical advantage more plausible than clean victory
+* clean win requires strong support
+* injury or resource cost likely
+
+Heavily outmatched
+
+The player is in serious danger.
+
+Expected outcomes:
+
+* unsupported victory should be rejected or softened
+* likely outcomes include injury, retreat, capture, escape, delay, trick, or temporary advantage
+* direct kill of enemy requires strong leverage
+
+Enemy overwhelms
+
+The enemy is far stronger in the current context.
+
+Expected outcomes:
+
+* player defeat plausible
+* survival may require luck, ally, terrain, sacrifice, or escape
+* clean player victory should be hard to accept
+
+Impossible without leverage
+
+The stated victory cannot be accepted unless the story has already established extraordinary support.
+
+Expected outcomes:
+
+* reject or soften clean victory
+* allow survival, observation, failed attack, escape attempt, wound to minor part, or setup toward future victory
+
+⸻
+
+12. Matchup decision model
+
+The system should not need perfect math, but it does need consistent evaluation.
+
+A matchup should be judged by these factors in order:
+
+12.1 Direct threat gap
+
+Compare enemy threat tier to player level band and combat-relevant stats.
+
+A level 2 novice with ATK 5 fighting a Tier 7 dragonling is heavily outmatched.
+
+A level 12 veteran with strong gear and a dragon-slaying spear may be dangerous but not helpless.
+
+12.2 Current resource state
+
+Low HP, MP, or EP worsens the matchup.
+
+Example:
+
+A mage with 0 MP is not at full combat rating.
+
+A warrior with 0 EP cannot sustain defense or chase.
+
+12.3 Injury and condition state
+
+Injuries and conditions can override raw stats.
+
+Example:
+
+High SPD matters less with a broken leg.
+
+High INT matters less with a concussion or mind fog.
+
+12.4 Equipment fit
+
+A strong character without a weapon may struggle against armor.
+
+A shield helps against arrows or melee but not poison gas.
+
+A silver blade matters against a werewolf if lore supports it.
+
+12.5 Ability relevance
+
+A powerful ability only matters if it applies.
+
+Fireball helps against wolves.
+
+Fireball may be weak underwater.
+
+Mind control may fail against mindless undead.
+
+Healing magic helps survival, not necessarily offense.
+
+12.6 Terrain
+
+Terrain can change everything.
+
+Examples:
+
+* narrow bridge helps against numbers
+* darkness helps stealth builds
+* mud hurts speed
+* high ground helps archers
+* water hurts fire magic
+* cramped tunnel hurts large enemies
+* collapsing floor creates hazard
+
+12.7 Preparation
+
+Preparation can justify outcomes beyond raw stats.
+
+Examples:
+
+* traps
+* poison
+* ambush
+* researched weakness
+* blessed weapon
+* prepared ritual
+* allies positioned
+* escape route planned
+
+12.8 Surprise and initiative
+
+Surprise can swing early exchange.
+
+But surprise should not automatically kill a vastly stronger enemy unless the attack is capable of doing so.
+
+12.9 Story leverage
+
+Story leverage includes:
+
+* artifact
+* prophecy
+* oath
+* faction support
+* ritual
+* enemy prior injury
+* known weakness
+* environmental hazard
+* quest-specific tool
+* sacrifice
+* divine aid
+* companion intervention
+
+Story leverage should be recorded as state or strongly present in the scene.
+
+⸻
+
+13. Combat consequence categories
+
+Combat output should be broken into consequence categories.
+
+13.1 Offensive consequence
+
+What happened to the enemy?
+
+Examples:
+
+* miss
+* glancing hit
+* light wound
+* moderate wound
+* severe wound
+* stagger
+* disarm
+* knockdown
+* kill
+* rout
+* capture
+
+13.2 Defensive consequence
+
+What happened to the player?
+
+Examples:
+
+* dodged
+* blocked
+* armor absorbed
+* took fatigue
+* took HP damage
+* gained injury
+* gained condition
+* fell
+* was restrained
+* was disarmed
+* was captured
+
+13.3 Resource consequence
+
+What resources changed?
+
+Examples:
+
+* EP spent
+* MP spent
+* HP lost
+* cooldown created
+* item consumed
+* shield damaged
+* weapon cracked
+
+13.4 Tactical consequence
+
+What changed in the fight?
+
+Examples:
+
+* player gained advantage
+* enemy gained advantage
+* distance changed
+* terrain changed
+* escape route opened
+* reinforcements arrived
+* enemy exposed weakness
+* hazard triggered
+
+13.5 Resolution consequence
+
+Did the fight end?
+
+Examples:
+
+* enemy defeated
+* player defeated
+* enemy fled
+* player fled
+* enemy surrendered
+* player captured
+* fight interrupted
+* stalemate
+* combat continues
+
+⸻
+
+14. Damage severity scale
+
+Combat damage should use severity before converting to exact HP loss.
+
+Severity 0 — No real harm
+
+Examples:
+
+* near miss
+* harmless scrape
+* armor taps
+* dramatic but non-damaging contact
+
+Possible state:
+
+* no HP loss
+* maybe EP cost
+* maybe tension
+
+Severity 1 — Minor strain or scratch
+
+Examples:
+
+* bruise
+* shallow scrape
+* winded
+* light burn
+* minor cut
+
+Possible state:
+
+* 0–3 HP loss
+* minor injury note if relevant
+* EP loss more likely than HP for strain
+
+Severity 2 — Light wound
+
+Examples:
+
+* bleeding cut
+* bite that breaks skin
+* bruised ribs
+* painful burn
+* twisted ankle
+
+Possible state:
+
+* 3–10 HP loss
+* injury record
+* possible temporary effective stat penalty
+
+Severity 3 — Moderate wound
+
+Examples:
+
+* deep cut
+* cracked rib
+* serious bite
+* arrow graze with bleeding
+* hard impact
+* poison entering wound
+
+Possible state:
+
+* 10–25 HP loss
+* injury record
+* condition possible
+* action penalties likely
+
+Severity 4 — Severe wound
+
+Examples:
+
+* broken bone
+* deep stab
+* heavy blood loss
+* major burn
+* crushed limb
+* serious poison
+
+Possible state:
+
+* 25–50 HP loss
+* serious injury
+* condition likely
+* high chance of reduced effective stats
+
+Severity 5 — Critical wound
+
+Examples:
+
+* impalement
+* skull trauma
+* organ-level injury
+* major maiming
+* near-fatal venom
+* massive fall impact
+
+Possible state:
+
+* 50+ HP loss
+* death-boundary possible
+* unconsciousness possible
+* major injury/condition
+
+Severity 6 — Death-boundary candidate
+
+Examples:
+
+* decapitation
+* heart pierced
+* body crushed
+* burned to ash
+* explicitly killed by direct narration
+
+Possible state:
+
+* death-boundary check
+* not automatic if source is weak, dream, rumor, quote, or contradicted
+* permanent death only with strong validation
+
+⸻
+
+15. Damage type categories
+
+Damage should be typed so defenses and resistances matter.
+
+Common damage types:
+
+* cutting
+* piercing
+* blunt
+* fire
+* cold
+* lightning
+* poison
+* acid
+* psychic
+* necrotic
+* radiant/divine
+* force/impact
+* suffocation
+* drowning
+* falling
+* disease
+* curse
+* fatigue/exertion
+* mana backlash
+
+Damage type affects:
+
+* whether armor helps
+* whether DEF helps
+* whether SPD can avoid it
+* whether MP barrier helps
+* whether passives resist it
+* whether it causes condition
+* whether it damages items
+* whether it affects HP, MP, or EP
+
+Example:
+
+Armor helps against cutting.
+
+Armor may not help against poison gas.
+
+Fire Resistance helps against fire.
+
+Fire Resistance does not help against a hammer blow.
+
+High SPD may help dodge an arrow.
+
+High SPD may not help if restrained.
+
+⸻
+
+16. Defense outcome matrix
+
+Defense should shape consequences.
+
+16.1 Dodge
+
+Primary factors:
+
+* SPD
+* EP
+* terrain
+* awareness
+* restraint
+* enemy speed
+* area size
+
+Possible outcomes:
+
+* avoid damage
+* reduce damage
+* reposition
+* spend EP
+* fail and take hit
+* fall or stumble on bad terrain
+
+Dodge is weak when:
+
+* restrained
+* surrounded
+* exhausted
+* area attack is too large
+* terrain is poor
+* surprise is complete
+
+16.2 Block
+
+Primary factors:
+
+* DEF
+* shield/weapon
+* EP
+* stance/talent
+* enemy force
+* equipment condition
+
+Possible outcomes:
+
+* damage blocked
+* HP damage reduced
+* EP spent
+* shield/weapon damaged
+* player staggered
+* partial injury if force overwhelms block
+
+Block is weak against:
+
+* poison gas
+* mental attacks
+* attacks bypassing guard
+* overwhelming force
+* attacks from behind
+
+16.3 Armor soak
+
+Primary factors:
+
+* armor type
+* DEF
+* damage type
+* attack strength
+* armor condition
+
+Possible outcomes:
+
+* HP damage reduced
+* injury severity reduced
+* blunt trauma still applies
+* armor condition worsens
+* no effect if damage bypasses armor
+
+Armor is weak against:
+
+* poison
+* heat through metal if prolonged
+* psychic attacks
+* suffocation
+* curses
+* armor-piercing attacks
+
+16.4 Magical barrier
+
+Primary factors:
+
+* MP
+* ability rank
+* INT
+* relevant passive/talent
+* enemy power
+* damage type
+
+Possible outcomes:
+
+* damage reduced
+* MP spent
+* barrier cracks/fails
+* backlash
+* partial block
+* redirected consequence
+
+Barrier is weak when:
+
+* MP is low
+* enemy overmatches
+* attack type counters barrier
+* concentration is broken
+
+16.5 Endure
+
+Primary factors:
+
+* DEF
+* HP
+* EP
+* body state
+* passives
+* pain tolerance
+* species traits
+
+Possible outcomes:
+
+* take reduced damage
+* stay standing
+* injury severity reduced
+* EP drained
+* condition resisted
+
+Endure does not mean no damage.
+
+It often means surviving damage.
+
+16.6 Counter
+
+Primary factors:
+
+* ATK
+* SPD
+* INT
+* talent/skill
+* weapon
+* timing
+* enemy opening
+
+Possible outcomes:
+
+* enemy damaged
+* enemy staggered
+* player avoids worst harm
+* costs EP or ability resource
+* fails if enemy has no opening
+
+Counter should require strong context or relevant skill.
+
+⸻
+
+17. Victory validation
+
+Victory should be validated based on matchup, evidence, and resolution language.
+
+17.1 Clean victory
+
+Examples:
+
+* “The wolf collapses and does not rise.”
+* “The bandit throws down his weapon and surrenders.”
+* “Your strike pierces the goblin’s heart.”
+* “The skeleton crumbles into dust.”
+
+Clean victory can be accepted when:
+
+* enemy threat is appropriate
+* narration is explicit
+* player has plausible means
+* no blocker exists
+* enemy is not protected by unresolved boss/quest logic
+* duplicate operation is clear
+
+Clean victory should be softened when:
+
+* enemy is much stronger
+* output is vague
+* attack was unsupported
+* enemy has known defenses
+* player lacks reach/tool/ability
+* scene suggests partial success
+
+17.2 Partial victory
+
+Examples:
+
+* enemy wounded
+* enemy staggered
+* enemy retreats
+* enemy disarmed
+* enemy knocked down
+* player gains position
+* enemy loses shield
+* boss phase changes
+
+Partial victory is often the best outcome when player is disadvantaged but clever.
+
+17.3 Tactical success
+
+Examples:
+
+* player creates opening
+* buys time
+* protects ally
+* reaches exit
+* forces enemy back
+* disrupts spell
+* exposes weakness
+
+Tactical success may matter even without damage.
+
+17.4 Unsupported victory
+
+Examples:
+
+* level 1 peasant punches adult dragon dead
+* exhausted player instantly kills elite knight without weapon
+* one arrow kills armored boss with no setup
+* player defeats entire army alone in one line
+
+Unsupported victory should become:
+
+* reject
+* partial success
+* enemy staggered
+* lucky escape
+* temporary opening
+* non-canon flourish
+* pending uncertainty if ambiguous
+
+Older versions already had the idea of demoting implausible victories into tentative or partial consequences rather than accepting them as canon; that concept should remain a validator rule, not a broad patch system.
+
+⸻
+
+18. Defeat validation
+
+Player defeat can be accepted, but carefully.
+
+Defeat does not always mean death.
+
+Possible defeat outcomes:
+
+* knocked down
+* disarmed
+* restrained
+* forced back
+* captured
+* unconscious
+* badly wounded
+* separated from party
+* forced to retreat
+* pinned
+* robbed
+* left for dead
+* death-boundary
+
+Defeat should be accepted when:
+
+* narration is direct
+* player is outmatched
+* player resources are low
+* injury/condition supports it
+* enemy has plausible means
+* no blocker exists
+
+Defeat should be rejected or softened when:
+
+* it comes from rumor
+* it comes from dream
+* it is quoted
+* it contradicts current state
+* it is unsupported by the scene
+* it jumps straight to permanent death from weak evidence
+
+⸻
+
+19. Death and unconsciousness boundary
+
+Death is special.
+
+Permanent death should require strong confirmation.
+
+AIDRPG should support a ladder of severe outcomes:
+
+1. staggered
+2. wounded
+3. severely wounded
+4. defeated
+5. incapacitated
+6. unconscious
+7. captured
+8. dying
+9. dead
+
+0 HP should trigger boundary handling, not automatic permanent death.
+
+Death may be accepted only when:
+
+* source is direct narration
+* not dream, rumor, quote, hypothetical, or threat
+* injury is lethal or explicitly fatal
+* context supports it
+* no resurrection/protection/passive interrupts
+* duplicate output is not reapplying it
+* player settings allow death if settings later exist
+
+Examples that should not kill:
+
+* “You feel like you could die.”
+* “A rumor says you died.”
+* “In your dream, the blade pierces your heart.”
+* “The guard says, ‘You are dead.’”
+* “You nearly die.”
+* “You would have died if not for the shield.”
+
+Examples that may trigger death-boundary:
+
+* “The spear pierces your heart and your body goes still.”
+* “The dragon’s fire reduces your body to ash.”
+* “Your neck snaps, and everything goes black.”
+* “The executioner’s blade falls, severing your head.”
+
+Even then, settings, genre, divine protections, resurrection systems, or manual override may later decide how permanent death is handled.
+
+⸻
+
+20. Combat resource rules
+
+Combat usually costs resources.
+
+20.1 EP in combat
+
+EP is spent by:
+
+* attacking repeatedly
+* dodging
+* blocking
+* sprinting
+* grappling
+* heavy weapon use
+* wearing heavy armor
+* maintaining stances
+* resisting knockback
+* physical techniques
+
+Low EP should:
+
+* reduce dodge reliability
+* reduce block endurance
+* increase injury risk
+* make retreats harder
+* make long fights dangerous
+
+20.2 MP in combat
+
+MP is spent by:
+
+* spells
+* magical barriers
+* supernatural attacks
+* psychic effects
+* healing powers
+* magical movement
+* mana-enhanced weapon skills
+
+Low MP should:
+
+* weaken magic
+* increase failure risk
+* increase backlash risk
+* prevent maintaining effects
+
+20.3 HP in combat
+
+HP is lost through:
+
+* real wounds
+* severe impacts
+* burns
+* poison damage
+* falling
+* crushing
+* lethal magic
+* severe overexertion when EP is exhausted
+
+HP should not be spent casually unless ability or story supports it.
+
+⸻
+
+21. Combat progression rewards
+
+Combat can reward progression, but only if meaningful.
+
+Possible rewards:
+
+* Level XP
+* ATK XP
+* DEF XP
+* SPD XP
+* INT XP
+* LCK XP
+* Domain XP
+* Ability Growth
+* reputation
+* quest progress
+* loot
+
+Reward depends on:
+
+* threat tier
+* matchup
+* risk
+* player contribution
+* cost paid
+* enemy importance
+* victory quality
+* survival
+* tactical learning
+* duplicate protection
+
+No or tiny combat XP
+
+Use when:
+
+* enemy is trivial
+* fight was flavor-only
+* enemy was already helpless
+* output is duplicate
+* victory was rumor
+* scene is dream/non-canon
+* player did not meaningfully participate
+
+Small combat XP
+
+Use when:
+
+* minor threat
+* safe advantage
+* light sparring
+* partial exchange
+* low risk
+
+Moderate combat XP
+
+Use when:
+
+* even or meaningful threat
+* real injury/resource cost
+* tactical success
+* confirmed victory
+* useful survival
+
+Major combat XP
+
+Use when:
+
+* dangerous or elite threat
+* boss phase
+* survival under disadvantage
+* major quest enemy
+* high cost
+* major tactical victory
+
+Legendary combat XP
+
+Use rarely:
+
+* major boss defeated
+* overwhelming enemy beaten with leverage
+* campaign-defining battle
+* heroic sacrifice or survival
+
+Combat XP must be committed by ProgressionReducer, not the combat parser.
+
+⸻
+
+22. Loot rules
+
+Loot is not automatic just because an enemy is defeated.
+
+Loot requires:
+
+* enemy had item
+* player searches/takes it
+* narration confirms acquisition
+* item name passes validation
+* custody/ownership rules are satisfied
+
+Enemy defeated:
+
+* may make loot available
+* does not automatically add all gear
+
+Example:
+
+“The bandit falls, his dagger skittering across the dirt.”
+
+This may create pending available item.
+
+It should not automatically add dagger.
+
+Example:
+
+“You pick up the fallen dagger and tuck it into your belt.”
+
+This may create inventory.item.gain.
+
+This prevents inventory bloat.
+
+⸻
+
+23. Combat and equipment damage
+
+Equipment can be damaged in combat.
+
+Possible item damage:
+
+* shield cracked
+* sword chipped
+* armor dented
+* bowstring snapped
+* staff scorched
+* potion bottle shattered
+
+Item damage should be validated.
+
+It should affect:
+
+* equipment effectiveness
+* repair needs
+* item condition
+* possible contract/crafting hooks
+
+Equipment damage should not be overused every fight.
+
+It should appear when:
+
+* narration directly says it
+* defense depends on item absorbing a major blow
+* enemy has item-damaging attack
+* player blocks overwhelming force
+* critical failure occurs
+
+InventoryReducer / ItemAuthority owns item condition.
+
+Combat may propose item.damage.
+
+⸻
+
+24. Combat and conditions
+
+Combat may create conditions.
+
+Examples:
+
+* bleeding
+* poisoned
+* stunned
+* burning
+* frozen
+* restrained
+* blinded
+* frightened
+* prone
+* exhausted
+* cursed
+* silenced
+* shielded
+* enraged
+
+Conditions should have:
+
+* source
+* severity
+* duration
+* effect
+* recovery/removal rule
+
+Conditions must be validated.
+
+A sword cut may cause bleeding.
+
+A snake bite may cause poisoned.
+
+A fire blast may cause burning.
+
+A dragon’s roar may cause frightened if context supports it.
+
+A rumor about poison should not poison the player.
+
+⸻
+
+25. Combat and actor memory
+
+Combat can affect actor memory.
+
+Examples:
+
+* Mara saw the player spare an enemy
+* Captain Jora was wounded in the duel
+* The Ash Wolf escaped with a scar
+* The bandit leader now fears the player
+* The guard witnessed forbidden magic
+
+Combat may propose actor or reputation events.
+
+ActorReducer owns actor memory.
+
+ReputationReducer owns witness/public knowledge.
+
+Combat should not directly write actor/reputation state.
+
+⸻
+
+26. Combat and Context
+
+Context should help AI Dungeon narrate combat coherently.
+
+Combat Context may include:
+
+* current enemy
+* matchup warning
+* player HP/MP/EP warning
+* active injuries
+* active conditions
+* equipped weapon/shield
+* relevant ability limits
+* current terrain
+* enemy wounded status
+* party presence
+* immediate escape route
+* combat stakes
+
+Good Context example:
+
+“You are fighting the Ash Wolf in the burning chapel. Your left arm is bleeding, EP is low, and your shield is cracked. The wolf is wounded but still faster than you. Directly overpowering it is risky; using terrain or defense is more plausible.”
+
+Bad Context example:
+
+“ATK 8 DEF 7 SPD 6 INT 5 LCK 4, HP 72, MP 43, EP 19, enemy tier 5, posture strained, matchup dangerous, wound id 17.”
+
+The first helps the AI.
+
+The second belongs in debug.
+
+⸻
+
+27. Combat and Story Cards
+
+Combat should rarely create Story Cards directly.
+
+Cards may update when combat creates stable important truth.
+
+Possible card-relevant combat outcomes:
+
+* important actor wounded
+* major enemy defeated
+* companion killed or changed
+* player gains lasting title
+* important item damaged
+* major place damaged
+* quest boss defeated
+* domain asset attacked
+* major ability stabilizes
+* major reputation event occurs
+
+Do not create cards for:
+
+* every goblin
+* every scratch
+* every swing
+* every temporary combat state
+* every generic wolf
+* every dropped mundane weapon
+
+CardSync mirrors stable state only.
+
+Combat marks dirty targets if important state changes.
+
+CardSync later decides whether to update cards.
+
+⸻
+
+28. Combat validation tables
+
+28.1 Accept damage if
+
+* direct harm is narrated
+* target is clear
+* source is real
+* not dream/rumor/quote/hypothetical
+* severity is supported
+* defenses do not fully block it
+* duplicate operation is not already committed
+
+Example:
+
+“The wolf bites your forearm and blood runs.”
+
+Accept body.damage and injury.
+
+28.2 Reject damage if
+
+* harm is only threatened
+* harm is rumored
+* harm is dreamed
+* harm is quoted
+* action was avoided
+* wording says “almost”
+* armor/defense clearly prevented all harm
+* target is wrong
+* duplicate output
+
+Example:
+
+“The wolf almost bites you.”
+
+Reject damage.
+
+28.3 Soft-fail attack if
+
+* player attacks but enemy dodges
+* hit glances off armor
+* spell fizzles
+* attack creates opening but no wound
+* player loses balance
+* enemy is staggered but not defeated
+
+Soft failure can still give:
+
+* EP/MP cost
+* tactical pressure
+* small training/domain XP
+* ability evidence
+* scene change
+
+28.4 Accept victory if
+
+* enemy defeat is explicit
+* matchup supports it
+* leverage supports it
+* target identity is clear
+* no blocker exists
+* duplicate not committed
+
+28.5 Soften victory if
+
+* enemy is much stronger
+* language is vague
+* attack was unsupported
+* group count remains
+* enemy has known defenses
+* boss/major actor status suggests phase change
+
+Convert to:
+
+* wounded
+* staggered
+* forced back
+* phase change
+* temporary opening
+* enemy retreats
+* partial victory
+
+28.6 Reject victory if
+
+* it is rumor
+* it is dream
+* it is quoted
+* it contradicts clear state
+* it is impossible without leverage and no leverage exists
+* it is from player input only
+* it is duplicate
+
+28.7 Accept defeat if
+
+* enemy action is direct
+* player is outmatched or vulnerable
+* narration confirms defeat/incapacitation
+* no blocker exists
+
+28.8 Soften defeat if
+
+* output jumps straight to permanent death from weak evidence
+* context suggests recoverable failure
+* source is vague
+* player has protective ability/passive not considered
+* setting prefers non-lethal failure
+
+Convert to:
+
+* unconscious
+* captured
+* badly wounded
+* disarmed
+* separated
+* forced retreat
+* death-boundary
+
+⸻
+
+29. Matchup matrix summary
+
+This is the practical matrix.
+
+Player overwhelms
+
+Accept:
+
+* clean hit
+* clean victory
+* enemy rout
+* disarm
+* capture
+
+Be cautious of:
+
+* special enemy defenses
+* story-important bosses
+
+Player favored
+
+Accept:
+
+* victory
+* good hit
+* enemy injury
+* minor player cost
+
+Be cautious of:
+
+* no-cost victory if enemy still dangerous
+
+Slightly favored
+
+Accept:
+
+* success with cost
+* partial victory
+* minor/moderate injury
+
+Be cautious of:
+
+* instant enemy death if enemy is durable
+
+Even
+
+Accept:
+
+* trade of blows
+* resource cost
+* injury
+* tactical shifts
+* partial outcomes
+
+Be cautious of:
+
+* clean effortless victory
+* sudden total defeat without support
+
+Dangerous
+
+Accept:
+
+* player injury
+* resource loss
+* partial success
+* costly victory
+* retreat
+
+Be cautious of:
+
+* clean player victory
+* enemy instantly dying from weak action
+
+Player disadvantaged
+
+Accept:
+
+* survival
+* retreat
+* injury
+* temporary advantage
+* clever trick
+* partial wound
+
+Be cautious of:
+
+* clean kill
+* no-cost win
+* full enemy collapse
+
+Heavily outmatched
+
+Accept:
+
+* escape
+* failed attack
+* wound minor part
+* enemy staggered briefly
+* player injured/captured
+* ally intervention
+* terrain-based survival
+
+Reject or soften:
+
+* unsupported kill
+* total victory
+* no-cost domination
+
+Enemy overwhelms
+
+Accept:
+
+* player defeat
+* capture
+* unconsciousness
+* severe injury
+* desperate escape
+
+Reject or soften:
+
+* one-line player victory without leverage
+
+Impossible without leverage
+
+Accept only with:
+
+* artifact
+* ritual
+* trap
+* divine aid
+* major weakness
+* prior weakening
+* army/party support
+* sacrifice
+* story arc payoff
+
+Otherwise:
+
+* reject victory
+* allow setup, survival, observation, or escape
+
+⸻
+
+30. Combat realism examples
+
+Example 1 — novice vs wolf
+
+Player:
+
+Level 1, ATK 5, DEF 5, SPD 5, full resources.
+
+Enemy:
+
+Wolf, Tier 2.
+
+Matchup:
+
+Dangerous but possible.
+
+Expected accepted outcomes:
+
+* player wounds wolf
+* wolf bites player
+* player drives wolf away
+* player wins with injury
+* player escapes
+* wolf dies after clear strike
+
+Suspicious outcomes:
+
+* player kills wolf effortlessly with bare hands
+* wolf instantly kills player from one vague line
+
+Example 2 — exhausted warrior vs bandit
+
+Player:
+
+ATK 9, DEF 8, SPD 6, EP 5, wounded arm.
+
+Enemy:
+
+Bandit, Tier 3.
+
+Matchup:
+
+Even or dangerous due to exhaustion.
+
+Expected accepted outcomes:
+
+* player wins but spends last energy
+* bandit lands a cut
+* player blocks but staggers
+* retreat or disarm possible
+
+Suspicious outcomes:
+
+* player fights at full strength as if not exhausted
+
+Example 3 — mage with no MP
+
+Player:
+
+INT 10, Magic Domain strong, MP 0.
+
+Enemy:
+
+Standard guard, Tier 3.
+
+Matchup:
+
+Depends on non-magic options.
+
+Expected accepted outcomes:
+
+* spell fails
+* mage uses staff, tactics, escape, or environment
+* overcasting causes backlash
+
+Suspicious outcomes:
+
+* full-power spell fires for free
+
+Example 4 — low-level player vs dragon
+
+Player:
+
+Level 2, ordinary gear.
+
+Enemy:
+
+Adult dragon, Tier 8.
+
+Matchup:
+
+Impossible without leverage.
+
+Expected accepted outcomes:
+
+* player hides
+* player escapes
+* dragon ignores player
+* player wounds eye only with strong setup
+* artifact or trap matters
+
+Rejected/softened outcomes:
+
+* player kills dragon with one sword swing
+* dragon dies from weak narration
+
+Example 5 — high-LCK escape
+
+Player:
+
+High LCK, low HP.
+
+Output:
+
+“The collapsing beam crashes down, but it strikes the stone beside you, showering you with dust.”
+
+Matchup:
+
+LCK can support lucky survival.
+
+Accepted:
+
+* no crushing death
+* possible EP loss or minor injury
+* lucky opening
+
+But high LCK should not erase all future danger.
+
+⸻
+
+31. Combat command expectations
+
+Later command design should include combat inspection.
+
+/combat should show
+
+* current combat state
+* current enemy or enemies
+* player posture
+* matchup label
+* current HP/MP/EP warnings
+* injuries/conditions relevant to combat
+* equipped weapon/shield/armor
+* active abilities or stances
+* recent accepted combat events
+* unresolved danger
+
+/matchup should show
+
+* player combat factors
+* enemy threat tier
+* advantage/disadvantage factors
+* why the matchup label was chosen
+* suggested plausible approaches
+* what leverage exists or is missing
+
+/debuglast should show
+
+* proposed combat events
+* validation outcomes
+* damage severity
+* defense interpretation
+* accepted/rejected victory claims
+* duplicate skips
+* reducer commits
+
+The command output should help the player understand state without forcing combat into menus.
+
+⸻
+
+32. What Chunk 7 does not fully define
+
+Chunk 7 defines combat consequence logic.
+
+It does not fully define:
+
+* group combat tracking
+* companion tactics
+* follower groups
+* summons
+* large-scale battles
+* multi-protagonist combat
+
+Those belong in Chunk 8.
+
+Chunk 7 also does not fully define:
+
+* all equipment rules
+* all crafting/repair rules
+* all ability lifecycle rules
+* all progression math
+
+Those are covered in other chunks.
+
+⸻
+
+33. Chunk 7 acceptance tests
+
+Test 1 — real wound accepted
+
+Given:
+
+“The wolf bites your arm and blood runs down your sleeve.”
+
+Expected:
+
+* body.damage accepted
+* injury added
+* HP loss appropriate to severity
+* duplicate output does not apply twice
+
+Test 2 — near miss rejected
+
+Given:
+
+“The wolf almost bites your arm.”
+
+Expected:
+
+* no HP loss
+* no bite injury
+* possible combat pressure
+
+Test 3 — fatigue is EP, not HP
+
+Given:
+
+“You block blow after blow until your arms shake.”
+
+Expected:
+
+* EP loss
+* possible fatigue
+* HP loss only if blow gets through
+
+Test 4 — armor reduces physical damage
+
+Given:
+
+“His blade strikes your breastplate and glances away.”
+
+Expected:
+
+* no or reduced HP loss
+* possible EP loss
+* possible armor condition change if forceful
+
+Test 5 — poison bypasses armor
+
+Given:
+
+“Poison gas fills your helmet.”
+
+Expected:
+
+* armor does not fully protect unless sealed
+* possible poison condition
+* HP/EP effects depending severity
+
+Test 6 — clean victory accepted when plausible
+
+Given:
+
+Player is favored against weak goblin and output says the goblin collapses dead.
+
+Expected:
+
+* enemy defeated accepted
+* appropriate XP possible
+* no duplicate reward on replay
+
+Test 7 — impossible victory softened
+
+Given:
+
+Level 1 player kills adult dragon with one punch and no leverage.
+
+Expected:
+
+* dragon death rejected or softened
+* possible failed attack, minor distraction, or non-canon flourish
+* no boss defeat reward
+
+Test 8 — defeat does not equal death
+
+Given:
+
+“The ogre knocks you unconscious.”
+
+Expected:
+
+* unconsciousness accepted if supported
+* no permanent death unless explicit lethal confirmation
+
+Test 9 — rumor does not damage or kill
+
+Given:
+
+“A rumor spreads that you were slain.”
+
+Expected:
+
+* no HP loss
+* no death
+* possible reputation rumor
+
+Test 10 — low MP blocks magic
+
+Given:
+
+Player has 0 MP and output says their spell fails.
+
+Expected:
+
+* ability failure accepted
+* no free magical effect
+* possible overuse risk if they push harder
+
+Test 11 — high stat does not ignore context
+
+Given:
+
+Player has high ATK but enemy is intangible.
+
+Expected:
+
+* normal sword strike does not automatically harm enemy
+* need magic, special weapon, or leverage
+
+Test 12 — combat XP depends on threat
+
+Given:
+
+High-level player kills harmless rat.
+
+Expected:
+
+* little or no Level XP
+
+Given:
+
+Player survives dangerous duel.
+
+Expected:
+
+* meaningful combat XP and relevant stat/domain XP possible
+
+Test 13 — shield damage routes to inventory
+
+Given:
+
+“The troll’s club cracks your shield.”
+
+Expected:
+
+* combat proposes item.damage
+* InventoryReducer updates shield condition
+* Combat does not directly mutate inventory
+
+Test 14 — victory updates quest only through follow-up
+
+Given:
+
+Player defeats quest monster.
+
+Expected:
+
+* combat defeat event accepted
+* QuestReducer receives quest progress/completion event
+* Combat does not directly complete quest without owner routing
+
+Test 15 — Context reports combat truth
+
+Given:
+
+Player is low EP, wounded, and fighting a superior enemy.
+
+Expected:
+
+* Context warns AI that direct overpowering is risky
+* Context does not dump full debug matrix
+
+⸻
+
+34. Final Chunk 7 doctrine
+
+Combat in AIDRPG is consequence validation.
+
+It is not a full tactical simulator.
+
+It should make danger, injury, victory, defeat, resources, and growth feel believable.
+
+Threat tiers describe enemy danger.
+
+Matchup labels describe current plausibility.
+
+Stats, level, resources, abilities, equipment, injuries, terrain, preparation, party, and story leverage all matter.
+
+Damage should be typed and severity-based.
+
+Defense should shape consequences, not grant invincibility.
+
+Victory should be accepted when supported.
+
+Unsupported victory should be softened or rejected.
+
+Defeat should be possible, but defeat does not automatically mean permanent death.
+
+Death requires strong direct validation.
+
+Combat can reward progression, but only when meaningful and deduped.
+
+Combat can affect items, actors, quests, reputation, and cards only through proper owner events.
+
+The goal is not to make AI Dungeon combat predictable.
+
+The goal is to make combat consequences trustworthy, dramatic, and remembered.
+

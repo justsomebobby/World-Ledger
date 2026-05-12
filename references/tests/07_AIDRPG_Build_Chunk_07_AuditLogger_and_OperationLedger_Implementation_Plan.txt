@@ -1,0 +1,1634 @@
+AIDRPG Build Chunk 7 — AuditLogger and OperationLedger Implementation Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 7 — AuditLogger and OperationLedger Implementation Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact AuditLogger and OperationLedger behavior before their code is generated.
+Status: Practical build document.
+Follows: Build Chunk 6 — Runtime Hook Contract Implementation Plan.
+This document does not contain final script code.
+
+This chunk is useful because two old failure categories keep returning unless they are handled at the foundation level:
+
+1. The script cannot explain what it did or rejected.
+2. The script repeats the same operation and duplicates rewards, items, XP, cards, time, or startup imports.
+
+AuditLogger makes the system inspectable.
+
+OperationLedger makes repeated effects idempotent.
+
+Together, they make the script safer to debug, test, and expand.
+
+⸻
+
+1. Audit and ledger doctrine
+
+The doctrine is:
+
+Every important decision should be explainable.
+Every one-time effect should have a key.
+Every repeated effect should be skipped safely.
+Audits explain; they do not mutate gameplay.
+Ledger keys dedupe; they do not create gameplay.
+
+AuditLogger is not a hidden gameplay system.
+
+OperationLedger is not a reducer.
+
+They are support systems that make the real pipeline trustworthy.
+
+⸻
+
+2. Why this chunk matters before coding
+
+Without AuditLogger:
+
+* rejected events become mysterious
+* command output cannot explain state
+* releasecheck cannot prove safety
+* parser false positives are hard to detect
+* card failures are invisible
+* migration/quarantine issues are hidden
+* fail-soft errors vanish
+
+Without OperationLedger:
+
+* repeated output duplicates item pickup
+* repeated reward output pays twice
+* repeated XP output awards twice
+* repeated startup import duplicates items/abilities
+* repeated card sync creates/updates too often
+* repeated time skip ages or advances time twice
+* repeated cleanup/audit actions bloat state
+
+Build Chunk 7 prevents those problems from being improvised later.
+
+⸻
+
+3. Placement in final script
+
+AuditLogger belongs in:
+
+Section 07 — Audit Logger
+
+OperationLedger belongs in:
+
+Section 08 — Operation Ledger
+
+They come after:
+
+State Schema Defaults
+StateManager
+Runtime Hook Contract
+
+They come before:
+
+CommandRouter
+Command Renderers
+ReleaseCheckLite
+EventScannerLite
+CanonValidator
+ReducerRegistry
+Reducers
+CardSyncLite
+CleanupManagerLite
+
+Reason:
+
+Commands, runtime, validation, reducers, card sync, cleanup, migration, and releasecheck all need audit/ledger support.
+
+⸻
+
+4. AuditLogger responsibilities
+
+AuditLogger owns:
+
+* debug messages
+* runtime warnings surfaced to audits
+* proposal summaries
+* validation summaries
+* duplicate skip messages
+* card audit lines
+* context audit lines
+* cleanup audit lines
+* migration audit lines
+* releasecheck result storage
+* last-turn summary
+* capped array handling for audit buckets
+
+AuditLogger does not own:
+
+* gameplay mutation
+* validation decisions
+* reducer commits
+* Story Card writes
+* Context packet generation
+* parser decisions
+* OperationLedger keys, except displaying or logging key use
+
+⸻
+
+5. OperationLedger responsibilities
+
+OperationLedger owns:
+
+* permanent operation keys
+* recent operation keys
+* reward operation keys
+* card operation keys
+* source-use keys
+* duplicate key detection
+* safe key insertion
+* recent-key compaction
+* duplicate skip audit hooks
+
+OperationLedger does not own:
+
+* applying gameplay effects
+* deciding whether a proposal is valid
+* rendering commands
+* parsing text
+* cleaning gameplay state
+* writing Story Cards
+
+⸻
+
+6. Required AuditLogger public functions
+
+The final script should provide these functions or equivalent section-scoped functions.
+
+AuditLogger.debug(root, message)
+AuditLogger.warn(root, message)
+AuditLogger.runtimeWarning(root, message)
+AuditLogger.runtimeError(root, record)
+AuditLogger.proposal(root, record)
+AuditLogger.validation(root, record)
+AuditLogger.duplicate(root, key, reason)
+AuditLogger.card(root, message)
+AuditLogger.context(root, message)
+AuditLogger.cleanup(root, message)
+AuditLogger.migration(root, message)
+AuditLogger.release(root, releaseCheckRecord)
+AuditLogger.turnSummary(root, summaryRecord)
+AuditLogger.repair(root, message)
+AuditLogger.capAll(root)
+AuditLogger.capBucket(root, bucketPath, max)
+AuditLogger.safeLine(value, maxLength)
+
+Names may change during code, but responsibilities must exist.
+
+⸻
+
+7. Required OperationLedger public functions
+
+The final script should provide these functions or equivalent section-scoped functions.
+
+OperationLedger.hasAny(root, key)
+OperationLedger.hasPermanent(root, key)
+OperationLedger.hasRecent(root, key)
+OperationLedger.hasReward(root, key)
+OperationLedger.hasCard(root, key)
+OperationLedger.hasSourceUse(root, key)
+OperationLedger.addPermanent(root, key)
+OperationLedger.addRecent(root, key)
+OperationLedger.addReward(root, key)
+OperationLedger.addCard(root, key)
+OperationLedger.addSourceUse(root, key)
+OperationLedger.tryAdd(root, bucketName, key, reason)
+OperationLedger.compactRecent(root)
+OperationLedger.normalizeKey(key)
+OperationLedger.makeKey(parts)
+OperationLedger.auditDuplicate(root, key, reason)
+OperationLedger.summary(root)
+
+Names may change during code, but responsibilities must exist.
+
+⸻
+
+8. Audit bucket schema recap
+
+AuditLogger writes to the audits bucket locked in Build Chunk 3.
+
+audits: {
+  lastTurnSummary,
+  recentProposals,
+  recentValidationResults,
+  debugMessages,
+  runtimeWarnings,
+  cardAudit,
+  contextAudit,
+  cleanupAudit,
+  migrationAudit,
+  releaseCheck
+}
+
+Runtime-specific details may also live in:
+
+runtime.runtimeWarnings
+runtime.runtimeErrors
+runtime.hookTrace
+
+AuditLogger may help cap both audit and runtime arrays.
+
+⸻
+
+9. OperationLedger schema recap
+
+OperationLedger writes to:
+
+operationLedger: {
+  permanentKeys,
+  recentKeys,
+  rewardKeys,
+  cardKeys,
+  sourceUseKeys,
+  maxRecentKeys,
+  ledgerWarnings
+}
+
+These arrays are not interchangeable.
+
+Each one has a different lifespan and purpose.
+
+⸻
+
+10. Audit record style
+
+Audit records should be compact, readable, and capped.
+
+10.1 Good audit lines
+
+Rejected item pickup: "jeweled cup" was hypothetical, not acquired.
+Duplicate skipped: quest.reward.clear_mill_wolves.old_bren already used.
+Command suppression: /inventory output was not scanned as story.
+CardSync skipped generated card: generated cards are disabled in MVP.
+
+10.2 Bad audit lines
+
+bad event
+ValidationResult[7].flags.negated true bool reason no write
+undefined
+
+Audit lines should be useful to a human testing the script.
+
+⸻
+
+11. Audit record object format
+
+Some audit buckets can use strings, but proposal/validation/turn summaries should use structured records.
+
+11.1 AuditRecord
+
+AuditRecord: {
+  turn: number,
+  family: string,
+  outcome: string,
+  reason: string,
+  sourceEventKey: string,
+  preview: string,
+  notes: string[]
+}
+
+11.2 TurnSummaryRecord
+
+TurnSummaryRecord: {
+  turn: number,
+  inputHash: string,
+  outputHash: string,
+  proposalsCreated: number,
+  accepted: number,
+  rejected: number,
+  duplicateSkipped: number,
+  dirtyTargets: string[],
+  notes: string[]
+}
+
+11.3 ReleaseCheckRecord
+
+ReleaseCheckRecord: {
+  turn: number,
+  result: 'PASS' | 'WARN' | 'FAIL' | 'BLOCKED',
+  passes: string[],
+  warnings: string[],
+  failures: string[],
+  blockers: string[]
+}
+
+11.4 RuntimeErrorRecord
+
+Runtime errors should use the runtime schema:
+
+RuntimeErrorRecord: {
+  turn: number,
+  hook: string,
+  phase: string,
+  message: string,
+  safeTextReturned: boolean,
+  partialCommitBlocked: boolean
+}
+
+⸻
+
+12. Audit caps
+
+AuditLogger must cap all audit arrays.
+
+Recommended MVP caps:
+
+recentProposals max = 50
+recentValidationResults max = 50
+debugMessages max = 50
+runtimeWarnings max = 25
+cardAudit max = 50
+contextAudit max = 50
+cleanupAudit max = 50
+migrationAudit max = 50
+runtime.runtimeWarnings max = 25
+runtime.runtimeErrors max = 20
+runtime.hookTrace max = 30
+
+12.1 Cap behavior
+
+When capped:
+
+* keep most recent records
+* preserve critical recent failures
+* avoid expensive deep sorting
+* do not crash if bucket malformed
+* repair malformed audit bucket safely if needed
+
+12.2 Cap must not touch
+
+AuditLogger must not cap or delete:
+
+operationLedger.permanentKeys
+operationLedger.rewardKeys
+operationLedger.cardKeys
+startup.startupOperationKeys
+migration.migrationOperationKeys
+active inventory
+active quests
+important actors
+stable abilities
+
+⸻
+
+13. AuditLogger safe append rules
+
+Every append function must:
+
+1. ensure the target bucket exists or fail softly
+2. convert message/record to safe format
+3. add turn number if relevant
+4. cap the target bucket
+5. never throw uncaught errors
+6. never mutate gameplay state
+
+If audit writing itself fails, the script should fail softly or skip the audit rather than corrupt gameplay.
+
+⸻
+
+14. Audit categories
+
+14.1 Debug messages
+
+Used for general developer-readable notes.
+
+Examples:
+
+* StateManager repaired missing inventory bucket
+* CommandRouter routed /questlog to /quests
+* Parser shell inactive in v0.1
+
+14.2 Runtime warnings
+
+Used for hook/runtime safety issues.
+
+Examples:
+
+* duplicate output replay detected
+* command output suppression triggered
+* hook reentry blocked
+* non-string hook input converted safely
+
+14.3 Proposal audits
+
+Used later for parser hits and proposed events.
+
+Examples:
+
+* proposed item pickup
+* proposed quest reward payment
+* proposed actor presence update
+
+In early v0.1, proposal audit may report shell inactive.
+
+14.4 Validation audits
+
+Used later for accepted/rejected/pending proposals.
+
+Examples:
+
+* rejected because hypothetical
+* rejected because item in NPC custody
+* accepted because output confirmed actual handoff
+
+14.5 Duplicate audits
+
+Used whenever a ledger or hash skip blocks repeated effects.
+
+Examples:
+
+* duplicate output hash skip
+* duplicate quest reward key
+* duplicate startup import key
+
+14.6 Card audit
+
+Used for CardSync and Story Card safety.
+
+Examples:
+
+* generated cards disabled
+* protected card registry dry-run planned
+* duplicate Player Sheet detected
+* card API unavailable
+
+14.7 Context audit
+
+Used for ContextBuilderLite.
+
+Examples:
+
+* selected current location packet
+* skipped low-priority quest packet due to budget
+* read-only guard active
+
+14.8 Cleanup audit
+
+Used for CleanupManagerLite.
+
+Examples:
+
+* capped audit logs
+* deduped dirty targets
+* skipped important actor
+
+14.9 Migration audit
+
+Used for StateManager/migration/quarantine.
+
+Examples:
+
+* old root detected
+* old card prose not imported
+* malformed field quarantined
+
+⸻
+
+15. Operation key doctrine
+
+Every one-time or repeat-sensitive effect needs an operation key.
+
+A key should answer:
+
+What happened?
+To what target?
+From what source/context?
+Should it ever happen again?
+
+Key examples:
+
+startup.import.player.name
+startup.import.item.iron_sword
+item.pickup.rusty_dagger.scene_12
+quest.reward.clear_mill_wolves.old_bren.15_gold
+xp.quest.clear_mill_wolves.complete
+card.create.protected.player_sheet
+card.update.protected.player_sheet.hash_abcd
+cleanup.audit.compact.turn_50
+time.advance.five_years.event_77
+
+⸻
+
+16. Operation key normalization
+
+Operation keys must be safe and stable.
+
+16.1 Normalize by
+
+* converting to lowercase
+* trimming whitespace
+* replacing spaces with underscores
+* removing unsafe punctuation
+* preserving meaningful colon/dot separators if chosen
+* collapsing repeated separators
+* limiting length
+
+16.2 Forbidden key contents
+
+Keys should not contain:
+
+* raw full output text
+* huge descriptions
+* unstable timestamps only
+* player-facing prose paragraphs
+* unbounded random values
+
+16.3 Length recommendation
+
+Recommended maximum:
+
+operation key max length = 160 characters
+
+If longer, hash the unstable/detail part.
+
+⸻
+
+17. Ledger bucket purposes
+
+17.1 permanentKeys
+
+For operations that should never repeat in this save.
+
+Examples:
+
+* startup imports
+* unique quest completions
+* unique irreversible transformations
+* schema migration steps
+* major one-time discoveries if needed later
+
+17.2 recentKeys
+
+For recent operations that should be blocked for a short window but can expire.
+
+Examples:
+
+* repeated minor damage line
+* repeated visible item detection
+* repeated scene note
+* repeated low-risk parser output
+
+17.3 rewardKeys
+
+For rewards/payments/XP that must not duplicate.
+
+Examples:
+
+* quest reward paid
+* bounty paid
+* explicit XP award
+* level milestone reward
+
+Reward keys should be durable.
+
+Do not cap rewardKeys like recentKeys.
+
+17.4 cardKeys
+
+For Story Card create/update/restore/neutralization operations.
+
+Examples:
+
+* protected card created
+* protected card updated to render hash
+* duplicate card warning
+* generated card suppressed/tombstoned later
+
+17.5 sourceUseKeys
+
+For tracking source-specific actions.
+
+Examples:
+
+* output hash consumed
+* command output suppressed
+* setup source imported
+* migration source processed
+
+⸻
+
+18. Ledger add behavior
+
+18.1 Basic add flow
+
+1. Normalize key.
+2. Validate non-empty key.
+3. Check target bucket exists.
+4. If key already exists, return duplicate result.
+5. Add key to target bucket.
+6. Cap bucket if bucket is recentKeys.
+7. Audit add/duplicate if needed.
+8. Return result.
+
+18.2 Add result format
+
+LedgerResult {
+  ok: boolean,
+  duplicate: boolean,
+  key: string,
+  bucket: string,
+  reason: string
+}
+
+18.3 Duplicate behavior
+
+If duplicate:
+
+* do not add another copy
+* return duplicate result
+* optionally audit duplicate skip
+* reducer/caller must not apply effect again
+
+Ledger duplicate detection must be easy for callers to use.
+
+⸻
+
+19. Ledger check behavior
+
+19.1 hasAny
+
+Checks all relevant buckets.
+
+Use when the caller does not care where the key lives.
+
+19.2 Specific checks
+
+Use specific checks when bucket matters.
+
+Examples:
+
+* hasReward for quest reward payment
+* hasCard for card update/create
+* hasPermanent for startup import
+
+19.3 Read-only checks
+
+Checking the ledger must not mutate the ledger.
+
+Only add or tryAdd mutates.
+
+⸻
+
+20. Recent key compaction
+
+Only recentKeys should be capped by count.
+
+Default cap:
+
+maxRecentKeys = 250
+
+When over cap:
+
+* keep newest keys
+* drop oldest recent keys
+* do not drop permanent/reward/card keys
+* audit only if useful
+
+⸻
+
+21. Required key families by system
+
+21.1 Startup keys
+
+Use permanent or startup operation keys.
+
+Examples:
+
+startup.import.player.name
+startup.import.player.species
+startup.import.item.iron_sword
+startup.import.ability.mana_slash
+startup.lock.turn_1
+
+Purpose:
+
+* prevent repeated startup import
+* prevent duplicate starting items/abilities
+
+21.2 Runtime/output keys
+
+Use sourceUseKeys or runtime hash fields.
+
+Examples:
+
+source.output.hash_abc123.processed
+source.command.inventory.hash_def456.suppressed
+
+Purpose:
+
+* prevent output replay processing
+* track command suppression
+
+21.3 Inventory keys
+
+Use recent or permanent depending item.
+
+Examples:
+
+item.pickup.rusty_dagger.scene_12
+item.transfer.iron_key.mara_to_player.turn_8
+item.consume.healing_potion.item_44
+item.destroy.old_shield.event_22
+
+Purpose:
+
+* prevent duplicate pickups/transfers/consumption/destruction
+
+21.4 Quest/reward keys
+
+Use rewardKeys/permanentKeys.
+
+Examples:
+
+quest.accept.clear_mill_wolves.old_bren
+quest.objective.clear_mill_wolves.kill_wolves.complete
+quest.reward.clear_mill_wolves.old_bren.15_gold
+xp.quest.clear_mill_wolves.complete
+
+Purpose:
+
+* prevent duplicate quest reward/XP/objective completion
+
+21.5 Ability keys
+
+Examples:
+
+ability.evidence.shadow_step.failed_attempt.turn_12
+ability.stabilize.mana_slash.training_3
+ability.use.mana_slash.output_hash_abc
+
+Purpose:
+
+* prevent repeated evidence or use cost duplication
+* protect candidate/stable transitions
+
+21.6 Body/time keys
+
+Examples:
+
+body.damage.wolf_bite.output_hash_abc
+body.heal.rest.turn_18
+time.advance.one_hour.output_hash_def
+time.age.player.five_year_skip.event_77
+
+Purpose:
+
+* prevent repeated damage/healing/time/aging
+
+21.7 Card keys
+
+Examples:
+
+card.create.protected.player_sheet
+card.update.protected.player_sheet.hash_abc
+card.duplicate.protected.player_sheet.turn_14
+card.restore.protected.quest_log.turn_20
+
+Purpose:
+
+* prevent duplicate protected cards
+* prevent repeated unchanged writes
+
+21.8 Cleanup/migration keys
+
+Examples:
+
+cleanup.audit.compact.turn_50
+cleanup.scene.expire.actor.generic_guard.scene_12
+migration.init.schema_v1
+migration.quarantine.card.old_inventory_crown
+
+Purpose:
+
+* prevent cleanup spam
+* prevent repeated migration/quarantine actions
+
+⸻
+
+22. Duplicate skip audit format
+
+When a duplicate is detected, audit should be readable.
+
+Format:
+
+Duplicate skipped: <key> — <reason>.
+
+Examples:
+
+Duplicate skipped: item.pickup.rusty_dagger.scene_12 — item pickup already applied.
+Duplicate skipped: quest.reward.clear_mill_wolves.old_bren.15_gold — reward already paid.
+Duplicate skipped: startup.import.item.iron_sword — starting item already imported.
+
+⸻
+
+23. AuditLogger and OperationLedger interaction
+
+OperationLedger may call AuditLogger for duplicate skip messages.
+
+AuditLogger must not call OperationLedger for normal audit appends.
+
+Reason:
+
+Avoid circular dependency where audit writes require ledger keys and ledger keys require audit writes.
+
+Recommended dependency direction:
+
+OperationLedger -> AuditLogger optional
+AuditLogger -> no OperationLedger dependency
+
+If circular dependency risk exists, OperationLedger can return duplicate result and caller logs through AuditLogger.
+
+⸻
+
+24. Ledger and reducers later
+
+Reducers should use OperationLedger in this pattern:
+
+1. Compute operation key.
+2. Check ledger duplicate.
+3. If duplicate, skip effect and audit.
+4. If not duplicate, apply reducer effect.
+5. Add key to ledger.
+6. Mark dirty targets.
+7. Audit success.
+
+Potential stricter future pattern:
+
+1. Check key.
+2. Apply effect.
+3. Add key.
+
+If adding key after effect fails, audit critical warning.
+
+For MVP, code should keep the pattern simple and safe.
+
+⸻
+
+25. Ledger and startup import
+
+Startup import must use ledger or startup operation keys.
+
+Example:
+
+Setup says:
+
+Starting equipment: iron sword.
+
+Operation key:
+
+startup.import.item.iron_sword
+
+If setup import runs again:
+
+* key already exists
+* do not add second sword
+* audit duplicate startup import skip
+
+⸻
+
+26. Ledger and command output
+
+Commands usually do not need gameplay operation keys because they do not mutate gameplay.
+
+But command suppression may use sourceUseKeys or runtime hashes.
+
+Example:
+
+source.command.inventory.hash_abc.suppressed
+
+Do not create item/reward keys from command output.
+
+⸻
+
+27. Ledger and Context
+
+Context should not create gameplay operation keys.
+
+Context may use packet hashes later for audit spam prevention.
+
+Context packet hashes are not gameplay operation keys.
+
+Do not use context text to add inventory/reward/XP keys.
+
+⸻
+
+28. Ledger and Story Cards
+
+Story Card operations must use cardKeys.
+
+Story Card text must not create gameplay keys.
+
+Examples:
+
+Allowed:
+
+card.update.protected.inventory_equipment.hash_abc
+
+Forbidden:
+
+item.add.crown_of_dawn.from_story_card_text
+
+unless a future explicit manual import path validates it.
+
+⸻
+
+29. Ledger and releasecheck
+
+ReleaseCheck must verify:
+
+* operationLedger exists
+* permanentKeys exists
+* recentKeys exists
+* rewardKeys exists
+* cardKeys exists
+* sourceUseKeys exists
+* maxRecentKeys exists
+* recent key cap is sane
+
+ReleaseCheck must fail if:
+
+* rewardKeys missing
+* cardKeys missing while CardSync enabled
+* recentKeys unbounded
+* duplicate protection unavailable for output replay/rewards
+
+ReleaseCheck should warn if:
+
+* no duplicate skip audit path exists
+* sourceUseKeys not used yet in early shell
+
+⸻
+
+30. Audit and command renderers
+
+Command renderers use audit/ledger data.
+
+30.1 /debuglast
+
+Reads:
+
+* lastTurnSummary
+* recentProposals
+* recentValidationResults
+* runtime warnings/errors
+* duplicate skip audit lines
+
+30.2 /ledger
+
+Reads:
+
+* counts for permanent/recent/reward/card/sourceUse keys
+* recent duplicate skip lines if available
+* ledger warnings
+
+30.3 /stateaudit
+
+Reads:
+
+* audit sizes
+* runtime errors
+* migration warnings
+* cleanup warnings
+
+30.4 /releasecheck
+
+Reads audit and ledger health to determine readiness.
+
+Command renderers must never mutate gameplay while showing audits/keys.
+
+⸻
+
+31. Audit and privacy/length safety
+
+Audit should avoid storing full long player/AI text.
+
+Use previews.
+
+Recommended preview max:
+
+160 characters
+
+Full text can be avoided unless absolutely needed.
+
+Do not store giant outputs in audit buckets.
+
+Do not store full Story Card contents in audit logs.
+
+Use hashes/previews instead.
+
+⸻
+
+32. Early v0.1 behavior
+
+In early Core MVP v0.1, full parser/reducer systems may still be inactive.
+
+AuditLogger and OperationLedger are still useful.
+
+They should support:
+
+* command routing audit
+* command suppression audit
+* duplicate output hash audit
+* state repair audit
+* releasecheck result storage
+* card dry-run audit
+* context shell audit
+* ledger shell display
+
+They do not need to wait for full gameplay automation.
+
+⸻
+
+33. AuditLogger implementation sequence
+
+When coding begins, implement AuditLogger in this order:
+
+1. safe line/preview helper
+2. generic append helper
+3. cap helper
+4. debug/warn appenders
+5. runtime warning/error appenders
+6. card/context/cleanup/migration appenders
+7. proposal/validation appenders
+8. releasecheck storage
+9. turn summary storage
+10. capAll
+
+Do not start with complex UI formatting.
+
+Command renderers handle display.
+
+⸻
+
+34. OperationLedger implementation sequence
+
+When coding begins, implement OperationLedger in this order:
+
+1. normalizeKey
+2. makeKey helper
+3. ensure ledger bucket helper
+4. bucket-specific has functions
+5. bucket-specific add functions
+6. tryAdd result object
+7. recent key compaction
+8. duplicate audit helper
+9. summary helper for /ledger
+
+Do not implement gameplay effects inside OperationLedger.
+
+⸻
+
+35. Required AuditLogger tests
+
+BC7-001 — Debug audit append
+
+Action:
+
+AuditLogger.debug(root, 'test message')
+
+Expected:
+
+* message added to audits.debugMessages
+* capped if needed
+* no gameplay mutation
+
+Fail if:
+
+* inventory/quests/etc. change
+
+⸻
+
+BC7-002 — Runtime warning append
+
+Action:
+
+AuditLogger.runtimeWarning(root, 'duplicate output replay detected')
+
+Expected:
+
+* warning visible through audits/runtime as designed
+* no crash
+
+Fail if:
+
+* warning not recorded or gameplay state changes
+
+⸻
+
+BC7-003 — Audit cap works
+
+Setup:
+
+audits.debugMessages has 100 entries
+max = 50
+
+Action:
+
+append one more and cap.
+
+Expected:
+
+* length <= 50
+* recent messages preserved
+
+Fail if:
+
+* unbounded growth
+
+⸻
+
+BC7-004 — Proposal audit stores compact record
+
+Action:
+
+Add proposal audit record.
+
+Expected:
+
+* record includes turn, family, outcome, reason, preview
+* no full huge text dump
+
+Fail if:
+
+* raw giant text stored unnecessarily
+
+⸻
+
+BC7-005 — ReleaseCheck record stored
+
+Action:
+
+Store releasecheck result FAIL.
+
+Expected:
+
+* audits.releaseCheck updated
+* meta.lastReleaseCheckResult can be updated by official path if implemented
+* no gameplay mutation
+
+Fail if:
+
+* releasecheck storage changes inventory/quests/etc.
+
+⸻
+
+BC7-006 — Card audit append non-mutating
+
+Action:
+
+Add card audit line:
+
+Generated cards disabled in MVP.
+
+Expected:
+
+* line added to cardAudit
+* generatedCardsEnabled remains false
+* no card created
+
+Fail if:
+
+* audit triggers card operation
+
+⸻
+
+BC7-007 — Context audit append non-mutating
+
+Action:
+
+Add context audit line mentioning Iron Sword custody.
+
+Expected:
+
+* audit added
+* inventory/custody unchanged
+
+Fail if:
+
+* audit text changes item custody
+
+⸻
+
+BC7-008 — Audit append fail-soft
+
+Simulate malformed audit bucket.
+
+Expected:
+
+* bucket repaired or append skipped safely
+* no crash
+* warning if possible
+
+Fail if:
+
+* uncaught audit error crashes hook
+
+⸻
+
+36. Required OperationLedger tests
+
+BC7-009 — Add recent key once
+
+Action:
+
+addRecent('item.pickup.rusty_dagger.scene_12')
+
+Expected:
+
+* key added
+* hasRecent true
+
+Fail if:
+
+* key missing
+
+⸻
+
+BC7-010 — Duplicate recent key blocked
+
+Action:
+
+Add same recent key twice.
+
+Expected:
+
+* second add returns duplicate result
+* no second copy
+* duplicate audit possible
+
+Fail if:
+
+* duplicate copy appears
+
+⸻
+
+BC7-011 — Reward key durable
+
+Action:
+
+addReward('quest.reward.clear_mill_wolves.old_bren.15_gold')
+
+Expected:
+
+* reward key added to rewardKeys
+* not added only to recentKeys
+* not capped by recent compaction
+
+Fail if:
+
+* reward key can be lost through recent cap
+
+⸻
+
+BC7-012 — Card key durable
+
+Action:
+
+addCard('card.create.protected.player_sheet')
+
+Expected:
+
+* card key added
+* duplicate card create can be blocked
+
+Fail if:
+
+* card key missing or stored only as recent
+
+⸻
+
+BC7-013 — Permanent startup key blocks duplicate import
+
+Action:
+
+Add:
+
+startup.import.item.iron_sword
+
+twice.
+
+Expected:
+
+* second add duplicate
+* no duplicate startup effect should be applied by caller
+
+Fail if:
+
+* duplicate import would not be detectable
+
+⸻
+
+BC7-014 — Recent key cap does not affect permanent/reward/card
+
+Setup:
+
+* recentKeys over max
+* permanentKeys contains startup key
+* rewardKeys contains reward key
+* cardKeys contains card key
+
+Action:
+
+compact recent.
+
+Expected:
+
+* recentKeys capped
+* permanent/reward/card keys preserved
+
+Fail if:
+
+* durable keys removed
+
+⸻
+
+BC7-015 — Normalize key stable
+
+Input:
+
+' Quest Reward: Clear Mill Wolves / Old Bren / 15 Gold!! '
+
+Expected normalized key:
+
+* lowercase
+* safe separators
+* no unsafe punctuation
+* stable across repeated call
+
+Fail if:
+
+* key includes unsafe full punctuation or changes randomly
+
+⸻
+
+BC7-016 — Empty key rejected
+
+Input:
+
+''
+
+Expected:
+
+* add returns failure
+* warning possible
+* no empty key stored
+
+Fail if:
+
+* empty key appears in ledger
+
+⸻
+
+BC7-017 — hasAny checks all buckets
+
+Setup:
+
+Key in rewardKeys only.
+
+Action:
+
+hasAny(key)
+
+Expected:
+
+* true
+
+Fail if:
+
+* only recentKeys checked
+
+⸻
+
+BC7-018 — Ledger summary safe
+
+Action:
+
+Call summary for /ledger.
+
+Expected:
+
+* counts returned
+* no full giant key dump by default
+* no mutation
+
+Fail if:
+
+* summary mutates ledger or dumps unbounded data
+
+⸻
+
+37. Cross-system dedupe tests
+
+BC7-019 — Duplicate command output suppression audit
+
+Run /inventory, then simulate command output in Output hook.
+
+Expected:
+
+* command suppression audit line
+* no item duplication
+
+Fail if:
+
+* command output creates item
+
+⸻
+
+BC7-020 — Duplicate output replay audit
+
+Output repeated exactly.
+
+Expected:
+
+* duplicate output hash skip audit
+* no repeated consequence processing
+
+Fail if:
+
+* no audit and duplicate consequence possible
+
+⸻
+
+BC7-021 — Reward duplicate key blocks second payment later
+
+Future reducer test placeholder.
+
+Given reward key already exists:
+
+quest.reward.clear_mill_wolves.old_bren.15_gold
+
+When same payment proposal appears again:
+
+Expected:
+
+* duplicate skip
+* no second payment
+* audit explains duplicate
+
+Fail if:
+
+* reward can pay twice
+
+⸻
+
+BC7-022 — Startup duplicate key blocks second starting item later
+
+Given startup import key exists:
+
+startup.import.item.iron_sword
+
+When startup import runs again:
+
+Expected:
+
+* duplicate skip
+* no second sword
+* audit explains duplicate
+
+Fail if:
+
+* duplicate starting sword
+
+⸻
+
+38. ReleaseCheck requirements for Build Chunk 7
+
+ReleaseCheck must verify:
+
+38.1 Audit checks
+
+* audits bucket exists
+* debugMessages exists
+* recentProposals exists
+* recentValidationResults exists
+* card/context/cleanup/migration audit buckets exist
+* releaseCheck storage exists
+* audit caps exist or warning if not active
+
+38.2 Ledger checks
+
+* operationLedger bucket exists
+* permanentKeys exists
+* recentKeys exists
+* rewardKeys exists
+* cardKeys exists
+* sourceUseKeys exists
+* maxRecentKeys exists
+* reward/card keys are not capped as recent
+
+38.3 Failure conditions
+
+ReleaseCheck must fail if:
+
+* rewardKeys missing
+* cardKeys missing while CardSync present
+* recentKeys unbounded
+* audit writing can crash hooks
+* duplicate output/reward protection unavailable
+
+38.4 Warning conditions
+
+ReleaseCheck may warn if:
+
+* proposal/validation audits are shell-only
+* sourceUseKeys not used yet
+* duplicate skip audit is basic
+* audit cap implementation is partial
+
+⸻
+
+39. Implementation boundaries
+
+When coding AuditLogger and OperationLedger:
+
+Do not also code:
+
+* full parser
+* full validators
+* reducers
+* card API adapter
+* generated cards
+* economy/crafting/investigation/domain
+* manual mutation commands
+
+This build chunk is support infrastructure only.
+
+⸻
+
+40. Acceptance checklist
+
+Build Chunk 7 is complete when implementation will clearly support:
+
+* audit append helpers
+* audit caps
+* debug/warning/error logging
+* proposal/validation audit placeholders
+* card/context/cleanup/migration audit lines
+* releasecheck result storage
+* last-turn summary storage
+* ledger key normalization
+* ledger has/add functions
+* permanent/recent/reward/card/sourceUse buckets
+* recent key compaction
+* duplicate result objects
+* duplicate skip audit
+* /ledger summary support
+* releasecheck audit/ledger checks
+* tests BC7-001 through BC7-022
+
+⸻
+
+41. Relationship to previous build chunks
+
+Build Chunk 7 depends on:
+
+* Build Chunk 1 for allowed/forbidden v0.1 scope
+* Build Chunk 2 for section placement
+* Build Chunk 3 for audit and ledger state schema
+* Build Chunk 4 for /debuglast, /ledger, /stateaudit, and /releasecheck formats
+* Build Chunk 5 for repair warnings and StateManager interactions
+* Build Chunk 6 for runtime warnings, command suppression, duplicate output, and fail-soft behavior
+* Gap Chunk B for runtime duplicate replay rules
+* Gap Chunk E for releasecheck and command honesty
+* Gap Chunk F for caps/performance/cleanup stability
+
+⸻
+
+42. What Build Chunk 8 should do next
+
+Next build document:
+
+Build Chunk 8 — CommandRouter and Command Renderer Implementation Plan
+
+Build Chunk 8 should plan:
+
+* slash command detection
+* command alias routing
+* active command dispatch
+* disabled command responses
+* unknown command handling
+* command output suppression integration
+* renderer function responsibilities
+* exact safety checks for command non-mutation
+* command tests before parser/reducer work begins
+
+After Build Chunk 8, the first code skeleton can be planned very directly because StateManager, Runtime, AuditLogger, OperationLedger, and Commands will all be locked.
+
+⸻
+
+43. Final Build Chunk 7 doctrine
+
+AuditLogger and OperationLedger are not flashy, but they protect the project from two of the most dangerous failure types: invisible behavior and repeated behavior.
+
+Final rule:
+
+If the script does something important, audit it.
+If the script might do something twice, key it.
+If a duplicate appears, skip it safely.
+If an audit grows too large, cap it safely.
+If a key protects a permanent outcome, never compact it away as recent noise.
+
+With AuditLogger and OperationLedger planned, the next safe step is to plan CommandRouter and command renderers.

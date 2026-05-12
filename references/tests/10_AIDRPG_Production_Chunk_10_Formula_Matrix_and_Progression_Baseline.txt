@@ -1,0 +1,1665 @@
+# AIDRPG Production Chunk 10 — Formula Matrix and Progression Baseline
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 10 — Formula Matrix and Progression Baseline  
+**Production sequence:** 10 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.9 place/time-depth accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen XP, level, progression events, formula registry, progression history, stat-baseline placeholders, and world-scaling boundaries without vague XP, duplicate XP, hidden rubber-band scaling, or unsafe stat automation.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 09 — Place, Travel, Time, Scene, and Deadline Depth.  
+**This document does not contain final script code.**
+
+Production Chunk 10 exists because progression is where many RPG systems silently become unfair, inconsistent, or impossible to test.
+
+Old attempts and rough builds often risked:
+
+```text
+vague “learning experience” becoming XP
+ability training awarding XP automatically
+quest reward promises granting XP before payment/completion
+repeat outputs duplicating XP/levels
+level formulas changing mid-save
+stats increasing without owner/rule/test support
+world enemies rubber-banding to player level
+high-level numbers becoming meaningless
+manual /setlevel shortcuts corrupting balance
+```
+
+This chunk creates the formula and progression baseline.
+
+It does **not** build the full final stat engine yet.
+
+It makes progression deterministic, source-bound, duplicate-safe, inspectable, and ready for Production Chunk 11.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Vague experience is not XP.
+Training is not XP unless an exact XP event says so.
+Quest promise is not XP.
+Quest completion is not XP unless reward/XP event is accepted.
+Level does not change without formula authority.
+Stats do not change without owner rules.
+World threat does not rubber-band to player level.
+Duplicate output cannot duplicate XP.
+Formula changes must be versioned.
+```
+
+Progression truth must be formula-driven, versioned, repeat-safe, and explainable.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 09 made place/time safer.
+
+Progression comes next because later chunks depend on it:
+
+```text
+stats and derived values
+body resources and conditions
+combat damage/healing
+ability reliability and costs
+world-threat benchmarks
+creature/encounter difficulty
+race/form consequences
+quest rewards
+long-run advancement
+```
+
+If progression is not locked before stats and combat, later code will invent numbers ad hoc.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 10 may change:
+
+```text
+Progression schema helpers
+ProgressionReducerLite
+FormulaRegistry / FormulaMatrix shell
+CanonValidator progression/XP rules
+ProposalBuilder progression event types
+EventScannerLite progression/XP hints
+CommandRenderers /sheet and progression/status display
+ContextBuilder progression packet
+OperationLedger XP/level/progression keys
+DirtyQueue progression targets
+IntegrityChecker progression checks
+ReleaseCheck progression gates
+Regression/player-breaker progression tests
+```
+
+Production Chunk 10 may add:
+
+```text
+FormulaProfile schema
+FormulaRuleRecord schema
+XPEventRecord schema
+LevelEventRecord schema
+ProgressionHistoryRecord schema
+ProgressionMilestoneRecord schema
+WorldScalingBoundaryRecord schema
+explicit XP validation rules
+level calculation boundary
+formula versioning
+no-rubber-band world rule
+progression audit summaries
+```
+
+Production Chunk 10 may not add:
+
+```text
+full stat/derived value engine
+full level 1–1000 final balancing matrix unless Formula Appendix locks it
+full combat XP automation
+full class/talent tree
+ability XP economy
+manual /setlevel /givexp commands
+reputation/faction progression
+world enemy auto-scaling
+absorption/evolution stat gain
+```
+
+Stats and derived values are Production Chunk 11. Combat is Production Chunk 12. World threat benchmark is Production Chunk 14.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+ProgressionState helpers
+ProgressionReducerLite
+FormulaRegistry / FormulaMatrix helper
+CanonValidator progression rules
+ProposalBuilder progression proposals
+EventScannerLite XP/progression hints
+Resolver progression target binding
+CommandRenderers: /sheet, /status if needed, /progression if supported
+ContextBuilderLite progression packet
+OperationLedger progression/XP/level keys
+DirtyQueue progression dirty targets
+AuditLogger progression lines
+InvariantChecker progression checks
+ReleaseCheckLite PC10 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+BodyReducer except resource/stat interactions remain deferred
+AbilityReducer except no-direct-XP guard
+QuestReducer except XP reward split/deferred contract
+InventoryReducer
+ActorReducer
+PlaceReducer
+TimeReducer except time passage does not grant XP automatically
+Combat systems
+World threat/encounter systems beyond no-rubber-band boundary
+manual mutation commands
+```
+
+---
+
+# 5. Progression state model
+
+Progression bucket should support:
+
+```text
+level
+currentXP
+totalXP
+xpToNext
+stats
+baseStats
+modifiers
+derivedSnapshot
+statXP
+levelHistory
+xpHistory
+formulaProfile
+formulasEnabled
+milestones
+warnings
+notes
+```
+
+Recommended shape:
+
+```text
+progression: {
+  level: 1,
+  currentXP: 0,
+  totalXP: 0,
+  xpToNext: null,
+  stats: {},
+  baseStats: {},
+  modifiers: [],
+  derivedSnapshot: {},
+  statXP: {},
+  levelHistory: [],
+  xpHistory: [],
+  formulaProfile: null,
+  formulasEnabled: false,
+  milestones: [],
+  warnings: [],
+  notes: []
+}
+```
+
+If the current script already tracks progression differently, this chunk should normalize or bridge without deleting valid data.
+
+Do not invent high-level stats if formulas are not active.
+
+---
+
+# 6. FormulaProfile schema
+
+FormulaProfile controls which progression formulas are active.
+
+```text
+FormulaProfile {
+  profileId,
+  profileName,
+  version,
+  source,
+  active,
+  locked,
+  xpCurveId,
+  levelCap,
+  statFormulaSetId,
+  derivedFormulaSetId,
+  worldScalingPolicyId,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+active formula profile must be explicit
+locked profile cannot change silently mid-save
+formula source must be known: Formula Appendix, setup, or current build default
+changing formula profile requires migration/audit
+if formula profile missing, XP can be tracked but level-up may be pending/deferred
+```
+
+---
+
+# 7. FormulaRuleRecord schema
+
+Formula rules should be inspectable.
+
+```text
+FormulaRuleRecord {
+  ruleId,
+  family,
+  name,
+  version,
+  expressionType,
+  expressionText,
+  enabled,
+  source,
+  inputs,
+  outputs,
+  caps,
+  clamps,
+  roundingPolicy,
+  warnings,
+  notes
+}
+```
+
+Families:
+
+```text
+xp_curve
+level
+base_stat
+derived_stat
+resource
+condition_modifier
+ability_modifier
+world_threat_boundary
+unknown
+```
+
+Rules:
+
+```text
+formula rule must declare inputs and outputs
+formula rule must not mutate state directly
+formula evaluator returns computed result only
+reducers decide whether state changes
+```
+
+---
+
+# 8. XPEventRecord schema
+
+XP events must be explicit and duplicate-safe.
+
+```text
+XPEventRecord {
+  id,
+  key,
+  amount,
+  sourceType,
+  sourceKey,
+  reason,
+  relatedQuestKey,
+  relatedAbilityKey,
+  relatedActorKey,
+  relatedPlaceKey,
+  operationKey,
+  acceptedTurn,
+  applied,
+  duplicateOf,
+  warnings,
+  notes
+}
+```
+
+Allowed source types:
+
+```text
+explicit_story_xp
+quest_reward_xp
+structured_startup
+system_award_later
+manual_deferred
+unknown
+```
+
+Rules:
+
+```text
+amount must be numeric and positive
+source must be safe
+operationKey must exist
+vague experience is rejected
+training does not grant XP unless exact XP event exists
+quest promise does not grant XP
+command/card/context text cannot grant XP
+```
+
+---
+
+# 9. LevelEventRecord schema
+
+Level changes must be formula-authorized.
+
+```text
+LevelEventRecord {
+  id,
+  key,
+  fromLevel,
+  toLevel,
+  totalXPAtLevel,
+  formulaProfileId,
+  operationKey,
+  acceptedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+level cannot decrease unless a future special spec supports it
+level cannot skip unexpectedly unless formula says totalXP crosses multiple thresholds
+level-up requires active/locked formula profile or explicit safe policy
+level-up does not auto-assign stats unless PC11 supports it
+```
+
+---
+
+# 10. ProgressionHistoryRecord schema
+
+```text
+ProgressionHistoryRecord {
+  historyId,
+  eventType,
+  summary,
+  sourceOperationKey,
+  relatedKeys,
+  turn,
+  notes
+}
+```
+
+Event types:
+
+```text
+xp_gain
+level_up
+formula_profile_set
+formula_profile_warning
+xp_rejected
+xp_duplicate_skipped
+progression_deferred
+```
+
+History should be compact and capped/summarized later, but durable XP/level operation keys must remain protected.
+
+---
+
+# 11. ProgressionMilestoneRecord schema
+
+Milestones allow story-relevant progression without messy stat changes.
+
+```text
+ProgressionMilestoneRecord {
+  id,
+  key,
+  title,
+  family,
+  status,
+  sourceOperationKey,
+  relatedAbilityKey,
+  relatedQuestKey,
+  createdTurn,
+  notes
+}
+```
+
+Examples:
+
+```text
+first confirmed XP gain
+first level-up
+first stabilized ability
+first major quest completion
+survived first deadly injury
+```
+
+Milestones do not trigger hidden rewards unless future rules say so.
+
+---
+
+# 12. WorldScalingBoundaryRecord schema
+
+This chunk must explicitly prevent rubber-band scaling.
+
+```text
+WorldScalingBoundaryRecord {
+  id,
+  policyName,
+  enabled,
+  rule,
+  worldLevelMode,
+  playerScalingAllowed,
+  regionThreatAuthority,
+  creatureThreatAuthority,
+  notes
+}
+```
+
+Required policy:
+
+```text
+No automatic rubber-band scaling.
+```
+
+Rules:
+
+```text
+player level does not automatically change all enemies
+region/creature/world bible threat authority controls later threat modeling
+low-level player can encounter high-threat region if story/world supports it
+high-level player does not make all rats legendary
+world threat benchmark comes later in PC14
+```
+
+---
+
+# 13. Formula activation levels
+
+## 13.1 Stage 0 — XP tracked, level pending
+
+Allowed if formula profile missing.
+
+```text
+XPEventRecord can be stored
+level does not update automatically
+ReleaseCheck warns formula profile missing
+```
+
+## 13.2 Stage 1 — Simple locked XP curve
+
+Allowed if formula profile exists.
+
+```text
+numeric XP events update totalXP/currentXP
+level calculated from locked formula/table
+xpToNext computed
+level history recorded
+```
+
+## 13.3 Stage 2 — Stat formulas
+
+Deferred to PC11 unless Formula Appendix and tests are fully integrated.
+
+## 13.4 Stage 3 — World threat formulas
+
+Deferred to PC14.
+
+---
+
+# 14. XP source rules
+
+Accepted XP sources:
+
+```text
+safe output explicitly says “You gain 20 XP.”
+validated quest reward payment/completion produces exact XP reward and ProgressionReducer is active
+structured startup exact XP if before lock and source is safe
+future combat reward if Combat Event Model supports it
+future system award if owner/rule/test/gate exists
+```
+
+Rejected XP sources:
+
+```text
+You learn from the experience.
+This was a valuable experience.
+You feel stronger.
+You are more skilled now.
+The quest promises 20 XP.
+The quest board lists 20 XP.
+[AIDRPG] XP: +20.
+Context says you gained 20 XP.
+Story Card says the player is level 10.
+```
+
+Pending/deferred XP sources:
+
+```text
+quest promises XP but not paid/completed
+teacher says training will make you stronger
+long training montage without exact XP
+combat victory without XP rule active
+```
+
+---
+
+# 15. XP and ability training separation
+
+Ability training and XP are separate systems.
+
+```text
+I train Ember Ward all afternoon.
+```
+
+Expected:
+
+```text
+ability training evidence may update
+XP unchanged
+```
+
+```text
+After training, you gain 10 XP.
+```
+
+Expected:
+
+```text
+ability evidence may update if ability target exists
+XPEventRecord +10 only if safe output and exact amount accepted
+```
+
+Rules:
+
+```text
+trainingCount does not equal XP
+useCount does not equal XP
+ability stabilization does not grant XP unless separate accepted XP event exists
+```
+
+---
+
+# 16. XP and quest reward separation
+
+Quest reward handling was locked in PC07.
+
+Rules:
+
+```text
+XP reward promise does not grant XP
+XP reward ready does not grant XP unless policy explicitly says ready applies; default no
+XP reward paid/awarded can grant XP only once through ProgressionReducer
+quest completion alone does not grant XP unless validated XP reward event exists
+```
+
+Preferred split result:
+
+```text
+reward.payment_candidate -> QuestReducer marks reward paid
+xp.reward_candidate -> ProgressionReducer adds XP if exact and active
+```
+
+Both share reward payment/XP key.
+
+---
+
+# 17. XP and combat separation
+
+Combat is not fully active until PC12.
+
+Rules:
+
+```text
+defeating enemy does not automatically award XP in PC10
+combat XP remains pending/deferred unless exact XP output occurs
+future Combat Event Model may emit explicit XP result if spec allows
+```
+
+---
+
+# 18. Level formula requirements
+
+If level automation is active, it must be formula-driven.
+
+```text
+level is derived from totalXP or currentXP according to locked profile
+xpToNext computed from next threshold
+levelHistory records level-ups
+level-up is duplicate-safe
+level-up does not auto-assign stats unless PC11 enables it
+```
+
+If formula is not locked:
+
+```text
+XP tracked
+level-up pending/deferred
+ReleaseCheck WARN, not fake PASS as full progression
+```
+
+---
+
+# 19. Stat automation boundary
+
+PC10 prepares stat baseline but does not fully implement PC11.
+
+Allowed:
+
+```text
+baseStats placeholder
+modifiers placeholder
+derivedSnapshot placeholder
+statXP placeholder
+formula rule records for stat family disabled
+/stat or /sheet display shows stat automation deferred/limited
+```
+
+Forbidden:
+
+```text
+random STR/DEX/INT increases from training
+HP max increases from level without formula
+ability use increasing stats automatically
+world threat scaling from stats
+manual stat commands
+```
+
+---
+
+# 20. Progression CanonValidator expansion
+
+CanonValidator must enforce XP/progression safety.
+
+## 20.1 Accept XP gain when
+
+All are true:
+
+```text
+source is safe story output or safe structured startup
+local clause explicitly says exact numeric XP gained/awarded/received
+target is progression/XP, not vague experience
+amount is positive number
+not promised/ready/listed/deferred only
+not command/context/card/audit/debug source
+operation key not duplicate
+```
+
+## 20.2 Reject XP gain when
+
+Any are true:
+
+```text
+vague experience
+feels stronger
+training only
+quest promise only
+quest board listing only
+combat victory without XP event
+output command/debug/context/card source
+negative or nonnumeric amount
+manual command
+```
+
+## 20.3 Accept level-up when
+
+```text
+formula profile active and XP threshold crossed
+or safe structured startup explicitly sets level before lock
+or future owner/rule/test/gate supports level change
+```
+
+## 20.4 Reject level-up when
+
+```text
+Story Card says level 10
+command says level 10
+context says level 10
+NPC boasts you are level 10
+manual /setlevel in MVP
+formula profile missing and no safe structured source
+```
+
+---
+
+# 21. Progression ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+progression.xp_gain_candidate
+progression.xp_reward_candidate
+progression.xp_rejected_candidate
+progression.level_up_candidate
+progression.level_set_candidate
+progression.formula_profile_candidate
+progression.stat_gain_deferred_candidate
+progression.milestone_candidate
+progression.world_scaling_boundary_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+exact XP gain
+XP reward if exact and split result active
+formula profile set/lock if source is safe
+level-up if formula active
+milestone records
+world scaling boundary record
+```
+
+Stat gains remain deferred to PC11 unless explicitly scoped.
+
+---
+
+# 22. EventScannerLite progression hints
+
+EventScannerLite may detect progression hints, but detection is not canon.
+
+Allowed scan families:
+
+```text
+XP gained/awarded/received
+level up/reach level
+experience points
+reward XP
+formula profile/setup progression
+feel stronger/valuable experience as rejected/vague hints
+```
+
+Must flag:
+
+```text
+exactNumericXP
+vagueExperience
+promiseOnly
+readyOnly
+trainingOnly
+combatOnly
+commandSource
+contextSource
+cardSource
+auditSource
+manualMutation
+negativeAmount
+nonnumericAmount
+duplicateRisk
+formulaRequired
+```
+
+Parser cannot mutate progression.
+
+---
+
+# 23. ProgressionReducerLite detailed behavior
+
+ProgressionReducerLite owns:
+
+```text
+progression.level
+progression.currentXP
+progression.totalXP
+progression.xpToNext
+progression.levelHistory
+progression.xpHistory
+progression.formulaProfile
+progression.milestones
+progression.warnings
+```
+
+## 23.1 XP gain commit
+
+Accepted XP gain should:
+
+```text
+1. Confirm validation accepted.
+2. Confirm safe source and exact positive amount.
+3. Confirm operation key.
+4. If duplicate, return skipped_duplicate.
+5. Add XPEventRecord.
+6. Increase totalXP/currentXP according to formula profile.
+7. Add operation key.
+8. Check level-up only if formula profile active.
+9. Mark progression/player_sheet/context dirty.
+10. Audit compactly.
+```
+
+## 23.2 Level-up commit
+
+If formula profile active and threshold crossed:
+
+```text
+calculate new level
+create LevelEventRecord
+update level/xpToNext
+record levelHistory
+mark player_sheet/progression/context dirty
+```
+
+Do not assign stats automatically in PC10.
+
+## 23.3 Formula profile commit
+
+Accepted formula profile setup should:
+
+```text
+set formulaProfile
+set formulasEnabled according to profile
+lock profile if safe
+record FormulaRuleRecords or profile reference
+write audit/migration note
+```
+
+Do not silently change locked profile.
+
+## 23.4 Milestone commit
+
+Accepted milestone should:
+
+```text
+create ProgressionMilestoneRecord
+not grant stats/XP unless separate accepted event exists
+```
+
+---
+
+# 24. ProgressionReducer defensive guards
+
+ProgressionReducer must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+vague experience
+training-only XP
+quest promise XP
+quest ready XP unless policy active
+combat-only XP without XP event
+manual mutation command
+negative XP
+nonnumeric XP
+level set without formula/startup authority
+stat gain without PC11 support
+world scaling mutation
+missing operation key
+wrong owner reducer
+```
+
+Reducer must not blindly trust upstream.
+
+---
+
+# 25. Operation keys
+
+Required progression operation keys:
+
+```text
+xp.gain.<amount>.<sourceKey>.<clauseHash>
+xp.reward.<amount>.<questKey>.<rewardPaymentKey>
+xp.startup.<amount>.<startupKey>
+level.up.<fromLevel>.<toLevel>.<totalXP>.<formulaProfileId>
+level.set.startup.<level>.<startupKey>
+formula.profile.set.<profileId>.<version>.<sourceKey>
+formula.profile.lock.<profileId>.<version>
+progression.milestone.<milestoneKey>.<sourceHash>
+world.scaling.boundary.<policyId>.<version>
+```
+
+Rules:
+
+```text
+XP and level keys are durable
+formula profile keys are durable
+recentKeys must not delete durable progression keys
+same XP output replay cannot duplicate XP
+same level threshold cannot add duplicate level history
+```
+
+---
+
+# 26. Dirty targets
+
+Progression updates should mark:
+
+```text
+player_sheet
+progression
+context
+quest_log if XP reward is tied to quest
+body_status only later if stat/resource formulas affect body in PC11
+```
+
+---
+
+# 27. `/sheet` and progression display updates
+
+`/sheet` should show progression honestly.
+
+Required progression display fields:
+
+```text
+level
+current XP
+total XP
+XP to next if formula active
+formula profile/status
+stat automation status
+world scaling policy summary
+warnings/deferred notes
+```
+
+Display rules:
+
+```text
+if formula profile missing, say level automation pending/deferred
+if XP is tracked but level not calculated, say so
+if stats are deferred, say stat automation deferred to PC11
+if world scaling is disabled, say no automatic rubber-band scaling
+```
+
+---
+
+# 28. Optional `/progression` command
+
+If command count permits, add:
+
+```text
+/progression
+```
+
+If not, include progression in:
+
+```text
+/sheet
+/stateaudit
+/integrity
+```
+
+`/progression` should show:
+
+```text
+XP totals
+recent XP events
+level history
+formula profile
+pending/deferred progression events
+world scaling boundary
+```
+
+All output must start with `[AIDRPG]` and be non-canon.
+
+---
+
+# 29. ContextBuilder progression packet
+
+ContextBuilder should include concise progression facts.
+
+Include:
+
+```text
+level if known
+important XP/level milestones
+formula/deferred warning only if relevant
+no-rubber-band reminder only if world/encounter context needs it
+```
+
+Do not include pending XP claims as accepted XP, stat placeholders as real stats, or world-scaling rules as enemy stats.
+
+---
+
+# 30. IntegrityChecker progression checks
+
+Add checks:
+
+```text
+XP totals are numeric and nonnegative
+level is positive integer
+level matches formula profile if active
+XPEventRecords have operation keys
+LevelEventRecords have formula profile IDs
+no duplicate XP event keys
+no duplicate level-up history for same threshold
+formula profile is explicit if formulasEnabled true
+locked formula profile not silently changed
+stat placeholders not treated as active stats
+world scaling boundary exists and disables rubber-band scaling
+command/card/context source not active progression truth
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not grant XP, levels, or stats.
+
+---
+
+# 31. Cleanup progression protections
+
+Cleanup may compact:
+
+```text
+old low-value rejected XP audits
+old duplicate XP warning spam
+old verbose formula debug logs
+progression warnings cap
+```
+
+Cleanup must not delete:
+
+```text
+XPEventRecords needed for audit
+LevelEventRecords
+formula profile records
+formula profile operation keys
+XP/level durable keys
+progression milestones
+world scaling boundary policy
+```
+
+---
+
+# 32. ReleaseCheck gates for this chunk
+
+Add or verify PC10-specific gates:
+
+```text
+PC10-G01 FormulaProfile schema exists or equivalent profile structure exists
+PC10-G02 FormulaRuleRecord schema exists or equivalent formula registry exists
+PC10-G03 XPEventRecord schema exists or equivalent XP event structure exists
+PC10-G04 LevelEventRecord schema exists or equivalent level history structure exists
+PC10-G05 ProgressionHistoryRecord or compact progression audit exists
+PC10-G06 WorldScalingBoundaryRecord exists and disables rubber-band scaling
+PC10-G07 CanonValidator rejects vague/training/promise/card/context/command XP
+PC10-G08 exact numeric XP gains are accepted only from safe sources
+PC10-G09 ProgressionReducer rejects unsafe routed progression events
+PC10-G10 XP/level duplicate operation keys exist and are durable
+PC10-G11 level-up requires active formula profile or safe structured startup source
+PC10-G12 stat automation remains deferred to PC11 unless fully specified
+PC10-G13 quest XP reward follows split/deferred reward contract
+PC10-G14 ability training does not award XP directly
+PC10-G15 combat victory does not award XP without exact XP event/spec
+PC10-G16 /sheet or /progression displays formula/progression status honestly
+PC10-G17 command/context/card progression text cannot become canon
+PC10-G18 cleanup does not delete XP/level/formula durable records
+PC10-G19 world threat/encounter systems remain deferred and not rubber-banded
+PC10-G20 player-breaker progression tests registered
+```
+
+ReleaseCheck must fail if vague XP, command/card/context XP, duplicate XP, manual level setting, or rubber-band scaling is possible.
+
+---
+
+# 33. Required tests
+
+## PC10-001 — Exact XP gain accepted
+
+Output:
+
+```text
+You gain 20 XP.
+```
+
+Expected:
+
+```text
+XPEventRecord amount 20
+totalXP/currentXP update if active
+operation key added
+```
+
+## PC10-002 — Vague experience rejected
+
+```text
+You learn from the experience.
+```
+
+Expected: no XP gain.
+
+## PC10-003 — Feel stronger no stat/XP
+
+```text
+You feel stronger after the climb.
+```
+
+Expected: no XP and no stat increase.
+
+## PC10-004 — Ability training no XP
+
+```text
+I train Ember Ward all afternoon.
+```
+
+Expected: ability training may update; XP unchanged.
+
+## PC10-005 — Training plus exact XP
+
+```text
+After training Ember Ward, you gain 10 XP.
+```
+
+Expected: ability evidence if bound; XP +10 only once from exact XP clause.
+
+## PC10-006 — Quest XP promise no XP
+
+```text
+Old Bren promises 20 XP if you clear the wolves.
+```
+
+Expected: XP reward promise/deferred; XP unchanged.
+
+## PC10-007 — Quest board XP no XP
+
+```text
+The quest board lists a reward of 20 XP.
+```
+
+Expected: listed/promise reward only; XP unchanged.
+
+## PC10-008 — Paid XP reward once
+
+```text
+Old Bren awards you the promised 20 XP.
+```
+
+Expected: XP +20 only if quest XP reward split/progression result accepted; operation key added.
+
+## PC10-009 — Paid XP duplicate skipped
+
+Repeat paid XP reward output.
+
+Expected: no second XP gain.
+
+## PC10-010 — Combat victory no XP by itself
+
+```text
+You defeat the wolf.
+```
+
+Expected: no XP unless exact XP event also appears.
+
+## PC10-011 — Combat victory with exact XP
+
+```text
+You defeat the wolf and gain 5 XP.
+```
+
+Expected: XP +5 from exact XP clause only; no combat automation beyond this chunk.
+
+## PC10-012 — Command progression non-canon
+
+Run `/sheet` or `/progression`, then feed command output through Output hook.
+
+Expected: no XP/level/stat mutation from command text.
+
+## PC10-013 — Story Card level prose non-canon
+
+```text
+The player is level 10 with 5000 XP.
+```
+
+Expected: no level/XP mutation; quarantine/audit only if surfaced.
+
+## PC10-014 — Context XP prose non-canon
+
+```text
+The player gained 20 XP last turn.
+```
+
+Expected: no XP mutation from context text.
+
+## PC10-015 — Manual setlevel disabled
+
+Run:
+
+```text
+/setlevel 999
+/givexp 1000
+```
+
+Expected: disabled/safe unknown command; no mutation.
+
+## PC10-016 — Level formula missing warning
+
+Setup: XP exists, formulaProfile missing or inactive.
+
+Expected: XP tracked; level-up pending/deferred; ReleaseCheck WARN, not fake full PASS.
+
+## PC10-017 — Level-up with locked formula
+
+Setup: formula profile active and XP threshold crossed.
+
+Expected: level updates according to formula; LevelEventRecord created; no stat auto-allocation.
+
+## PC10-018 — Duplicate level-up skipped
+
+Repeat same XP/threshold event.
+
+Expected: no duplicate level history.
+
+## PC10-019 — Formula profile cannot silently change
+
+Setup: locked formulaProfile = basic_curve_v1; incoming profile = different_curve.
+
+Expected: warning/block/migration-needed; no silent formula replacement.
+
+## PC10-020 — Negative XP rejected
+
+```text
+You gain -20 XP.
+```
+
+Expected: rejected/quarantined; no XP decrease unless future loss spec exists.
+
+## PC10-021 — Nonnumeric XP rejected
+
+```text
+You gain many XP.
+```
+
+Expected: no XP gain.
+
+## PC10-022 — World does not rubber-band
+
+Setup: player level increases; threat profile exists.
+
+Expected: threat not automatically rescaled to player level.
+
+## PC10-023 — Low-level player can face high threat later
+
+Expected: system does not force fair fight scaling; region/creature threat authority deferred to PC14.
+
+## PC10-024 — Progression display honest
+
+State: level 1, totalXP 20, formulaProfile inactive, stat automation deferred, world scaling disabled.
+
+Expected: display says exactly that.
+
+## PC10-025 — Cleanup preserves progression keys
+
+Setup: XPEventRecord, LevelEventRecord, formula profile key, world scaling boundary.
+
+Expected: durable progression records/keys preserved.
+
+---
+
+# 34. Regression placement
+
+Add PC10 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+25 PC10 tests registered
+0 critical PC10 failures
+```
+
+---
+
+# 35. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+progression.formulaProfile
+progression.formulasEnabled
+progression.xpHistory
+progression.levelHistory
+progression.milestones
+FormulaProfile shape
+FormulaRuleRecord shape
+XPEventRecord shape
+LevelEventRecord shape
+ProgressionHistoryRecord shape
+ProgressionMilestoneRecord shape
+WorldScalingBoundaryRecord shape
+```
+
+---
+
+# 36. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+exact XP detection
+vague XP rejection
+quest XP reward split/deferred validation
+level formula authority validation
+formula profile validation
+no-rubber-band boundary validation
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+full stat formula application
+combat XP automation without exact XP event
+manual XP/level mutation parser
+card/context progression import
+world enemy scaling parser
+```
+
+---
+
+# 37. Reducer changes
+
+Allowed:
+
+```text
+ProgressionReducer exact XP gain
+ProgressionReducer XP reward gain if split result active
+ProgressionReducer formula profile set/lock
+ProgressionReducer level-up if formula active
+ProgressionReducer milestone records
+ProgressionReducer unsafe routed-data rejection
+progression dirty targets
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+manual setlevel/givexp reducer
+stat allocation reducer
+combat reward automation without spec
+world scaling mutation
+ability training XP by default
+```
+
+---
+
+# 38. Command/context/card changes
+
+Allowed:
+
+```text
+/sheet progression display
+/progression optional command
+/context progression packet
+/cardaudit progression mirror labels if dry-run
+/releasecheck PC10 gates
+/playerbreakercheck progression cases
+```
+
+Forbidden:
+
+```text
+/setlevel
+/givexp
+/addxp
+/resetlevel
+manual formula switch command without migration/spec
+live card writes that create progression truth
+```
+
+---
+
+# 39. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted place/time build
+
+Start from:
+
+```text
+WorldLedgerV0.17.9_PLACE_TIME_DEPTH_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.10_PROGRESSION_BASELINE_WORKING.txt
+```
+
+## Step 2 — Add/verify progression helper functions
+
+Create helpers for:
+
+```text
+ensureProgressionShape
+makeFormulaProfile
+makeFormulaRuleRecord
+makeXPEventRecord
+makeLevelEventRecord
+makeProgressionHistoryRecord
+makeProgressionMilestoneRecord
+makeWorldScalingBoundaryRecord
+normalizeXPAmount
+isUnsafeProgressionSource
+isVagueExperienceClaim
+```
+
+## Step 3 — Add FormulaRegistry / FormulaMatrix shell
+
+Start small:
+
+```text
+registry structure
+profile lookup
+formula active/locked checks
+level threshold helper if formula active
+no-rubber-band policy record
+```
+
+Do not implement all final stat math here.
+
+## Step 4 — Update progression CanonValidator rules
+
+Add strict accept/reject/pending logic for exact XP, vague experience, quest XP promise/ready/payment, training-only XP, combat-only XP, level-up authority, formula profile changes, and world scaling boundary.
+
+## Step 5 — Update ProposalBuilder progression support
+
+Ensure proposals carry XP amount, source type, related quest/ability/actor/place keys, formula profile id if relevant, safety flags, and operation key suggestion.
+
+## Step 6 — Update ProgressionReducerLite
+
+Implement safe commits for exact XP gain, XP reward if split result active, formula profile set/lock, level-up if formula active, milestone, and world scaling boundary.
+
+## Step 7 — Update `/sheet` and optional `/progression`
+
+Make progression display honest.
+
+## Step 8 — Update ContextBuilder progression packet
+
+Keep it concise and state-accurate.
+
+## Step 9 — Update IntegrityChecker progression checks
+
+Add XP totals, formula profile, duplicate XP/level, deferred stats, and no-rubber-band checks.
+
+## Step 10 — Add PC10 ReleaseCheck gates
+
+Add PC10-G01 through PC10-G20.
+
+## Step 11 — Add PC10 tests
+
+Add PC10-001 through PC10-025.
+
+## Step 12 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/sheet
+/progression if available
+```
+
+## Step 13 — Save accepted progression build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.10_PROGRESSION_BASELINE_ACCEPTED.txt
+```
+
+---
+
+# 40. What this chunk produces
+
+Production Chunk 10 should produce:
+
+```text
+WorldLedger V0.17.10 progression-baseline accepted script if code changes are made
+progression helper depth
+FormulaRegistry / FormulaMatrix shell
+ProgressionReducer exact XP/level/formula behavior
+progression CanonValidator refinement
+/sheet and optional /progression display improvement
+progression context packet
+progression integrity checks
+PC10 ReleaseCheck gates
+PC10 regression/player-breaker tests
+progression acceptance report
+updated planning zip with Production Chunk 10 added
+```
+
+It should not produce:
+
+```text
+full stat engine
+full derived value engine
+combat XP automation
+manual XP/level commands
+world rubber-band scaling
+race/lineage stat automation
+absorption/evolution stat gain
+live CardSync writes
+old card prose progression import
+```
+
+---
+
+# 41. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 10 passes if:
+
+```text
+formula profile/registry baseline exists
+exact XP gains are accepted from safe sources only
+vague/training/promise/card/context/command XP is rejected or deferred
+XP and level operations are duplicate-safe
+level-up requires formula authority
+stat automation remains deferred to PC11
+quest XP reward uses split/deferred reward contract
+ability training does not award XP directly
+combat victory does not award XP without exact XP event/spec
+world scaling boundary disables rubber-band scaling
+/sheet or /progression displays status honestly
+command/context/card progression text cannot become canon
+cleanup preserves XP/level/formula durable records
+PC10 tests pass
+ReleaseCheck has no PC10 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+formula profile exists but final XP curve is conservative
+level automation is pending because formula profile is missing
+stats are deferred to PC11
+combat XP is deferred to PC12
+world threat scaling is deferred to PC14
+XP reward integration is conservative/deferred if split-result support is incomplete
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+vague experience grants XP
+training grants XP by default
+quest promise grants XP
+command/context/card text grants XP or level
+XP duplicates on replay
+level changes without formula/startup authority
+manual /setlevel or /givexp mutates state
+stat increases happen without PC11 rules
+world enemies automatically scale to player level
+cleanup deletes XP/level/formula durable records
+ProgressionReducer trusts unsafe routed data
+```
+
+---
+
+# 42. Handoff to Production Chunk 11
+
+When this chunk passes, Production Chunk 11 begins:
+
+```text
+Production Chunk 11 — Stats, Derived Values, Conditions, and Invariant Checker
+```
+
+Production Chunk 11 may now safely build:
+
+```text
+base stats
+modifiers
+derived values
+resource formulas
+condition modifiers
+stat invariants
+safe stat changes
+```
+
+Production Chunk 10 must leave progression reliable enough that PC11 can ask:
+
+```text
+What level is the player?
+How much XP is confirmed?
+Which formula profile is active?
+Are formulas locked?
+Can stats safely derive from level/base/modifiers?
+Are XP and level keys duplicate-safe?
+Is world scaling explicitly not rubber-banded?
+```
+
+---
+
+# 43. Final doctrine
+
+Production Chunk 10 is where progression stops being vibes and starts being a controlled system.
+
+Final rule:
+
+```text
+XP must be exact.
+Levels must be formula-authorized.
+Stats must wait for stat rules.
+World threat must not rubber-band.
+Every progression change must have source, key, formula status, and audit.
+```
+
+Once this passes, the project can safely deepen stats, derived values, conditions, and invariants in Production Chunk 11.
