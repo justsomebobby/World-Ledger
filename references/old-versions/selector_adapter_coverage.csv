@@ -1,0 +1,55 @@
+selector,adapter_status,notes
+inventory.item_named,implemented,Checks owned player inventory items by displayName/baseType/id.
+logs.error,implemented,Checks state logs plus hook errors.
+ability.named,implemented,Checks abilities.byId and common ability name fields.
+ability.duplicate_mentions,implemented,Counts duplicate ability records; not repeated textual mentions inside one record.
+ability.use_count_increment,implemented,Compares use-count style fields before/after.
+pending.ability_candidate,implemented,Checks common pending ability candidate locations.
+time.route_known,implemented,Searches known/base route state and route event text.
+time.elapsed_minutes,implemented,Uses elapsed.totalHours or pendingAdvance.minutes.
+player.age_delta,implemented,Compares player.age before/after.
+time.elapsed_years,implemented,Uses player.history.timeSkips years.
+time.route_contradiction_flag,implemented,Searches time contradiction flags and route text.
+time.delay_reason,implemented,Searches route/timeline/pendingAdvance for injury/weather/delay evidence.
+time.base_route_preserved,implemented,Searches known/base route state for target endpoints.
+reputation.subject,implemented,Compares reputation.bySubject before/after.
+reputation.visibility,implemented_heuristic,Looks for public/witness/rumor/actor-memory evidence.
+rumor.pending,implemented_permissive,Allowed checks pass; records rumor/pending evidence if present.
+actor_memory.actor_knows_event,implemented,Searches actor memory/actor records for named witness.
+actor_memory.non_present_actor_knows_event,implemented,Same adapter used with absent expectation.
+quest.named,implemented,Checks active/archived quests and completion wording.
+quest.primary,implemented,Checks tracking.primaryQuestId and matching quest text.
+quest.reward,implemented,Checks reward/inventory/quest text.
+scene.current,implemented,Checks world.currentScene plus player location/scene refs.
+player.location_ref,implemented,Checks player location/scene refs against current scene target.
+scene.quoted_location,implemented,Checks current scene was not replaced by quoted/impossible labels.
+route.known,implemented_permissive,Allowed route knowledge checks pass if present or allowed.
+entity.present,implemented,Checks local entities/actors and active encounter.
+player.condition,implemented,Checks player.conditions/body/appearance plus hp heuristics.
+player.hp_delta,implemented,Compares HP before/after.
+player.hp,implemented,Reads player.stats.hp.
+player.species_or_trait,implemented,Checks species/body/trait/appearance fields; disguise variant avoids appearance-only.
+appearance.temporary_note,implemented_permissive,Allowed check; records appearance evidence if present.
+story_card.player_summary_dirty,implemented_heuristic,Checks dirty card queue/card state for player/summary signs.
+cards.managed,implemented_heuristic,Searches card state/storyCards for managed namespace/target.
+cards.duplicate_count,implemented_heuristic,Counts repeated target in card/storyCard text.
+cards.live_write,implemented_heuristic,Checks safe mode and recent card operations.
+cards.pending_or_dry_run,implemented,Checks pending/dry-run/dirty queues.
+cards.namespace_collision,implemented,Checks duplicateRefs/quarantine/errors.
+cards.index_refresh,implemented_permissive,Always stable if hook completes.
+cards.invalid_story_card,implemented_permissive,Passes if hook completed; evidence includes quarantine/errors.
+state.schema,implemented,Checks required top-level containers and meta version.
+state.logs.quarantine,implemented_permissive,Quarantine is allowed; reports if present.
+state.bad_container,implemented,Checks corrupted container repaired to object.
+state.crash,implemented,Checks hook errors/result ok.
+state.pending_flags,implemented_heuristic,Checks stale flags are absent or bounded/consistent.
+state.future_version,implemented,Checks version downgraded below future or quarantined.
+state.circular_or_oversized_payload,implemented_heuristic,Checks hook completed and serialized state is bounded.
+runtime.hook_ms,implemented,Uses mimic hook duration measurements.
+context.length,implemented,Compares context text length against mimic info.maxChars default.
+state.size_growth,implemented,Compares serialized state byte size before/after.
+output.return_text,implemented,Checks output hook returned non-empty text.
+stop_flag,implemented,Checks returned stop flags from all hooks.
+runtime.memory_mb,not_evaluated,Node mimic cannot measure AI Dungeon sandbox per-hook memory directly.
+context.critical_packets,implemented_heuristic,Checks context text contains critical packet-like content.
+context.spam_truncated,implemented_permissive,Allowed if absent; reports truncation signs if present.

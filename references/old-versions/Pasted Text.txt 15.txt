@@ -1,0 +1,1794 @@
+These are the current files and here’s the plan generated
+We were 4 chunks of 13 deep:
+
+“You’re right. The 18-second roadmap was not acceptable for this stage. I went back and audited it against three things:
+
+1. The current 10.0A-R2I source in /mnt/data.
+2. The old-script safeguard notes for TAS, Inner Self, and Auto-Cards.
+3. The earlier WorldLedger roadmap/build contracts that define owner layers and what must not be wrapped or faked.
+
+The result: the prior roadmap was directionally right, but too abstract and not ordered correctly. It also failed to notice a few hard facts in the current source.
+
+Current script audit findings
+
+The current R2I source already has these real systems:
+
+* ProgressionFormulaSystem
+* XPBudgetSystem
+* CombatRewardResolver
+* AbilityGrowthSystem
+* AbilityLifecycleSystem
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* CardSync
+* WorldGraphIndex
+* LoreAuthoritySystem
+* RumorPropagationSystem
+* DomainProjectSystem
+* DomainAssetSystem
+* SafeModeController
+
+So the next phase should not rebuild these from scratch.
+
+But the current source does not have dedicated systems/policies for:
+
+* ProgressionDomainSystem
+* EffortRewardResolver
+* PowerPlausibilitySystem
+* OverreachGate
+* CardPromotionPolicy
+* CardUpdatePolicy
+* WorldWebRelationSystem
+* IdentityNormalizer
+* KnowledgeScopeSystem
+* DocumentEvidenceSystem
+* SummonContributionXP
+* SoftPressureMode
+
+That matters because those are exactly where the story reruns are failing.
+
+The old resource lesson is also clear: Auto-Cards used title bans, cooldowns, look-back distance, duplicate tracking, replay signals, and last-text hashes to keep automatic card generation from going wild; Inner Self used environment validation, deep state repair, history hashing, safe parsing, config clamps, agent-name cleaning, and duplicate-brain demotion; TAS used duplicate control, state sync, message buffering, and global safety controls.  
+
+The WorldLedger law still controls all of this: parser phrasing belongs in EventScanner, eligibility in CanonValidator, state commits through the correct reducer owner, display through renderers, and Story Card writes only through CardApiAdapter/CardSync; no hook wrapping, no late repair authority, no fake green checks, and one authority per subsystem.  
+
+So the corrected roadmap needs to be an owner-layer completion plan, not a list of patches.
+
+⸻
+
+Audited Roadmap: 10.0A-R3 Clean Completion Phase
+
+R3A — Safe Mode Policy Correction
+
+Why this comes first
+
+The current source has:
+
+* autoSafeModeEnabled: true
+* safeModeFailureThreshold: 5
+* safeModeCardWarningThreshold: 6
+* safeModeQuarantineThreshold: 30
+* safeModeDiagnosticThreshold: 180
+
+That means long harness runs can push the script into safe mode through diagnostics/card pressure even when gameplay is not actually broken. That corrupts later testing because card generation/update behavior may be suppressed while we are trying to test card generation/update.
+
+Exact fix
+
+Replace current “auto hard safe mode” behavior with two stages:
+
+Soft pressure mode
+
+* Can defer expensive optional work.
+* Does not flip features.safeMode = true.
+* Does not set generated card creation to zero by default.
+* Records pressure only.
+
+Hard safe mode
+
+* Only activates after real runtime failures, repeated card API failures, corruption risk, or explicit user/manual setting.
+* Must explain why through /safemode.
+* Must not silently disable the core memory engine during normal long play.
+
+Owners touched
+
+* SafeModeController
+* FeatureDefaults
+* CommandRenderer for /safemode
+* Acceptance rows
+
+Must not touch
+
+* Parser
+* Reducers
+* XP
+* Cards except deferral policy
+
+Required proof
+
+* Long normal story does not hard-safe-mode.
+* Repeated fake API failure does trigger hard safe mode.
+* Soft pressure can exist without disabling card creation.
+* /safemode explains exact pressure source.
+
+⸻
+
+R3B — Identity Normalizer and Possessive Merge
+
+Why this is next
+
+The Zack / Zack’s duplicate identity problem should have been handled already. It affects actors, cards, world graph nodes, witnesses, reputation scopes, and ownership relations. If identity is wrong, every later system becomes noisy.
+
+Exact fix
+
+Add IdentityNormalizer, probably near CandidateSanitizer, and use it anywhere an entity ID/title is created.
+
+Core rules:
+
+* Zack’s as actor → Zack
+* Ivy’s as actor → Ivy
+* Zack’s House → place associated with actor Zack
+* Ivy’s apartment → place associated with Ivy
+* Zack’s sword → item associated with Zack
+* King’s Guard → group/faction, not actor King’s
+* If base entity exists, possessive variant merges into it.
+
+Owners touched
+
+* CandidateSanitizer
+* new IdentityNormalizer
+* ActorSocialSystem
+* WorldGraphIndex
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* witness/reputation holder normalization
+* item/place relation normalization
+
+Must not do
+
+Do not add a cleanup sweep that deletes duplicates after the fact. Normalize before ID creation.
+
+Required proof
+
+* Zack and Zack’s create one actor.
+* Ivy and Ivy’s create one actor.
+* Ivy’s apartment creates a place relation, not actor Ivy’s.
+* Actor card and familiar card do not split on possessive wording.
+
+⸻
+
+R3C — Progression Domain Clarification
+
+Why this matters
+
+My earlier roadmap blurred progression domains with kingdom/base domains. That is wrong.
+
+The current source already has domainXp and xpLanes.domain, but no dedicated ProgressionDomainSystem. It also has DomainProjectSystem and DomainAssetSystem, which are for buildings/holdings/projects. Those are separate concepts. The owner manifest already says progression owns XP/domain lanes while domain projects/assets own construction and holdings.  
+
+Exact fix
+
+Add or formalize a ProgressionDomainSystem as a sub-owner under progression.
+
+Progression domains include:
+
+* swordsmanship
+* spear/shield
+* summoning
+* necromancy
+* slime control
+* crafting
+* alchemy
+* manual labor
+* mana surgery
+* persuasion
+* brawling
+* research
+* divine affinity
+* stealth
+* survival
+
+Domain assets/projects remain:
+
+* walls
+* rooms
+* workshops
+* buildings
+* holdings
+* farms
+* keeps
+* tax/upkeep/maintenance
+* labor assignments
+
+Owners touched
+
+* ProgressionSystem
+* ProgressionFormulaSystem
+* XPBudgetSystem
+* AbilityCostSystem
+* AbilityGrowthSystem
+* command display for /progression, /abilities, /domain
+
+Must not touch
+
+* DomainProjectSystem ownership, except to clarify display labels.
+* Existing holdings/building logic.
+
+Required proof
+
+* “You practice sword drills” → swordsmanship progression domain.
+* “You study alchemy” → alchemy progression domain.
+* “You build the north wall” → domain project, not progression domain.
+* /domain shows holdings/projects.
+* /progression shows hidden growth lanes.
+
+⸻
+
+R3D — Effort Reward Resolver / XP Calibration
+
+Why this is a blocker
+
+The current source can parse explicit XP and has thresholds, lanes, and domain XP. It also has anti-farm budgets. But the story tests show that organic effort is not producing enough character, ability, or domain XP. The roadmap already expected XP budgets to include repetition decay, risk/contribution multipliers, and hard fights rewarding more, while combat rewards should be risk-based.  
+
+The fix is not lowering thresholds. The fix is awarding bounded XP for validated effort.
+
+Exact fix
+
+Add EffortRewardResolver, or fold that name into ProgressionSystem + XPBudgetSystem if we want fewer system names.
+
+It should convert validated actions into small rewards:
+
+* training
+* sparring
+* real combat participation
+* ability use
+* summon-command use
+* study/research
+* crafting/labor
+* exploration/discovery
+* quest progress
+* social victory
+* domain-project milestone
+
+Suggested scale:
+
+* minor practice: 1–2 XP
+* meaningful training/use: 3–5 XP
+* risky fight contribution: 5–12 XP
+* major discovery/project milestone: 10–25 XP
+* repeated farming decays sharply
+
+Owners touched
+
+* EventScanner for effort observations
+* CanonValidator for effort eligibility
+* XPBudgetSystem for anti-farm/risk/contribution
+* ProgressionFormulaSystem for XP application
+* CombatRewardResolver for fight contribution
+
+Must not do
+
+Do not let parser directly add XP. Do not let commands/cards/context grant XP.
+
+Required proof
+
+* A 50-turn training/combat/research mini-story produces at least one character level or very visible progress.
+* Repeating the same low-risk action decays.
+* Third-party XP does not become player XP.
+* No “+999 XP” from debug/card/context text.
+* Domain XP and ability XP grow from relevant effort.
+
+⸻
+
+R3E — Ability / Skill / Passive / Style Lifecycle
+
+Why this needs refinement
+
+The current code already supports ability, skill, talent, passive, domain, and category transfers. It also has transfer logic where skills need success/training evidence and passives are weak unless supported.  
+
+So we should not rebuild it. The missing piece is a clearer lifecycle and better preservation of style/weapon evidence.
+
+Exact fix
+
+Formalize lifecycle:
+
+raw attempt → candidate evidence → progression domain XP → practiced ability/style → stable ability → skill/passive/talent only through evidence or player guidance
+
+Rules:
+
+* Messy candidates are acceptable if they never promote.
+* Weapon/style evidence should persist even before becoming a skill.
+* Skills/passives require repeated use, training, or explicit player/player-like guidance.
+* Named styles and weapon identities should be preserved as style evidence.
+
+Owners touched
+
+* AbilityGrowthSystem
+* AbilityLifecycleSystem
+* AbilityDevelopmentMatrix
+* AbilityCostSystem
+* ProgressionDomainSystem
+
+Must not do
+
+Do not turn every weapon mention into a skill. Do not auto-promote passives.
+
+Required proof
+
+* Slime Control develops as ability/domain evidence.
+* Manual Labor develops as domain/skill evidence after repeated labor.
+* Mana Surgery develops after actual practice/research.
+* Saber/buckler/spear/shield/brawler/Persuader-style evidence persists.
+* Junk candidates can exist but do not promote.
+
+⸻
+
+R3F — Power Plausibility / Overreach Gate
+
+Why this is separate from XP
+
+AinurLindalë’s issue is not that the script made the player level too much. It is that the story permits impossible early authority: undead armies, elite domination, huge magic, no cost, no training.
+
+The script must respond to unsupported scale claims as attempts, not stable truth.
+
+Exact fix
+
+Add PowerPlausibilitySystem or OverreachGate.
+
+It classifies claims as:
+
+* supported success
+* partial success
+* unstable attempt
+* overreach
+* ritual-scale claim
+* denied as durable canon
+
+Evidence required for high-scale claims:
+
+* prior ability/domain level
+* ritual setup
+* mentor/training
+* time investment
+* material/corpse availability
+* mana/EP/HP cost
+* artifact/tool
+* divine/lore permission
+* risk/failure consequence
+
+Owners touched
+
+* CanonValidator
+* AbilityGrowthSystem
+* SummonSystem
+* ControlledEntitySystem
+* CombatThreatSystem
+* MatchupSystem
+* CombatOutcomeSystem
+* ContextBudgeter
+
+Must not do
+
+Do not rewrite story text. Do not force the AI to undo prose. Just refuse to persist unsupported impossible claims as stable state.
+
+Required proof
+
+* “You raise 30 undead soldiers at the start” → overreach; no army/30 summons/control records.
+* “You attempt to raise one corpse without training” → unstable candidate/failure/risk.
+* “After weeks of necromancy study and ritual setup, you raise one skeleton” → bounded summon/ability evidence.
+* “You beat an elite knight with no training” → no stable dominance; threat/matchup remains dangerous.
+
+⸻
+
+R3G — Summon / Familiar / Follower / Group XP Contribution
+
+Why this needs its own chunk
+
+Summoner playstyles must work. A magical summon/familiar is effectively the player’s ability expression. Followers are not.
+
+Exact fix
+
+Add contribution rules:
+
+Summon / magical familiar
+
+* action under player command grants player contribution XP.
+* bounded by threat, risk, control cost, ability level, anti-farm.
+
+Follower / party
+
+* tracks presence and aid.
+* XP only for player participation, command, support, or shared risk.
+* no XP just for being nearby.
+
+Group / army
+
+* tracks force presence and outcomes.
+* no full player XP from passive group victory.
+
+Pet / trap
+
+* usually no full XP unless actively trained/commanded/placed/triggered.
+
+Magically bound servant
+
+* can count like summon if magical control is established.
+
+Owners touched
+
+* SummonSystem
+* ControlledEntitySystem
+* PartyFollowerSystem
+* CombatRewardResolver
+* XPBudgetSystem
+* ProgressionFormulaSystem
+
+Required proof
+
+* Penpen under player command grants bounded player contribution XP.
+* Mira independently kills enemy while player does nothing → little/no player XP.
+* Player commands a party tactic and participates → partial XP.
+* Passive trap with no player involvement → minimal/no XP.
+
+⸻
+
+R3H — World Web / Location / Containment System
+
+Why this is a core missing piece
+
+The script needs to remember:
+
+* this building is next door,
+* this shop is across the street,
+* this room is inside the inn,
+* this chest contains the key,
+* this area is on the east side of town,
+* this business is in this district.
+
+This is not just route tracking. It is spatial memory.
+
+Exact fix
+
+Add WorldWebRelationSystem, or expand WorldStructureSystem + WorldGraphIndex with relation types:
+
+* adjacent_to
+* next_door_to
+* across_from
+* inside
+* contains
+* stored_in
+* owned_by
+* operated_by
+* district_of
+* side_of_town
+* route_to
+* business_in
+* room_in
+* container_in
+
+Owners touched
+
+* EventScanner
+* CanonValidator
+* WorldStructureSystem
+* WorldGraphIndex
+* InventoryEquipmentSystem / ItemIdentitySystem
+* CardCandidateRegistry
+* CardSync
+
+Required proof
+
+* “The bakery is next door to the apothecary” → both place records linked.
+* “The apothecary is on the east side of town” → district/side relation.
+* “You put the Black Glass Key in the oak chest upstairs” → exact item stored in exact container/place.
+* “You return and take the Black Glass Key from the oak chest” → same item retrieved.
+* Current Location -> Window is denied as a route.
+
+⸻
+
+R3I — Card Promotion and Card Updating
+
+Why this is one of the biggest blockers
+
+The final script depends on Story Cards updating over time. Auto-Cards’ old strengths were object permanence, card drafting, memory maintenance, cooldowns, look-back distance, title bans, replay-aware duplicate prevention, and bounded generation.  
+
+WorldLedger already has card systems, but the tests show promotion and updates are not strong enough.
+
+Exact fix
+
+Add CardPromotionPolicy and CardUpdatePolicy.
+
+Promotion scoring should consider:
+
+* named recurrence
+* location visit
+* place relation
+* object storage
+* bonded familiar
+* faction leader
+* important item/evidence
+* law/lore concept
+* active project
+* repeated route
+* social/political importance
+
+Important rule: places should promote more aggressively than actors. Even small places matter because the world web depends on location cards.
+
+Update triggers:
+
+* actor relationship changes
+* actor motive/role changes
+* place descriptions
+* adjacency discovered
+* item stored/moved
+* business price/job known
+* law/lore revealed
+* project progress
+* familiar bond changes
+* faction status changes
+
+Owners touched
+
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* CardSync
+* CardRenderer
+* WorldGraphIndex
+* WorldWebRelationSystem
+* ActorSocialSystem
+* LoreAuthoritySystem
+
+Must not do
+
+Do not scrape everything every turn. Use dirty targets/evidence hashes.
+
+Required proof
+
+* Major locations generate cards.
+* Small recurring locations generate weak cards.
+* Location card updates with adjacency.
+* Actor card updates when relationship changes.
+* Familiar card updates when bond changes.
+* User notes are preserved.
+* No duplicate cards for possessive variants.
+
+⸻
+
+R3J — Knowledge / Rumor / Reputation / Document Scope
+
+Why this is still failing
+
+The current script has social knowledge, witnesses, rumors, clues, law, and reputation structures. But it does not yet reliably enforce who knows what.
+
+The acceptance/source design says social consequence should include scoped knowledge, witness eligibility, reputation, rumor propagation, crime/clues, and law response without omniscient legal mutation.  
+
+Exact fix
+
+Add or formalize KnowledgeScopeSystem.
+
+Fact visibility states:
+
+* private
+* player-known
+* actor-known
+* witnessed
+* documented
+* rumored
+* faction-known
+* location-known
+* public-local
+* public-regional
+* global/lore
+
+Transmission events:
+
+* sees
+* hears
+* reads
+* receives letter
+* is told
+* rumor spreads
+* public announcement
+* faction report
+* trial/report/posted notice
+
+Document/evidence objects need contents:
+
+* letter text
+* sender
+* recipient
+* read/unread
+* storage location
+* copied/transmitted
+* evidence status
+
+Owners touched
+
+* SocialConsequenceSystem
+* WitnessLedger
+* RumorPropagationSystem
+* CrimeEvidenceClueSystem
+* FactionLawResponseSystem
+* ItemIdentitySystem
+* new DocumentEvidenceSystem or an evidence sub-owner
+
+Required proof
+
+* Private theft with no witnesses → no public reputation.
+* Mira sees theft → Mira knows.
+* Mira tells guards → guards/faction know.
+* Letter to Alex → Alex knows contents, others do not.
+* Rumor spreads in tavern → local rumor, not global fact.
+* Legal recording retains content and storage.
+
+⸻
+
+R3K — Economy / Jobs / Business Notes Routing
+
+Why this matters
+
+Costs and repeatable jobs should not clutter quests. A room price belongs in the inn/business/location memory unless the player accepts a job or incurs debt.
+
+The economy foundation is supposed to handle price quotes, service quotes, debts, failed purchases, wage/payment evidence, and service transaction evidence without granting items or auto-completing work.  
+
+Exact fix
+
+Route economic facts:
+
+* service quote → business/location card note
+* job listing → opportunity note
+* accepted job → contract/quest
+* wage agreement → labor contract
+* debt → obligation
+* purchase → inventory/economy transaction
+* lodging paid → service transaction, not quest
+* repeatable job unaccepted → no active quest
+
+Owners touched
+
+* EconomyTransactionSystem
+* ContractSystem
+* LaborSystem
+* QuestObjectiveRewardSystem
+* CardUpdatePolicy
+* WorldWebRelationSystem
+
+Required proof
+
+* “Room costs 2 silver per night” → inn card/economy note.
+* “Job board lists rat-catching” → opportunity only.
+* “You accept the rat-catching job” → active contract/quest.
+* “Bran agrees to work for 2 silver/day” → labor contract.
+* No inventory item created from price quote.
+
+⸻
+
+R3L — Lore / Gods / Laws / World Rules Verification
+
+Why this needs real testing
+
+9.12A added LoreAuthoritySystem for revealed vs hidden lore without raw Story Card mechanics or hidden-lore flooding.   But we have not proven enough with live-style stories that gods, laws, divine actions, magic laws, physics/world laws, and national laws are recorded and enforced as intended.
+
+Exact fix
+
+Add concept/law categories:
+
+* deity
+* divine action
+* divine law
+* magic law
+* physics/world law
+* national law
+* faction law
+* social custom
+* religious taboo
+* discovered lore
+* hidden lore
+
+Rules:
+
+* hidden lore stays hidden.
+* revealed lore can enter context.
+* laws constrain plausibility.
+* lore cannot grant mechanics directly.
+* divine actions require evidence and scope.
+
+Owners touched
+
+* LoreAuthoritySystem
+* CanonValidator
+* ContextBudgeter
+* CardCandidateRegistry
+* CardUpdatePolicy
+* PowerPlausibilitySystem
+
+Required proof
+
+* Hidden god remains hidden.
+* Discovered god/law becomes revealed lore.
+* “Necromancy is illegal in Silverhold” becomes local law.
+* “Fire magic cannot burn ghost-iron” becomes magic law/context constraint.
+* “God blesses you” does not grant automatic XP/stats.
+
+⸻
+
+R3M — Acceptance / Harness Upgrade
+
+Why this is required
+
+The targeted self-tests are too narrow. The old scripts protected themselves with replay detection, last-text hashes, dedupe logic, and bounded card generation because real AI Dungeon play repeats, retries, and mutates context.  
+
+Exact fix
+
+Add a broad organic harness category that is not just “old bug string denied.”
+
+Test mini-scenarios:
+
+1. Summoner progression with familiar action.
+2. Court/political law/reputation scene.
+3. Location adjacency and container item storage.
+4. Inn/business price/job routing.
+5. Ability practice → domain XP → skill candidate.
+6. Overreach necromancy attempt.
+7. Letter/recording evidence transmission.
+8. Card generation and update sequence.
+9. Safe-mode pressure sequence.
+10. Possessive identity merge.
+
+Required proof
+
+* The script does not just pass unit strings.
+* It produces useful state/cards in organic mini-scenes.
+* Safe mode stays off unless true failure pressure appears.
+* Cards generate and update.
+* Knowledge remains scoped.
+* XP progresses without runaway power.
+
+⸻
+
+Corrected implementation order
+
+This is the order I now think is actually clean:
+
+1. R3A — Safe Mode Policy Correction
+    Stop test contamination and accidental card suppression.
+2. R3B — Identity Normalizer / Possessive Merge
+    Prevent duplicate actors/cards/holders before fixing social/card systems.
+3. R3C — Progression Domain Clarification
+    Separate hidden growth domains from kingdom/base assets.
+4. R3D — Effort Reward Resolver / XP Calibration
+    Make actual effort produce bounded character/domain/ability XP.
+5. R3E — Ability / Skill / Passive / Style Lifecycle
+    Preserve real build identity without promoting junk.
+6. R3F — Power Plausibility / Overreach Gate
+    Stop unearned army-scale/divine-scale/instant mastery claims from becoming canon.
+7. R3G — Summon / Follower / Group XP Contribution
+    Make summoner playstyles reward correctly while followers/groups remain aid.
+8. R3H — World Web / Location / Containment System
+    Stabilize places, adjacency, businesses, routes, containers, stored items.
+9. R3I — Card Promotion and Card Updating
+    Prove the living Story Card engine works.
+10. R3J — Knowledge / Rumor / Reputation / Document Scope
+    Stop omniscience and make evidence/letters/rumors work.
+11. R3K — Economy / Jobs / Business Notes Routing
+    Prevent quest clutter and preserve business/job information in the right place.
+12. R3L — Lore / Gods / Laws / World Rules Verification
+    Prove gods/laws/magic/world rules are recorded and enforced correctly.
+13. R3M — Organic Harness Upgrade + Five-Story Rerun
+    Rerun all five stories after the systems are truly fixed.
+
+⸻
+
+What changed from my previous roadmap
+
+The earlier roadmap was too vague. This audited version changes the plan in important ways:
+
+* Safe mode moves to the front, because it can invalidate card/update testing.
+* Identity normalization moves early, because duplicate identities poison every downstream system.
+* Progression domains are corrected, instead of being mixed with kingdom/base domains.
+* XP calibration is explicit, not handwaved as “progression pass.”
+* Card updating is treated as core, not just a later verification step.
+* World web and containment are explicit systems, not vague route cleanup.
+* Knowledge scope includes documents and letters, not just rumors.
+* Summon XP contribution is separated from party/follower XP.
+* Lore/laws/gods become a real test category, not a low-priority assumption.
+* No cleanup wrapper is proposed. Every fix lands in the existing owner path or a small missing owner that feeds the current reducers.
+
+This is the roadmap I’d trust now. The script should not move to playtesting until at least R3A through R3M are implemented and the five-story rerun shows improvement in progression, cards, world web, scope, and safe-mode behavior.
+
+Yes — provided we implement R3 exactly as an owner-layer completion pass, not as scattered emergency patches.
+
+The clean way is:
+
+Add missing core policies once, then route systems through them.
+For example, one IdentityNormalizer, one ProgressionDomainSystem, one PowerPlausibilitySystem, one WorldWebRelationSystem, one CardPromotionPolicy/CardUpdatePolicy, and one KnowledgeScopeSystem. Those become named core systems, not dozens of little wrappers.
+
+Do not patch symptoms after commit.
+If Zack’s creates a duplicate actor, we fix identity normalization before actor/card/worldgraph creation. If “next door” is missed, we fix world relation parsing/validation before card updates. If summons need XP, we fix contribution routing through combat/progression owners, not a special XP hack.
+
+Keep ownership boundaries strict.
+Progression domains stay separate from kingdom/base DomainProjectSystem. Story Cards mirror truth and update from dirty targets; they do not become mechanic authority. Knowledge/reputation requires scoped witnesses/transmission; it does not become global gossip. Safe mode does not silently disable the memory engine.
+
+Audit after every chunk.
+Each R3 chunk should produce source, report, targeted probes, source audit, corruption check, fail list, and a source-map update. If a chunk introduces broad behavior or duplicate authority, we stop and correct before moving on.
+
+The risk of clutter is real if we add “fixers” like PostParserCleanup, AntiJunkPatch2, CardRepairOverride, or late command wrappers. We should not do that.
+
+The R3 roadmap is meant to make the script more organized, not less: it names the missing responsibilities that are currently smeared across existing systems and gives them proper homes.”
+
+No the five story runs are not live failure evidence, those 5 stories did not include out script we simply are testing the file against those stories to see how the script would respond in existing long standing stories
+Every test so far it failed so we were directly working around those results? Seeing where it would have failed in long play throughs and many issues were found as shown in this plan given by the other chat:
+
+You’re right. The 18-second roadmap was not acceptable for this stage. I went back and audited it against three things:
+
+1. The current 10.0A-R2I source in /mnt/data.
+2. The old-script safeguard notes for TAS, Inner Self, and Auto-Cards.
+3. The earlier WorldLedger roadmap/build contracts that define owner layers and what must not be wrapped or faked.
+
+The result: the prior roadmap was directionally right, but too abstract and not ordered correctly. It also failed to notice a few hard facts in the current source.
+
+Current script audit findings
+
+The current R2I source already has these real systems:
+
+* ProgressionFormulaSystem
+* XPBudgetSystem
+* CombatRewardResolver
+* AbilityGrowthSystem
+* AbilityLifecycleSystem
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* CardSync
+* WorldGraphIndex
+* LoreAuthoritySystem
+* RumorPropagationSystem
+* DomainProjectSystem
+* DomainAssetSystem
+* SafeModeController
+
+So the next phase should not rebuild these from scratch.
+
+But the current source does not have dedicated systems/policies for:
+
+* ProgressionDomainSystem
+* EffortRewardResolver
+* PowerPlausibilitySystem
+* OverreachGate
+* CardPromotionPolicy
+* CardUpdatePolicy
+* WorldWebRelationSystem
+* IdentityNormalizer
+* KnowledgeScopeSystem
+* DocumentEvidenceSystem
+* SummonContributionXP
+* SoftPressureMode
+
+That matters because those are exactly where the story reruns are failing.
+
+The old resource lesson is also clear: Auto-Cards used title bans, cooldowns, look-back distance, duplicate tracking, replay signals, and last-text hashes to keep automatic card generation from going wild; Inner Self used environment validation, deep state repair, history hashing, safe parsing, config clamps, agent-name cleaning, and duplicate-brain demotion; TAS used duplicate control, state sync, message buffering, and global safety controls.  
+
+The WorldLedger law still controls all of this: parser phrasing belongs in EventScanner, eligibility in CanonValidator, state commits through the correct reducer owner, display through renderers, and Story Card writes only through CardApiAdapter/CardSync; no hook wrapping, no late repair authority, no fake green checks, and one authority per subsystem.  
+
+So the corrected roadmap needs to be an owner-layer completion plan, not a list of patches.
+
+⸻
+
+Audited Roadmap: 10.0A-R3 Clean Completion Phase
+
+R3A — Safe Mode Policy Correction
+
+Why this comes first
+
+The current source has:
+
+* autoSafeModeEnabled: true
+* safeModeFailureThreshold: 5
+* safeModeCardWarningThreshold: 6
+* safeModeQuarantineThreshold: 30
+* safeModeDiagnosticThreshold: 180
+
+That means long harness runs can push the script into safe mode through diagnostics/card pressure even when gameplay is not actually broken. That corrupts later testing because card generation/update behavior may be suppressed while we are trying to test card generation/update.
+
+Exact fix
+
+Replace current “auto hard safe mode” behavior with two stages:
+
+Soft pressure mode
+
+* Can defer expensive optional work.
+* Does not flip features.safeMode = true.
+* Does not set generated card creation to zero by default.
+* Records pressure only.
+
+Hard safe mode
+
+* Only activates after real runtime failures, repeated card API failures, corruption risk, or explicit user/manual setting.
+* Must explain why through /safemode.
+* Must not silently disable the core memory engine during normal long play.
+
+Owners touched
+
+* SafeModeController
+* FeatureDefaults
+* CommandRenderer for /safemode
+* Acceptance rows
+
+Must not touch
+
+* Parser
+* Reducers
+* XP
+* Cards except deferral policy
+
+Required proof
+
+* Long normal story does not hard-safe-mode.
+* Repeated fake API failure does trigger hard safe mode.
+* Soft pressure can exist without disabling card creation.
+* /safemode explains exact pressure source.
+
+⸻
+
+R3B — Identity Normalizer and Possessive Merge
+
+Why this is next
+
+The Zack / Zack’s duplicate identity problem should have been handled already. It affects actors, cards, world graph nodes, witnesses, reputation scopes, and ownership relations. If identity is wrong, every later system becomes noisy.
+
+Exact fix
+
+Add IdentityNormalizer, probably near CandidateSanitizer, and use it anywhere an entity ID/title is created.
+
+Core rules:
+
+* Zack’s as actor → Zack
+* Ivy’s as actor → Ivy
+* Zack’s House → place associated with actor Zack
+* Ivy’s apartment → place associated with Ivy
+* Zack’s sword → item associated with Zack
+* King’s Guard → group/faction, not actor King’s
+* If base entity exists, possessive variant merges into it.
+
+Owners touched
+
+* CandidateSanitizer
+* new IdentityNormalizer
+* ActorSocialSystem
+* WorldGraphIndex
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* witness/reputation holder normalization
+* item/place relation normalization
+
+Must not do
+
+Do not add a cleanup sweep that deletes duplicates after the fact. Normalize before ID creation.
+
+Required proof
+
+* Zack and Zack’s create one actor.
+* Ivy and Ivy’s create one actor.
+* Ivy’s apartment creates a place relation, not actor Ivy’s.
+* Actor card and familiar card do not split on possessive wording.
+
+⸻
+
+R3C — Progression Domain Clarification
+
+Why this matters
+
+My earlier roadmap blurred progression domains with kingdom/base domains. That is wrong.
+
+The current source already has domainXp and xpLanes.domain, but no dedicated ProgressionDomainSystem. It also has DomainProjectSystem and DomainAssetSystem, which are for buildings/holdings/projects. Those are separate concepts. The owner manifest already says progression owns XP/domain lanes while domain projects/assets own construction and holdings.  
+
+Exact fix
+
+Add or formalize a ProgressionDomainSystem as a sub-owner under progression.
+
+Progression domains include:
+
+* swordsmanship
+* spear/shield
+* summoning
+* necromancy
+* slime control
+* crafting
+* alchemy
+* manual labor
+* mana surgery
+* persuasion
+* brawling
+* research
+* divine affinity
+* stealth
+* survival
+
+Domain assets/projects remain:
+
+* walls
+* rooms
+* workshops
+* buildings
+* holdings
+* farms
+* keeps
+* tax/upkeep/maintenance
+* labor assignments
+
+Owners touched
+
+* ProgressionSystem
+* ProgressionFormulaSystem
+* XPBudgetSystem
+* AbilityCostSystem
+* AbilityGrowthSystem
+* command display for /progression, /abilities, /domain
+
+Must not touch
+
+* DomainProjectSystem ownership, except to clarify display labels.
+* Existing holdings/building logic.
+
+Required proof
+
+* “You practice sword drills” → swordsmanship progression domain.
+* “You study alchemy” → alchemy progression domain.
+* “You build the north wall” → domain project, not progression domain.
+* /domain shows holdings/projects.
+* /progression shows hidden growth lanes.
+
+⸻
+
+R3D — Effort Reward Resolver / XP Calibration
+
+Why this is a blocker
+
+The current source can parse explicit XP and has thresholds, lanes, and domain XP. It also has anti-farm budgets. But the story tests show that organic effort is not producing enough character, ability, or domain XP. The roadmap already expected XP budgets to include repetition decay, risk/contribution multipliers, and hard fights rewarding more, while combat rewards should be risk-based.  
+
+The fix is not lowering thresholds. The fix is awarding bounded XP for validated effort.
+
+Exact fix
+
+Add EffortRewardResolver, or fold that name into ProgressionSystem + XPBudgetSystem if we want fewer system names.
+
+It should convert validated actions into small rewards:
+
+* training
+* sparring
+* real combat participation
+* ability use
+* summon-command use
+* study/research
+* crafting/labor
+* exploration/discovery
+* quest progress
+* social victory
+* domain-project milestone
+
+Suggested scale:
+
+* minor practice: 1–2 XP
+* meaningful training/use: 3–5 XP
+* risky fight contribution: 5–12 XP
+* major discovery/project milestone: 10–25 XP
+* repeated farming decays sharply
+
+Owners touched
+
+* EventScanner for effort observations
+* CanonValidator for effort eligibility
+* XPBudgetSystem for anti-farm/risk/contribution
+* ProgressionFormulaSystem for XP application
+* CombatRewardResolver for fight contribution
+
+Must not do
+
+Do not let parser directly add XP. Do not let commands/cards/context grant XP.
+
+Required proof
+
+* A 50-turn training/combat/research mini-story produces at least one character level or very visible progress.
+* Repeating the same low-risk action decays.
+* Third-party XP does not become player XP.
+* No “+999 XP” from debug/card/context text.
+* Domain XP and ability XP grow from relevant effort.
+
+⸻
+
+R3E — Ability / Skill / Passive / Style Lifecycle
+
+Why this needs refinement
+
+The current code already supports ability, skill, talent, passive, domain, and category transfers. It also has transfer logic where skills need success/training evidence and passives are weak unless supported.  
+
+So we should not rebuild it. The missing piece is a clearer lifecycle and better preservation of style/weapon evidence.
+
+Exact fix
+
+Formalize lifecycle:
+
+raw attempt → candidate evidence → progression domain XP → practiced ability/style → stable ability → skill/passive/talent only through evidence or player guidance
+
+Rules:
+
+* Messy candidates are acceptable if they never promote.
+* Weapon/style evidence should persist even before becoming a skill.
+* Skills/passives require repeated use, training, or explicit player/player-like guidance.
+* Named styles and weapon identities should be preserved as style evidence.
+
+Owners touched
+
+* AbilityGrowthSystem
+* AbilityLifecycleSystem
+* AbilityDevelopmentMatrix
+* AbilityCostSystem
+* ProgressionDomainSystem
+
+Must not do
+
+Do not turn every weapon mention into a skill. Do not auto-promote passives.
+
+Required proof
+
+* Slime Control develops as ability/domain evidence.
+* Manual Labor develops as domain/skill evidence after repeated labor.
+* Mana Surgery develops after actual practice/research.
+* Saber/buckler/spear/shield/brawler/Persuader-style evidence persists.
+* Junk candidates can exist but do not promote.
+
+⸻
+
+R3F — Power Plausibility / Overreach Gate
+
+Why this is separate from XP
+
+AinurLindalë’s issue is not that the script made the player level too much. It is that the story permits impossible early authority: undead armies, elite domination, huge magic, no cost, no training.
+
+The script must respond to unsupported scale claims as attempts, not stable truth.
+
+Exact fix
+
+Add PowerPlausibilitySystem or OverreachGate.
+
+It classifies claims as:
+
+* supported success
+* partial success
+* unstable attempt
+* overreach
+* ritual-scale claim
+* denied as durable canon
+
+Evidence required for high-scale claims:
+
+* prior ability/domain level
+* ritual setup
+* mentor/training
+* time investment
+* material/corpse availability
+* mana/EP/HP cost
+* artifact/tool
+* divine/lore permission
+* risk/failure consequence
+
+Owners touched
+
+* CanonValidator
+* AbilityGrowthSystem
+* SummonSystem
+* ControlledEntitySystem
+* CombatThreatSystem
+* MatchupSystem
+* CombatOutcomeSystem
+* ContextBudgeter
+
+Must not do
+
+Do not rewrite story text. Do not force the AI to undo prose. Just refuse to persist unsupported impossible claims as stable state.
+
+Required proof
+
+* “You raise 30 undead soldiers at the start” → overreach; no army/30 summons/control records.
+* “You attempt to raise one corpse without training” → unstable candidate/failure/risk.
+* “After weeks of necromancy study and ritual setup, you raise one skeleton” → bounded summon/ability evidence.
+* “You beat an elite knight with no training” → no stable dominance; threat/matchup remains dangerous.
+
+⸻
+
+R3G — Summon / Familiar / Follower / Group XP Contribution
+
+Why this needs its own chunk
+
+Summoner playstyles must work. A magical summon/familiar is effectively the player’s ability expression. Followers are not.
+
+Exact fix
+
+Add contribution rules:
+
+Summon / magical familiar
+
+* action under player command grants player contribution XP.
+* bounded by threat, risk, control cost, ability level, anti-farm.
+
+Follower / party
+
+* tracks presence and aid.
+* XP only for player participation, command, support, or shared risk.
+* no XP just for being nearby.
+
+Group / army
+
+* tracks force presence and outcomes.
+* no full player XP from passive group victory.
+
+Pet / trap
+
+* usually no full XP unless actively trained/commanded/placed/triggered.
+
+Magically bound servant
+
+* can count like summon if magical control is established.
+
+Owners touched
+
+* SummonSystem
+* ControlledEntitySystem
+* PartyFollowerSystem
+* CombatRewardResolver
+* XPBudgetSystem
+* ProgressionFormulaSystem
+
+Required proof
+
+* Penpen under player command grants bounded player contribution XP.
+* Mira independently kills enemy while player does nothing → little/no player XP.
+* Player commands a party tactic and participates → partial XP.
+* Passive trap with no player involvement → minimal/no XP.
+
+⸻
+
+R3H — World Web / Location / Containment System
+
+Why this is a core missing piece
+
+The script needs to remember:
+
+* this building is next door,
+* this shop is across the street,
+* this room is inside the inn,
+* this chest contains the key,
+* this area is on the east side of town,
+* this business is in this district.
+
+This is not just route tracking. It is spatial memory.
+
+Exact fix
+
+Add WorldWebRelationSystem, or expand WorldStructureSystem + WorldGraphIndex with relation types:
+
+* adjacent_to
+* next_door_to
+* across_from
+* inside
+* contains
+* stored_in
+* owned_by
+* operated_by
+* district_of
+* side_of_town
+* route_to
+* business_in
+* room_in
+* container_in
+
+Owners touched
+
+* EventScanner
+* CanonValidator
+* WorldStructureSystem
+* WorldGraphIndex
+* InventoryEquipmentSystem / ItemIdentitySystem
+* CardCandidateRegistry
+* CardSync
+
+Required proof
+
+* “The bakery is next door to the apothecary” → both place records linked.
+* “The apothecary is on the east side of town” → district/side relation.
+* “You put the Black Glass Key in the oak chest upstairs” → exact item stored in exact container/place.
+* “You return and take the Black Glass Key from the oak chest” → same item retrieved.
+* Current Location -> Window is denied as a route.
+
+⸻
+
+R3I — Card Promotion and Card Updating
+
+Why this is one of the biggest blockers
+
+The final script depends on Story Cards updating over time. Auto-Cards’ old strengths were object permanence, card drafting, memory maintenance, cooldowns, look-back distance, title bans, replay-aware duplicate prevention, and bounded generation.  
+
+WorldLedger already has card systems, but the tests show promotion and updates are not strong enough.
+
+Exact fix
+
+Add CardPromotionPolicy and CardUpdatePolicy.
+
+Promotion scoring should consider:
+
+* named recurrence
+* location visit
+* place relation
+* object storage
+* bonded familiar
+* faction leader
+* important item/evidence
+* law/lore concept
+* active project
+* repeated route
+* social/political importance
+
+Important rule: places should promote more aggressively than actors. Even small places matter because the world web depends on location cards.
+
+Update triggers:
+
+* actor relationship changes
+* actor motive/role changes
+* place descriptions
+* adjacency discovered
+* item stored/moved
+* business price/job known
+* law/lore revealed
+* project progress
+* familiar bond changes
+* faction status changes
+
+Owners touched
+
+* CardCandidateRegistry
+* GeneratedCardPolicy
+* CardSync
+* CardRenderer
+* WorldGraphIndex
+* WorldWebRelationSystem
+* ActorSocialSystem
+* LoreAuthoritySystem
+
+Must not do
+
+Do not scrape everything every turn. Use dirty targets/evidence hashes.
+
+Required proof
+
+* Major locations generate cards.
+* Small recurring locations generate weak cards.
+* Location card updates with adjacency.
+* Actor card updates when relationship changes.
+* Familiar card updates when bond changes.
+* User notes are preserved.
+* No duplicate cards for possessive variants.
+
+⸻
+
+R3J — Knowledge / Rumor / Reputation / Document Scope
+
+Why this is still failing
+
+The current script has social knowledge, witnesses, rumors, clues, law, and reputation structures. But it does not yet reliably enforce who knows what.
+
+The acceptance/source design says social consequence should include scoped knowledge, witness eligibility, reputation, rumor propagation, crime/clues, and law response without omniscient legal mutation.  
+
+Exact fix
+
+Add or formalize KnowledgeScopeSystem.
+
+Fact visibility states:
+
+* private
+* player-known
+* actor-known
+* witnessed
+* documented
+* rumored
+* faction-known
+* location-known
+* public-local
+* public-regional
+* global/lore
+
+Transmission events:
+
+* sees
+* hears
+* reads
+* receives letter
+* is told
+* rumor spreads
+* public announcement
+* faction report
+* trial/report/posted notice
+
+Document/evidence objects need contents:
+
+* letter text
+* sender
+* recipient
+* read/unread
+* storage location
+* copied/transmitted
+* evidence status
+
+Owners touched
+
+* SocialConsequenceSystem
+* WitnessLedger
+* RumorPropagationSystem
+* CrimeEvidenceClueSystem
+* FactionLawResponseSystem
+* ItemIdentitySystem
+* new DocumentEvidenceSystem or an evidence sub-owner
+
+Required proof
+
+* Private theft with no witnesses → no public reputation.
+* Mira sees theft → Mira knows.
+* Mira tells guards → guards/faction know.
+* Letter to Alex → Alex knows contents, others do not.
+* Rumor spreads in tavern → local rumor, not global fact.
+* Legal recording retains content and storage.
+
+⸻
+
+R3K — Economy / Jobs / Business Notes Routing
+
+Why this matters
+
+Costs and repeatable jobs should not clutter quests. A room price belongs in the inn/business/location memory unless the player accepts a job or incurs debt.
+
+The economy foundation is supposed to handle price quotes, service quotes, debts, failed purchases, wage/payment evidence, and service transaction evidence without granting items or auto-completing work.  
+
+Exact fix
+
+Route economic facts:
+
+* service quote → business/location card note
+* job listing → opportunity note
+* accepted job → contract/quest
+* wage agreement → labor contract
+* debt → obligation
+* purchase → inventory/economy transaction
+* lodging paid → service transaction, not quest
+* repeatable job unaccepted → no active quest
+
+Owners touched
+
+* EconomyTransactionSystem
+* ContractSystem
+* LaborSystem
+* QuestObjectiveRewardSystem
+* CardUpdatePolicy
+* WorldWebRelationSystem
+
+Required proof
+
+* “Room costs 2 silver per night” → inn card/economy note.
+* “Job board lists rat-catching” → opportunity only.
+* “You accept the rat-catching job” → active contract/quest.
+* “Bran agrees to work for 2 silver/day” → labor contract.
+* No inventory item created from price quote.
+
+⸻
+
+R3L — Lore / Gods / Laws / World Rules Verification
+
+Why this needs real testing
+
+9.12A added LoreAuthoritySystem for revealed vs hidden lore without raw Story Card mechanics or hidden-lore flooding.   But we have not proven enough with live-style stories that gods, laws, divine actions, magic laws, physics/world laws, and national laws are recorded and enforced as intended.
+
+Exact fix
+
+Add concept/law categories:
+
+* deity
+* divine action
+* divine law
+* magic law
+* physics/world law
+* national law
+* faction law
+* social custom
+* religious taboo
+* discovered lore
+* hidden lore
+
+Rules:
+
+* hidden lore stays hidden.
+* revealed lore can enter context.
+* laws constrain plausibility.
+* lore cannot grant mechanics directly.
+* divine actions require evidence and scope.
+
+Owners touched
+
+* LoreAuthoritySystem
+* CanonValidator
+* ContextBudgeter
+* CardCandidateRegistry
+* CardUpdatePolicy
+* PowerPlausibilitySystem
+
+Required proof
+
+* Hidden god remains hidden.
+* Discovered god/law becomes revealed lore.
+* “Necromancy is illegal in Silverhold” becomes local law.
+* “Fire magic cannot burn ghost-iron” becomes magic law/context constraint.
+* “God blesses you” does not grant automatic XP/stats.
+
+⸻
+
+R3M — Acceptance / Harness Upgrade
+
+Why this is required
+
+The targeted self-tests are too narrow. The old scripts protected themselves with replay detection, last-text hashes, dedupe logic, and bounded card generation because real AI Dungeon play repeats, retries, and mutates context.  
+
+Exact fix
+
+Add a broad organic harness category that is not just “old bug string denied.”
+
+Test mini-scenarios:
+
+1. Summoner progression with familiar action.
+2. Court/political law/reputation scene.
+3. Location adjacency and container item storage.
+4. Inn/business price/job routing.
+5. Ability practice → domain XP → skill candidate.
+6. Overreach necromancy attempt.
+7. Letter/recording evidence transmission.
+8. Card generation and update sequence.
+9. Safe-mode pressure sequence.
+10. Possessive identity merge.
+
+Required proof
+
+* The script does not just pass unit strings.
+* It produces useful state/cards in organic mini-scenes.
+* Safe mode stays off unless true failure pressure appears.
+* Cards generate and update.
+* Knowledge remains scoped.
+* XP progresses without runaway power.
+
+⸻
+
+Corrected implementation order
+
+This is the order I now think is actually clean:
+
+1. R3A — Safe Mode Policy Correction
+    Stop test contamination and accidental card suppression.
+2. R3B — Identity Normalizer / Possessive Merge
+    Prevent duplicate actors/cards/holders before fixing social/card systems.
+3. R3C — Progression Domain Clarification
+    Separate hidden growth domains from kingdom/base assets.
+4. R3D — Effort Reward Resolver / XP Calibration
+    Make actual effort produce bounded character/domain/ability XP.
+5. R3E — Ability / Skill / Passive / Style Lifecycle
+    Preserve real build identity without promoting junk.
+6. R3F — Power Plausibility / Overreach Gate
+    Stop unearned army-scale/divine-scale/instant mastery claims from becoming canon.
+7. R3G — Summon / Follower / Group XP Contribution
+    Make summoner playstyles reward correctly while followers/groups remain aid.
+8. R3H — World Web / Location / Containment System
+    Stabilize places, adjacency, businesses, routes, containers, stored items.
+9. R3I — Card Promotion and Card Updating
+    Prove the living Story Card engine works.
+10. R3J — Knowledge / Rumor / Reputation / Document Scope
+    Stop omniscience and make evidence/letters/rumors work.
+11. R3K — Economy / Jobs / Business Notes Routing
+    Prevent quest clutter and preserve business/job information in the right place.
+12. R3L — Lore / Gods / Laws / World Rules Verification
+    Prove gods/laws/magic/world rules are recorded and enforced correctly.
+13. R3M — Organic Harness Upgrade + Five-Story Rerun
+    Rerun all five stories after the systems are truly fixed.
+
+⸻
+
+What changed from my previous roadmap
+
+The earlier roadmap was too vague. This audited version changes the plan in important ways:
+
+* Safe mode moves to the front, because it can invalidate card/update testing.
+* Identity normalization moves early, because duplicate identities poison every downstream system.
+* Progression domains are corrected, instead of being mixed with kingdom/base domains.
+* XP calibration is explicit, not handwaved as “progression pass.”
+* Card updating is treated as core, not just a later verification step.
+* World web and containment are explicit systems, not vague route cleanup.
+* Knowledge scope includes documents and letters, not just rumors.
+* Summon XP contribution is separated from party/follower XP.
+* Lore/laws/gods become a real test category, not a low-priority assumption.
+* No cleanup wrapper is proposed. Every fix lands in the existing owner path or a small missing owner that feeds the current reducers.
+
+This is the roadmap I’d trust now. The script should not move to playtesting until at least R3A through R3M are implemented and the five-story rerun shows improvement in progression, cards, world web, scope, and safe-mode behavior.
+
+Yes — provided we implement R3 exactly as an owner-layer completion pass, not as scattered emergency patches.
+
+The clean way is:
+
+Add missing core policies once, then route systems through them.
+For example, one IdentityNormalizer, one ProgressionDomainSystem, one PowerPlausibilitySystem, one WorldWebRelationSystem, one CardPromotionPolicy/CardUpdatePolicy, and one KnowledgeScopeSystem. Those become named core systems, not dozens of little wrappers.
+
+Do not patch symptoms after commit.
+If Zack’s creates a duplicate actor, we fix identity normalization before actor/card/worldgraph creation. If “next door” is missed, we fix world relation parsing/validation before card updates. If summons need XP, we fix contribution routing through combat/progression owners, not a special XP hack.
+
+Keep ownership boundaries strict.
+Progression domains stay separate from kingdom/base DomainProjectSystem. Story Cards mirror truth and update from dirty targets; they do not become mechanic authority. Knowledge/reputation requires scoped witnesses/transmission; it does not become global gossip. Safe mode does not silently disable the memory engine.
+
+Audit after every chunk.
+Each R3 chunk should produce source, report, targeted probes, source audit, corruption check, fail list, and a source-map update. If a chunk introduces broad behavior or duplicate authority, we stop and correct before moving on.
+
+The risk of clutter is real if we add “fixers” like PostParserCleanup, AntiJunkPatch2, CardRepairOverride, or late command wrappers. We should not do that.
+
+The R3 roadmap is meant to make the script more organized, not less: it names the missing responsibilities that are currently smeared across existing systems and gives them proper homes.
+
+“Yes. Before trying R3F again, the audit has to cover capability, not just “overreach phrases.”
+
+These are the sources I should audit first.
+
+1. Build-control authority
+
+This is the rulebook for how edits are allowed to happen:
+
+* WorldLedger_Clean_Core_Build_Control.docx
+* Current R3 roadmap/correction summaries you pasted
+* R3D / R3E-R1 / R3F source maps and reports
+
+This controls the non-negotiables: no hook wrappers, no fake pass, no reconcile layers, no shrinking tests, no direct canon mutation outside reducers, and one authority per subsystem. It also says old code is salvage evidence until moved into the clean owner path, not active authority.  
+
+2. Current active source chain
+
+I need to audit the current implementation, not just documents:
+
+* WorldLedger_CleanCore_Build10_0A_R3E_R1_AbilitySkillPassiveStyleLifecycleCleanliness.txt
+* WorldLedger_CleanCore_Build10_0A_R3F_PowerPlausibilityOverreachGate.txt as rejected/candidate evidence
+* R3D source as the last known progression-calibration base
+* all R3D/R3E-R1/R3F reports, static audits, smoke results, targeted probes, story probes, and source maps
+
+The active source already follows the intended pipeline doctrine: parser hits are observations, proposals are structured claims, CanonValidator decides, reducers commit, cards mirror later, and command/context/card echoes are non-canon.  
+
+3. AIDRPG mechanical design specs inside the ZIP
+
+These are mandatory for R3F because they define what a player, enemy, ability, and feat can plausibly do.
+
+From AIDRPG_Final_Build_Planning_Package_v1_4_23_REPAIRED_FINAL_WITH_PRODUCTION_CHUNKS_01_TO_25.zip, especially:
+
+* Chunk_03_Event_Taxonomy_and_Validation_Outcomes
+* Chunk_04_Progression_Leveling_and_XP_Economy
+* Chunk_05_Stats_Resources_Recovery_and_Scaling_Basics
+* Chunk_06_Ability_Skill_Talent_Passive_and_Specialization_Lifecycle
+* Chunk_07_Combat_Matrix_and_Consequence_Model
+* Chunk_08_Group_Combat_Party_Followers_Summons_and_Scale
+* Chunk_16_System_Safeguards_OperationLedger_Quarantine_Cleanup_Migration
+* Chunk_19_Level_1_1000_Scaling_Matrix_Freeform_Gameplay_Scaling_Player
+* Chunk_20_Race_Species_Body_Type_Origin_Scaling_and_Non_Human_Stat_Logic
+* Chunk_21_Core_Stat_Formulas_Resource_Formulas_Growth_Rates_and_Build
+* Chunk_22_XP_Curves_Level_Up_Rules_Stat_Training_XP_Domain_XP_Ability
+* Chunk_23_Creature_Tier_Matrix_Enemy_Stat_Bands_Boss_Scaling_Group_Threat
+* Chunk_24_Combat_Math_Damage_Severity_Defense_Resources_Matchup_Resolution
+* Chunk_25_Ability_Cost_Calculator_Skill_Passive_Talent_Templates_Scaling
+* Chunk_26_Stat_Absorption_Copy_Abilities_Devour_Growth_Adaptation_Evolution
+
+Those are the sources that should shape the actual R3F capability gate.
+
+4. Developer/test specs in the same AIDRPG package
+
+These matter because R3F needs validation outcomes and tests, not just design theory:
+
+* Developer_Spec_v1
+* Developer_Spec_v1_1_Correction_Pass
+* MVP_Build_Spec_v1
+* Test_Spec_v1
+* Build Chunks 09–13: scanner, proposal, validator, resolver/sanitizer, reducer contracts
+* Build Chunk 16: release check and regression matrix lock
+
+This is where I should verify how “attempt,” “partial success,” “unsupported,” “denied durable canon,” and “validated completed action” are supposed to flow.
+
+5. Past WorldLedger versions and failed attempts
+
+Not as bases, but as failure/regression evidence:
+
+* WorldLedger_uploaded_files_package.zip
+    * especially WorldLedgerV0.18.15_PC06_ability_depth
+    * WorldLedgerV0.18.24_FINAL_PLAYABLE_CANDIDATE_DEWRAPPED
+    * WorldLedgerV0.18.27_FINAL_PLAYABLE_SOURCE_RECONCILED
+    * WorldLedgerV0.18.28_FINAL_PLAYABLE_SOURCE_CLEANED
+* WorldLedgerV0.17.txt
+* WL_V0-4.txt
+* FinalWLCore.txt
+* WorldLedger_CORE_FIRST_CURRENT_PLANNING_RESOURCE.zip
+* WorldLedger_current_planning_resource_DEDUPED_ORGANIZED.zip
+* WorldLedger_Final_Master_Roadmap_v9_4_REVISED.md
+* WorldLedger_Master_Roadmap_Salvage_Integration_Plan_v9_4.md
+
+These show what earlier versions already tried, what failed, and what must not regress.
+
+6. TAS / Inner Self / Auto-Cards safeguard material
+
+These are not gameplay balance authorities, but they are stability authorities.
+
+I need to apply their lessons to R3F testing and architecture:
+
+* replay/hash protection,
+* duplicate suppression,
+* state validation,
+* parser filtering,
+* bounded config,
+* title/name danger handling,
+* one source of truth,
+* audit logging,
+* context hygiene.
+
+The safeguard notes explicitly highlight retry detection, duplicate-control logic, context cleanup, operational safety valves, and audit trails as central patterns across Inner Self, Auto-Cards, and TAS.   The improvement plan also says the goal is safer, more predictable, more debuggable AI Dungeon-native internals, with deterministic event handling, idempotency keys, context budgeting, and card transaction discipline.  
+
+7. The five story corpora
+
+These are not “the only examples to fix.” They are broad organic phrasing and long-play probes.
+
+I should run artificial replay-style checks against:
+
+* next-door-whore
+* you-are-a-summoner
+* ainurlindal
+* isekai-rpg-is
+* personal-isekai
+
+The purpose is to see whether R3F generalizes across long-play natural text: power claims, ability development, enemy scaling, summon/follower contribution, social authority, faction authority, divine claims, economy, location, and context drift.
+
+8. World/lore sources
+
+R3F cannot judge divine/world-scale plausibility without the world rules:
+
+* Final World Bible.txt
+* Story cards .json
+* lore/law/god cards
+* race/species/body logic material
+
+The master design says the framework must preserve freeform action while enforcing real persistence, scaling, consequence, structured canon, and matchup-based outcomes rather than level-only outcomes.  
+
+What this means for R3F-R1
+
+The current R3F must be treated as not accepted.
+
+Before rebuilding it, I need to extract a capability model from those sources:
+
+* player level band,
+* stat band,
+* ability maturity,
+* progression-domain evidence,
+* resource/cost pressure,
+* race/body form,
+* equipment/tool support,
+* target tier,
+* target count,
+* effect range,
+* duration,
+* permanence,
+* control level,
+* preparation,
+* risk,
+* world/lore permission.
+
+Then R3F-R1 should validate classes of feats, not named examples:
+
+* combat dominance,
+* mass summons,
+* necromancy,
+* divine claims,
+* resurrection,
+* teleportation,
+* time effects,
+* faction/army control,
+* wealth/material creation,
+* absorption/evolution,
+* mind control,
+* large-scale transformation,
+* impossible crafting/domain claims.
+
+So yes: the correct next step is not more phrase blockers. It is a source-backed capability audit, then a rebuilt R3F gate that matches the project’s scaling, leveling, stat, matchup, ability, and world-law systems.”

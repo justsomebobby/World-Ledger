@@ -1,0 +1,1234 @@
+AI Dungeon Script Improvement Plan
+Detailed structural improvements for:
+- Inner Self
+- Auto-Cards
+- TAS (True Auto Stats)
+
+Purpose
+
+This document lists concrete ways these scripts could be improved for structural integrity
+without breaking AI Dungeon's scripting model.
+
+The goal is not to make them simpler.
+The goal is to make them:
+- safer
+- easier to maintain
+- more predictable
+- easier to debug
+- less fragile under retries, manual edits, and large adventures
+- more compatible with AI Dungeon's sandbox limits
+
+Important framing
+
+All recommendations below are designed to remain compatible with AI Dungeon's current scripting model:
+- scripts run in Input, Context, and Output hooks
+- each hook is sandboxed
+- each hook has hard memory and time limits
+- story cards and state are the main persistent storage tools
+- text return behavior has sharp edge cases
+- story card APIs can fail if cards are missing or duplicated
+
+So these are not rewrite it as a web app suggestions.
+These are rewrite the internals more safely while still living inside AI Dungeon suggestions.
+
+======================================================================
+PART 1: CROSS-PROJECT IMPROVEMENTS
+These would help Inner Self, Auto-Cards, and TAS alike.
+======================================================================
+
+1. Introduce explicit state schema versioning and migrations
+
+What to improve:
+Each script should store a schema version in its state root and in any major system card it owns.
+
+Why it would help:
+Right now, these scripts rely heavily on default filling, shape validation, and reinitialization.
+That is good, but it is not the same as a real migration strategy.
+When formats change, the system should know:
+- what version the stored data is
+- what transformations are needed
+- whether recovery succeeded
+- whether it must quarantine invalid data
+
+How to implement safely in AI Dungeon:
+- Add something like state.InnerSelf.version, state.AutoCards.version, or state.TAS.version
+- On hook entry, run a tiny migrateState() pass before normal logic
+- Keep migrations deterministic and idempotent
+- Write the new version only after migration succeeds
+- If migration fails, keep the old payload in a backup field before rebuilding defaults
+
+Why this is a strong structural upgrade:
+It turns silent format drift into explicit controlled evolution.
+
+2. Separate validation from repair from normal execution
+
+What to improve:
+The scripts currently mix:
+- detection of malformed data
+- automatic repair
+- normal business logic
+
+Why it would help:
+When validation and repair are mixed into live hook logic, the code becomes harder to reason about.
+A cleaner structure is:
+
+Phase 1: validate
+Phase 2: repair if needed
+Phase 3: execute normal behavior
+Phase 4: persist
+
+How to implement safely in AI Dungeon:
+Create one bootstrap routine per hook:
+- validateRuntime()
+- loadState()
+- validateState()
+- repairStateIfNeeded()
+- executeHook()
+- persistChanges()
+
+Why this is a strong structural upgrade:
+It becomes much easier to prove that the script never performs real gameplay logic on invalid data.
+
+3. Add a transaction-style wrapper for story card operations
+
+What to improve:
+Story card changes are high-risk because:
+- cards can be missing
+- duplicates can exist
+- updateStoryCard can throw
+- removeStoryCard can throw
+- key collisions can happen
+
+Why it would help:
+A central card transaction wrapper can guarantee:
+- the target exists or does not exist as expected
+- a stable snapshot was read first
+- write failures are caught
+- rollback or fallback behavior is consistent
+- logs capture both old and new values
+
+How to implement safely in AI Dungeon:
+Create wrapper functions such as:
+- safeFindCard()
+- safeAddCard()
+- safeUpdateCard()
+- safeRemoveCard()
+- safeEnsureSingletonCard()
+- safeRenameDuplicateCard()
+
+Each wrapper should:
+- normalize title and keys
+- verify current card identity
+- catch API errors
+- return a structured result object instead of loose values
+
+Why this is a strong structural upgrade:
+It reduces the entire codebase's dependence on fragile raw card calls.
+
+4. Move to a deterministic event pipeline instead of ad hoc mutation
+
+What to improve:
+These scripts often perform many mutations as soon as they detect something.
+That works, but it makes replay handling and debugging harder.
+
+Why it would help:
+A better structure is:
+- parse events
+- normalize events
+- deduplicate events
+- validate events
+- commit events
+
+Example events:
+- player took damage
+- agent brain triggered
+- title candidate detected
+- card update scheduled
+- warning scheduled
+
+How to implement safely in AI Dungeon:
+Inside a hook:
+- Build an events array
+- Build no direct state changes during parsing
+- Run one reducer or commit phase at the end
+
+Why this is a strong structural upgrade:
+It improves idempotency, debugging, and replay safety.
+
+5. Introduce per-turn idempotency keys
+
+What to improve:
+Retry handling exists, but it would be stronger if every important side effect had an idempotency key.
+
+Why it would help:
+A replay-safe system should know:
+This exact side effect already happened for this turn and this content fingerprint.
+
+How to implement safely in AI Dungeon:
+For each important operation, derive a short key from:
+- hook name
+- actionCount
+- recent history hash
+- operation kind
+- target entity or player
+
+Store recent keys in a small rolling set in state.
+Before committing:
+- check if key already exists
+- skip if already applied
+- record if newly applied
+
+Why this is a strong structural upgrade:
+It protects against duplicate writes more broadly than retry detection alone.
+
+6. Build a single context budget manager and require all injections to use it
+
+What to improve:
+Context pressure is one of the biggest failure modes in AI Dungeon scripts.
+
+Why it would help:
+Every subsystem that injects text into context should go through one allocator.
+That allocator should decide:
+- total available characters
+- reserved memory for system needs
+- per-subsystem caps
+- clipping strategy
+- priority order
+
+How to implement safely in AI Dungeon:
+Build a ContextBudget object that receives:
+- info.maxChars
+- info.memoryLength
+- current text length
+- reserve minimum
+- subsystem requests
+
+Then allocate slices for:
+- brains
+- generated notes
+- stats
+- summaries
+- hidden guidance
+
+Why this is a strong structural upgrade:
+It turns hope it fits into a real budgeting system.
+
+7. Add corruption quarantine instead of immediate overwrite
+
+What to improve:
+When malformed data is found, these scripts often repair or recreate immediately.
+That is better than crashing, but it can destroy evidence.
+
+Why it would help:
+Sometimes the best response to corruption is:
+- copy bad payload to quarantine
+- mark it with a timestamp or turn counter
+- rebuild the live structure
+- continue safely
+
+How to implement safely in AI Dungeon:
+Keep a small rolling array like:
+state.system.quarantine = [
+  { kind, source, badPayload, detectedAt }
+]
+
+Cap its length to stay within sandbox limits.
+
+Why this is a strong structural upgrade:
+It preserves forensic evidence without blocking gameplay.
+
+8. Add structured diagnostics instead of only free-form logs
+
+What to improve:
+Free-form console logs are useful, but they are harder to query mentally during debugging.
+
+Why it would help:
+A structured diagnostics buffer can store entries like:
+- severity
+- subsystem
+- operation
+- target
+- result
+- actionCount
+- duration estimate
+
+How to implement safely in AI Dungeon:
+Keep a capped ring buffer in state:
+state.system.diagnostics = [...]
+
+Also mirror a compact human-readable summary into logs when debug mode is active.
+
+Why this is a strong structural upgrade:
+It creates an internal black box recorder.
+
+9. Add feature flags around risky subsystems
+
+What to improve:
+These scripts contain advanced behavior that can fail in subtle ways.
+
+Why it would help:
+Feature flags let maintainers disable:
+- randomization
+- compression
+- Auto-Cards integration
+- advanced parser passes
+- expensive cleanup logic
+- title generation
+- thought formation
+without dismantling the whole system.
+
+How to implement safely in AI Dungeon:
+A simple config object such as:
+state.system.features = {
+  compactContextAllocator: true,
+  eventReducer: true,
+  strictReplayLock: true
+}
+
+Why this is a strong structural upgrade:
+It makes refactors safer and debugging easier.
+
+10. Build a consistent safe mode
+
+What to improve:
+Current disable switches are useful, but there should also be a reduced-functionality mode.
+
+Why it would help:
+A safe mode can keep the script alive while disabling the most failure-prone features.
+
+Example safe mode behavior:
+- no new card creation
+- no expensive summarization
+- no cross-script integration
+- only read and minimal update behavior
+- no random thought generation
+- no complex inference
+
+How to implement safely in AI Dungeon:
+Detect:
+- repeated validation failures
+- time budget stress
+- repeated card conflicts
+- migration issues
+
+Then automatically drop to safe mode until manually cleared.
+
+Why this is a strong structural upgrade:
+It prevents cascading failures during unstable periods.
+
+11. Use a canonical naming and namespacing system for all owned cards
+
+What to improve:
+Card identity is still vulnerable to fuzzy title conflicts, copies, and human edits.
+
+Why it would help:
+Each system-owned card should have:
+- a clear namespace
+- a stable machine identifier
+- a human-readable title
+- a normalized ownership marker
+
+How to implement safely in AI Dungeon:
+Use keys or metadata patterns such as:
+SYS:INNERSELF:CONFIG
+SYS:INNERSELF:AGENT:<name>
+SYS:AUTOCARDS:DATA
+SYS:TAS:STATS:<player>
+
+Keep friendly titles for humans, but use the internal marker as the real identity.
+
+Why this is a strong structural upgrade:
+It dramatically reduces accidental collisions.
+
+12. Separate human-facing text from machine-facing metadata more strictly
+
+What to improve:
+Some systems store too much machine logic in places users may edit casually.
+
+Why it would help:
+Human-facing and machine-facing content should not compete for the same field unless unavoidable.
+
+How to implement safely in AI Dungeon:
+Where possible:
+- keep machine metadata in keys or structured prefixes
+- keep prose in entry
+- keep transient flags in state
+- keep diagnostics out of visible story fields
+
+Why this is a strong structural upgrade:
+It reduces damage from manual edits.
+
+13. Add explicit garbage collection and compaction routines
+
+What to improve:
+Long-running adventures accumulate stale state:
+- old hashes
+- old diagnostics
+- dead label mappings
+- stale event keys
+- outdated message history
+- duplicate memory fragments
+
+Why it would help:
+Without cleanup, state grows noisier and harder to reason about.
+
+How to implement safely in AI Dungeon:
+Add a low-frequency housekeeping pass every N turns that:
+- trims ring buffers
+- removes expired replay keys
+- purges stale quarantine entries
+- compacts duplicated strings
+- clears orphan references
+
+Why this is a strong structural upgrade:
+It keeps long adventures from degrading.
+
+14. Add internal timing and cost budgeting by subsystem
+
+What to improve:
+AI Dungeon gives only a 2-second hook budget.
+Large scripts need to know where time goes.
+
+Why it would help:
+Even a rough cost model helps prevent timeout risk.
+
+How to implement safely in AI Dungeon:
+Use cheap counters, not real timers if unavailable.
+Track:
+- number of cards scanned
+- number of regex passes
+- number of candidate titles considered
+- number of players processed
+- number of brain entries injected
+
+If a hook crosses a configured cost threshold:
+- skip low-priority work
+- postpone optional work
+- log degradation mode
+
+Why this is a strong structural upgrade:
+It makes heavy logic degrade gracefully instead of timing out unpredictably.
+
+15. Create an external build pipeline but keep AI Dungeon deployment simple
+
+What to improve:
+These scripts are very large and hard to maintain as raw monolithic files.
+
+Why it would help:
+They should be authored as modules, then bundled into one Library script for AI Dungeon.
+
+How to implement safely in AI Dungeon:
+Outside AI Dungeon:
+- write modular source files
+- lint them
+- test them
+- bundle them
+- optionally minify only lightly
+- output one final Library file and tiny hook wrappers
+
+Inside AI Dungeon:
+- still paste the bundled output into Library
+- keep Input, Context, and Output wrappers tiny
+
+Why this is a strong structural upgrade:
+It massively improves maintainability without changing runtime behavior.
+
+======================================================================
+PART 2: INNER SELF - SPECIFIC IMPROVEMENTS
+======================================================================
+
+1. Replace fuzzy title matching with stable agent identity records
+
+Current structural weakness:
+Fuzzy title matching is resilient to typos, but it is still a weak identity system.
+Titles are for humans, not for truth.
+
+Better approach:
+Every agent brain should have:
+- a stable internal id
+- a normalized agent name
+- a title only for display
+
+How to implement safely:
+Store agent identity in structured metadata and treat the title as presentation only.
+
+Why this is better:
+Two cards with similar titles can no longer masquerade as one another.
+
+2. Split the agent system into explicit layers
+
+Current structural weakness:
+Agent discovery, config parsing, brain parsing, display marking, and context preparation are deeply intertwined.
+
+Better approach:
+Separate the agent pipeline into:
+- agent registry
+- brain loader
+- trigger resolver
+- context renderer
+- persistence writer
+
+Why this is better:
+Each layer becomes testable and replaceable.
+
+3. Replace mixed-format brain parsing with one canonical internal format plus importers
+
+Current structural weakness:
+Supporting both JSON and simpler key:value brain formats is good for compatibility but bad for long-term integrity.
+
+Better approach:
+Use one canonical in-memory structure only.
+Allow legacy importers, but always rewrite back into the canonical format.
+
+Why this is better:
+The system stops carrying dual-format complexity forever.
+
+4. Add agent-level dirty tracking
+
+Current structural weakness:
+A brain can be loaded, cleaned, normalized, and possibly rewritten even when nothing meaningful changed.
+
+Better approach:
+Each agent should track:
+- loaded hash
+- dirty flag
+- last persisted hash
+
+Only rewrite cards if the canonical content truly changed.
+
+Why this is better:
+Fewer card writes, less chance of churn, and lower hook cost.
+
+5. Add priority classes for thoughts
+
+Current structural weakness:
+When constrained, Inner Self has to cut or shuffle thoughts, which is clever but still coarse.
+
+Better approach:
+Tag thoughts by priority:
+- core identity
+- enduring goals
+- active conflict
+- temporary emotional state
+- stale residue
+
+Then allocate context by tier instead of random order alone.
+
+Why this is better:
+The most important thoughts survive first.
+
+6. Add thought expiration and aging rules
+
+Current structural weakness:
+Brain entries can accumulate indefinitely unless indirectly pruned.
+
+Better approach:
+Each thought should carry:
+- createdAt
+- lastReferencedAt
+- confidence or strength
+- decay class
+
+Then old low-value thoughts can be compressed, archived, or dropped automatically.
+
+Why this is better:
+Brains stay sharp instead of bloated.
+
+7. Distinguish belief, desire, memory, and intent explicitly
+
+Current structural weakness:
+A flat thought store is flexible, but it mixes concept types.
+
+Better approach:
+Use typed compartments:
+- beliefs
+- goals
+- fears
+- secrets
+- immediate intentions
+- active impressions
+
+Why this is better:
+The context renderer can become smarter and more predictable.
+
+8. Add a trigger confidence model instead of purely name-based activation
+
+Current structural weakness:
+Name mention is a useful trigger, but it can still fire on weak or irrelevant references.
+
+Better approach:
+Compute a small confidence score using:
+- direct name mention
+- mention frequency in recent turns
+- dialog focus
+- recency
+- POV relation
+- whether the agent acted recently
+
+Only activate a brain if the score passes a threshold.
+
+Why this is better:
+Fewer false activations.
+
+9. Add a cooldown after activation mechanism per agent
+
+Current structural weakness:
+An agent mentioned repeatedly can dominate activation cycles.
+
+Better approach:
+After activation, temporarily lower that agent's trigger weight unless strong new evidence appears.
+
+Why this is better:
+It reduces one-agent monopolies.
+
+10. Add stable label registries instead of relying so heavily on hidden labels in transit
+
+Current structural weakness:
+Zero-width labels are clever but fragile by nature.
+
+Better approach:
+Keep the authoritative mapping in state and treat the hidden labels as optional transport hints only.
+
+Why this is better:
+Invisible-text corruption matters less.
+
+11. Add a bounded repair journal for brain fixes
+
+Current structural weakness:
+Automatic fixes occur, but the user or maintainer may not know what changed.
+
+Better approach:
+When a brain is auto-repaired, write a compact repair note into diagnostics:
+- agent
+- issue type
+- old hash
+- new hash
+- actionCount
+
+Why this is better:
+Repairs become auditable.
+
+12. Add explicit policy for duplicate brain resolution
+
+Current structural weakness:
+Renaming duplicates is safer than trusting them, but it is still a partial resolution.
+
+Better approach:
+When duplicates are found, choose a policy:
+- keep newest valid
+- keep richest valid
+- keep first valid
+- quarantine the rest
+
+Why this is better:
+Duplicate resolution becomes deterministic.
+
+13. Add context rendering templates by model capability
+
+Current structural weakness:
+The script already adapts somewhat, but it could be more intentional.
+
+Better approach:
+Support render modes such as:
+- compact
+- balanced
+- verbose
+- weak-model-safe
+
+Why this is better:
+The same brain data can be rendered differently without changing core storage.
+
+14. Replace recursive config recovery with iterative recovery
+
+Current structural weakness:
+Recursive re-entry is compact, but repeated recovery recursion is harder to reason about.
+
+Better approach:
+Use one recovery loop with a bounded number of attempts.
+
+Why this is better:
+Cleaner control flow and easier debugging.
+
+15. Add an explicit agent registry card or registry block
+
+Current structural weakness:
+Agent membership is inferred mainly from config and scattered cards.
+
+Better approach:
+Keep one registry that lists:
+- internal id
+- normalized name
+- title
+- lastActive
+- status
+
+Why this is better:
+Agent discovery becomes faster and more stable.
+
+======================================================================
+PART 3: AUTO-CARDS - SPECIFIC IMPROVEMENTS
+======================================================================
+
+1. Split title detection into separate stages
+
+Current structural weakness:
+Title detection, filtering, memory lookback, and generation readiness are tightly linked.
+
+Better approach:
+Use four stages:
+- candidate extraction
+- candidate normalization
+- candidate scoring
+- generation decision
+
+Why this is better:
+Each stage can be tuned independently without destabilizing the others.
+
+2. Add a scored candidate model instead of mostly rule gating
+
+Current structural weakness:
+Rules and bans are strong, but they do not always rank candidates by importance.
+
+Better approach:
+Each title candidate gets a score based on:
+- repetition
+- recency
+- role in scene
+- whether it appears in dialog
+- whether it already has a card
+- whether it has pending memories
+- whether it is in banned or weak categories
+
+Why this is better:
+The generator becomes more selective and less reactive.
+
+3. Add explicit title lifecycle states
+
+Current structural weakness:
+A title can be candidate-like, active, compressed, pending, or banned, but the transitions are not as explicit as they could be.
+
+Better approach:
+Give titles defined states:
+- unseen
+- candidate
+- cooling
+- ready
+- generated
+- archived
+- banned
+
+Why this is better:
+The system gains a real finite-state machine.
+
+4. Add deferred work queues
+
+Current structural weakness:
+Generation, summarization, compression, and cleanup compete in the same turn budget.
+
+Better approach:
+Keep separate bounded queues:
+- cardCreationQueue
+- cardUpdateQueue
+- memoryCompressionQueue
+- cleanupQueue
+
+Only process as much as the current hook budget allows.
+
+Why this is better:
+Heavy work becomes schedulable.
+
+5. Add stronger duplicate-title canonicalization
+
+Current structural weakness:
+Title variation can still produce fragmentation:
+- singular vs plural
+- honorific variants
+- capitalization differences
+- article prefixes
+
+Better approach:
+Canonicalize titles more aggressively before they become entities.
+
+Why this is better:
+Fewer duplicate cards for the same thing.
+
+6. Add stronger provenance tracking for memories
+
+Current structural weakness:
+Memories are useful, but without provenance it is harder to decide what is stale or low-trust.
+
+Better approach:
+Store per memory fragment:
+- source actionCount
+- source window hash
+- originating title
+- confidence
+- compression generation
+
+Why this is better:
+Compression and deletion become more principled.
+
+7. Use a memory-bank compaction strategy based on value, not only size
+
+Current structural weakness:
+Compression is necessary, but size alone is a blunt measure.
+
+Better approach:
+Estimate memory value using:
+- recency
+- uniqueness
+- narrative importance
+- relation to current plot
+- prior reuse count
+
+Then compress low-value material first.
+
+Why this is better:
+Important memories survive longer.
+
+8. Add do not generate yet soft bans distinct from permanent bans
+
+Current structural weakness:
+Banned and not-ready are not the same thing.
+
+Better approach:
+Separate:
+- permanent bans
+- opening-only bans
+- cooldown bans
+- low-confidence delays
+- user-pinned exclusions
+
+Why this is better:
+The system gets finer control.
+
+9. Add stronger cross-turn consistency checks before writing a new card
+
+Current structural weakness:
+A title may look card-worthy in one turn but not after the next few lines.
+
+Better approach:
+Before creating a new card, require either:
+- a score above a high threshold now, or
+- repeated medium scores across multiple turns
+
+Why this is better:
+Card creation becomes more conservative.
+
+10. Add write batching for card updates
+
+Current structural weakness:
+Multiple small writes can happen to the same card over short windows.
+
+Better approach:
+Collect proposed changes and coalesce them before one write.
+
+Why this is better:
+Less churn and less card API pressure.
+
+11. Add stronger prompt insulation for generation and compression prompts
+
+Current structural weakness:
+Prompt cleanup exists, but generation prompts still depend heavily on upstream story cleanliness.
+
+Better approach:
+Build prompts from sanitized structured slices:
+- cleaned story excerpt
+- card title
+- prior card entry
+- selected memory fragments
+- clear delimiters
+
+Why this is better:
+The model sees less incidental contamination.
+
+12. Add a summary-of-summaries strategy for very long adventures
+
+Current structural weakness:
+Repeated compression can create layered noise over time.
+
+Better approach:
+Introduce hierarchy:
+- raw memories
+- compressed memory
+- super-summary for ancient history
+
+Why this is better:
+Long-running adventures remain manageable.
+
+13. Add a pressure-based scheduler
+
+Current structural weakness:
+Cooldowns help, but they do not react to actual load.
+
+Better approach:
+Increase or decrease work based on:
+- number of pending titles
+- current context budget stress
+- recent write volume
+- failure count
+- hook cost estimate
+
+Why this is better:
+The script becomes adaptive instead of purely timer-based.
+
+14. Add generation confidence required as a safety valve
+
+Current structural weakness:
+A title can still slip through on thin evidence.
+
+Better approach:
+Require a stronger threshold before generating brand-new cards than before updating existing cards.
+
+Why this is better:
+Updates are allowed to be cheaper than creation.
+
+15. Add stronger interoperability boundaries for LSIv2 and external APIs
+
+Current structural weakness:
+External control interfaces are powerful, which also makes them risky.
+
+Better approach:
+Separate external API calls into a hardened adapter that:
+- validates arguments
+- rate-limits calls
+- denies calls during certain phases
+- records diagnostics
+
+Why this is better:
+The scripting interface becomes safer under external use.
+
+======================================================================
+PART 4: TAS - SPECIFIC IMPROVEMENTS
+======================================================================
+
+1. Replace keyword-heavy parsing with a layered action parser
+
+Current structural weakness:
+Large stop-word lists and many detection passes can work, but they are brittle and hard to maintain.
+
+Better approach:
+Split action interpretation into:
+- normalization
+- action classification
+- target extraction
+- quantity extraction
+- confidence scoring
+- commit
+
+Why this is better:
+Parser behavior becomes easier to improve without causing regressions.
+
+2. Add confidence scores before stat mutation
+
+Current structural weakness:
+If a text pattern looks stat-related but is ambiguous, TAS may still be tempted to commit changes.
+
+Better approach:
+Every detected action should produce:
+- action type
+- target
+- amount
+- confidence
+
+Only high-confidence actions auto-commit.
+Medium-confidence actions could:
+- log only
+- ask for confirmation through message
+- postpone until output corroborates them
+
+Why this is better:
+Fewer false stat updates.
+
+3. Make state the canonical truth and story cards the persistence mirror, or vice versa, but choose one cleanly
+
+Current structural weakness:
+TAS continuously resyncs between state and story cards, which is practical but conceptually muddy.
+
+Better approach:
+Pick one as canonical:
+Option A:
+- state is truth
+- story cards are mirrors and user-edit surfaces
+Option B:
+- story cards are truth
+- state is a cache
+
+Then write explicit reconciliation rules.
+
+Why this is better:
+Desync bugs become easier to reason about.
+
+4. Add per-player stable ids
+
+Current structural weakness:
+Player identity can drift if based mainly on names.
+
+Better approach:
+Each player gets:
+- stable id
+- display name
+- aliases
+- status
+- canonical record key
+
+Why this is better:
+Multiplayer logic gets much safer.
+
+5. Separate derived stats from base stats
+
+Current structural weakness:
+Stats, modifiers, talents, and skills influence each other, which can create repeated recalculation or mutation complexity.
+
+Better approach:
+Store:
+- base stats
+- temporary modifiers
+- derived stats
+- computed snapshots
+
+Never persist derived values unless needed for display.
+
+Why this is better:
+The rules engine becomes cleaner.
+
+6. Move from immediate mutation to rule evaluation plus commit
+
+Current structural weakness:
+If multiple detectors mutate the same player in one pass, order becomes very important.
+
+Better approach:
+Collect proposed stat deltas first, then resolve:
+- stacking order
+- caps
+- conflicts
+- exclusions
+- deaths
+- warnings
+
+Then commit once.
+
+Why this is better:
+Order bugs are reduced.
+
+7. Add an invariant checker after every commit
+
+Current structural weakness:
+Stats can silently drift into impossible states.
+
+Better approach:
+After every commit, verify invariants such as:
+- HP between 0 and max HP
+- energy between 0 and max energy
+- no negative inventory quantities
+- no duplicate talent names
+- no impossible level values
+
+If invalid:
+- repair
+- log
+- quarantine the bad delta
+
+Why this is better:
+Bad updates are caught immediately.
+
+8. Add a rule engine for stat changes instead of scattered update helpers
+
+Current structural weakness:
+A large web of action-specific functions can become inconsistent.
+
+Better approach:
+Represent rule effects in a normalized form such as:
+- add
+- multiply
+- cap
+- clamp
+- consume
+- grant
+- remove
+- unlock
+
+Why this is better:
+More mechanics can be added without a proportional explosion of custom code.
+
+9. Add source tagging for every stat change
+
+Current structural weakness:
+A log is good, but each change should also know where it came from.
+
+Better approach:
+Each delta should include:
+- source hook
+- actionCount
+- triggering text hash
+- parser rule id
+- player id
+
+Why this is better:
+Audit trails become actionable.
+
+10. Add a formal inventory item schema
+
+Current structural weakness:
+Item handling can become messy if item records are just names and quantities.
+
+Better approach:
+Each inventory item should have:
+- id
+- display name
+- quantity
+- category
+- durability if relevant
+- tags
+- stackable flag
+
+Why this is better:
+Inventory logic becomes less string-dependent.
+
+11. Add stronger anti-duplication logic for rewards and upgrades
+
+Current structural weakness:
+Level-up and talent systems are especially vulnerable to duplicate grants.
+
+Better approach:
+Use idempotency keys for:
+- level-up rewards
+- skill unlocks
+- talent unlocks
+- quest rewards
+- death notices
+
+Why this is better:
+Repeat processing becomes much safer.
+
+12. Add per-mechanic feature toggles
+
+Current structural weakness:
+Sometimes a user may want stats but not hunger, or talents but not auto-warnings.
+
+Better approach:
+Expose toggles for:
+- auto combat parsing
+- auto inventory parsing
+- auto hunger
+- auto energy
+- auto warnings
+- auto level-up rewards
+
+Why this is better:
+Users can reduce complexity without uninstalling TAS.
+
+13. Create a compendium card instead of many loosely related cards where possible
+
+Current structural weakness:
+Many separate cards improve separation, but they also increase scan and synchronization overhead.
+
+Better approach:
+Consider either:
+- one card per player plus one config card, or
+- one compact index card plus separate per-player records
+
+Why this is better:
+Card management becomes more scalable.
+
+14. Add a damage and healing dispute resolver
+
+Current structural weakness:
+Input and Output may disagree about what happened in combat.
+
+Better approach:
+If Input predicted damage but Output contradicts it:
+- do not commit immediately
+- mark pending resolution
+- resolve on the next corroborating turn or stronger evidence
+
+Why this is better:
+Combat math becomes less fragile.
+
+15. Add a scenario-mode profile system
+
+Current structural weakness:
+Different scenarios want different parser aggressiveness.
+
+Better approach:
+Support profiles such as:
+- gritty RPG
+- lightweight adventure
+- multiplayer co-op
+- crafting-heavy
+- combat-heavy
+
+Why this is better:
+The same engine can be tuned cleanly instead of by scattered settings.
+
+======================================================================
+PART 5: THE MOST IMPORTANT IMPROVEMENTS IF ONLY A FEW WERE CHOSEN
+======================================================================
+
+If only a small number of changes could be made, these would produce the biggest structural gains:
+
+1. Add schema versioning and migrations
+This improves long-term safety immediately.
+
+2. Add a central story-card transaction layer
+This reduces a huge class of fragile card operations.
+
+3. Add a deterministic event pipeline
+This improves replay safety and debugging across all three scripts.
+
+4. Add a single context budget allocator
+This directly addresses AI Dungeon's biggest hard constraint.
+
+5. Add idempotency keys for all major side effects
+This reduces duplicate writes, duplicate grants, and retry-related drift.
+
+6. Build modular source with bundled deployment
+This does not change runtime behavior, but it makes future maintenance far safer.
+
+======================================================================
+PART 6: WHAT TO AVOID DURING IMPROVEMENT
+======================================================================
+
+These changes would be tempting but risky inside AI Dungeon:
+
+1. Do not depend on browser-only or Node-only APIs
+AI Dungeon scripting is not a normal browser or Node runtime.
+
+2. Do not introduce large generic libraries
+Hook time and memory are limited.
+
+3. Do not increase context injection indiscriminately
+More hidden context is not automatically better.
+
+4. Do not rely on visible story text as the only source of truth
+Retries, rewrites, and AI variation make that fragile.
+
+5. Do not let repair code perform huge scans every turn
+Repair should be targeted or infrequent.
+
+6. Do not let external integration mutate core state without validation
+That creates hard-to-debug corruption.
+
+======================================================================
+PART 7: THE BOTTOM LINE
+======================================================================
+
+All three scripts are already doing something difficult inside a narrow sandbox:
+they are trying to maintain hidden structured systems on top of AI-generated text.
+
+The biggest path forward is not more features.
+It is stronger internal architecture.
+
+The highest-value improvements are:
+- explicit schema migration
+- deterministic event handling
+- strict card transaction wrappers
+- centralized context budgeting
+- idempotent side effects
+- better modularity
+- stronger typed internal records
+
+Those changes would not fight AI Dungeon.
+They would make these scripts fit AI Dungeon's constraints more safely and more predictably.
+
+End of document.

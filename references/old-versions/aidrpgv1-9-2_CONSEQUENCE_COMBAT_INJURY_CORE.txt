@@ -1,0 +1,1023 @@
+/*
+AIDRPG v1.9.2 — Consequence / Combat / Injury Core
+Library script. Use tiny hook wrappers:
+Input:   const modifier = (text) => globalThis.AIDRPG.onInput(text); return modifier(text);
+Context: const modifier = (text) => globalThis.AIDRPG.onContext(text); return modifier(text);
+Output:  const modifier = (text) => globalThis.AIDRPG.onOutput(text); return modifier(text);
+*/
+(() => {
+  "use strict";
+  const g = globalThis;
+
+  const AIDRPG = {
+    VERSION: "1.9.2-consequence-combat-injury-core",
+    SCHEMA_VERSION: 192,
+    BUILD_STAGE: "AIDRPG-v1.9.2-consequence-combat-injury-core",
+
+    // ============================================================
+    // Runtime shell
+    // ============================================================
+    onInput(text) {
+      const root = this.Core.init();
+      const raw = this.U.norm(text);
+      this.Turn.begin("input", raw, root);
+      const cmd = this.Commands.handle(raw, root);
+      if (cmd) {
+        root.pending.commandResponse = cmd;
+        return { text: " " };
+      }
+      const real = this.InputIntent.isRealGameplayInput(raw);
+      if (real) {
+        if (root.meta.gameplayStarted !== true) {
+          root.meta.gameplayStarted = true;
+          root.meta.firstRealInputTurn = root.meta.turn;
+        }
+        root.pending.inputText = raw;
+        root.pending.intent = this.InputIntent.parse(raw, root);
+      } else {
+        root.pending.inputText = raw;
+        root.pending.intent = { kind: "continue", raw };
+      }
+      this.Core.finish(root);
+      return { text: raw || " " };
+    },
+
+    onContext(text) {
+      const root = this.Core.init();
+      this.Turn.begin("context", text, root);
+      this.ManualOverride.ingest(root);
+      const packet = this.Context.build(root, text);
+      const out = packet ? String(text || "").trimEnd() + "\n\n" + packet + "\n" : String(text || " ");
+      this.Core.finish(root);
+      return { text: out || " " };
+    },
+
+    onOutput(text) {
+      const root = this.Core.init();
+      this.Turn.begin("output", text, root);
+      let raw = this.OutputScrubber.cleanVisible(text);
+      if (root.pending.commandResponse) {
+        const cmd = root.pending.commandResponse;
+        root.pending.commandResponse = "";
+        this.CardSync.process(root);
+        this.Core.finish(root);
+        return { text: cmd || " " };
+      }
+      const events = this.EventPipeline.parse(raw, root);
+      const accepted = this.CanonValidator.validate(events, root);
+      this.EventReducer.commit(accepted, root);
+      this.Cleanup.run(root);
+      this.CardSync.process(root);
+      this.Core.finish(root);
+      return { text: raw || " " };
+    },
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+    U: {
+      norm(v) { return String(v == null ? "" : v).replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\r/g, "").replace(/[ \t]+/g, " ").trim(); },
+      key(v) { return this.norm(v).toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); },
+      title(v) { let t = this.norm(v).replace(/^["'“”`]+|["'“”`]+$/g, "").replace(/[.!?;:,]+$/g, "").trim(); return t.replace(/\b\w/g, c => c.toUpperCase()); },
+      clamp(n, min, max) { n = Number(n); if (!Number.isFinite(n)) n = min; return Math.max(min, Math.min(max, n)); },
+      pushUnique(arr, v, cap) { if (!Array.isArray(arr)) return; v = this.norm(v); if (!v) return; if (!arr.includes(v)) arr.push(v); while (arr.length > (cap || 12)) arr.shift(); },
+      words(v) { return this.norm(v).split(/\s+/).filter(Boolean); },
+      hasAny(text, re) { return re.test(String(text || "")); },
+      nowTurn(root) { return root && root.meta ? Number(root.meta.turn || 0) : 0; },
+      hash(v) { let s = String(v == null ? "" : v); let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); },
+      list(v) { const t = this.norm(v); if (!t || /^(?:none|empty|healthy)$/i.test(t)) return []; return t.split(/[,;|]+/).map(x => this.norm(x).replace(/^[-•]\s*/, "")).filter(Boolean); },
+      safe(fn, fallback) { try { return fn(); } catch (_e) { return fallback; } },
+      getStoryCards() { try { return Array.isArray(storyCards) ? storyCards : []; } catch (_e) { return []; } },
+      callRemove(index) { try { if (typeof removeStoryCard === "function") { removeStoryCard(index); return true; } } catch (_e) {} return false; },
+      callAdd(keys, entry, type) { try { if (typeof addStoryCard === "function") return addStoryCard(keys, entry, type || "AIDRPG"); } catch (_e) {} return false; },
+      callUpdate(index, keys, entry, type) { try { if (typeof updateStoryCard === "function") { updateStoryCard(index, keys, entry, type || "AIDRPG"); return true; } } catch (_e) {} return false; }
+    },
+
+    // ============================================================
+    // State schema and migration
+    // ============================================================
+    Core: {
+      init() {
+        if (typeof state !== "object" || state === null || Array.isArray(state)) g.state = {};
+        const root = state.aidrpg = state.aidrpg && typeof state.aidrpg === "object" && !Array.isArray(state.aidrpg) ? state.aidrpg : {};
+        root.version = AIDRPG.VERSION;
+        root.schemaVersion = AIDRPG.SCHEMA_VERSION;
+        root.buildStage = AIDRPG.BUILD_STAGE;
+        this.ensure(root);
+        this.migrate(root);
+        return root;
+      },
+      ensure(root) {
+        root.meta = root.meta || {};
+        root.meta.turn = Number(root.meta.turn || 0);
+        root.meta.gameplayStarted = root.meta.gameplayStarted === true;
+        root.meta.firstRealInputTurn = root.meta.firstRealInputTurn || 0;
+        root.pending = root.pending || {};
+        root.diagnostics = root.diagnostics || { logs: [], lastEvents: [] };
+        root.op = root.op || { ledger: {}, order: [], skipped: [] };
+        root.player = root.player || {};
+        const p = root.player;
+        p.name = p.name || "Zack";
+        p.age = Number(p.age || 24);
+        p.species = p.species || p.race || "human";
+        p.race = p.species;
+        p.location = p.location || "Gravewatch";
+        p.level = Number(p.level || 1);
+        p.xp = Number(p.xp || 0);
+        p.xpToNext = Number(p.xpToNext || 50);
+        p.maxHp = Number(p.maxHp || 100); p.hp = AIDRPG.U.clamp(p.hp == null ? p.maxHp : p.hp, 0, p.maxHp);
+        p.maxMp = Number(p.maxMp || 20); p.mp = AIDRPG.U.clamp(p.mp == null ? p.maxMp : p.mp, 0, p.maxMp);
+        p.maxEp = Number(p.maxEp || 50); p.ep = AIDRPG.U.clamp(p.ep == null ? p.maxEp : p.ep, 0, p.maxEp);
+        p.stats = p.stats || { ATK: 5, DEF: 5, SPD: 5, INT: 5, LCK: 5 };
+        ["ATK","DEF","SPD","INT","LCK"].forEach(k => { p.stats[k] = Number(p.stats[k] || 5); });
+        p.statXp = p.statXp || { ATK: 0, DEF: 0, SPD: 0, INT: 0, LCK: 0 };
+        ["ATK","DEF","SPD","INT","LCK"].forEach(k => { p.statXp[k] = Number(p.statXp[k] || 0); });
+        p.conditions = Array.isArray(p.conditions) ? p.conditions : [];
+        p.injuries = Array.isArray(p.injuries) ? p.injuries : [];
+        p.titles = Array.isArray(p.titles) ? p.titles : [];
+        p.appearance = p.appearance || "Curly blonde hair, blue eyes, pale and thin but not skinny";
+        root.progression = root.progression || { recent: [], domains: {}, abilityXp: {} };
+        root.abilities = root.abilities || { candidates: {}, byId: {}, order: [] };
+        root.inventory = root.inventory || { items: {}, order: [], coins: { g: 0, s: 0, c: 0 } };
+        root.actors = root.actors || { byKey: {}, order: [] };
+        root.places = root.places || { byKey: {}, order: [] };
+        root.quests = root.quests || { active: {}, pending: {}, completed: {}, order: [] };
+        root.domain = root.domain || { problems: [], projects: [], contracts: [], labor: [] };
+        root.reputation = root.reputation || { public: [], local: {} };
+        root.body = root.body || { recent: [] };
+        root.combat = root.combat || { active: {}, groups: {}, recent: [], hits: 0, kills: 0, survived: 0 };
+        root.time = root.time || { day: 1, phase: "unknown", routes: {} };
+        root.cards = root.cards || { protectedIndex: {}, generatedIndex: {}, lastSyncTurn: 0 };
+        root.settings = root.settings || { cardWriting: true, contextMode: "High", generatedCards: true, contextBudget: 2200 };
+        if (root.settings.contextBudget == null) root.settings.contextBudget = root.settings.contextMode === "Low" ? 1200 : root.settings.contextMode === "Normal" ? 1700 : 2200;
+      },
+      migrate(root) {
+        // Convert common older/polluted fields into the clean shape without trusting cards as canon.
+        if (root.player && root.player.resources) {
+          const r = root.player.resources;
+          if (r.hp != null) root.player.hp = Number(r.hp);
+          if (r.mp != null) root.player.mp = Number(r.mp);
+          if (r.ep != null) root.player.ep = Number(r.ep);
+        }
+        root.schemaVersion = AIDRPG.SCHEMA_VERSION;
+      },
+      finish(root) {
+        root.version = AIDRPG.VERSION;
+        root.schemaVersion = AIDRPG.SCHEMA_VERSION;
+        root.buildStage = AIDRPG.BUILD_STAGE;
+        // caps
+        const cap = (arr, n) => { if (Array.isArray(arr)) while (arr.length > n) arr.shift(); };
+        cap(root.diagnostics.logs, 80); cap(root.diagnostics.lastEvents, 40); cap(root.progression.recent, 40); cap(root.op.order, 220); cap(root.op.skipped, 40);
+        if (root.op && root.op.ledger && root.op.order) { while (root.op.order.length > 220) { const old = root.op.order.shift(); delete root.op.ledger[old]; } }
+      }
+    },
+
+    Turn: {
+      begin(hook, raw, root) {
+        if (hook === "input") root.meta.turn = Number(root.meta.turn || 0) + 1;
+        root.meta.hook = hook;
+        root.meta.lastRaw = AIDRPG.U.norm(raw).slice(0, 300);
+        root.meta.lastRawHash = AIDRPG.U.hash(root.meta.lastRaw);
+        if (hook === "output") root.meta.currentOutputHash = AIDRPG.U.hash(raw);
+      }
+    },
+
+    // ============================================================
+    // Commands
+    // ============================================================
+    Commands: {
+      handle(raw, root) {
+        if (!/^\s*\//.test(raw || "")) return "";
+        const cmd = AIDRPG.U.norm(raw).toLowerCase();
+        if (cmd.startsWith("/help")) return AIDRPG.Serializers.help(root);
+        if (cmd.startsWith("/sheet")) return AIDRPG.Serializers.player(root);
+        if (cmd.startsWith("/inventory")) return AIDRPG.Serializers.inventory(root);
+        if (cmd.startsWith("/questlog")) return AIDRPG.Serializers.quests(root);
+        if (cmd.startsWith("/abilityaudit") || cmd.startsWith("/abilities")) return AIDRPG.Serializers.abilities(root, true);
+        if (cmd.startsWith("/progression") || cmd.startsWith("/xp")) return AIDRPG.Serializers.progression(root);
+        if (cmd.startsWith("/combat") || cmd.startsWith("/body") || cmd.startsWith("/status")) return AIDRPG.Serializers.combat(root);
+        if (cmd.startsWith("/time")) return AIDRPG.Serializers.time(root);
+        if (cmd.startsWith("/stateaudit")) return AIDRPG.Release.stateAudit(root);
+        if (cmd.startsWith("/debuglast")) return AIDRPG.Release.debugLast(root);
+        if (cmd.startsWith("/cleanup")) { AIDRPG.Cleanup.run(root); AIDRPG.CardSync.process(root, true); return "[AIDRPG /cleanup]\nCleanup pass complete. Story Cards remain mirrors only.\n"; }
+        if (cmd.startsWith("/cardaudit")) return AIDRPG.CardSync.audit(root);
+        if (cmd.startsWith("/releasecheck") || cmd.startsWith("/audit")) return AIDRPG.Release.audit(root);
+        if (cmd.startsWith("/cardsync")) { AIDRPG.CardSync.process(root, true); return AIDRPG.CardSync.audit(root); }
+        return "[AIDRPG] Unknown command. Try /help, /sheet, /inventory, /questlog, /abilityaudit, /progression, /combat, /time, /cardaudit, /stateaudit, /debuglast, /releasecheck.";
+      }
+    },
+
+    // ============================================================
+    // Input intent
+    // ============================================================
+    InputIntent: {
+      isRealGameplayInput(raw) {
+        const t = AIDRPG.U.norm(raw).toLowerCase();
+        if (!t || t.startsWith("/")) return false;
+        if (/^(?:continue|go on|next|keep going|proceed|\.)$/.test(t)) return false;
+        return true;
+      },
+      parse(raw) {
+        const l = AIDRPG.U.norm(raw).toLowerCase();
+        const intent = { kind: "general", raw, wants: [] };
+        if (/\b(?:practice|train|swing|work out|exercise|drill|spar)\b/.test(l)) intent.wants.push("training");
+        if (/\b(?:mana|mp|magic|channel|flow|spell|slash|ward|sense energy|feel energy)\b/.test(l)) intent.wants.push("mana");
+        if (/\b(?:pick up|take|grab|retrieve|pocket|collect)\b/.test(l)) intent.wants.push("item_gain");
+        if (/\b(?:accept|agree|take on|undertake)\b.*\b(?:quest|job|task|mission|contract|bounty|assignment)\b/.test(l)) intent.wants.push("quest_accept");
+        if (/\b(?:enter|step inside|go into|arrive at|reach)\b/.test(l)) intent.wants.push("scene_entry");
+        if (/\b(?:talk|speak|ask|tell|greet)\b/.test(l)) intent.wants.push("social");
+        if (intent.wants.includes("training")) intent.kind = "training";
+        else if (intent.wants.includes("item_gain")) intent.kind = "item";
+        else if (intent.wants.includes("quest_accept")) intent.kind = "quest";
+        return intent;
+      }
+    },
+
+    // ============================================================
+    // Output scrubber
+    // ============================================================
+    OutputScrubber: {
+      cleanVisible(text) {
+        let t = String(text == null ? "" : text);
+        t = t.replace(/\[Author'?s note:[\s\S]*?\]/gi, "");
+        t = t.replace(/^\s*(?:Current truth|AIDRPG state|Mechanics|Progression guidance|Combat matrix|Domain:|Continuity:)\s*:.*$/gmi, "");
+        t = t.replace(/\n{3,}/g, "\n\n").trim();
+        return t || " ";
+      },
+      unquoted(text) { return String(text || "").replace(/["“][\s\S]*?["”]/g, " ").replace(/'[^']{1,160}'/g, " "); }
+    },
+
+    // ============================================================
+    // Event pipeline: parse only, never mutate
+    // ============================================================
+    EventPipeline: {
+      parse(output, root) {
+        const input = root.pending.inputText || "";
+        const intent = root.pending.intent || {};
+        const raw = AIDRPG.U.norm(output);
+        const unq = AIDRPG.OutputScrubber.unquoted(raw);
+        const events = [];
+        events.push(...this.training(input, raw, unq, intent, root));
+        events.push(...this.body(input, raw, unq, intent, root));
+        events.push(...this.combat(input, raw, unq, intent, root));
+        events.push(...this.items(input, raw, unq, intent, root));
+        events.push(...this.abilities(input, raw, unq, intent, root));
+        events.push(...this.scene(input, raw, unq, intent, root));
+        events.push(...this.actors(raw, unq, root));
+        events.push(...this.places(input, raw, unq, root));
+        events.push(...this.quests(input, raw, unq, root));
+        events.push(...this.routes(raw, unq));
+        root.diagnostics.lastParsedEventCount = events.length;
+        return events;
+      },
+      training(input, raw, unq, intent) {
+        const text = (input + " " + raw).toLowerCase();
+        const out = [];
+        if (/\b(?:practice|train|training|swing|swings|drill|repetition|for hours|keep at it|again and again)\b/.test(text)) {
+          const intense = /\b(?:for hours|until|exhaust|exhausted|ragged|trembling|push past|can't|cannot continue)\b/.test(text);
+          out.push({ type: "training.practice", intensity: intense ? 3 : 1, text: raw });
+          if (/\b(?:sword|stick|slash|swing|chop|thrust|weapon)\b/.test(text)) out.push({ type: "training.stat", stat: "ATK", amount: intense ? 3 : 1, reason: "weapon practice" });
+          if (/\b(?:stance|footwork|balance|dodge|positioning)\b/.test(text)) out.push({ type: "training.stat", stat: "SPD", amount: 1, reason: "movement practice" });
+        }
+        if (/\b(?:mana|mp|magic|channel|flow|focus inward|feel (?:the )?(?:mana|energy)|internal pool|reservoir)\b/i.test(input + " " + raw)) {
+          out.push({ type: "training.mana", intensity: /\b(?:for hours|head throbs|focus wavers|push|channel|direct|flow)\b/i.test(input + " " + raw) ? 2 : 1, text: raw });
+          out.push({ type: "training.stat", stat: "INT", amount: 1, reason: "mana study" });
+        }
+        return out;
+      },
+      body(input, raw, unq, intent, root) {
+        const out = [];
+        const text = (input + "\n" + unq);
+        const l = text.toLowerCase();
+        const played = root && root.meta && root.meta.gameplayStarted === true;
+        if (!played) return out;
+        const severity = (base) => {
+          let s = base || 1;
+          if (/\b(?:for hours|until your|exhausted|exhaustion|critically low|ragged|trembling|body threatens to give out|far past|collapse|collapsing)\b/i.test(text)) s += 2;
+          if (/\b(?:barely|slightly|minor|shallow|few beads|smarts)\b/i.test(text)) s = Math.max(1, s - 1);
+          return AIDRPG.U.clamp(s, 1, 5);
+        };
+        if (/\b(?:exhausted|exhaustion|fatigue|fatigued|tired|weary|ragged gasps|breath comes in ragged|muscles scream|shoulders burn|arms? (?:are|feel) (?:leaden|heavy)|trembling|stamina|ep drain|ep draining|push(?:ing)? (?:yourself )?past|body threatens to give out|critically low|wet rope)\b/i.test(text)) {
+          out.push({ type: "body.fatigue", severity: severity(1), source: raw });
+        }
+        if (/\b(?:head throbs|mind gives|mental strain|focus wavers|focus fraying|mana strain|mp drain|mp draining|overchannel|channel(?:ing)? (?:the )?mana|direct(?:ing)? (?:the )?(?:mana|mp)|focus inward|feel (?:the )?(?:mana|energy)|internal pool|reservoir of \d+\s*MP|quiet hum of mana)\b/i.test(text)) {
+          out.push({ type: "body.mana_strain", severity: severity(1), source: raw });
+        }
+        if (/\b(?:raw palm|scraped palm|shallow scrape|skin is raw|few beads of blood|few thin lines of blood|blister|bruised|bruise|small cut|minor cut|stings? where|rough bark tearing at your palm)\b/i.test(text)) {
+          let injury = "minor strain";
+          if (/\bpalm|hand|bark\b/i.test(text)) injury = "raw palm";
+          else if (/\bbruise|bruised\b/i.test(text)) injury = "bruise";
+          else if (/\bcut|blood\b/i.test(text)) injury = "minor cut";
+          out.push({ type: "body.minor_injury", injury, hpLoss: /\b(?:blood|cut)\b/i.test(text) ? 1 : 0, severity: 1, source: raw });
+        }
+        if (/\b(?:fire clears|flames? (?:die|dies|fade|go out)|burn clears|no longer burning|poison passes|bleeding stops|blood stops|stun wears off|shock fades)\b/i.test(text)) {
+          if (/\b(?:fire|flame|burn)\b/i.test(text)) out.push({ type: "body.condition_clear", condition: "burned", source: raw });
+          if (/\bpoison\b/i.test(text)) out.push({ type: "body.condition_clear", condition: "poisoned", source: raw });
+          if (/\bbleed|blood\b/i.test(text)) out.push({ type: "body.condition_clear", condition: "bleeding", source: raw });
+          if (/\bstun|shock\b/i.test(text)) out.push({ type: "body.condition_clear", condition: "shocked", source: raw });
+        }
+        const realBurn = /\b(?:on fire|flames? lick|flames? scorch|burned by|burns your skin|burns your arm|burns your leg|burns your hand|scorches your skin|scorches your arm|seared flesh|scorched skin)\b/i.test(text);
+        if (realBurn) out.push({ type: "body.condition", condition: "burned", severity: severity(2), source: raw });
+        if (/\b(?:poisoned|venom|toxin|poison courses|venom spreads)\b/i.test(text)) out.push({ type: "body.condition", condition: "poisoned", severity: severity(2), source: raw });
+        if (/\b(?:bleeding|blood runs|blood pours|blood streams)\b/i.test(text)) out.push({ type: "body.condition", condition: "bleeding", severity: severity(2), source: raw });
+        if (/\b(?:stunned|dazed|shocked|numb)\b/i.test(text)) out.push({ type: "body.condition", condition: /\bnumb\b/i.test(text) ? "numb" : /\bstunned|dazed\b/i.test(text) ? "stunned" : "shocked", severity: severity(1), source: raw });
+        if (/\b(?:bites? (?:your|into)|slashes? (?:your|across)|stabs? (?:you|your)|pierces? (?:you|your)|arrow (?:hits|pierces)|club (?:hits|smashes)|smashed|crushed|deep cut|gash|blood runs|blood pours|bone cracks|fracture|broken bone|wound(?:s|ed)?|burns your skin|burns your arm|burns your leg|burns your hand|scorches your skin|scorches your arm|seared flesh)\b/i.test(text)) {
+          let damageType = "blunt";
+          if (/\bbite|fang\b/i.test(text)) damageType = "bite";
+          else if (/\bslash|cut|gash\b/i.test(text)) damageType = "cut";
+          else if (/\bstab|pierce|arrow\b/i.test(text)) damageType = "pierce";
+          else if (/\bburn|fire|flame|sear|scorch\b/i.test(text)) damageType = "burn";
+          let sev = severity(/\b(?:bone|fracture|broken|blood pours|crushed|deep|massive|critical)\b/i.test(text) ? 4 : /\b(?:bite|slash|stab|pierce|gash|blood runs|wound)\b/i.test(text) ? 3 : 2);
+          out.push({ type: "body.damage", damageType, severity: sev, injury: damageType + " wound", source: raw });
+        }
+        return out;
+      },
+      combat(input, raw, unq, intent, root) {
+        const out = [];
+        const text = unq;
+        if (!(root && root.meta && root.meta.gameplayStarted === true)) return out;
+        let m;
+        const group = text.match(/\b(\d{1,3})\s+([a-z][a-z -]{2,24}?)s?\s+(?:attack|charge|rush|surround|come at you)\b/i);
+        const killedGroup = text.match(/\b(\d{1,3})\s+([a-z][a-z -]{2,24}?)s?\s+(?:die|are killed|fall dead|fall)\b/i);
+        if (group) out.push({ type: "combat.group", target: group[2], total: Number(group[1]), killed: killedGroup ? Number(killedGroup[1]) : 0, source: raw });
+        if ((m = text.match(/\byou\s+(?:hit|strike|stab|slash|wound|cut|land (?:a )?blow on|connect with)\s+(?:the\s+)?([a-z][a-z -]{2,30})\b/i))) out.push({ type: "combat.hit", target: m[1], source: raw });
+        if ((m = text.match(/\byou\s+(?:kill|slay|finish off|cut down|defeat)\s+(?:the\s+)?([a-z][a-z -]{2,30})\b/i))) out.push({ type: "combat.kill", target: m[1], source: raw });
+        if ((m = text.match(/\b(?:the\s+)?([a-z][a-z -]{2,30})\s+(?:dies|falls dead|collapses dead|is dead)\b/i))) out.push({ type: "combat.kill", target: m[1], source: raw });
+        if ((m = text.match(/\byou\s+(?:survive|survived|escape|escaped|outlast|drive off|drove off)\s+(?:the\s+)?([a-z][a-z -]{2,30})\b/i))) out.push({ type: "combat.survive", target: m[1], source: raw });
+        return out;
+      },
+      items(input, raw, unq) {
+        const out = [];
+        const denied = /\b(?:do not|don't|cannot|can't|refuse|almost|try to|tries to|fails to|keeps the|but keeps|not yours|stops you)\b/i.test(raw);
+        if (denied) return out;
+        const combined = input + "\n" + unq;
+        const patterns = [
+          /\b(?:pick up|picked up|take|took|grab|grabbed|retrieve|retrieved|pocket|pocketed|collect|collected)\s+(?:a|an|the|your)?\s*([a-z][a-z' -]{1,50}?)(?:\s+(?:from|near|on|in|and|with|before|while)\b|[.!?]|$)/i,
+          /\b(?:hands you|gives you|passes you|places|puts)\s+(?:a|an|the)?\s*([a-z][a-z' -]{1,50}?)(?:\s+(?:in your hand|into your hand|to you)|[.!?]|$)/i,
+          /\b(?:places|puts)\s+(?:a|an|the)?\s*([a-z][a-z' -]{1,50}?)\s+in your hand/i
+        ];
+        for (let i = 0; i < patterns.length; i++) {
+          const m = combined.match(patterns[i]);
+          if (m) { out.push({ type: "item.gain", name: m[1], source: raw }); break; }
+        }
+        return out;
+      },
+      abilities(input, raw) {
+        const out = [];
+        const text = input + "\n" + raw;
+        const names = [];
+        const manaSlash = /\bMana Slash\b/i.test(text);
+        if (manaSlash) names.push("Mana Slash");
+        const ward = text.match(/\b([A-Z][A-Za-z]+\s+(?:Ward|Slash|Strike|Bolt|Sense|Sight|Step|Stance|Form|Art|Barrier|Shield|Control|Pulse))\b/);
+        if (ward && !names.includes(ward[1])) names.push(ward[1]);
+        const hardDeny = /\b(?:pretend|joke|not real|imaginary|no ability is gained|no ability gained|only mimicking|you were only mimicking)\b/i.test(text);
+        const softFail = /\b(?:nothing happens|no visible effect|fails|fail|cannot shape|can't shape|do not know how|don't know how|lack technique|no surge|no glow)\b/i.test(text);
+        const breakthrough = /\b(?:something happens|it works|works once|flickers to life|surge|arc of mana|mana cuts|usable ability|successfully use|manage to use)\b/i.test(text);
+        names.forEach(name => out.push({ type: "ability.attempt", name, hardDeny, softFail, breakthrough, source: raw }));
+        if (/\b(?:feel it|feel the mana|faint pulse|mana is there|quiet hum|internal pool|reservoir|presence)\b/i.test(raw)) out.push({ type: "ability.sense", name: "Mana Awareness", source: raw });
+        return out;
+      },
+      scene(input, raw, unq) {
+        const out = [];
+        const denied = /\b(?:try to enter|tries to enter|cannot enter|can't enter|blocked|barred|locked|stopped|turned away|guard stops|guards stop|refused entry)\b/i.test(input + " " + raw);
+        const m = (input + "\n" + raw).match(/\b(?:you\s+)?(?:enter|step inside|go into|arrive at|reach|pass through (?:the )?doors into)\s+(?:the\s+)?([A-Z][A-Za-z' -]{2,60})(?:[.!?]|$)/i);
+        if (m) out.push({ type: "scene.entry", place: m[1], denied, source: raw });
+        return out;
+      },
+      actors(raw, unq) {
+        const out = [];
+        const patterns = [
+          /\b([A-Z][a-z]{2,20})\s+the\s+([a-z][a-z -]{2,30})\b/g,
+          /\b(Elder|Captain|Sergeant|Lady|Lord|Master|Mistress|Brother|Sister)\s+([A-Z][a-z]{2,20})\b/g,
+          /\b([A-Z][a-z]{2,20})\s+(?:says|asks|answers|replies|shouts|whispers|nods|attacks|joins|hands|gives)\b/g
+        ];
+        for (const re of patterns) {
+          let m; while ((m = re.exec(unq))) {
+            const name = m[2] && /^(?:Elder|Captain|Sergeant|Lady|Lord|Master|Mistress|Brother|Sister)$/i.test(m[1]) ? (m[1] + " " + m[2]) : m[1];
+            const role = m[2] && name === m[1] ? m[2] : (/^(?:Elder|Captain|Sergeant|Lady|Lord|Master|Mistress|Brother|Sister)/.test(name) ? m[1].toLowerCase() : "");
+            out.push({ type: "actor.mention", name, role, source: raw, strong: /\b(?:says|asks|answers|replies|attacks|joins|hands|gives)\b/i.test(m[0]) });
+          }
+        }
+        return out;
+      },
+      places(input, raw, unq) {
+        const out = [];
+        const patterns = [
+          /\b(?:at|in|inside|enter|entered|arrive at|reach|near)\s+(?:the\s+)?([A-Z][A-Za-z' -]{2,50})\s+(inn|tavern|shop|smithy|temple|chapel|palace|guild hall|hall|gate|watch|keep|tower|market)\b/gi,
+          /\b(The\s+[A-Z][A-Za-z' -]{2,40})\s+(inn|tavern|shop|smithy|temple|chapel|palace|guild hall|hall|gate|watch|keep|tower|market)\b/g,
+          /\b(Gravewatch|Sun Palace|Moon Palace|South Gate|The Sturdy Oak)\b/g
+        ];
+        for (const re of patterns) {
+          let m; while ((m = re.exec(input + "\n" + unq))) {
+            const name = m[1]; const kind = m[2] || "place";
+            out.push({ type: "place.mention", name, kind, source: raw, visited: /\b(?:enter|entered|inside|arrive|reach|at)\b/i.test(m[0]) });
+          }
+        }
+        return out;
+      },
+      quests(input, raw) {
+        const out = [];
+        const text = input + "\n" + raw;
+        const statusOnly = /^(?:quest|job|task|mission|contract|bounty)?\s*(?:accepted|is accepted|becomes active|active|signed|confirmed|agreed|taken|started)[.! ]*$/i.test(AIDRPG.U.norm(raw));
+        if (statusOnly) return out;
+        let m = text.match(/\b(?:offers? you|gives you|asks you about|hires you for)\s+(?:a|an|the)?\s*(?:quest|job|task|mission|contract|bounty)?\s*:?[\s-]*(?:to\s+)?([a-z][a-z' -]{4,90})(?:\s+for\s+[^.!?]+)?[.!?]?/i);
+        if (m) out.push({ type: "quest.offer", objective: m[1], source: raw });
+        m = text.match(/\b(?:you\s+)?(?:accept|accepted|agree to|agreed to|take on|undertake)\s+(?:(?:[A-Z][A-Za-z']+)'s\s+)?(?:quest|job|task|mission|contract|bounty|assignment)?\s*(?:to\s+([a-z][a-z' -]{4,90}))?/i);
+        if (m) out.push({ type: "quest.accept", objective: m[1] || "", source: raw });
+        return out;
+      },
+      routes(raw, unq) {
+        const out = [];
+        const m = unq.match(/\broute\s+from\s+([A-Z][A-Za-z' -]{2,40})\s+to\s+([A-Z][A-Za-z' -]{2,40})\s+takes?\s+(\d+)\s+(minutes?|hours?|days?)\b/i);
+        if (m) out.push({ type: "route.fact", from: m[1], to: m[2], amount: Number(m[3]), unit: m[4] });
+        return out;
+      }
+    },
+
+    // ============================================================
+    // Canon validator: accept/reject/pending, never mutate
+    // ============================================================
+    CanonValidator: {
+      validate(events, root) {
+        const out = [];
+        const seen = {};
+        root.diagnostics.lastRejectedEvents = [];
+        for (let i = 0; i < events.length; i++) {
+          const e = this.normalize(events[i], root);
+          if (!e || !this.accept(e, root)) { if (e) root.diagnostics.lastRejectedEvents.push(e.type); continue; }
+          const batchKey = e.type + ":" + AIDRPG.U.key(e.name || e.place || e.objective || e.stat || e.target || e.injury || e.condition || e.damageType || e.from || "") + ":" + (root.meta.turn || 0);
+          if (seen[batchKey]) continue; seen[batchKey] = true;
+          e._opKey = AIDRPG.OperationLedger.eventKey(root, e);
+          out.push(e);
+        }
+        root.diagnostics.lastAcceptedEventCount = out.length;
+        return out;
+      },
+      normalize(e) {
+        if (!e || !e.type) return null;
+        const c = Object.assign({}, e);
+        if (c.name) c.name = this.cleanName(c.name);
+        if (c.place) c.place = this.cleanPlace(c.place);
+        if (c.objective) c.objective = this.cleanObjective(c.objective);
+        return c;
+      },
+      accept(e, root) {
+        if (!e) return false;
+        if (e.type && e.type.indexOf("body.") === 0) return this.acceptBody(e, root);
+        if (e.type && e.type.indexOf("combat.") === 0) return this.acceptCombat(e, root);
+        if (e.type === "item.gain") return !!this.cleanItem(e.name);
+        if (e.type === "actor.mention") return !!e.name && !this.isJunkPerson(e.name);
+        if (e.type === "place.mention" || e.type === "scene.entry") return !!(e.place || e.name) && !this.isJunkPlace(e.place || e.name);
+        if (e.type === "quest.offer") return !!e.objective && !this.isStatusOnly(e.objective);
+        if (e.type === "quest.accept") return true;
+        if (e.type === "domain.problem") return /\b(?:worker|labor|contract|construction|materials|supplies|settlement|defense|project|repair|tax|holding|payment)\b/i.test(e.source || "");
+        return true;
+      },
+      falseCanonSource(v) { return /\b(?:rumor|rumour|dream|nightmare|vision|hallucination|imagined|imaginary|pretend|joke|someone says|people say|as if|would have|could have|might have)\b/i.test(String(v || "")); },
+      acceptBody(e, root) {
+        if (!root || !root.meta || root.meta.gameplayStarted !== true || !root.meta.firstRealInputTurn) return false;
+        if ((e.type === "body.damage" || e.type === "body.condition") && this.falseCanonSource(e.source)) return false;
+        if (e.type === "body.damage") return Number(e.severity || 0) > 0 && !!e.damageType;
+        if (e.type === "body.minor_injury") return !!AIDRPG.U.norm(e.injury);
+        if (e.type === "body.condition" || e.type === "body.condition_clear") return !!AIDRPG.U.norm(e.condition);
+        if (e.type === "body.fatigue" || e.type === "body.mana_strain") return Number(e.severity || 0) > 0;
+        return true;
+      },
+      acceptCombat(e, root) {
+        if (!root || !root.meta || root.meta.gameplayStarted !== true || !root.meta.firstRealInputTurn) return false;
+        if (this.falseCanonSource(e.source)) return false;
+        const target = AIDRPG.Combat && AIDRPG.Combat.cleanTarget ? AIDRPG.Combat.cleanTarget(e.target) : AIDRPG.U.norm(e.target);
+        if (e.type === "combat.group") return !!AIDRPG.U.key(target) && Number(e.total || 0) > 0;
+        return !!AIDRPG.U.key(target) && !this.isJunkPerson(target) && !this.isJunkPlace(target);
+      },
+      cleanName(v) { return AIDRPG.U.title(v).replace(/\bThe\s+(?=Innkeeper|Guard|Smith)\b/i, "").trim(); },
+      cleanItem(v) { let t = AIDRPG.U.norm(v).toLowerCase().replace(/^(?:a|an|the|your)\s+/, "").replace(/\s+(?:from|near|on|in|and|with|before|while)\b.*$/i, "").trim(); if (this.isJunkItem(t)) return ""; return t; },
+      cleanPlace(v) {
+        let t = AIDRPG.U.norm(v).replace(/^location[_\s-]+/i, "").replace(/^The\s+The\s+/i, "The ").replace(/[.!?;:,]+$/g, "").trim();
+        t = t.replace(/\s+(?:inn|tavern|shop|smithy|guild hall|hall|gate|market|temple|chapel)\b.*$/i, "").trim();
+        if (!t) return "";
+        return AIDRPG.U.title(t);
+      },
+      placeKey(v) {
+        let t = AIDRPG.U.norm(this.cleanPlace(v)).toLowerCase().replace(/^the\s+/, "");
+        return AIDRPG.U.key(t);
+      },
+      cleanObjective(v) { let t = AIDRPG.U.norm(v).toLowerCase().replace(/^(?:to\s+|a\s+job\s*:?\s*)/i, "").replace(/\s+for\s+\d+.*$/i, "").replace(/[.!?]+$/g, "").trim(); if (this.isStatusOnly(t)) return ""; return t; },
+      isStatusOnly(v) { return /^(?:accepted|is accepted|becomes active|active|signed|confirmed|agreed|taken|started|complete|completed|finished|done)$/i.test(AIDRPG.U.norm(v)); },
+      isJunkItem(v) { const t = AIDRPG.U.norm(v).toLowerCase(); return !t || t.length < 2 || t.length > 50 || /^(?:slow|quickly|something|anything|nothing|it|that|this|your hand|your body|your breath|the thought)$/.test(t); },
+      isJunkPerson(v) { const t = AIDRPG.U.norm(v).toLowerCase(); return !t || /^(?:you|your|your body|your hand|your door|it|the thought|the room|the street|the wall|the stick|gravewatch|the sturdy oak)$/.test(t) || t.split(/\s+/).length > 4; },
+      isJunkPlace(v) { const t = AIDRPG.U.norm(v).toLowerCase(); return !t || /^(?:street|road|room|door|wall|gate|your body|your hand|your breath|warmth|warmth of the room|spacious common room|mossy stone|seat|south|north|east|west|tvs glow|location talia)$/.test(t) || t.split(/\s+/).length > 6; }
+    },
+
+    // ============================================================
+    // Operation ledger: idempotency and retry protection
+    // ============================================================
+    OperationLedger: {
+      eventKey(root, e) {
+        const target = AIDRPG.U.key(e.name || e.place || e.objective || e.stat || e.target || e.injury || e.condition || e.damageType || e.from || e.to || e.type || "event");
+        const detail = [e.type, target, e.reason || "", e.source ? AIDRPG.U.hash(String(e.source).slice(0, 240)) : ""].join("|");
+        return [root.meta.turn || 0, root.meta.currentOutputHash || root.meta.lastRawHash || "nohash", AIDRPG.U.hash(detail)].join(":");
+      },
+      has(root, key) { return !!(root.op && root.op.ledger && root.op.ledger[key]); },
+      record(root, key, label) {
+        if (!root.op) root.op = { ledger: {}, order: [], skipped: [] };
+        if (!root.op.ledger) root.op.ledger = {};
+        if (!root.op.order) root.op.order = [];
+        if (root.op.ledger[key]) return false;
+        root.op.ledger[key] = { turn: root.meta.turn || 0, label: label || key };
+        root.op.order.push(key);
+        while (root.op.order.length > 220) { const old = root.op.order.shift(); delete root.op.ledger[old]; }
+        return true;
+      },
+      skip(root, key, label) {
+        if (!root.op) root.op = { ledger: {}, order: [], skipped: [] };
+        if (!root.op.skipped) root.op.skipped = [];
+        root.op.skipped.push({ turn: root.meta.turn || 0, key, label: label || key });
+        while (root.op.skipped.length > 40) root.op.skipped.shift();
+      }
+    },
+
+    // ============================================================
+    // Event reducer: only place that commits game truth
+    // ============================================================
+    EventReducer: {
+      commit(events, root) {
+        let changes = 0;
+        const committed = [];
+        const skipped = [];
+        for (let i = 0; i < events.length; i++) {
+          const e = events[i];
+          const opKey = e._opKey || AIDRPG.OperationLedger.eventKey(root, e);
+          const label = e.type + (e.name ? ":" + e.name : e.objective ? ":" + e.objective : e.place ? ":" + e.place : e.stat ? ":" + e.stat : e.target ? ":" + e.target : e.injury ? ":" + e.injury : e.condition ? ":" + e.condition : e.damageType ? ":" + e.damageType : "");
+          if (AIDRPG.OperationLedger.has(root, opKey)) { skipped.push(label); AIDRPG.OperationLedger.skip(root, opKey, label); continue; }
+          let delta = 0;
+          switch (e.type) {
+            case "training.practice": delta += AIDRPG.Progression.training(root, e); break;
+            case "training.mana": delta += AIDRPG.Progression.manaTraining(root, e); break;
+            case "training.stat": delta += AIDRPG.Progression.statTraining(root, e.stat, e.amount, e.reason); break;
+            case "body.fatigue": delta += AIDRPG.Body.fatigue(root, e); break;
+            case "body.mana_strain": delta += AIDRPG.Body.manaStrain(root, e); break;
+            case "body.minor_injury": delta += AIDRPG.Body.minorInjury(root, e); break;
+            case "body.damage": delta += AIDRPG.Body.damage(root, e); break;
+            case "body.condition": delta += AIDRPG.Body.condition(root, e); break;
+            case "body.condition_clear": delta += AIDRPG.Body.clearCondition(root, e.condition, e.source); break;
+            case "combat.hit": delta += AIDRPG.Combat.hit(root, e); break;
+            case "combat.survive": delta += AIDRPG.Combat.survive(root, e); break;
+            case "combat.kill": delta += AIDRPG.Combat.kill(root, e); break;
+            case "combat.group": delta += AIDRPG.Combat.group(root, e); break;
+            case "item.gain": delta += AIDRPG.Inventory.gain(root, e.name, e.source); break;
+            case "ability.attempt": delta += AIDRPG.Abilities.attempt(root, e); break;
+            case "ability.sense": delta += AIDRPG.Abilities.sense(root, e.name, e.source); break;
+            case "scene.entry": if (!e.denied) delta += AIDRPG.Places.enter(root, e.place, e.source); break;
+            case "actor.mention": delta += AIDRPG.Actors.mention(root, e); break;
+            case "place.mention": delta += AIDRPG.Places.mention(root, e); break;
+            case "quest.offer": delta += AIDRPG.Quests.offer(root, e.objective, e.source); break;
+            case "quest.accept": delta += AIDRPG.Quests.accept(root, e.objective, e.source); break;
+            case "route.fact": delta += AIDRPG.Places.route(root, e); break;
+          }
+          if (delta > 0) { AIDRPG.OperationLedger.record(root, opKey, label); committed.push(label); changes += delta; }
+        }
+        root.diagnostics.lastEvents = committed.slice(-20);
+        root.diagnostics.lastSkippedEvents = skipped.slice(-20);
+        root.diagnostics.lastCommitChanges = changes;
+        if (changes) AIDRPG.CardSync.markAllProtectedDirty(root);
+        return changes;
+      }
+    },
+
+    // ============================================================
+    // Owner reducers
+    // ============================================================
+    Progression: {
+      award(root, amount, reason) {
+        const p = root.player; amount = Math.max(0, Math.floor(Number(amount) || 0)); if (!amount) return 0;
+        p.xp += amount;
+        AIDRPG.U.pushUnique(root.progression.recent, "+" + amount + " XP — " + reason, 40);
+        while (p.xp >= p.xpToNext) { p.xp -= p.xpToNext; p.level += 1; p.xpToNext = 50 + (p.level - 1) * 20; p.maxHp += 5; p.maxEp += 3; p.hp = p.maxHp; AIDRPG.U.pushUnique(root.progression.recent, "Level up to " + p.level, 40); }
+        return 1;
+      },
+      spend(root, res, amount, reason) {
+        const p = root.player; const key = res.toLowerCase(); const max = "max" + res.toUpperCase()[0] + res.slice(1).toLowerCase();
+        p[key] = AIDRPG.U.clamp(Number(p[key] || 0) - amount, 0, Number(p[max] || 999));
+        AIDRPG.U.pushUnique(root.progression.recent, "-" + amount + " " + res.toUpperCase() + " — " + reason, 40); return 1;
+      },
+      training(root, e) { const n = e.intensity || 1; this.award(root, n >= 3 ? 3 : 1, "confirmed physical training"); return 1; },
+      manaTraining(root, e) { this.award(root, 1, "mana study"); return 1; },
+      statTraining(root, stat, amount, reason) { const p = root.player; stat = String(stat || "").toUpperCase(); if (!p.statXp[stat]) p.statXp[stat] = 0; p.statXp[stat] += Math.max(1, amount || 1); const threshold = stat === "LCK" ? 30 : 12; let c = 0; while (p.statXp[stat] >= threshold) { p.statXp[stat] -= threshold; p.stats[stat] = Number(p.stats[stat] || 5) + 1; AIDRPG.U.pushUnique(root.progression.recent, stat + " increased to " + p.stats[stat] + " — " + reason, 40); c++; } return 1 + c; }
+    },
+
+    Body: {
+      spend(root, res, amount, reason) {
+        const p = root.player;
+        const key = String(res || "").toLowerCase();
+        const maxKey = key === "hp" ? "maxHp" : key === "mp" ? "maxMp" : key === "ep" ? "maxEp" : "";
+        if (!maxKey || p[key] == null) return 0;
+        const old = Number(p[key] || 0);
+        p[key] = AIDRPG.U.clamp(old - Math.max(0, Math.floor(amount || 0)), 0, Number(p[maxKey] || old));
+        if (p[key] !== old) AIDRPG.U.pushUnique(root.body.recent, "-" + (old - p[key]) + " " + key.toUpperCase() + " — " + reason, 40);
+        return p[key] !== old ? 1 : 0;
+      },
+      addInjury(root, injury) {
+        injury = AIDRPG.U.norm(injury).toLowerCase();
+        if (!injury || /^(?:none|healthy)$/.test(injury)) return 0;
+        const before = root.player.injuries.length;
+        AIDRPG.U.pushUnique(root.player.injuries, injury, 20);
+        return root.player.injuries.length !== before ? 1 : 0;
+      },
+      fatigue(root, e) {
+        const sev = AIDRPG.U.clamp(e.severity || 1, 1, 5);
+        const ep = [0, 3, 6, 10, 15, 22][sev] || 6;
+        let c = this.spend(root, "ep", ep, "fatigue / exertion");
+        if (sev >= 3) c += this.addCondition(root, "fatigued", sev);
+        if (sev >= 4) c += this.addCondition(root, "exhausted", sev);
+        return c;
+      },
+      manaStrain(root, e) {
+        const sev = AIDRPG.U.clamp(e.severity || 1, 1, 5);
+        const mp = [0, 1, 2, 4, 6, 9][sev] || 2;
+        let c = this.spend(root, "mp", mp, "mana/focus strain");
+        if (sev >= 3) c += this.addCondition(root, "mentally strained", sev);
+        return c;
+      },
+      minorInjury(root, e) {
+        let c = 0;
+        c += this.addInjury(root, e.injury || "minor injury");
+        if (e.hpLoss) c += this.spend(root, "hp", Math.min(1, Number(e.hpLoss || 0)), e.injury || "minor injury");
+        AIDRPG.U.pushUnique(root.body.recent, "Minor injury: " + (e.injury || "minor injury"), 40);
+        return c || 1;
+      },
+      damage(root, e) {
+        const sev = AIDRPG.U.clamp(e.severity || 1, 1, 5);
+        const hp = [0, 3, 7, 12, 20, 35][sev] || 7;
+        let c = this.spend(root, "hp", hp, e.damageType || "damage");
+        c += this.addInjury(root, e.injury || (e.damageType || "damage") + " wound");
+        if (e.damageType === "burn") c += this.addCondition(root, "burned", sev);
+        if (root.player.hp <= 0) c += this.addCondition(root, "unconscious", 5);
+        AIDRPG.U.pushUnique(root.body.recent, "Damage: " + (e.damageType || "harm") + " severity " + sev, 40);
+        return c || 1;
+      },
+      addCondition(root, condition, severity) {
+        condition = AIDRPG.U.norm(condition).toLowerCase();
+        if (!condition || /^(?:none|healthy)$/.test(condition)) return 0;
+        const before = root.player.conditions.length;
+        AIDRPG.U.pushUnique(root.player.conditions, condition, 20);
+        AIDRPG.U.pushUnique(root.body.recent, "Condition: " + condition + " severity " + (severity || 1), 40);
+        return root.player.conditions.length !== before ? 1 : 0;
+      },
+      condition(root, e) { return this.addCondition(root, e.condition, e.severity || 1); },
+      clearCondition(root, condition, source) {
+        const key = AIDRPG.U.norm(condition).toLowerCase();
+        const before = root.player.conditions.length;
+        root.player.conditions = root.player.conditions.filter(x => AIDRPG.U.norm(x).toLowerCase() !== key);
+        if (before !== root.player.conditions.length) { AIDRPG.U.pushUnique(root.body.recent, "Condition cleared: " + key, 40); return 1; }
+        return 0;
+      }
+    },
+
+    Combat: {
+      cleanTarget(v) { return AIDRPG.U.norm(v).toLowerCase().replace(/^(?:the|a|an)\s+/, "").replace(/\s+(?:with|while|before|after|and)\b.*$/i, "").trim(); },
+      threatXp(target) { target = this.cleanTarget(target); if (/dragon|giant|ogre|troll|demon|boss|champion|wight|lich/.test(target)) return 12; if (/wolf|goblin|bandit|skeleton|zombie|undead|beast|orc/.test(target)) return 5; return 3; },
+      note(root, text) { AIDRPG.U.pushUnique(root.combat.recent, text, 40); },
+      hit(root, e) { const t = this.cleanTarget(e.target); if (!t) return 0; root.combat.hits += 1; this.note(root, "Hit confirmed: " + t); AIDRPG.Progression.award(root, 1, "combat hit: " + t); return 1; },
+      survive(root, e) { const t = this.cleanTarget(e.target || "threat"); root.combat.survived += 1; this.note(root, "Survived threat: " + t); AIDRPG.Progression.award(root, Math.max(1, Math.floor(this.threatXp(t) / 2)), "survived " + t); return 1; },
+      kill(root, e) { const t = this.cleanTarget(e.target); if (!t) return 0; root.combat.kills += 1; this.note(root, "Kill/defeat confirmed: " + t); AIDRPG.Progression.award(root, this.threatXp(t), "defeated " + t); return 1; },
+      group(root, e) {
+        const t = this.cleanTarget(e.target); if (!t) return 0;
+        const key = AIDRPG.U.key(t); const total = Math.max(1, Math.floor(Number(e.total || 1))); const killed = AIDRPG.U.clamp(Math.floor(Number(e.killed || 0)), 0, total);
+        const prev = root.combat.groups[key] || { target: t, total: 0, remaining: 0, killed: 0 };
+        prev.total = Math.max(prev.total || 0, total);
+        prev.killed = Math.max(prev.killed || 0, killed);
+        prev.remaining = Math.max(0, prev.total - prev.killed);
+        root.combat.groups[key] = prev;
+        this.note(root, "Group threat: " + prev.total + " " + t + ", killed " + prev.killed + ", remaining " + prev.remaining);
+        if (killed > 0) AIDRPG.Progression.award(root, Math.min(20, killed * Math.max(1, Math.floor(this.threatXp(t) / 2))), "group combat vs " + t);
+        return 1;
+      }
+    },
+
+    Inventory: {
+      gain(root, rawName) { const name = AIDRPG.CanonValidator.cleanItem(rawName); if (!name) return 0; const key = AIDRPG.U.key(name); if (!root.inventory.items[key]) { root.inventory.items[key] = { id: key, name: AIDRPG.U.title(name), qty: 0, owner: "player", cardEligible: false, notes: [] }; root.inventory.order.push(key); } root.inventory.items[key].qty += 1; AIDRPG.U.pushUnique(root.inventory.items[key].notes, "Acquired turn " + root.meta.turn, 6); return 1; }
+    },
+
+    Abilities: {
+      ensureCandidate(root, name) { name = AIDRPG.U.title(name); const key = AIDRPG.U.key(name); if (!key) return null; if (!root.abilities.candidates[key]) root.abilities.candidates[key] = { id: key, name, stage: "concept", evidence: 0, failures: 0, successes: 0, xp: 0, last: "", priority: false, cardEligible: false }; return root.abilities.candidates[key]; },
+      attempt(root, e) { const c = this.ensureCandidate(root, e.name); if (!c) return 0; if (e.hardDeny) { delete root.abilities.candidates[c.id]; return 1; } c.evidence += 1; c.xp += 1; c.last = AIDRPG.U.norm(e.source).slice(0, 160); if (e.softFail) { c.failures += 1; c.stage = c.evidence >= 2 ? "developing_failed" : "attempted_failed"; c.priority = false; } if (e.breakthrough) { c.successes += 1; c.stage = c.successes >= 2 ? "stabilized" : "unstable"; c.priority = true; if (c.successes >= 2) this.stabilize(root, c); } AIDRPG.Progression.award(root, 1, "ability practice: " + c.name); return 1; },
+      sense(root, name, source) { const c = this.ensureCandidate(root, name || "Mana Awareness"); c.stage = c.evidence >= 2 ? "developing" : "noticed"; c.evidence += 1; c.xp += 1; c.last = AIDRPG.U.norm(source).slice(0, 160); c.priority = true; return 1; },
+      stabilize(root, c) { if (!c) return 0; root.abilities.byId[c.id] = { id: c.id, name: c.name, type: /sense|awareness/i.test(c.name) ? "passive" : "skill", level: 1, xp: c.xp || 0, stage: "stabilized", cardEligible: true, notes: ["Formed through repeated practice."] }; delete root.abilities.candidates[c.id]; if (!root.abilities.order.includes(c.id)) root.abilities.order.push(c.id); return 1; }
+    },
+
+    Actors: {
+      mention(root, e) { const name = AIDRPG.U.title(e.name); const key = AIDRPG.U.key(name); if (!key || AIDRPG.CanonValidator.isJunkPerson(name)) return 0; let r = root.actors.byKey[key]; if (!r) { r = root.actors.byKey[key] = { id: key, name, stage: "mentioned", mentions: 0, importance: 0, roles: [], skills: [], status: [], memory: [], inner: [], cardEligible: false }; root.actors.order.push(key); } r.mentions += 1; if (e.role) AIDRPG.U.pushUnique(r.roles, e.role, 8); if (e.strong) r.importance += 2; else r.importance += 1; if (r.mentions >= 2 || r.importance >= 3) r.stage = "local"; if (r.mentions >= 4 || r.importance >= 6) { r.stage = "important"; r.cardEligible = true; } AIDRPG.U.pushUnique(r.memory, AIDRPG.U.norm(e.source).slice(0, 140), 6); return 1; }
+    },
+
+    Places: {
+      mention(root, e) {
+        const name = AIDRPG.CanonValidator.cleanPlace(e.name || e.place);
+        if (!name || AIDRPG.CanonValidator.isJunkPlace(name)) return 0;
+        const key = AIDRPG.CanonValidator.placeKey(name);
+        let r = root.places.byKey[key];
+        if (!r) { r = root.places.byKey[key] = { id: key, name: AIDRPG.U.title(name), kind: e.kind || "place", stage: "mentioned", mentions: 0, visits: 0, details: [], aliases: [], nearby: [], connectedPeople: [], cardEligible: false }; root.places.order.push(key); }
+        AIDRPG.U.pushUnique(r.aliases, AIDRPG.U.title(e.name || e.place || name), 8);
+        r.mentions += 1; if (e.visited) r.visits += 1;
+        if (r.visits >= 1) r.stage = "visited";
+        if (r.visits >= 2 || r.mentions >= 3) r.stage = "recurring";
+        if (r.visits >= 3 || r.mentions >= 5) { r.stage = "important"; r.cardEligible = true; }
+        AIDRPG.U.pushUnique(r.details, AIDRPG.U.norm(e.source).slice(0, 160), 8); return 1;
+      },
+      enter(root, place, source) { const e = { type: "place.mention", name: place, kind: "place", visited: true, source }; const c = this.mention(root, e); const name = AIDRPG.CanonValidator.cleanPlace(place); if (name) { const key = AIDRPG.CanonValidator.placeKey(name); root.player.location = root.places.byKey[key] ? root.places.byKey[key].name : AIDRPG.U.title(name); root.meta.lastSafeLocation = root.player.location; } return c + 1; },
+      route(root, e) { const from = AIDRPG.CanonValidator.cleanPlace(e.from), to = AIDRPG.CanonValidator.cleanPlace(e.to); if (!from || !to) return 0; const key = AIDRPG.U.key(from + " to " + to); root.time.routes[key] = { from: AIDRPG.U.title(from), to: AIDRPG.U.title(to), duration: e.amount + " " + e.unit }; return 1; }
+    },
+
+    Quests: {
+      offer(root, objective, source) { objective = AIDRPG.CanonValidator.cleanObjective(objective); if (!objective) return 0; const key = AIDRPG.U.key(objective); root.quests.pending[key] = { id: key, objective, source: AIDRPG.U.norm(source).slice(0, 160), turn: root.meta.turn }; return 1; },
+      accept(root, objective, source) { objective = AIDRPG.CanonValidator.cleanObjective(objective); if (!objective) { const keys = Object.keys(root.quests.pending); if (keys.length) objective = root.quests.pending[keys[keys.length - 1]].objective; } if (!objective) return 0; const key = AIDRPG.U.key(objective); if (!root.quests.active[key]) { root.quests.active[key] = { id: key, title: AIDRPG.U.title(objective), objective, status: "active", source: AIDRPG.U.norm(source).slice(0, 160), progress: [] }; root.quests.order.push(key); } delete root.quests.pending[key]; return 1; }
+    },
+
+    Cleanup: {
+      run(root) {
+        const p = root.player;
+        if (/^location_(?:talia|tvs_glow|your_body|your_hand|you_sleep)$/i.test(String(p.location || ""))) p.location = root.meta.lastSafeLocation || "Gravewatch";
+        // Domain hard gate: discard personal prose fragments.
+        root.domain.problems = (root.domain.problems || []).filter(x => /\b(?:worker|labor|contract|construction|materials|supplies|settlement|defense|project|repair|tax|holding|payment)\b/i.test(String(x && x.text || x || "")));
+        // Remove junk actors/places that slipped through migration.
+        Object.keys(root.actors.byKey).forEach(k => { const r = root.actors.byKey[k]; if (!r || AIDRPG.CanonValidator.isJunkPerson(r.name || k)) delete root.actors.byKey[k]; });
+        root.actors.order = root.actors.order.filter(k => !!root.actors.byKey[k]);
+        Object.keys(root.places.byKey).forEach(k => { const r = root.places.byKey[k]; if (!r || AIDRPG.CanonValidator.isJunkPlace(r.name || k)) delete root.places.byKey[k]; });
+        root.places.order = root.places.order.filter(k => !!root.places.byKey[k]);
+      }
+    },
+
+    // ============================================================
+    // Context packets
+    // ============================================================
+    Context: {
+      budget(root) {
+        const mode = String(root.settings.contextMode || "High");
+        return Number(root.settings.contextBudget || (mode === "Low" ? 1200 : mode === "Normal" ? 1700 : 2200));
+      },
+      build(root, original) {
+        const p = root.player;
+        const tiers = [[], [], [], []];
+        tiers[0].push("Player: " + p.name + " | Lvl " + p.level + " | " + p.species + " | Age " + p.age + " | Location: " + p.location + " | HP " + p.hp + "/" + p.maxHp + " | MP " + p.mp + "/" + p.maxMp + " | EP " + p.ep + "/" + p.maxEp);
+        tiers[0].push("Stats: ATK " + p.stats.ATK + " DEF " + p.stats.DEF + " SPD " + p.stats.SPD + " INT " + p.stats.INT + " LCK " + p.stats.LCK + " | XP " + p.xp + "/" + p.xpToNext);
+        if (p.conditions.length || p.injuries.length) tiers[0].push("Current effects: Conditions " + (p.conditions.join(", ") || "none") + " | Injuries " + (p.injuries.join(", ") || "none"));
+        if (root.combat && ((root.combat.recent || []).length || root.combat.kills || root.combat.hits)) tiers[1].push("Combat truth: Hits " + (root.combat.hits || 0) + " | Defeats " + (root.combat.kills || 0) + " | Recent " + ((root.combat.recent || []).slice(-3).join("; ") || "none"));
+        const cand = Object.keys(root.abilities.candidates).map(k => root.abilities.candidates[k]).slice(0, 6);
+        if (cand.length) tiers[1].push("Developing abilities: " + cand.map(c => c.name + " (" + c.stage + "; not reliable yet; evidence " + c.evidence + ")").join("; "));
+        const abil = Object.keys(root.abilities.byId).map(k => root.abilities.byId[k]).slice(0, 6);
+        if (abil.length) tiers[1].push("Known abilities: " + abil.map(a => a.name + " Lv" + (a.level || 1)).join(", "));
+        const inv = root.inventory.order.map(k => root.inventory.items[k]).filter(Boolean).slice(0, 10);
+        if (inv.length) tiers[1].push("Inventory: " + inv.map(i => i.name + (i.qty > 1 ? " x" + i.qty : "")).join(", "));
+        const quests = root.quests.order.map(k => root.quests.active[k]).filter(Boolean).slice(0, 5);
+        if (quests.length) tiers[1].push("Active quests: " + quests.map(q => q.title).join("; "));
+        const actors = root.actors.order.map(k => root.actors.byKey[k]).filter(r => r && r.stage !== "mentioned").slice(0, 6);
+        if (actors.length) tiers[2].push("Known people: " + actors.map(a => a.name + " (" + a.stage + (a.roles.length ? ", " + a.roles.join("/") : "") + ")").join("; "));
+        const places = root.places.order.map(k => root.places.byKey[k]).filter(r => r && r.stage !== "mentioned").slice(0, 6);
+        if (places.length) tiers[2].push("Known places: " + places.map(pl => pl.name + " (" + pl.stage + "; visits " + pl.visits + ")").join("; "));
+        tiers[2].push("Time: Day " + root.time.day + " | Phase " + root.time.phase + " | Routes tracked " + Object.keys(root.time.routes || {}).length);
+        tiers[3].push("Rules: player input is intent, not automatic success; failed ability attempts may still build developing candidates; Story Cards mirror stable state.");
+        const limit = this.budget(root);
+        let out = "AIDRPG current truth:\n";
+        for (let t = 0; t < tiers.length; t++) {
+          for (let i = 0; i < tiers[t].length; i++) {
+            const line = tiers[t][i];
+            if ((out + line + "\n").length > limit) { root.diagnostics.contextTrimmed = true; continue; }
+            out += line + "\n";
+          }
+        }
+        return out.trimEnd();
+      }
+    },
+
+    // ============================================================
+    // Serializers
+    // ============================================================
+    Serializers: {
+      help(root) {
+        return [
+          "[AIDRPG /help]",
+          "Version: " + AIDRPG.VERSION,
+          "How gameplay works:",
+          "- Your input is intent. The AI output confirms success, failure, cost, injury, rewards, and progress.",
+          "- Parsers only propose events; CanonValidator checks them; reducers are the only state writers.",
+          "- Story Cards mirror stable state. They are not the source of canon truth.",
+          "Working in this core now:",
+          "- protected singleton Story Cards, manual Player Sheet overrides, basic XP/stat training, consequence parsing, fatigue/MP/HP separation, minor injuries, conditions, basic combat hits/survival/defeats, basic inventory pickup, developing ability candidates, staged people/places, basic quests, context budgeting, idempotency/retry protection.",
+          "Planned in later v1.9.x versions:",
+          "- deeper ability classification, equipment/economy/crafting/custody, contracts/labor/domain, investigations/reputation/party/scale, generated card expansion and long-run cleanup.",
+          "Useful commands: /sheet, /inventory, /abilities, /questlog, /progression, /combat, /time, /cardaudit, /stateaudit, /debuglast, /releasecheck."
+        ].join("\n") + "\n";
+      },
+      player(root) { const p = root.player; return ["Player: " + p.name, "Race: " + p.species, "Age: " + p.age, "Level: " + p.level, "XP: " + p.xp + "/" + p.xpToNext, "Location: " + p.location, "HP: " + p.hp + "/" + p.maxHp, "MP: " + p.mp + "/" + p.maxMp, "EP: " + p.ep + "/" + p.maxEp, "Stats: ATK " + p.stats.ATK + " DEF " + p.stats.DEF + " SPD " + p.stats.SPD + " INT " + p.stats.INT + " LCK " + p.stats.LCK, "Stat Training: ATK " + p.statXp.ATK + "/12 DEF " + p.statXp.DEF + "/12 SPD " + p.statXp.SPD + "/12 INT " + p.statXp.INT + "/12 LCK " + p.statXp.LCK + "/30", "Conditions: " + (p.conditions.join(", ") || "none"), "Injuries: " + (p.injuries.join(", ") || "none"), "Appearance: " + (p.appearance || "unspecified")].join("\n") + "\n"; },
+      inventory(root) { const rows = root.inventory.order.map(k => root.inventory.items[k]).filter(Boolean); return ["Inventory", rows.length ? rows.map(i => "- " + i.name + (i.qty > 1 ? " x" + i.qty : "")).join("\n") : "- none", "Coins: " + (root.inventory.coins.g || 0) + "g " + (root.inventory.coins.s || 0) + "s " + (root.inventory.coins.c || 0) + "c"].join("\n") + "\n"; },
+      abilities(root, audit) { const known = Object.keys(root.abilities.byId).map(k => root.abilities.byId[k]); const cand = Object.keys(root.abilities.candidates).map(k => root.abilities.candidates[k]); const lines = [audit ? "[AIDRPG /abilityaudit]" : "Abilities Overview"]; lines.push("Known Abilities: " + known.length); known.forEach(a => lines.push("- " + a.name + " | " + a.type + " | Lv " + (a.level || 1))); lines.push("Developing Candidates: " + cand.length); cand.forEach(c => lines.push("- " + c.name + " | " + c.stage + " | Evidence " + c.evidence + " | Fail " + c.failures + " | Success " + c.successes)); return lines.join("\n") + "\n"; },
+      abilityType(root, type) { const rows = Object.keys(root.abilities.byId).map(k => root.abilities.byId[k]).filter(a => String(a.type || "ability").toLowerCase() === type); const label = type === "ability" ? "Basic Abilities" : type.charAt(0).toUpperCase() + type.slice(1) + "s"; return (label + "\n") + (rows.length ? rows.map(a => "- " + a.name + " Lv" + (a.level || 1)).join("\n") : "- none") + "\n"; },
+      quests(root) { const active = root.quests.order.map(k => root.quests.active[k]).filter(Boolean); const pending = Object.keys(root.quests.pending).map(k => root.quests.pending[k]); return ["Quest Log", "Active:", active.length ? active.map(q => "- " + q.title).join("\n") : "- none", "Pending Offers:", pending.length ? pending.map(q => "- " + AIDRPG.U.title(q.objective)).join("\n") : "- none"].join("\n") + "\n"; },
+      actors(root) { const rows = root.actors.order.map(k => root.actors.byKey[k]).filter(Boolean); return ["Character Notes", rows.length ? rows.slice(0, 40).map(a => "- " + a.name + " | " + a.stage + " | roles " + (a.roles.join(", ") || "none") + " | mentions " + a.mentions).join("\n") : "- none"].join("\n") + "\n"; },
+      places(root) { const rows = root.places.order.map(k => root.places.byKey[k]).filter(Boolean); return ["World Places", rows.length ? rows.slice(0, 40).map(p => "- " + p.name + " | " + p.stage + " | visits " + p.visits + " | kind " + p.kind + (p.aliases && p.aliases.length ? " | aliases " + p.aliases.join(", ") : "")).join("\n") : "- none"].join("\n") + "\n"; },
+      progression(root) { return ["Progression", "Level: " + root.player.level, "XP: " + root.player.xp + "/" + root.player.xpToNext, "Recent:", root.progression.recent.length ? root.progression.recent.slice(-12).map(x => "- " + x).join("\n") : "- none"].join("\n") + "\n"; },
+      combat(root) { const groups = Object.keys(root.combat.groups || {}).map(k => root.combat.groups[k]); return ["Combat & Body", "HP: " + root.player.hp + "/" + root.player.maxHp + " | MP: " + root.player.mp + "/" + root.player.maxMp + " | EP: " + root.player.ep + "/" + root.player.maxEp, "Conditions: " + (root.player.conditions.join(", ") || "none"), "Injuries: " + (root.player.injuries.join(", ") || "none"), "Combat totals: hits " + (root.combat.hits || 0) + " | defeats " + (root.combat.kills || 0) + " | survived " + (root.combat.survived || 0), "Groups:", groups.length ? groups.map(g => "- " + g.target + ": total " + g.total + ", killed " + g.killed + ", remaining " + g.remaining).join("\n") : "- none", "Recent body/combat:", (root.body.recent || []).concat(root.combat.recent || []).slice(-12).map(x => "- " + x).join("\n") || "- none"].join("\n") + "\n"; },
+      time(root) { return ["Time & Travel", "Day: " + root.time.day, "Phase: " + root.time.phase, "Current Location: " + root.player.location, "Routes:", Object.keys(root.time.routes || {}).length ? Object.keys(root.time.routes).map(k => { const r = root.time.routes[k]; return "- " + r.from + " to " + r.to + ": " + r.duration; }).join("\n") : "- none", "Note: time is a shared service for travel, recovery, training, crafting, contracts, labor, and routes. Deeper time reducers expand after v1.9.2."].join("\n") + "\n"; },
+      settings(root) { return ["AIDRPG Settings", "Version: " + AIDRPG.VERSION, "Schema: " + AIDRPG.SCHEMA_VERSION, "Card Writing: " + (root.settings.cardWriting === false ? "Off" : "On"), "Generated Cards: " + (root.settings.generatedCards === false ? "Off" : "On"), "Context Mode: " + (root.settings.contextMode || "High"), "Context Budget: " + (root.settings.contextBudget || AIDRPG.Context.budget(root))].join("\n") + "\n"; },
+      index(root) { return ["AIDRPG System Index", "Version: " + AIDRPG.VERSION, "State is canonical. Story Cards mirror stable state.", "Protected cards are singletons. Generated cards require promoted records.", "Use /help, /releasecheck, /stateaudit, /cardaudit, /abilityaudit, /progression, /combat, /time."].join("\n") + "\n"; }
+    },
+
+    // ============================================================
+    // Manual override: canonical Player Sheet only
+    // ============================================================
+    ManualOverride: {
+      parseList(v) { return AIDRPG.U.list(v).map(x => AIDRPG.U.norm(x).toLowerCase()).filter(Boolean); },
+      ingest(root) {
+        const cards = AIDRPG.U.getStoryCards();
+        const idx = AIDRPG.CardSync.enforceSingleton("Player Sheet");
+        if (idx < 0 || !cards[idx] || /^SAFE TO DELETE/i.test(AIDRPG.CardSync.cardKey(cards[idx]))) return 0;
+        const entry = String(cards[idx].entry || "");
+        const hash = AIDRPG.U.hash(entry.slice(0, 1600));
+        if (root.cards.lastPlayerSheetHash === hash) return 0;
+        root.cards.lastPlayerSheetHash = hash;
+        const p = root.player; let c = 0; let m;
+        m = entry.match(/^\s*Player\s*:\s*([^\n]+)/im); if (m) { const v = AIDRPG.U.norm(m[1]); if (v && !/^unknown$/i.test(v)) { p.name = AIDRPG.U.title(v); c++; } }
+        m = entry.match(/^\s*(?:Race|Species)\s*:\s*([^\n]+)/im); if (m) { p.species = AIDRPG.U.norm(m[1]).toLowerCase(); p.race = p.species; c++; }
+        m = entry.match(/^\s*Age\s*:\s*(\d{1,3})/im); if (m) { p.age = Number(m[1]); c++; }
+        m = entry.match(/^\s*Level\s*:\s*(\d{1,4})/im); if (m) { p.level = Math.max(1, Number(m[1])); c++; }
+        m = entry.match(/^\s*XP\s*:\s*(\d+)\s*\/\s*(\d+)/im); if (m) { p.xp = Math.max(0, Number(m[1])); p.xpToNext = Math.max(1, Number(m[2])); c++; }
+        m = entry.match(/^\s*Location\s*:\s*([^\n]+)/im); if (m) { const v = AIDRPG.CanonValidator.cleanPlace(m[1]) || AIDRPG.U.title(m[1]); if (v && !AIDRPG.CanonValidator.isJunkPlace(v)) { p.location = v; root.meta.lastSafeLocation = v; c++; } }
+        m = entry.match(/\bHP\s*:\s*(\d+)\s*\/\s*(\d+)/i); if (m) { p.maxHp = Number(m[2]); p.hp = AIDRPG.U.clamp(Number(m[1]), 0, p.maxHp); c++; }
+        m = entry.match(/\bMP\s*:\s*(\d+)\s*\/\s*(\d+)/i); if (m) { p.maxMp = Number(m[2]); p.mp = AIDRPG.U.clamp(Number(m[1]), 0, p.maxMp); c++; }
+        m = entry.match(/\bEP\s*:\s*(\d+)\s*\/\s*(\d+)/i); if (m) { p.maxEp = Number(m[2]); p.ep = AIDRPG.U.clamp(Number(m[1]), 0, p.maxEp); c++; }
+        m = entry.match(/^\s*Stats\s*:\s*([^\n]+)/im); if (m) { ["ATK","DEF","SPD","INT","LCK"].forEach(k => { const r = new RegExp(k + "\\s*:?\\s*(\\d+)", "i").exec(m[1]); if (r) { p.stats[k] = Math.max(1, Number(r[1])); c++; } }); }
+        m = entry.match(/^\s*Conditions\s*:\s*([^\n]+)/im); if (m) { p.conditions = this.parseList(m[1]); c++; }
+        m = entry.match(/^\s*Injuries\s*:\s*([^\n]+)/im); if (m) { p.injuries = this.parseList(m[1]); c++; }
+        m = entry.match(/^\s*Add Conditions\s*:\s*([^\n]+)/im); if (m) { this.parseList(m[1]).forEach(x => AIDRPG.U.pushUnique(p.conditions, x, 20)); c++; }
+        m = entry.match(/^\s*Remove Conditions\s*:\s*([^\n]+)/im); if (m) { const rem = this.parseList(m[1]); p.conditions = p.conditions.filter(x => !rem.includes(AIDRPG.U.norm(x).toLowerCase())); c++; }
+        m = entry.match(/^\s*Add Injuries\s*:\s*([^\n]+)/im); if (m) { this.parseList(m[1]).forEach(x => AIDRPG.U.pushUnique(p.injuries, x, 20)); c++; }
+        m = entry.match(/^\s*Remove Injuries\s*:\s*([^\n]+)/im); if (m) { const rem = this.parseList(m[1]); p.injuries = p.injuries.filter(x => !rem.includes(AIDRPG.U.norm(x).toLowerCase())); c++; }
+        if (c) { root.diagnostics.manualOverrideCount = (root.diagnostics.manualOverrideCount || 0) + 1; root.diagnostics.lastManualOverride = "Player Sheet override applied: " + c + " fields"; AIDRPG.CardSync.markAllProtectedDirty(root); }
+        return c;
+      }
+    },
+
+    // ============================================================
+    // CardSync: one live card writer
+    // ============================================================
+    CardSync: {
+      protectedDefs: [
+        ["Player Sheet", "player", root => AIDRPG.Serializers.player(root)],
+        ["AIDRPG Settings", "settings", root => AIDRPG.Serializers.settings(root)],
+        ["AIDRPG System Index", "index", root => AIDRPG.Serializers.index(root)],
+        ["Inventory", "inventory", root => AIDRPG.Serializers.inventory(root)],
+        ["Abilities Overview", "abilities", root => AIDRPG.Serializers.abilities(root, false)],
+        ["Basic Abilities", "ability_basic", root => AIDRPG.Serializers.abilityType(root, "ability")],
+        ["Skills", "ability_skill", root => AIDRPG.Serializers.abilityType(root, "skill")],
+        ["Talents", "ability_talent", root => AIDRPG.Serializers.abilityType(root, "talent")],
+        ["Passives", "ability_passive", root => AIDRPG.Serializers.abilityType(root, "passive")],
+        ["Quest Log", "quests", root => AIDRPG.Serializers.quests(root)],
+        ["Character Notes", "actors", root => AIDRPG.Serializers.actors(root)],
+        ["Reputation", "reputation", root => "Reputation\n" + ((root.reputation.public || []).join("\n") || "- none") + "\n"],
+        ["Time & Travel", "time", root => "Time & Travel\nDay: " + root.time.day + "\nLocation: " + root.player.location + "\nRoutes:\n" + (Object.keys(root.time.routes).map(k => "- " + root.time.routes[k].from + " to " + root.time.routes[k].to + ": " + root.time.routes[k].duration).join("\n") || "- none") + "\n"],
+        ["Combat & Threats", "combat", root => AIDRPG.Serializers.combat(root)],
+        ["Domain & Contracts", "domain", root => "Domain & Contracts\nProjects: " + (root.domain.projects.length || 0) + "\nContracts: " + (root.domain.contracts.length || 0) + "\nProblems:\n" + (root.domain.problems.map(x => "- " + (x.text || x)).join("\n") || "- none") + "\n"],
+        ["Economy & Crafting", "economy", _root => "Economy & Crafting\n- no active crafting or trade records.\n"],
+        ["Investigation & Evidence", "investigation", _root => "Investigation & Evidence\n- no active investigation.\n"],
+        ["Party & Companions", "party", _root => "Party & Companions\n- none.\n"],
+        ["Scale & Protagonists", "scale", _root => "Scale & Protagonists\n- single protagonist mode.\n"]
+      ],
+      markAllProtectedDirty(root) { root.cards.allProtectedDirty = true; },
+      protectedTitleMap() { const m = {}; this.protectedDefs.forEach(d => { m[d[0]] = true; }); return m; },
+      isProtectedTitle(name) { const t = AIDRPG.U.title(name); return !!this.protectedTitleMap()[t]; },
+      process(root, force) {
+        if (root.settings.cardWriting === false) return 0;
+        let changes = 0;
+        changes += this.cleanupOldBadCards();
+        changes += this.ensureProtected(root);
+        changes += this.ensureGenerated(root);
+        root.cards.lastSyncTurn = root.meta.turn;
+        return changes;
+      },
+      cardKey(card) { return AIDRPG.U.norm(card && (card.keys || card.title || card.name || "")); },
+      cardEntry(card) { return String(card && (card.entry || card.text || card.description || "")); },
+      isNeutralized(card) { const k = this.cardKey(card); return /^SAFE TO DELETE/i.test(k) || /ignored old duplicate/i.test(this.cardEntry(card)); },
+      findExactCardIndex(title) { const cards = AIDRPG.U.getStoryCards(); for (let i = 0; i < cards.length; i++) if (!this.isNeutralized(cards[i]) && this.cardKey(cards[i]) === title) return i; return -1; },
+      looksLikeProtected(card, title) {
+        if (!card || this.isNeutralized(card)) return false;
+        const key = this.cardKey(card);
+        const entry = this.cardEntry(card);
+        const first = AIDRPG.U.norm(entry.split(/\n/)[0] || "");
+        if (key && this.isProtectedTitle(key) && key !== title) return false;
+        if (first && this.isProtectedTitle(first) && first !== title) return false;
+        if (key === title || first === title) return true;
+        if (title === "Player Sheet" && /\bPlayer\s*:|\bHP\s*:\s*\d+\s*\//i.test(entry)) return true;
+        if (title === "Inventory" && /^Inventory\b|\bCoins:\b|\bEquipped\b/i.test(entry)) return true;
+        if (title === "Quest Log" && /^Quest Log\b|\bActive:\b|\bPending Offers:/i.test(entry)) return true;
+        if (title === "Abilities Overview" && /^Abilities Overview\b|\bDeveloping Candidates:/i.test(entry)) return true;
+        if (title === "Time & Travel" && /^Time & Travel\b|\bRoutes:\b/i.test(entry)) return true;
+        if (title === "Character Notes" && /^Character Notes\b/i.test(entry)) return true;
+        if (title === "Combat & Threats" && /^Combat & (?:Threats|Body)\b/i.test(entry)) return true;
+        if (title === "Reputation" && /^Reputation\b/i.test(entry)) return true;
+        if (title === "Domain & Contracts" && /^Domain & Contracts\b/i.test(entry)) return true;
+        if (title === "Economy & Crafting" && /^Economy & Crafting\b/i.test(entry)) return true;
+        if (title === "Investigation & Evidence" && /^Investigation & Evidence\b/i.test(entry)) return true;
+        if (title === "Party & Companions" && /^Party & Companions\b/i.test(entry)) return true;
+        if (title === "Scale & Protagonists" && /^Scale & Protagonists\b/i.test(entry)) return true;
+        if (/^(?:Basic Abilities|Skills|Talents|Passives)$/.test(title) && first === title) return true;
+        return false;
+      },
+      enforceSingleton(title) {
+        const cards = AIDRPG.U.getStoryCards(); const hits = [];
+        for (let i = 0; i < cards.length; i++) if (this.looksLikeProtected(cards[i], title)) hits.push(i);
+        if (hits.length <= 1) return hits.length ? hits[0] : -1;
+        const keep = hits.find(i => this.cardKey(cards[i]) === title) >= 0 ? hits.find(i => this.cardKey(cards[i]) === title) : hits[0];
+        for (let j = hits.length - 1; j >= 0; j--) { const idx = hits[j]; if (idx !== keep) this.neutralize(idx); }
+        return keep;
+      },
+      neutralize(index) {
+        const cards = AIDRPG.U.getStoryCards();
+        if (index < 0 || !cards[index]) return 0;
+        if (AIDRPG.U.callRemove(index)) return 1;
+        AIDRPG.U.callUpdate(index, "SAFE TO DELETE", "Ignored old duplicate. Safe to delete manually.", "AIDRPG");
+        if (cards[index]) { cards[index].keys = "SAFE TO DELETE"; cards[index].entry = "Ignored old duplicate. Safe to delete manually."; cards[index].type = "AIDRPG"; delete cards[index].namespace; delete cards[index].notes; delete cards[index].note; }
+        return 1;
+      },
+      cleanupOldBadCards() {
+        const cards = AIDRPG.U.getStoryCards(); let c = 0;
+        for (let i = cards.length - 1; i >= 0; i--) {
+          const k = this.cardKey(cards[i]); const e = this.cardEntry(cards[i]);
+          if (/Duplicate AIDRPG Card|Quarantined AIDRPG Card|SYS:AIDRPG|,\s*AIDRPG\b/i.test(k + " " + e)) { c += this.neutralize(i); continue; }
+          if (/^(?:street|room|door|wall|warmth of the room|spacious common room|your body|your hand|slow)$/i.test(k)) { c += this.neutralize(i); }
+        }
+        return c;
+      },
+      ensureProtected(root) {
+        let c = 0;
+        for (let i = 0; i < this.protectedDefs.length; i++) {
+          const [title, _id, fn] = this.protectedDefs[i];
+          let idx = this.enforceSingleton(title);
+          const entry = fn(root);
+          if (idx < 0) { const added = AIDRPG.U.callAdd(title, entry, "AIDRPG"); if (added !== false) c++; }
+          else { if (AIDRPG.U.callUpdate(idx, title, entry, "AIDRPG")) c++; else { const cards = AIDRPG.U.getStoryCards(); if (cards[idx]) { cards[idx].keys = title; cards[idx].entry = entry; cards[idx].type = "AIDRPG"; c++; } } }
+        }
+        return c;
+      },
+      shouldWriteGenerated(name) { const clean = AIDRPG.U.title(name); return clean && !this.isProtectedTitle(clean) && !/^SAFE TO DELETE/i.test(clean) && !AIDRPG.CanonValidator.isJunkPlace(clean) && !AIDRPG.CanonValidator.isJunkPerson(clean); },
+      ensureGenerated(root) {
+        if (root.settings.generatedCards === false) return 0;
+        let c = 0;
+        // actors
+        root.actors.order.forEach(k => { const a = root.actors.byKey[k]; if (!a || !a.cardEligible || !this.shouldWriteGenerated(a.name)) return; const entry = [a.name, "Type: Person", "Stage: " + a.stage, "Roles: " + (a.roles.join(", ") || "unknown"), "Mentions: " + a.mentions, "Memory:", ...(a.memory || []).slice(-5).map(x => "- " + x)].join("\n") + "\n"; c += this.writeGenerated(a.name, entry); });
+        // places
+        root.places.order.forEach(k => { const p = root.places.byKey[k]; if (!p || !p.cardEligible || !this.shouldWriteGenerated(p.name)) return; const entry = [p.name, "Type: Place", "Stage: " + p.stage, "Kind: " + p.kind, "Visits: " + p.visits, "Details:", ...(p.details || []).slice(-6).map(x => "- " + x)].join("\n") + "\n"; c += this.writeGenerated(p.name, entry); });
+        // stabilized abilities only; developing abilities live in summary until stabilized
+        Object.keys(root.abilities.byId).forEach(k => { const a = root.abilities.byId[k]; if (!a || !a.cardEligible || !this.shouldWriteGenerated(a.name)) return; const entry = [a.name, "Type: Ability", "Class: " + a.type, "Level: " + (a.level || 1), "Notes:", ...(a.notes || []).map(x => "- " + x)].join("\n") + "\n"; c += this.writeGenerated(a.name, entry); });
+        return c;
+      },
+      writeGenerated(title, entry) { const clean = AIDRPG.U.title(title); const idx = this.findExactCardIndex(clean); if (idx < 0) { const added = AIDRPG.U.callAdd(clean, entry, "AIDRPG"); return added !== false ? 1 : 0; } return AIDRPG.U.callUpdate(idx, clean, entry, "AIDRPG") ? 1 : 0; },
+      audit(root) {
+        const cards = AIDRPG.U.getStoryCards(); const problems = []; const seen = {}; let neutralized = 0; const NL = String.fromCharCode(10);
+        for (let i = 0; i < cards.length; i++) {
+          const k = this.cardKey(cards[i]); if (!k) continue;
+          if (this.isNeutralized(cards[i])) neutralized++;
+          if (/Duplicate AIDRPG Card|Quarantined AIDRPG Card|SYS:AIDRPG|,\s*AIDRPG\b/i.test(k)) problems.push("polluted visible key: " + k);
+          if (/^(?:street|room|door|wall|warmth of the room|spacious common room|your body|your hand|slow)$/i.test(k)) problems.push("junk visible card: " + k);
+          seen[k] = (seen[k] || 0) + 1;
+        }
+        Object.keys(seen).forEach(k => { if (seen[k] > 1 && !/^SAFE TO DELETE/i.test(k)) problems.push("duplicate visible key: " + k + " x" + seen[k]); });
+        this.protectedDefs.forEach(d => { const title = d[0]; let hits = 0; for (let i = 0; i < cards.length; i++) if (this.looksLikeProtected(cards[i], title)) hits++; if (hits > 1) problems.push("duplicate protected card: " + title + " x" + hits); });
+        return ["[AIDRPG /cardaudit]", "Version: " + AIDRPG.VERSION, "Live Story Cards: " + cards.length, "Neutralized/SAFE TO DELETE: " + neutralized, "Problems: " + problems.length, ...(problems.length ? problems.slice(0, 25).map(x => "- " + x) : ["PASS"])].join(NL) + NL;
+      }
+    },
+
+    Release: {
+      audit(root) {
+        const checks = [];
+        const add = (name, ok) => checks.push({ name, ok: !!ok });
+        add("version", AIDRPG.VERSION === "1.9.2-consequence-combat-injury-core");
+        add("schema", root.schemaVersion === 192);
+        add("state root", !!root.player && !!root.abilities && !!root.inventory && !!root.op);
+        add("operation ledger", !!root.op.ledger && Array.isArray(root.op.order));
+        add("event reducer", !!AIDRPG.EventReducer && typeof AIDRPG.EventReducer.commit === "function");
+        add("body reducer", !!AIDRPG.Body && typeof AIDRPG.Body.damage === "function" && typeof AIDRPG.Body.fatigue === "function");
+        add("combat reducer", !!AIDRPG.Combat && typeof AIDRPG.Combat.kill === "function" && typeof AIDRPG.Combat.group === "function");
+        add("cardsync singleton", !!AIDRPG.CardSync && typeof AIDRPG.CardSync.ensureProtected === "function" && typeof AIDRPG.CardSync.enforceSingleton === "function");
+        add("context budget", !!AIDRPG.Context && typeof AIDRPG.Context.budget === "function");
+        add("manual override expanded", !!AIDRPG.ManualOverride && typeof AIDRPG.ManualOverride.parseList === "function");
+        add("no duplicate review generator", !/Duplicate AIDRPG Card - Review/.test(String(AIDRPG.CardSync.neutralize) + String(AIDRPG.CardSync.writeGenerated)));
+        const passed = checks.filter(c => c.ok).length;
+        return ["[AIDRPG v1.9.2 consequence-combat-injury releasecheck]", "Passed: " + passed, "Failed: " + (checks.length - passed), ...checks.map(c => (c.ok ? "PASS " : "FAIL ") + c.name), "", "Scope: v1.9.2 restores BodyReducer and CombatReducer: fatigue drains EP, mana strain drains MP, real wounds drain HP, conditions/injuries persist, and basic combat hit/survive/defeat XP is idempotent. Crafting/contracts/domain/investigation/reputation/party/scale remain planned for later v1.9.x reducers."].join("\n") + "\n";
+      },
+      stateAudit(root) {
+        const problems = [];
+        if (!root.player || !root.abilities || !root.inventory) problems.push("missing core state bucket");
+        if (root.player.hp > root.player.maxHp || root.player.mp > root.player.maxMp || root.player.ep > root.player.maxEp) problems.push("resource above max");
+        Object.keys(root.actors.byKey || {}).forEach(k => { if (AIDRPG.CanonValidator.isJunkPerson(root.actors.byKey[k].name || k)) problems.push("junk actor state: " + k); });
+        Object.keys(root.places.byKey || {}).forEach(k => { if (AIDRPG.CanonValidator.isJunkPlace(root.places.byKey[k].name || k)) problems.push("junk place state: " + k); });
+        const ledgerSize = root.op && root.op.order ? root.op.order.length : 0;
+        return ["[AIDRPG /stateaudit]", "Version: " + AIDRPG.VERSION, "Ledger entries: " + ledgerSize, "Actors: " + root.actors.order.length, "Places: " + root.places.order.length, "Items: " + root.inventory.order.length, "Combat recent: " + ((root.combat && root.combat.recent || []).length), "Problems: " + problems.length, ...(problems.length ? problems.slice(0, 25).map(x => "- " + x) : ["PASS"])].join("\n") + "\n";
+      },
+      debugLast(root) {
+        return ["[AIDRPG /debuglast]", "Turn: " + root.meta.turn, "Hook: " + root.meta.hook, "Last raw hash: " + root.meta.lastRawHash, "Current output hash: " + (root.meta.currentOutputHash || "none"), "Parsed events: " + (root.diagnostics.lastParsedEventCount || 0), "Accepted events: " + (root.diagnostics.lastAcceptedEventCount || 0), "Committed changes: " + (root.diagnostics.lastCommitChanges || 0), "Committed:", root.diagnostics.lastEvents && root.diagnostics.lastEvents.length ? root.diagnostics.lastEvents.map(x => "- " + x).join("\n") : "- none", "Skipped idempotent:", root.diagnostics.lastSkippedEvents && root.diagnostics.lastSkippedEvents.length ? root.diagnostics.lastSkippedEvents.map(x => "- " + x).join("\n") : "- none", "Manual override: " + (root.diagnostics.lastManualOverride || "none")].join("\n") + "\n";
+      }
+    }
+  };
+
+  g.AIDRPG = AIDRPG;
+})();

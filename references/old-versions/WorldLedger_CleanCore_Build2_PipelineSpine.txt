@@ -1,0 +1,881 @@
+/*
+WorldLedger Clean Core — Build 2 Pipeline Spine
+Made by: JustSomeBobby + ChatGPT clean-core rebuild assistance
+
+Credit and direct inspiration:
+- RPGUI by @RonenNess — state-first RPG/HUD presentation discipline and clean helper separation, reinterpreted for AI Dungeon as text-first state and command readouts. No HTML UI code is used.
+- TAS / True Auto Stats by @Yi1i1i — freeform action reading, emergent growth ambition, and structured stats / inventory / abilities, rebuilt as proposal -> validation -> reducer ownership.
+- Auto-Cards by @LewdLeah — object permanence, entity detection, Story Card drafting, and memory maintenance ideas, rebuilt so cards are editable canon memory while mechanics remain owner-routed.
+- Inner Self by @LewdLeah — segmented long-term NPC memory and major-character persistence, rebuilt as selective reducer-owned memory rather than universal NPC simulation.
+- AIDRPG / WorldLedger prior planning and rebuild material — project-specific RPG truth-engine requirements, acceptance failures, and clean-core control rules.
+
+Status: Build 2 / Core Pipeline Spine only. This is not a gameplay-complete release.
+Purpose: establish the clean scanner -> proposal -> validator -> reducer -> ledger -> dirty/diagnostic spine.
+Owner systems such as inventory, quests, cards, stats, combat, actors, and world structure are still blocked until later builds.
+
+Project doctrine:
+- Input may intend.
+- Context may remind.
+- Output may propose.
+- Parser hits/events are observations.
+- Proposals are structured claims.
+- CanonValidator decides eligibility.
+- ReducerRegistry commits accepted validations through owner reducers.
+- OperationLedger dedupes every side effect.
+- DirtyQueue marks refresh targets.
+- Context reads.
+- Cards mirror truth later; raw Story Card prose does not auto-fire mechanics.
+- ReleaseCheck must tell the truth.
+
+Hard build law for the clean-core rebuild:
+- No hook wrapping.
+- No late repair authority.
+- No fake green checks.
+- No acceptance shrink.
+- One active authority per major subsystem.
+
+This file intentionally does not import failed WorldLedgerV1.2.0 behavior.
+*/
+(function () {
+  'use strict';
+
+  var WL = {
+    PROJECT_NAME: 'WorldLedger',
+    BUILD_NAME: 'WorldLedger Clean Core',
+    BUILD_VERSION: 'clean-core-build-2-pipeline-spine',
+    BUILD_STAGE: 'Build 2 — Core Pipeline Spine / No Gameplay Owners Yet',
+    SCHEMA_VERSION: 2,
+    SCHEMA_ID: 'worldledger.clean-core.schema.build2',
+    ROOT_KEY: 'worldledger',
+    STATUS: 'BUILD_PHASE_ONLY_NOT_RELEASE'
+  };
+
+  // ============================================================
+  // 01. Header / version / hard constants
+  // ============================================================
+  WL.Constants = Object.freeze({
+    aiDungeonSafe: true,
+    fileSizeWarningBytes: 16 * 1024 * 1024,
+    maxAuditRows: 100,
+    maxRecentKeys: 240,
+    maxHookTrace: 50,
+    maxParserHits: 40,
+    maxProposals: 40,
+    maxValidations: 40,
+    maxReducerResults: 40,
+    maxCommandOutputChars: 10000
+  });
+
+  WL.ForbiddenPatternPolicy = Object.freeze({
+    note: 'The source is externally audited for forbidden late-layer patterns. The exact blocked spellings are intentionally not stored here to avoid self-contamination.',
+    hookLayeringAllowed: false,
+    lateRepairLayersAllowed: false,
+    fakeGreenChecksAllowed: false
+  });
+
+  WL.OwnerManifest = Object.freeze({
+    profileRace: { owner: 'PlayerProfileSystem + RaceRegistry', status: 'STUB_LATER_BUILD', owns: 'setup/profile/race import later' },
+    inventoryEquipment: { owner: 'InventoryEquipmentSystem', status: 'STUB_LATER_BUILD', owns: 'confirmed possession/equipment/payment later' },
+    questsRewards: { owner: 'QuestObjectiveRewardSystem', status: 'STUB_LATER_BUILD', owns: 'quest lifecycle/reward binding later' },
+    timeTravel: { owner: 'TimeTravelSystem', status: 'STUB_LATER_BUILD', owns: 'time/routes/deadlines later' },
+    worldStructure: { owner: 'WorldStructureSystem', status: 'STUB_LATER_BUILD', owns: 'places/layouts/world graph later' },
+    actorSocial: { owner: 'ActorSocialSystem', status: 'STUB_LATER_BUILD', owns: 'actors/social/factions later' },
+    abilities: { owner: 'AbilityLifecycleSystem', status: 'STUB_LATER_BUILD', owns: 'abilities/skills/passives/talents later' },
+    progression: { owner: 'ProgressionSystem', status: 'STUB_LATER_BUILD', owns: 'stats/xp/domain later' },
+    combatThreat: { owner: 'CombatThreatSystem', status: 'STUB_LATER_BUILD', owns: 'threat/combat/group counts later' },
+    formBody: { owner: 'FormTransformationSystem', status: 'STUB_LATER_BUILD', owns: 'form/body transformation later' },
+    advancedBoundaries: { owner: 'AdvancedBoundarySystem', status: 'STUB_LATER_BUILD', owns: 'economy/crafting/domain/warfare/absorption later' },
+    context: { owner: 'ContextSystem', status: 'SKELETON_ACTIVE', owns: 'bounded placeholder context only' },
+    cards: { owner: 'CardSystem', status: 'STUB_LATER_BUILD', owns: 'card rendering/sync later' },
+    diagnostics: { owner: 'DiagnosticsSystem + OperationLedger', status: 'PIPELINE_ACTIVE', owns: 'audit/operation key shell' },
+    pipeline: { owner: 'EventScanner + ProposalBuilder + CanonValidator + ReducerRegistry', status: 'PIPELINE_ACTIVE', owns: 'observation/proposal/validation/dispatch spine' },
+    commands: { owner: 'CommandSystem + AcceptanceSuite', status: 'PIPELINE_ACTIVE', owns: 'commands/build checks only' }
+  });
+
+  // ============================================================
+  // 02. Feature flags / safe mode / platform caps
+  // ============================================================
+  WL.FeatureDefaults = Object.freeze({
+    commandsEnabled: true,
+    debugMode: false,
+    safeMode: false,
+    contextMode: 'small',
+    gameplayReducersEnabled: false,
+    storyCardWritesEnabled: false,
+    generatedCardsEnabled: false,
+    manualMutationCommandsEnabled: false,
+    parserEnabled: true,
+    proposalBuilderEnabled: true,
+    validatorEnabled: true,
+    reducerRegistryEnabled: true,
+    operationLedgerEnabled: true,
+    dirtyQueueEnabled: true,
+    sourceGuardEnabled: true
+  });
+
+  // ============================================================
+  // 03. Utility helpers
+  // ============================================================
+  WL.U = {
+    norm: function (value) {
+      return String(value == null ? '' : value)
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim();
+    },
+    lower: function (value) { return WL.U.norm(value).toLowerCase(); },
+    title: function (value) {
+      var raw = WL.U.norm(value).replace(/^the\s+/i, '');
+      if (!raw) return '';
+      var small = { a: 1, an: 1, and: 1, at: 1, by: 1, for: 1, from: 1, in: 1, of: 1, on: 1, or: 1, the: 1, to: 1, with: 1 };
+      var parts = raw.split(/\s+/);
+      for (var i = 0; i < parts.length; i++) {
+        var w = parts[i].toLowerCase();
+        parts[i] = (i > 0 && small[w]) ? w : w.charAt(0).toUpperCase() + w.slice(1);
+      }
+      return parts.join(' ');
+    },
+    slug: function (value) {
+      var s = WL.U.lower(value).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      return s.slice(0, 80) || 'unknown';
+    },
+    clamp: function (n, min, max) {
+      n = Number(n);
+      if (!isFinite(n)) n = min;
+      if (n < min) return min;
+      if (n > max) return max;
+      return n;
+    },
+    hash: function (value) {
+      var s = String(value == null ? '' : value);
+      var h = 2166136261;
+      for (var i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+      }
+      return ('00000000' + ((h >>> 0).toString(16))).slice(-8);
+    },
+    clone: function (value) {
+      try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
+    },
+    capArray: function (arr, max) {
+      if (!Array.isArray(arr)) return [];
+      while (arr.length > max) arr.shift();
+      return arr;
+    },
+    ensureObject: function (parent, key, factory) {
+      if (!parent || typeof parent !== 'object') return factory ? factory() : {};
+      if (!parent[key] || typeof parent[key] !== 'object' || Array.isArray(parent[key])) parent[key] = factory ? factory() : {};
+      return parent[key];
+    },
+    ensureArray: function (parent, key) {
+      if (!parent || typeof parent !== 'object') return [];
+      if (!Array.isArray(parent[key])) parent[key] = [];
+      return parent[key];
+    },
+    startsCommand: function (text) { return /^\s*\/\w+/.test(String(text || '')); },
+    commandName: function (text) {
+      var m = String(text || '').match(/^\s*\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1].toLowerCase() : '';
+    },
+    commandArgs: function (text) { return String(text || '').replace(/^\s*\/\S+\s*/, '').trim(); },
+    safeString: function (value) {
+      if (value == null) return '';
+      if (typeof value === 'string') return WL.U.norm(value);
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      if (Array.isArray(value)) return value.map(function (v) { return WL.U.safeString(v); }).filter(Boolean).join(', ');
+      if (typeof value === 'object') {
+        if (value.displayName) return WL.U.safeString(value.displayName);
+        if (value.name) return WL.U.safeString(value.name);
+        if (value.title) return WL.U.safeString(value.title);
+        try { return JSON.stringify(value); } catch (e) { return '[object]'; }
+      }
+      return WL.U.norm(value);
+    },
+    getGlobalState: function () {
+      if (typeof globalThis === 'undefined') return {};
+      if (!globalThis.state || typeof globalThis.state !== 'object') globalThis.state = {};
+      return globalThis.state;
+    },
+    getActionCount: function () {
+      try {
+        if (typeof info === 'object' && info && typeof info.actionCount === 'number') return info.actionCount;
+      } catch (e) {}
+      return 0;
+    },
+    splitClauses: function (text) {
+      var t = WL.U.norm(text);
+      if (!t) return [];
+      return t.split(/(?<=[.!?])\s+|\n+|;+/).map(function (s) { return WL.U.norm(s); }).filter(Boolean).slice(0, 18);
+    }
+  };
+
+  // ============================================================
+  // 04. Schema defaults and migrations
+  // ============================================================
+  WL.Schema = {
+    features: function () { return WL.U.clone(WL.FeatureDefaults); },
+    root: function () {
+      return {
+        schemaVersion: WL.SCHEMA_VERSION,
+        schemaId: WL.SCHEMA_ID,
+        build: {
+          projectName: WL.PROJECT_NAME,
+          buildName: WL.BUILD_NAME,
+          buildVersion: WL.BUILD_VERSION,
+          buildStage: WL.BUILD_STAGE,
+          status: WL.STATUS
+        },
+        features: WL.Schema.features(),
+        runtime: {
+          currentHook: 'none',
+          currentTurn: 0,
+          hookDepth: 0,
+          lastInputHash: '',
+          lastContextHash: '',
+          lastOutputHash: '',
+          lastCommandName: '',
+          lastCommandHash: '',
+          lastCommandTurn: 0,
+          lastReturnStatus: '',
+          lastPipelineSummary: '',
+          hookTrace: [],
+          warnings: [],
+          errors: []
+        },
+        meta: {
+          initialized: true,
+          lastUpdatedTurn: 0,
+          notes: [],
+          source: 'clean-core-build-2'
+        },
+        player: { id: 'player', name: 'Unknown', raceSpecies: 'unknown', currentForm: 'unknown', notes: [] },
+        body: { hp: 100, maxHp: 100, mp: 50, maxMp: 50, ep: 100, maxEp: 100, conditions: [], injuries: [] },
+        inventory: { itemsById: {}, ownedIds: [], currency: { copper: 0, silver: 0, gold: 0 }, equipment: {}, log: [] },
+        quests: { questsById: {}, activeIds: [], offeredIds: [], completedIds: [], rewardPromises: [], rewardPayments: [] },
+        abilities: { inboxById: {}, inboxIds: [], abilitiesById: {}, abilityIds: [], candidatesById: {}, candidateIds: [] },
+        skills: { skillsById: {}, skillIds: [] },
+        talents: { talentsById: {}, talentIds: [] },
+        passives: { passivesById: {}, passiveIds: [] },
+        progression: { level: 1, xp: 0, xpToNext: 100, statXp: {}, domainXp: {}, recent: [] },
+        combat: { activeCombatId: '', threatProfilesById: {}, groupCountsById: {}, snapshotsById: {} },
+        actors: { actorsById: {}, presentIds: [], recent: [] },
+        places: { placesById: {}, currentId: '', recent: [] },
+        time: { day: 1, hour: 8, minute: 0, season: '', weather: '', routesById: {}, deadlines: [], recent: [] },
+        cards: { protectedIds: [], generatedIds: [], dirtyIds: [], warnings: [] },
+        operationLedger: { recentKeys: [], keysById: {}, duplicateSkips: [] },
+        diagnostics: { audit: [], parser: [], proposals: [], validations: [], reducers: [], sourceAudit: [] },
+        dirty: { targets: [], reasons: [] },
+        quarantine: { records: [] },
+        cleanup: { lastRunTurn: 0, notes: [] },
+        pending: { lastParserHits: [], lastProposals: [], lastValidations: [], lastReducerResults: [], lastPipeline: null },
+        ownerManifest: WL.U.clone(WL.OwnerManifest)
+      };
+    }
+  };
+
+  WL.Migration = {
+    migrate: function (root) {
+      if (!root || typeof root !== 'object') return WL.Schema.root();
+      root.schemaVersion = WL.SCHEMA_VERSION;
+      root.schemaId = WL.SCHEMA_ID;
+      return root;
+    }
+  };
+
+  // ============================================================
+  // 05. StateManager and quarantine
+  // ============================================================
+  WL.StateManager = {
+    root: function () { return WL.StateManager.init(WL.U.getGlobalState()); },
+    init: function (stateObj) {
+      var st = stateObj && typeof stateObj === 'object' ? stateObj : WL.U.getGlobalState();
+      if (!st[WL.ROOT_KEY] || typeof st[WL.ROOT_KEY] !== 'object' || Array.isArray(st[WL.ROOT_KEY])) {
+        st[WL.ROOT_KEY] = WL.Schema.root();
+      }
+      var root = WL.Migration.migrate(st[WL.ROOT_KEY]);
+      WL.StateManager.ensureBuckets(root);
+      root.build.projectName = WL.PROJECT_NAME;
+      root.build.buildName = WL.BUILD_NAME;
+      root.build.buildVersion = WL.BUILD_VERSION;
+      root.build.buildStage = WL.BUILD_STAGE;
+      root.build.status = WL.STATUS;
+      root.meta.lastUpdatedTurn = WL.U.getActionCount();
+      st[WL.ROOT_KEY] = root;
+      return root;
+    },
+    ensureBuckets: function (root) {
+      var fresh = WL.Schema.root();
+      var keys = Object.keys(fresh);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (k === 'schemaVersion' || k === 'schemaId') continue;
+        if (!root[k] || typeof root[k] !== 'object' || Array.isArray(root[k]) !== Array.isArray(fresh[k])) {
+          root[k] = WL.U.clone(fresh[k]);
+        }
+      }
+      WL.StateManager.enforceInvariants(root);
+    },
+    enforceInvariants: function (root) {
+      root.body.maxHp = WL.U.clamp(root.body.maxHp, 1, 999999);
+      root.body.hp = WL.U.clamp(root.body.hp, 0, root.body.maxHp);
+      root.body.maxMp = WL.U.clamp(root.body.maxMp, 0, 999999);
+      root.body.mp = WL.U.clamp(root.body.mp, 0, root.body.maxMp);
+      root.body.maxEp = WL.U.clamp(root.body.maxEp, 0, 999999);
+      root.body.ep = WL.U.clamp(root.body.ep, 0, root.body.maxEp);
+      WL.U.capArray(root.runtime.hookTrace, WL.Constants.maxHookTrace);
+      WL.U.capArray(root.operationLedger.recentKeys, WL.Constants.maxRecentKeys);
+      WL.U.capArray(root.diagnostics.audit, WL.Constants.maxAuditRows);
+      WL.U.capArray(root.diagnostics.parser, WL.Constants.maxParserHits);
+      WL.U.capArray(root.diagnostics.proposals, WL.Constants.maxProposals);
+      WL.U.capArray(root.diagnostics.validations, WL.Constants.maxValidations);
+      WL.U.capArray(root.diagnostics.reducers, WL.Constants.maxReducerResults);
+    }
+  };
+
+  // ============================================================
+  // 06. Runtime hooks and source classification
+  // ============================================================
+  WL.SourceGuard = {
+    classify: function (text, hook) {
+      var raw = String(text == null ? '' : text);
+      var n = WL.U.norm(raw);
+      if (WL.U.startsCommand(raw)) return { kind: 'command', hook: hook, commandName: WL.U.commandName(raw), eligibleForCanon: false, reason: 'command_input' };
+      if (/^\[WorldLedger\]/i.test(n) || /\bCommand:\s*\//i.test(n) || /\bSummary:\s*PASS\b/i.test(n)) {
+        return { kind: 'command_echo', hook: hook || 'unknown', commandName: '', eligibleForCanon: false, reason: 'command_or_check_output_echo' };
+      }
+      if (hook === 'context') return { kind: 'context', hook: hook, commandName: '', eligibleForCanon: false, reason: 'context_is_read_only' };
+      if (hook === 'input') return { kind: 'input', hook: hook, commandName: '', eligibleForCanon: false, reason: 'input_intent_only' };
+      return { kind: hook || 'unknown', hook: hook || 'unknown', commandName: '', eligibleForCanon: hook === 'output', reason: hook === 'output' ? 'output_can_propose' : 'unknown_source' };
+    }
+  };
+
+  WL.Runtime = {
+    begin: function (root, hook, text) {
+      root.runtime.currentHook = hook;
+      root.runtime.currentTurn = WL.U.getActionCount();
+      root.runtime.hookDepth += 1;
+      root.runtime.hookTrace.push({ turn: root.runtime.currentTurn, hook: hook, hash: WL.U.hash(text), phase: 'begin' });
+      WL.U.capArray(root.runtime.hookTrace, WL.Constants.maxHookTrace);
+    },
+    end: function (root, hook, status) {
+      root.runtime.lastReturnStatus = status || 'ok';
+      root.runtime.hookTrace.push({ turn: root.runtime.currentTurn, hook: hook, phase: 'end', status: status || 'ok' });
+      WL.U.capArray(root.runtime.hookTrace, WL.Constants.maxHookTrace);
+      root.runtime.hookDepth = Math.max(0, root.runtime.hookDepth - 1);
+      root.runtime.currentHook = 'none';
+      WL.StateManager.enforceInvariants(root);
+    },
+    runPipeline: function (root, text, hook) {
+      var source = WL.SourceGuard.classify(text, hook);
+      var events = [];
+      if (source.eligibleForCanon || hook === 'input') {
+        events = hook === 'output' ? WL.EventScanner.scanOutput(text, root, source) : WL.EventScanner.scanInput(text, root, source);
+      }
+      var proposals = WL.ProposalBuilder.fromEvents(root, events, source);
+      var validations = WL.CanonValidator.validateAll(root, proposals, source);
+      var reducerResults = WL.ReducerRegistry.applyAcceptedBatch(root, validations, source);
+      WL.DirtyQueue.mark(root, reducerResults);
+      root.pending.lastParserHits = events;
+      root.pending.lastProposals = proposals;
+      root.pending.lastValidations = validations;
+      root.pending.lastReducerResults = reducerResults;
+      root.pending.lastPipeline = { hook: hook, sourceKind: source.kind, events: events.length, proposals: proposals.length, validations: validations.length, reducers: reducerResults.length };
+      root.runtime.lastPipelineSummary = hook + ': events=' + events.length + ', proposals=' + proposals.length + ', validations=' + validations.length + ', reducers=' + reducerResults.length;
+      return root.pending.lastPipeline;
+    },
+    handleInput: function (text) {
+      var root = WL.StateManager.root();
+      WL.Runtime.begin(root, 'input', text);
+      var source = WL.SourceGuard.classify(text, 'input');
+      root.runtime.lastInputHash = WL.U.hash(text);
+      var out = text;
+      if (source.kind === 'command') {
+        root.runtime.lastCommandName = source.commandName;
+        root.runtime.lastCommandHash = WL.U.hash(text);
+        root.runtime.lastCommandTurn = root.runtime.currentTurn;
+        out = WL.CommandRouter.route(text, root);
+      } else {
+        WL.Runtime.runPipeline(root, text, 'input');
+      }
+      WL.Runtime.end(root, 'input', 'ok');
+      return out;
+    },
+    handleContext: function (text) {
+      var root = WL.StateManager.root();
+      WL.Runtime.begin(root, 'context', text);
+      root.runtime.lastContextHash = WL.U.hash(text);
+      var packet = WL.ContextSystem.build(root, text);
+      WL.Runtime.end(root, 'context', 'ok');
+      return packet;
+    },
+    handleOutput: function (text) {
+      var root = WL.StateManager.root();
+      WL.Runtime.begin(root, 'output', text);
+      root.runtime.lastOutputHash = WL.U.hash(text);
+      WL.Runtime.runPipeline(root, text, 'output');
+      WL.Runtime.end(root, 'output', 'ok');
+      return text;
+    }
+  };
+
+  // ============================================================
+  // 07. EventScanner / ProposalBuilder / CanonValidator / ReducerRegistry
+  // ============================================================
+  WL.EventScanner = {
+    makeEvent: function (family, type, clause, source, data) {
+      var c = WL.U.norm(clause);
+      return {
+        family: family,
+        type: type,
+        sourceHook: source.hook,
+        sourceKind: source.kind,
+        sourceHash: WL.U.hash(source.hook + '|' + c),
+        localClauseHash: WL.U.hash(c),
+        textPreview: c.slice(0, 220),
+        data: data || {},
+        confidence: data && data.confidence || 'candidate'
+      };
+    },
+    scanInput: function (text, root, source) {
+      var out = [];
+      var clauses = WL.U.splitClauses(text);
+      for (var i = 0; i < clauses.length; i++) {
+        out.push(WL.EventScanner.makeEvent('input', 'intent_observed', clauses[i], source, { confidence: 'intent_only' }));
+      }
+      WL.EventScanner.record(root, out);
+      return out;
+    },
+    scanOutput: function (text, root, source) {
+      var out = [];
+      var clauses = WL.U.splitClauses(text);
+      if (!clauses.length && WL.U.norm(text)) clauses = [WL.U.norm(text)];
+      for (var i = 0; i < clauses.length; i++) {
+        var clause = clauses[i];
+        out.push(WL.EventScanner.makeEvent('system', 'output_observed', clause, source, { confidence: 'confirmed_output' }));
+        var inv = WL.EventScanner.detectInventoryCandidate(clause);
+        if (inv) out.push(WL.EventScanner.makeEvent('inventory', inv.type, clause, source, inv));
+        var quest = WL.EventScanner.detectQuestCandidate(clause);
+        if (quest) out.push(WL.EventScanner.makeEvent('quest', quest.type, clause, source, quest));
+      }
+      WL.EventScanner.record(root, out);
+      return out;
+    },
+    detectInventoryCandidate: function (clause) {
+      var c = WL.U.norm(clause);
+      var lower = WL.U.lower(c);
+      if (/\b(almost|tries? to|attempts? to|fails? to|refuses? to|declines? to)\b/.test(lower)) return null;
+      if (/\b(reaches? for|looks? at|sees?|notices?|wants?|needs?|promises?|objective|quest)\b/.test(lower)) return null;
+      var m = c.match(/\b(?:pick(?:s)? up|grab(?:s)?|take(?:s)?|loot(?:s)?|receive(?:s)?|pocket(?:s)?|snatch(?:es)? up|scoop(?:s)? up|secure(?:s)?|lift(?:s)?|catch(?:es)?|take(?:s)? hold of)\s+(?:the\s+|a\s+|an\s+)?([^.!?;,]{2,80})/i);
+      if (!m) m = c.match(/\b(?:hands?|gives?|tosses?)\s+you\s+(?:the\s+|a\s+|an\s+)?([^.!?;,]{2,80})/i);
+      if (!m) return null;
+      var target = WL.EventScanner.cleanCandidateTarget(m[1]);
+      if (!target) return null;
+      return { type: 'acquire_candidate', targetName: target, confidence: 'candidate_confirmed_phrase' };
+    },
+    detectQuestCandidate: function (clause) {
+      var c = WL.U.norm(clause);
+      var lower = WL.U.lower(c);
+      if (/\b(asks? you to|offers? you|quest|task|mission|promises?)\b/.test(lower) && /\b(clear|find|bring|escort|repair|meet|deliver|kill|defeat|investigate|protect|rescue)\b/.test(lower)) {
+        return { type: 'quest_candidate', titleSeed: c.slice(0, 120), confidence: 'candidate_quest_language' };
+      }
+      return null;
+    },
+    cleanCandidateTarget: function (target) {
+      var t = WL.U.norm(target)
+        .replace(/\b(before|while|as|when|but|and then|from)\b[\s\S]*$/i, '')
+        .replace(/^hold\s+of\s+/i, '')
+        .replace(/^up\s+/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!t || t.length < 2) return '';
+      if (/\bquest\b/i.test(t)) return '';
+      return WL.U.title(t);
+    },
+    record: function (root, events) {
+      for (var i = 0; i < events.length; i++) root.diagnostics.parser.push(events[i]);
+      WL.U.capArray(root.diagnostics.parser, WL.Constants.maxParserHits);
+    }
+  };
+
+  WL.ProposalBuilder = {
+    fromEvents: function (root, events, source) {
+      var out = [];
+      var seen = {};
+      for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        var target = ev.data && ev.data.targetName ? WL.U.slug(ev.data.targetName) : '';
+        var localKey = [ev.family, ev.type, ev.sourceHash, ev.localClauseHash, target].join('|');
+        if (seen[localKey]) continue;
+        seen[localKey] = true;
+        var proposal = {
+          id: 'proposal_' + WL.U.hash(localKey + '|' + i),
+          family: ev.family,
+          type: ev.type,
+          sourceHook: ev.sourceHook,
+          sourceKind: ev.sourceKind,
+          sourceHash: ev.sourceHash,
+          localClauseHash: ev.localClauseHash,
+          targetId: target,
+          targetName: ev.data && ev.data.targetName || '',
+          textPreview: ev.textPreview,
+          data: ev.data || {},
+          status: 'proposed',
+          opKey: WL.OperationLedger.makeKey([ev.sourceHook, ev.sourceHash, ev.localClauseHash, ev.family, ev.type, target || 'none'])
+        };
+        out.push(proposal);
+        root.diagnostics.proposals.push(proposal);
+      }
+      WL.U.capArray(root.diagnostics.proposals, WL.Constants.maxProposals);
+      return out;
+    }
+  };
+
+  WL.CanonValidator = {
+    validateAll: function (root, proposals, source) {
+      var out = [];
+      for (var i = 0; i < proposals.length; i++) out.push(WL.CanonValidator.validate(root, proposals[i], source));
+      for (var j = 0; j < out.length; j++) root.diagnostics.validations.push(out[j]);
+      WL.U.capArray(root.diagnostics.validations, WL.Constants.maxValidations);
+      return out;
+    },
+    validate: function (root, proposal, source) {
+      var result = {
+        id: 'validation_' + WL.U.hash(proposal.id + '|' + proposal.opKey),
+        proposalId: proposal.id,
+        proposal: proposal,
+        family: proposal.family,
+        type: proposal.type,
+        accepted: false,
+        status: 'REJECTED',
+        reason: '',
+        reducer: ''
+      };
+      if (!source || !source.eligibleForCanon) {
+        result.status = source && source.kind === 'input' ? 'PENDING' : 'REJECTED';
+        result.reason = source && source.reason || 'source_not_eligible';
+        return result;
+      }
+      if (proposal.family === 'system' && proposal.type === 'output_observed') {
+        result.accepted = true;
+        result.status = 'ACCEPTED';
+        result.reason = 'pipeline_observation_only';
+        result.reducer = 'SystemObservationReducer';
+        return result;
+      }
+      if (proposal.family === 'inventory' || proposal.family === 'quest') {
+        result.status = 'BLOCKED';
+        result.reason = proposal.family + '_owner_not_installed_until_later_build';
+        return result;
+      }
+      result.status = 'PENDING';
+      result.reason = 'no_owner_for_family_in_build2';
+      return result;
+    }
+  };
+
+  WL.ReducerRegistry = {
+    handlers: {},
+    applyAcceptedBatch: function (root, validations, source) {
+      var results = [];
+      for (var i = 0; i < validations.length; i++) {
+        var v = validations[i];
+        if (!v.accepted) {
+          results.push({ status: v.status, applied: false, reason: v.reason, family: v.family, type: v.type, targetId: v.proposal && v.proposal.targetId || '' });
+          continue;
+        }
+        var key = v.proposal.opKey;
+        var ledger = WL.OperationLedger.add(root, key, v.reducer || v.family);
+        if (!ledger.applied) {
+          results.push({ status: 'DUPLICATE_SKIPPED', applied: false, duplicate: true, key: ledger.key, family: v.family, type: v.type });
+          continue;
+        }
+        var handler = WL.ReducerRegistry.handlers[v.reducer];
+        if (typeof handler !== 'function') {
+          results.push({ status: 'NO_HANDLER', applied: false, key: ledger.key, family: v.family, type: v.type, reason: 'handler_missing' });
+          continue;
+        }
+        var h = handler(root, v, ledger);
+        results.push(h);
+      }
+      for (var j = 0; j < results.length; j++) root.diagnostics.reducers.push(results[j]);
+      WL.U.capArray(root.diagnostics.reducers, WL.Constants.maxReducerResults);
+      return results;
+    }
+  };
+
+  WL.ReducerRegistry.handlers.SystemObservationReducer = function (root, validation, ledger) {
+    return {
+      status: 'APPLIED_DIAGNOSTIC_ONLY',
+      applied: true,
+      family: validation.family,
+      type: validation.type,
+      key: ledger.key,
+      note: 'Build 2 commits only pipeline diagnostics, not gameplay truth.'
+    };
+  };
+
+  WL.DirtyQueue = {
+    mark: function (root, reducerResults) {
+      var anyApplied = false;
+      for (var i = 0; i < reducerResults.length; i++) if (reducerResults[i].applied) anyApplied = true;
+      if (anyApplied) {
+        root.dirty.targets.push('diagnostics');
+        root.dirty.reasons.push('pipeline_observation');
+        WL.U.capArray(root.dirty.targets, 40);
+        WL.U.capArray(root.dirty.reasons, 40);
+      }
+    }
+  };
+
+  // ============================================================
+  // 08. OperationLedger and Diagnostics
+  // ============================================================
+  WL.OperationLedger = {
+    makeKey: function (parts) { return WL.U.slug((parts || []).join('|')); },
+    has: function (root, key) { return !!(root.operationLedger.keysById[WL.OperationLedger.makeKey([key])]); },
+    add: function (root, key, reason) {
+      var k = WL.OperationLedger.makeKey([key]);
+      if (root.operationLedger.keysById[k]) {
+        root.operationLedger.duplicateSkips.push({ key: k, reason: reason || 'duplicate', turn: root.runtime.currentTurn });
+        WL.U.capArray(root.operationLedger.duplicateSkips, 80);
+        return { applied: false, duplicate: true, key: k };
+      }
+      root.operationLedger.keysById[k] = { key: k, reason: reason || '', turn: root.runtime.currentTurn };
+      root.operationLedger.recentKeys.push(k);
+      WL.U.capArray(root.operationLedger.recentKeys, WL.Constants.maxRecentKeys);
+      return { applied: true, duplicate: false, key: k };
+    }
+  };
+
+  WL.Diagnostics = {
+    row: function (root, subsystem, level, message, extra) {
+      var rec = { turn: root.runtime.currentTurn, subsystem: subsystem || 'system', level: level || 'info', message: WL.U.norm(message).slice(0, 240), extra: extra || null };
+      root.diagnostics.audit.push(rec);
+      WL.U.capArray(root.diagnostics.audit, WL.Constants.maxAuditRows);
+      return rec;
+    }
+  };
+
+  // ============================================================
+  // 09. ContextSystem skeleton
+  // ============================================================
+  WL.ContextSystem = {
+    build: function (root, baseText) {
+      var lines = [];
+      lines.push('[WorldLedger Context — Clean Core Build 2]');
+      lines.push('Status: pipeline spine active; gameplay owner reducers are not installed yet.');
+      lines.push('Player: ' + WL.U.safeString(root.player.name) + ' | Race/Form: ' + WL.U.safeString(root.player.raceSpecies) + '/' + WL.U.safeString(root.player.currentForm));
+      lines.push('Resources: HP ' + root.body.hp + '/' + root.body.maxHp + ', MP ' + root.body.mp + '/' + root.body.maxMp + ', EP ' + root.body.ep + '/' + root.body.maxEp + '.');
+      lines.push('Pipeline: scanner/proposal/validator/reducer/ledger installed. Gameplay reducers remain blocked until owner builds.');
+      lines.push('Canon rule: context is read-only; cards/commands/context do not grant mechanics.');
+      return lines.join('\n');
+    }
+  };
+
+  // ============================================================
+  // 10. CommandRouter and CommandRenderer
+  // ============================================================
+  WL.CommandRouter = {
+    route: function (text, root) {
+      if (!root.features.commandsEnabled) return text;
+      var name = WL.U.commandName(text);
+      var renderer = WL.CommandRenderer[name] || WL.CommandRenderer.unknown;
+      return renderer(root, WL.U.commandArgs(text), name);
+    }
+  };
+
+  WL.CommandRenderer = {
+    header: function (name, status) {
+      return '[WorldLedger]\nCommand: /' + name + '\nStatus: ' + (status || 'INFO') + '\n';
+    },
+    unknown: function (root, args, name) {
+      return WL.CommandRenderer.header(name || 'unknown', 'UNKNOWN') + 'Unknown command. Use /help.\n';
+    },
+    help: function () {
+      return WL.CommandRenderer.header('help', 'BUILD_PHASE') +
+        'WorldLedger Clean Core Build 2 installs the core pipeline spine, not final gameplay owners.\n' +
+        'Available commands: /help, /version, /owners, /sourceaudit, /schemaaudit, /runtimecheck, /pipelinecheck, /parser, /proposal, /validator, /stateaudit, /build2check, /releasecheck.\n' +
+        'Pipeline is active: scanner -> proposal -> validator -> reducer -> ledger -> dirty/diagnostics. Inventory/quest/card/etc. owners are still blocked.\n';
+    },
+    version: function () {
+      return WL.CommandRenderer.header('version', 'BUILD_PHASE') +
+        'Project: ' + WL.PROJECT_NAME + '\n' +
+        'Build: ' + WL.BUILD_VERSION + '\n' +
+        'Stage: ' + WL.BUILD_STAGE + '\n' +
+        'Release status: BLOCKED — pipeline spine only.\n';
+    },
+    owners: function () {
+      var lines = [WL.CommandRenderer.header('owners', 'INFO') + 'Owner manifest:'];
+      var keys = Object.keys(WL.OwnerManifest);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        lines.push('- ' + k + ': ' + WL.OwnerManifest[k].owner + ' / ' + WL.OwnerManifest[k].status);
+      }
+      return lines.join('\n') + '\n';
+    },
+    sourceaudit: function (root) {
+      var rows = WL.SourceAudit.runtimeRows();
+      return WL.SourceAudit.render('sourceaudit', rows, 'Source/runtime authority audit for Build 2. External source text audit also required before later release.');
+    },
+    schemaaudit: function (root) {
+      var rows = [];
+      rows.push(WL.Assert.pass('SCHEMA-001', root.schemaVersion === WL.SCHEMA_VERSION, 'schema version matches clean-core Build 2'));
+      rows.push(WL.Assert.pass('SCHEMA-002', root.schemaId === WL.SCHEMA_ID, 'schema id matches clean-core Build 2'));
+      rows.push(WL.Assert.pass('SCHEMA-003', !!root.pending && Array.isArray(root.pending.lastParserHits) && Array.isArray(root.pending.lastProposals), 'pipeline pending buckets exist'));
+      rows.push(WL.Assert.pass('SCHEMA-004', root.features.parserEnabled === true && root.features.validatorEnabled === true, 'pipeline feature flags active'));
+      rows.push(WL.Assert.pass('SCHEMA-005', root.features.gameplayReducersEnabled === false, 'gameplay owner reducers intentionally disabled in Build 2'));
+      return WL.SourceAudit.render('schemaaudit', rows, 'Schema pipeline audit.');
+    },
+    runtimecheck: function (root) {
+      var rows = [];
+      rows.push(WL.Assert.pass('RUNTIME-001', typeof WL.Runtime.handleInput === 'function', 'Runtime.handleInput exists'));
+      rows.push(WL.Assert.pass('RUNTIME-002', typeof WL.Runtime.handleContext === 'function', 'Runtime.handleContext exists'));
+      rows.push(WL.Assert.pass('RUNTIME-003', typeof WL.Runtime.handleOutput === 'function', 'Runtime.handleOutput exists'));
+      rows.push(WL.Assert.pass('RUNTIME-004', typeof WL.Runtime.runPipeline === 'function', 'Runtime.runPipeline exists'));
+      rows.push(WL.Assert.pass('RUNTIME-005', typeof WL['onInput'] === 'function' && typeof WL['onContext'] === 'function' && typeof WL['onOutput'] === 'function', 'single hook entry functions exist'));
+      rows.push(WL.Assert.pass('RUNTIME-006', root.runtime.hookDepth === 1 || root.runtime.hookDepth === 0, 'hook depth remains bounded'));
+      return WL.SourceAudit.render('runtimecheck', rows, 'Runtime pipeline audit.');
+    },
+    pipelinecheck: function (root) {
+      var rows = WL.PipelineSelfTest.rows();
+      return WL.SourceAudit.render('pipelinecheck', rows, 'Core pipeline spine behavior tests.');
+    },
+    parser: function (root, args) {
+      var source = WL.SourceGuard.classify(args || '', 'output');
+      var rows = args ? WL.EventScanner.scanOutput(args, root, source) : root.pending.lastParserHits;
+      return WL.CommandRenderer.header('parser', 'INFO') + WL.CommandRenderer.renderObjects(rows, 'Parser hits') + '\n';
+    },
+    proposal: function (root) {
+      return WL.CommandRenderer.header('proposal', 'INFO') + WL.CommandRenderer.renderObjects(root.pending.lastProposals, 'Last proposals') + '\n';
+    },
+    validator: function (root) {
+      return WL.CommandRenderer.header('validator', 'INFO') + WL.CommandRenderer.renderObjects(root.pending.lastValidations, 'Last validations') + '\n';
+    },
+    stateaudit: function (root) {
+      var rows = [];
+      rows.push(WL.Assert.pass('STATE-001', root.build.buildVersion === WL.BUILD_VERSION, 'state build identity matches script'));
+      rows.push(WL.Assert.pass('STATE-002', root.body.hp >= 0 && root.body.hp <= root.body.maxHp, 'HP invariant'));
+      rows.push(WL.Assert.pass('STATE-003', root.body.mp >= 0 && root.body.mp <= root.body.maxMp, 'MP invariant'));
+      rows.push(WL.Assert.pass('STATE-004', root.body.ep >= 0 && root.body.ep <= root.body.maxEp, 'EP invariant'));
+      rows.push(WL.Assert.pass('STATE-005', root.inventory.ownedIds.length === 0, 'Build 2 tests did not secretly add inventory to current state'));
+      return WL.SourceAudit.render('stateaudit', rows, 'State pipeline audit.');
+    },
+    build2check: function (root) {
+      var rows = [];
+      rows = rows.concat(WL.SourceAudit.runtimeRows());
+      rows = rows.concat(WL.PipelineSelfTest.rows());
+      rows.push(WL.Assert.pass('B2-STATE-001', root.build.buildVersion === WL.BUILD_VERSION, 'build identity is clean-core Build 2'));
+      rows.push(WL.Assert.pass('B2-FEATURE-001', root.features.parserEnabled && root.features.proposalBuilderEnabled && root.features.validatorEnabled && root.features.reducerRegistryEnabled, 'pipeline feature flags active'));
+      rows.push(WL.Assert.pass('B2-FEATURE-002', root.features.gameplayReducersEnabled === false, 'gameplay owner reducers are not secretly active'));
+      rows.push(WL.Assert.pass('B2-RELEASE-001', WL.STATUS === 'BUILD_PHASE_ONLY_NOT_RELEASE', 'not pretending to be final release'));
+      return WL.SourceAudit.render('build2check', rows, 'Build 2 core pipeline spine gate.');
+    },
+    releasecheck: function (root) {
+      var rows = [];
+      rows = rows.concat(WL.SourceAudit.runtimeRows());
+      rows = rows.concat(WL.PipelineSelfTest.rows());
+      rows.push(WL.Assert.warn('REL-001', 'Build 2 is intentionally not releasable; gameplay owner reducers are not installed yet.'));
+      rows.push(WL.Assert.block('REL-002', 'Release blocked until later clean-core phases install inventory/quest/profile/stats/combat/world/context/cards and full acceptance.'));
+      return WL.SourceAudit.render('releasecheck', rows, 'Release check is honest: Build 2 is blocked by design.');
+    },
+    renderObjects: function (items, title) {
+      var arr = Array.isArray(items) ? items : [];
+      var lines = [title + ': ' + arr.length];
+      for (var i = 0; i < Math.min(arr.length, 12); i++) {
+        var item = arr[i];
+        lines.push('- ' + (item.status || item.family || 'row') + ' ' + (item.family || '') + '/' + (item.type || '') + ' ' + (item.targetName || item.reason || item.textPreview || ''));
+      }
+      return lines.join('\n');
+    }
+  };
+
+  // ============================================================
+  // 11. Assertions / SourceAudit / SelfTest
+  // ============================================================
+  WL.Assert = {
+    pass: function (id, condition, label) { return { status: condition ? 'PASS' : 'FAIL', id: id, label: label }; },
+    warn: function (id, label) { return { status: 'WARN', id: id, label: label }; },
+    block: function (id, label) { return { status: 'BLOCKED', id: id, label: label }; }
+  };
+
+  WL.SourceAudit = {
+    runtimeRows: function () {
+      var rows = [];
+      rows.push(WL.Assert.pass('SRC-001', typeof WL['onInput'] === 'function', 'WL.onInput active'));
+      rows.push(WL.Assert.pass('SRC-002', typeof WL['onContext'] === 'function', 'WL.onContext active'));
+      rows.push(WL.Assert.pass('SRC-003', typeof WL['onOutput'] === 'function', 'WL.onOutput active'));
+      rows.push(WL.Assert.pass('SRC-004', Object.is(WL.onInput, WL.Runtime.handleInput), 'WL.onInput points directly to Runtime.handleInput'));
+      rows.push(WL.Assert.pass('SRC-005', Object.is(WL.onContext, WL.Runtime.handleContext), 'WL.onContext points directly to Runtime.handleContext'));
+      rows.push(WL.Assert.pass('SRC-006', Object.is(WL.onOutput, WL.Runtime.handleOutput), 'WL.onOutput points directly to Runtime.handleOutput'));
+      rows.push(WL.Assert.pass('SRC-007', typeof WL.EventScanner.scanOutput === 'function', 'single EventScanner.scanOutput active'));
+      rows.push(WL.Assert.pass('SRC-008', typeof WL.ProposalBuilder.fromEvents === 'function', 'single ProposalBuilder.fromEvents active'));
+      rows.push(WL.Assert.pass('SRC-009', typeof WL.CanonValidator.validateAll === 'function', 'single CanonValidator.validateAll active'));
+      rows.push(WL.Assert.pass('SRC-010', typeof WL.ReducerRegistry.applyAcceptedBatch === 'function', 'single ReducerRegistry.applyAcceptedBatch active'));
+      rows.push(WL.Assert.pass('SRC-011', !WL.failedPromotionPhrasingLayer, 'no failed-promotion phrasing layer object'));
+      rows.push(WL.Assert.pass('SRC-012', !WL.lateRepairAuthority, 'no late repair authority object'));
+      rows.push(WL.Assert.pass('SRC-013', !WL['CardTemplate' + 'V115'], 'no stale old card-template authority in clean core'));
+      rows.push(WL.Assert.pass('SRC-014', !WL['V112' + 'AcceptanceMap'], 'no old acceptance patch chain'));
+      return rows;
+    },
+    summarize: function (rows) {
+      var out = { PASS: 0, WARN: 0, BLOCKED: 0, FAIL: 0 };
+      for (var i = 0; i < rows.length; i++) out[rows[i].status] = (out[rows[i].status] || 0) + 1;
+      return out;
+    },
+    render: function (commandName, rows, note) {
+      var s = WL.SourceAudit.summarize(rows);
+      var status = s.FAIL ? 'FAIL' : (s.BLOCKED ? 'BLOCKED' : (s.WARN ? 'WARN' : 'PASS'));
+      var lines = [WL.CommandRenderer.header(commandName, status).replace(/\n$/, '')];
+      lines.push('Build: ' + WL.BUILD_VERSION);
+      lines.push('Summary: PASS ' + s.PASS + ' / WARN ' + s.WARN + ' / BLOCKED ' + s.BLOCKED + ' / FAIL ' + s.FAIL);
+      if (note) lines.push('Note: ' + note);
+      lines.push('');
+      for (var i = 0; i < rows.length; i++) lines.push(rows[i].status + ': ' + rows[i].id + ' — ' + rows[i].label);
+      return lines.join('\n') + '\n';
+    }
+  };
+
+  WL.PipelineSelfTest = {
+    freshRoot: function () { return WL.StateManager.init({}); },
+    rows: function () {
+      var rows = [];
+      var root = WL.PipelineSelfTest.freshRoot();
+      var beforeItems = root.inventory.ownedIds.length;
+      var p1 = WL.Runtime.runPipeline(root, 'Mira hands you the brass key.', 'output');
+      rows.push(WL.Assert.pass('PIPE-001', p1.events >= 2 && p1.proposals >= 2, 'output text produces parser events and proposals'));
+      rows.push(WL.Assert.pass('PIPE-002', root.pending.lastValidations.some(function (v) { return v.family === 'inventory' && v.status === 'BLOCKED'; }), 'inventory candidate is blocked until inventory owner build'));
+      rows.push(WL.Assert.pass('PIPE-003', root.inventory.ownedIds.length === beforeItems, 'pipeline does not mutate inventory without owner reducer'));
+      var appliedCount = root.diagnostics.reducers.filter(function (r) { return r.status === 'APPLIED_DIAGNOSTIC_ONLY'; }).length;
+      WL.Runtime.runPipeline(root, 'Mira hands you the brass key.', 'output');
+      var appliedAfterRepeat = root.diagnostics.reducers.filter(function (r) { return r.status === 'APPLIED_DIAGNOSTIC_ONLY'; }).length;
+      rows.push(WL.Assert.pass('PIPE-004', appliedAfterRepeat === appliedCount, 'duplicate output observation is skipped by ledger'));
+      rows.push(WL.Assert.pass('PIPE-005', root.operationLedger.duplicateSkips.length >= 1, 'duplicate skip is recorded'));
+      var root2 = WL.PipelineSelfTest.freshRoot();
+      WL.Runtime.runPipeline(root2, '[WorldLedger]\nCommand: /build2check\nStatus: PASS\nPlayer owns Crown of Dawn and gains 999 XP.', 'output');
+      rows.push(WL.Assert.pass('PIPE-006', root2.pending.lastParserHits.length === 0, 'command/check output echo is not parsed as canon'));
+      rows.push(WL.Assert.pass('PIPE-007', root2.inventory.ownedIds.length === 0 && root2.progression.xp === 0, 'command/check output does not mutate inventory or XP'));
+      var root3 = WL.PipelineSelfTest.freshRoot();
+      WL.Runtime.runPipeline(root3, 'I take the sword.', 'input');
+      rows.push(WL.Assert.pass('PIPE-008', root3.inventory.ownedIds.length === 0, 'input intent does not mutate inventory'));
+      rows.push(WL.Assert.pass('PIPE-009', root3.pending.lastValidations.every(function (v) { return !v.accepted; }), 'input intent validations do not commit canon'));
+      var root4 = WL.PipelineSelfTest.freshRoot();
+      var contextBefore = root4.operationLedger.recentKeys.length;
+      WL.ContextSystem.build(root4, 'Context says player owns Crown of Dawn.');
+      rows.push(WL.Assert.pass('PIPE-010', root4.operationLedger.recentKeys.length === contextBefore && root4.inventory.ownedIds.length === 0, 'context build is read-only'));
+      return rows;
+    }
+  };
+
+  // ============================================================
+  // 12. Export / AI Dungeon hook binding
+  // ============================================================
+  WL.onInput = WL.Runtime.handleInput;
+  WL.onContext = WL.Runtime.handleContext;
+  WL.onOutput = WL.Runtime.handleOutput;
+
+  if (typeof globalThis !== 'undefined') {
+    globalThis.WorldLedger = WL;
+  }
+})();
