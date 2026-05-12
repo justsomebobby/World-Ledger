@@ -1,0 +1,20 @@
+# Package Update v1.4.14
+
+Added Production Chunk 17 to the production roadmap package.
+
+Added file:
+- 40_Production_Roadmap/17_AIDRPG_Production_Chunk_17_Creature_Ecology_Species_Rules_and_Bestiary_Boundaries.txt
+
+Updated file:
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_17_ALL_IN_ONE.txt
+
+Purpose:
+- Extend the roadmap with creature ecology, species rules, bestiary boundaries, creature signs, habitats, behavior records, hidden bestiary knowledge, loot/body-part boundaries, and no-spawn/no-auto-loot/no-auto-XP protections.
+
+Safety posture:
+- Creature lore cannot spawn encounters.
+- Creature signs are not presence.
+- Creature presence is not combat.
+- Creature death is not XP or owned loot.
+- Hidden bestiary facts cannot leak into normal context.
+- Species facts do not grant player powers.

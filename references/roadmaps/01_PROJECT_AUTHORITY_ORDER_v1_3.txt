@@ -1,0 +1,29 @@
+# AIDRPG Project Authority Order v1.3
+
+Use this authority order for future planning and build chunks.
+
+1. AIDRPG Script Build Roadmap v1.1 — Gap-Aligned Current Build Plan
+2. AIDRPG Gap Closure Addendum v1
+3. Gap Chunk A — Old Fix Salvage Matrix
+4. Gap Chunk B — Runtime and Hook Contract Spec
+5. Gap Chunk C — Story Card API Adapter and Protected Singleton Contract
+6. Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy
+7. Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec
+8. Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec
+9. Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec
+10. AIDRPG Script Build Roadmap v1
+11. AIDRPG Test Spec v1
+12. AIDRPG Formula Appendix v1
+13. AIDRPG MVP Build Spec v1
+14. AIDRPG Developer Spec v1.1 Correction Pass
+15. AIDRPG Developer Spec v1
+16. Chunk 33 Final Pre-Build Lockdown
+17. Design Bible Chunks 1–32
+
+## Rule
+
+If a lower document conflicts with a Gap Chunk safety requirement, the Gap Chunk controls MVP implementation safety.
+
+## Current next production step
+
+Build Chunk 1 — Implementation Start Packet.

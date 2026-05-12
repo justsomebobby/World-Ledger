@@ -1,0 +1,30 @@
+# Package Update v1_4_23
+
+Created: 2026-05-04T00:28:27
+
+This package repairs the missing/corrupted final-zip issue by rebuilding from the uploaded v1.4.18 package and adding Production Chunks 22–25.
+
+Added:
+
+```text
+40_Production_Roadmap/22_AIDRPG_Production_Chunk_22_Pets_Mounts_Summons_Vehicles_and_Controlled_Entity_Boundaries.txt
+40_Production_Roadmap/23_AIDRPG_Production_Chunk_23_Domains_Bases_Buildings_Territories_and_Large_Scale_Asset_Boundaries.txt
+40_Production_Roadmap/24_AIDRPG_Production_Chunk_24_Advanced_Combat_Party_Summon_Coordination_Absorption_Evolution_and_Warfare_Activation_Boundaries.txt
+40_Production_Roadmap/25_AIDRPG_Production_Chunk_25_Final_Assembly_QA_Matrix_Migration_Locks_and_Release_Candidate_Handoff.txt
+40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_25_ALL_IN_ONE.txt
+00_PACKAGE_REPAIR_NOTE_v1_4_23.txt
+00_FINAL_RELEASE_CANDIDATE_HANDOFF_v1_4_23.txt
+00_PACKAGE_UPDATE_v1_4_23.txt
+00_FILE_MANIFEST_v1_4_23.csv
+00_FILE_MANIFEST_v1_4_23.json
+```
+
+Verification:
+
+```text
+Base zip valid: yes
+Final zip opens cleanly: yes
+Final zip testzip: no bad files
+Chunks 01–25 present: yes
+All-in-one rebuilt: yes
+```

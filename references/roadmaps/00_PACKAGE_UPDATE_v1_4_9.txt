@@ -1,0 +1,13 @@
+# AIDRPG Package Update v1.4.9
+
+Added Production Chunk 12 to the production roadmap package.
+
+New file:
+
+- 40_Production_Roadmap/12_AIDRPG_Production_Chunk_12_Combat_Event_Model_and_Damage_Healing_Dispute_Resolver.txt
+
+Updated combined reference:
+
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_12_ALL_IN_ONE.txt
+
+Chunk 12 adds the conservative combat event baseline: attack attempts, hit/miss/block/graze outcomes, damage/healing owner routing, dispute resolution, duplicate-safe combat keys, combat display rules, and PC12 ReleaseCheck/regression gates.

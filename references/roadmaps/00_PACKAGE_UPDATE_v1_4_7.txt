@@ -1,0 +1,8 @@
+AIDRPG Final Build Planning Package v1.4.7 Update
+Added Production Chunk 10 — Formula Matrix and Progression Baseline.
+
+New production roadmap contents:
+- 10_AIDRPG_Production_Chunk_10_Formula_Matrix_and_Progression_Baseline.txt
+- 99_AIDRPG_Production_Roadmap_and_Chunks_01_to_10_ALL_IN_ONE.txt
+
+Chunk 10 locks exact XP validation, formula profile/registry baseline, level calculation boundaries, duplicate-safe XP/level keys, no vague XP, no training-as-XP by default, quest XP promise/payment separation, stat automation deferral to PC11, and no automatic rubber-band world scaling.

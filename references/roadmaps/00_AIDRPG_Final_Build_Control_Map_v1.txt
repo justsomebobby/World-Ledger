@@ -1,0 +1,1712 @@
+AIDRPG Final Build Control Map v1
+
+0. Document status
+
+Document name: AIDRPG Final Build Control Map v1
+Purpose: Stabilize the final build process by mapping old tested failures, old patch intentions, and necessary new design decisions into one core-integrated construction plan.
+Status: Active control document.
+Applies before: Build Chunk 10 and any future script code.
+This document does not contain final script code.
+
+This document exists because AIDRPG has already been built and patched multiple times. The old work is not discarded. The old work is evidence.
+
+The goal is not to make another slightly cleaner patch pile.
+
+The goal is to turn every important old failure and every useful old fix intention into:
+
+core owner module
+state field
+parser/proposal/validator/reducer boundary
+audit surface
+command surface
+regression test
+releasecheck gate
+
+AIDRPG must not restart from the same old bugs.
+
+⸻
+
+1. Current project goal
+
+The current goal is:
+
+Build one final core-integrated AIDRPG script architecture that uses old tested failures and new design decisions to prevent the known patch-loop failure classes before implementation begins.
+
+This means:
+
+* old reports are treated as requirements evidence
+* old patches are not pasted blindly
+* old patch intentions are salvaged
+* brittle old implementation behavior is rewritten into core architecture
+* new ideas are allowed when they solve a known gap
+* every new idea must have an owner, rule, test, and release gate
+* no known failure category is allowed to remain vague
+
+⸻
+
+2. What this document is not
+
+This document is not:
+
+* a new 34-chunk restart
+* a replacement for the 32/33 design chunks
+* a replacement for Gap Chunks A–G
+* a replacement for Build Chunks 1–9
+* a script code file
+* a vague roadmap
+* another patch note
+
+This document is the control map that explains how existing work and new decisions merge into the final build.
+
+⸻
+
+3. Source inventory
+
+The final build must use these source groups.
+
+3.1 Design intent sources
+
+Design Bible Chunks 1–32
+Chunk 33 / repaired final lockdown material
+Developer Spec v1
+Developer Spec v1.1 Correction Pass
+MVP Build Spec v1
+Formula Appendix v1
+Test Spec v1
+Script Build Roadmap v1 / v1.1 Gap-Aligned
+
+These define the long-term game idea and intended systems.
+
+3.2 Safety repair sources
+
+Gap Closure Addendum v1
+Gap Chunk A — Old Fix Salvage Matrix
+Gap Chunk B — Runtime and Hook Contract Spec
+Gap Chunk C — Story Card API Adapter + Protected Singleton Contract
+Gap Chunk D — Parser Rulebook + Resolver + Name/Trigger Policy
+Gap Chunk E — Migration + ReleaseCheck + Command Honesty Spec
+Gap Chunk F — Context / Dirty Queue / Cleanup / Performance Spec
+Gap Chunk G — Startup / Identity Drift / Natural Confirmation Spec
+
+These define the minimum safety protections old versions proved were needed.
+
+3.3 Practical build overlays already created
+
+Build Chunk 1 — Implementation Start Packet
+Build Chunk 2 — File and Module Layout Plan
+Build Chunk 3 — State Schema Lock
+Build Chunk 4 — Command Output Format Lock
+Build Chunk 5 — StateManager Plan
+Build Chunk 6 — Runtime Hook Contract Implementation Plan
+Build Chunk 7 — AuditLogger and OperationLedger Implementation Plan
+Build Chunk 8 — CommandRouter and Command Renderer Implementation Plan
+Build Chunk 9 — EventScannerLite Parser Shell Plan
+
+These are retained.
+
+They are not a new replacement roadmap. They are implementation overlays for the final core.
+
+3.4 Old script / QA / tester evidence sources
+
+Evidence already considered includes reports and old versions covering:
+
+* Phase 5 ability training and exhaustion patch/recovery
+* v1.3.0 official tester pass plus custom abuse failures
+* v1.3.6 normal clean result plus adversarial player-breaker findings
+* v1.1.3 / v1.1.6 stat, actor, and world-structure blocker reports
+* v1.5.0 CardSync finalization / player starter card policy
+* Whole-System Tester Reference
+* old patch layers visible in uploaded script versions
+
+More evidence can be added later through the Open Evidence Queue.
+
+⸻
+
+4. Final authority doctrine
+
+The final build follows this doctrine:
+
+Old fixes are evidence.
+Old patches are not automatically architecture.
+New ideas are allowed only when they close a known gap.
+Every protection must be owned.
+Every owned protection must be testable.
+Every testable protection must have a release gate.
+
+If an old system solved a real problem but caused brittle behavior, the final build keeps the rule and discards the brittle method.
+
+If a new design idea is added, it must answer:
+
+What old failure or missing planning detail does this solve?
+Why does it belong in the core instead of being a patch?
+Which module owns it?
+What test proves it works?
+What releasecheck gate blocks the build if it is missing?
+
+⸻
+
+5. Frozen planning correction
+
+The project should not proceed as:
+
+make a brand-new 34-chunk replacement roadmap
+
+The project should proceed as:
+
+use existing design chunks as design source
+use gap chunks as safety requirements
+use build chunks as implementation overlays
+use this control map to connect old failures and new decisions to the build
+continue only targeted build planning after the control map is accepted
+
+Build Chunk 10 is paused until this control map is accepted.
+
+⸻
+
+6. Final build core pipeline
+
+The final build must use this pipeline:
+
+Input Hook
+  -> command route OR player intent only
+Context Hook
+  -> read-only context reminders only
+Output Hook
+  -> EventScannerLite ParserHit
+  -> ProposalBuilder EventProposal
+  -> CanonValidator eligibility decision
+  -> ReducerRegistry owner route
+  -> OwnerReducer state mutation
+  -> OperationLedger dedupe key
+  -> DirtyQueue mirror/context target
+  -> AuditLogger explanation
+  -> ReleaseCheck gate coverage
+
+Forbidden paths:
+
+ParserHit -> direct inventory change
+ParserHit -> direct ability change
+ParserHit -> direct quest reward payment
+Context text -> gameplay mutation
+Story Card text -> gameplay mutation
+Command output -> gameplay mutation
+Debug/audit/help text -> gameplay mutation
+Old card prose -> canon import
+
+⸻
+
+7. Core non-canon doctrine
+
+The final root rule is:
+
+Mentioned is not confirmed.
+Attempted is not confirmed.
+Quoted is not confirmed.
+Dreamed is not confirmed.
+Rumored is not confirmed.
+Revoked is not retained.
+Denied is not acquired.
+Visible is not owned.
+Promised is not paid.
+Heading toward is not arrival.
+Candidate is not stable.
+Only validated outcome becomes canon.
+
+This doctrine must apply across inventory, abilities, quests, rewards, time, actor presence, body/death, transformation, scene state, and cards.
+
+⸻
+
+8. Known Failure Register
+
+Each known failure below must be mapped into the final core. None may be silently dropped.
+
+⸻
+
+F001 — Broad helper patch broke unrelated systems
+
+Evidence pattern: Ability-name cleanup was first placed in a shared intent-cleaning helper. That helper was also used for item, destination, weapon, and target hints, so aggressive phrase stripping risked breaking unrelated systems.
+
+Old patch intent: Strip suffixes from ability names such as:
+
+Ember Ward to protect allies
+Frost Step by moving
+Stoneguard until my stance holds
+
+Old patch risk: Shared cleanup changed behavior outside ability naming.
+
+Final core rule: Shared intent cleanup must stay conservative. Aggressive cleanup must live in the owner-specific sanitizer.
+
+Final owner modules:
+
+AbilityNameSanitizer
+ItemNameSanitizer
+PlaceNameSanitizer
+ActorNameSanitizer
+CardNameSanitizer
+IntentParser conservative shared helpers
+
+Required tests:
+
+I train Ember Ward to protect allies from heat -> ability name Ember Ward
+I practice Frost Step by moving across slick stones -> ability name Frost Step
+I drill Stoneguard until my stance holds under impact -> ability name Stoneguard
+I travel to the smithy -> no smithy ability
+I inspect the old wooden door -> no door ability
+I use the iron key on the cellar door -> no iron key/cellar door ability
+
+ReleaseCheck gate: Fail if shared sanitizer contains ability-specific aggressive stripping that affects travel/item/place/target parsing.
+
+⸻
+
+F002 — Explicit training intent lost to defensive words
+
+Evidence pattern: Inputs like I train Ember Ward to protect allies from heat were classified as defend because of protect, so the ability was not created or updated.
+
+Old patch intent: Make explicit training phrase coverage work.
+
+Final core rule: If input starts with explicit training verbs plus a plausible named phrase, training intent outranks purpose words.
+
+Training verbs:
+
+train
+practice
+drill
+exercise
+meditate on
+spar with
+work on
+refine
+
+Purpose words that must not steal primary intent:
+
+protect
+shield
+defend
+against
+for
+from
+under impact
+
+Final owner modules:
+
+IntentParser / EventScannerLite
+AbilityProposalBuilder
+AbilityNameSanitizer
+CanonValidator ability rules
+AbilityReducer
+
+Required tests:
+
+I train Ember Ward to protect allies from heat -> ability/training candidate Ember Ward
+I train my Ember Ward to shield the wounded from fire -> Ember Ward
+I train Stoneguard against shield-cracking blows -> Stoneguard
+
+ReleaseCheck gate: Fail if explicit training can be overridden by defend/protect/shield wording.
+
+⸻
+
+F003 — Output-only ability learning hard-saved abilities
+
+Evidence pattern: AI output such as You learned Moonblade could become a confirmed ability without player training or validated acquisition.
+
+Old patch intent: Block output-only ability hallucination while preserving explicit player training.
+
+Final core rule: Output-only ability mention cannot hard-save a new ability unless the validator confirms a valid learning source, training event, manifestation, teacher, ritual, inheritance, absorption, or stable demonstration.
+
+Allowed confirmation examples:
+
+After hours of training, Moonblade becomes stable.
+You successfully channel Ember Ward.
+Crimson Lotus Fang becomes a controlled technique.
+The master teaches you Azure Dragon Step, and you retain it after practice.
+
+Blocked examples:
+
+You learned Moonblade.
+You unlocked Star Chain.
+The scroll title says "You learned Crimson Lotus Fang," but you learn nothing.
+Mira says, "Use Hollow Star Palm," but you do not know it.
+You pretend to use Azure Dragon Step.
+The technique collapses and no usable power remains.
+
+Final owner modules:
+
+AbilityClauseValidator
+ProposalBuilder
+CanonValidator ability rules
+AbilityReducer
+AbilityEvidenceLedger
+
+Required tests:
+
+Output-only "You learned Moonblade" -> no confirmed ability
+Explicit "I train Moonblade by practicing careful crescent cuts" -> Moonblade candidate/training record allowed
+Failed/pretend/quoted ability mentions -> no stable ability
+
+ReleaseCheck gate: Fail if output-only ability names can become stable without validated source.
+
+⸻
+
+F004 — Exhausted status missing or confused with fatigue
+
+Evidence pattern: Output clearly saying the player was exhausted needed to become visible/persistent, but mild fatigue should not automatically become exhaustion.
+
+Old patch intent: Add exhausted-status visibility and severity.
+
+Final core rule: Body/status canon must distinguish condition severity and wording strength.
+
+Status examples:
+
+exhausted / fully exhausted / can hardly stand -> exhausted severe candidate
+fatigued / weary / worn out -> fatigued moderate candidate
+burned / blistered / charred -> burned candidate
+bleeding / losing blood -> bleeding candidate
+poisoned / venom / toxin -> poisoned candidate
+
+Recovery examples:
+
+no longer exhausted
+catch your breath and steady yourself
+bleeding stops
+no longer burned
+
+Final owner modules:
+
+BodyStatusParser
+BodyStatusValidator
+BodyReducer
+PersistentConditionStore
+/status renderer
+/sheet renderer summary
+
+Required tests:
+
+Your legs shake and you are exhausted by the climb -> exhausted active and EP constrained
+You are fatigued and worn out -> fatigued, not automatic exhausted
+The bleeding stops -> bleeding resolved
+The burn fades -> burned resolved or recovering
+
+ReleaseCheck gate: Fail if exhausted/fatigued/burned/bleeding statuses lack validator and display coverage.
+
+⸻
+
+F005 — Weak scene mention overwrote current scene
+
+Evidence pattern: market lane remains busy did not confirm current scene, so later weak mentions like chapel visible from here could promote chapel as current scene.
+
+Old patch intent: Confirm current scene from continuity wording and block weak/future/nearby references.
+
+Final core rule: Scene state has three separate categories:
+
+confirmed current scene
+pending/hinted destination
+nearby/visible/reference-only place
+
+Confirm current scene from:
+
+The market lane remains busy.
+You remain in the market lane.
+The market square buzzes around you.
+You stand in the market lane.
+
+Do not confirm current scene from:
+
+visible from
+can see
+nearby
+down the street
+beyond
+only consider
+consider heading/going
+mentions/talks about
+road to the chapel is visible
+
+Strong arrival/entry should still update:
+
+You enter the chapel.
+You step into the smithy.
+You descend into the cellar.
+After the road, you enter The Drunken Huntsman.
+
+Final owner modules:
+
+PlaceParser
+SceneCandidateClassifier
+PlaceValidator
+PlaceReducer
+CurrentSceneStore
+/location renderer
+
+Required tests:
+
+market lane remains -> current scene market lane
+chapel road visible from market lane -> current scene remains market lane
+only consider going to smithy -> no scene change
+enter chapel -> scene chapel
+After the road, you enter The Drunken Huntsman -> current scene The Drunken Huntsman, not road
+
+ReleaseCheck gate: Fail if weak nearby/future references can overwrite confirmed current scene.
+
+⸻
+
+F006 — Inventory negative/failure phrasing granted items
+
+Evidence pattern: Custom abuse testing found inventory grants from negative or failed acquisition wording.
+
+Examples:
+
+You decide not to take the rusted iron key.
+You try to grab the rusted iron key, but the goblin snatches it away first.
+You never take the black gate key.
+You pick up the idea of a brass key.
+The key dissolves as an illusion.
+You are told to take the badge in a dream, then wake empty-handed.
+
+Old patch intent: Add negation/failure guards to inventory parsing.
+
+Final core rule: Inventory requires local clause-level acquisition validation before any item becomes owned.
+
+Each item candidate must classify as one of:
+
+confirmed_acquisition
+denied_acquisition
+failed_acquisition
+revoked_acquisition
+abstract_or_metaphorical
+quoted_instruction
+dream_or_vision
+visible_only
+available_loot
+unknown
+
+Only confirmed_acquisition may enter inventory.
+
+Local clause rule: Denial/revocation blocks the specific item in that local clause, but does not block a different valid item in a later valid clause.
+
+Example:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+Correct result:
+
+jeweled crown blocked
+red healing potion allowed
+
+Final owner modules:
+
+ItemClauseValidator
+InventoryProposalBuilder
+CanonValidator inventory rules
+InventoryReducer
+OperationLedger item keys
+/inventory renderer
+
+Required tests:
+
+consider key + decide not to take -> no key
+try to grab key but goblin snatches it -> no key
+pick up idea/concept/title of key -> no item
+dream handoff and wake empty-handed -> no item
+Mira hands you red healing potion -> potion acquired
+
+ReleaseCheck gate: Fail if positive acquisition verbs can bypass local denial/revocation/abstract/dream/quote guards.
+
+⸻
+
+F007 — Quest parser too narrow
+
+Evidence pattern: Quest acceptance failed for common objectives such as repair, escort, deliver, investigate, protect, clear, recover, and find.
+
+Old patch intent: Broaden quest objective and acceptance parsing.
+
+Final core rule: Quest acceptance must distinguish offered, accepted, active, objective, completion, and reward states. Acceptance phrasing may activate a quest only when output confirms acceptance or setup explicitly starts it.
+
+Accepted quest-intent verbs:
+
+accept
+agree to
+take
+start
+commit to
+undertake
+
+Accepted objective verbs:
+
+recover
+find
+repair
+escort
+clear
+deliver
+investigate
+protect
+bring
+retrieve
+rescue
+defeat
+survey
+
+Final owner modules:
+
+QuestParser
+QuestProposalBuilder
+QuestValidator
+QuestReducerLite
+RewardValidator
+QuestRewardLedger
+/quests renderer
+
+Required tests:
+
+I accept Elder Mira's quest to repair the north wall -> active quest repair north wall
+accept quest to escort Bram -> escort quest active
+accept quest to investigate burned tavern -> investigation quest active or deferred case-compatible objective
+rumor of wolves -> rumored/offered, not active
+promised reward -> not paid
+
+ReleaseCheck gate: Fail if quest objective breadth is missing or reward status collapses promised/paid.
+
+⸻
+
+F008 — Named location arrival lost to interstitial road
+
+Evidence pattern: After the road, you enter The Drunken Huntsman could leave current scene as road while parent location became Drunken Huntsman.
+
+Old patch intent: Named place entered by strong arrival should outrank interstitial route nouns.
+
+Final core rule: In a clause containing route/interstitial and strong entry into a named place, the named place becomes current scene.
+
+Interstitial nouns:
+
+road
+path
+route
+street
+hallway
+corridor
+trail
+lane as travel segment only
+
+Strong arrival/entry verbs:
+
+enter
+step into
+walk inside
+arrive at
+return to
+descend into
+push through doors into
+
+Final owner modules:
+
+PlaceResolver
+SceneCandidateRanker
+PlaceValidator
+PlaceReducer
+
+Required tests:
+
+After the road, you enter The Silver Hart -> scene The Silver Hart
+You return to The Drunken Huntsman -> scene The Drunken Huntsman
+The road to the chapel is visible -> no scene change
+
+ReleaseCheck gate: Fail if named strong-entry targets can be outranked by interstitial route words.
+
+⸻
+
+F009 — Nonliteral time skip aged player
+
+Evidence pattern: Quoted or dreamed statements like Twenty years pass could age the player even when no real time passed.
+
+Old patch intent: Add time-skip duplicate and nonliteral guards.
+
+Final core rule: Time advancement and aging require literal confirmed time passage.
+
+Block time/age changes from:
+
+quoted speech
+dream
+vision
+pretend
+story practice narration
+no time passes
+same age
+wake as same age
+not actually
+hypothetical
+
+Allow:
+
+Twenty years pass in exile.
+After two years, the city rebuilds.
+A week passes during the journey.
+
+Final owner modules:
+
+TimeClauseValidator
+TimeProposalBuilder
+TimeReducerLite
+AgeUpdateGuard
+OperationLedger time/age keys
+/time renderer
+
+Required tests:
+
+"Twenty years pass" said aloud -> no aging
+In a dream, twenty years pass -> no aging
+Twenty years pass in exile -> age updates once if species/age rules allow
+same output replay -> no double aging
+
+ReleaseCheck gate: Fail if nonliteral time skip can mutate time or age.
+
+⸻
+
+F010 — Repeated ability use over-amplified state/context
+
+Evidence pattern: Repeated ability use could be processed by multiple layers, creating excessive canonical mentions or inflated use tracking.
+
+Old patch intent: Deduplicate repeated use and context entries.
+
+Final core rule: Ability-use mutation must use one normalized apply-once key across all ability mutation paths.
+
+Suggested key:
+
+ability.use.<abilityKey>.<eventKind>.<turnOrOutputHash>
+
+All ability mutation routes must call the same apply-once guard.
+
+Final owner modules:
+
+AbilityUseValidator
+AbilityReducer
+OperationLedger ability keys
+ContextBuilder ability packet dedupe
+AuditLogger duplicate skip
+
+Required tests:
+
+Use Ember Ward four times -> repeated use can be remembered but not seven duplicate records
+same output replay -> no duplicate ability evidence
+context includes one normalized current ability summary, not spam
+
+ReleaseCheck gate: Fail if multiple ability pathways can mutate the same ability event independently.
+
+⸻
+
+F011 — Runtime identity / build stage overwritten by patches
+
+Evidence pattern: Old patch layers could overwrite runtime identity to an older version/stage.
+
+Old patch intent: Restore version/build identity.
+
+Final core rule: Build identity has one final authority. Late patches must not override it casually.
+
+Final owner modules:
+
+Constants
+StateManager meta
+Runtime identity check
+ReleaseCheck identity gate
+/version renderer
+
+Required tests:
+
+VERSION matches final package
+BUILD_STAGE matches final package
+late patch cannot downgrade stage silently
+/releasecheck fails on mismatch
+
+ReleaseCheck gate: Fail if code constants, meta build stage, and command output disagree.
+
+⸻
+
+F012 — Actor extraction duplicated compound actors
+
+Evidence pattern: Veteran Guard could create both Veteran Guard and Guard.
+
+Old patch intent: Suppress shorter contained actor candidates when longer same-window candidate exists.
+
+Final core rule: In one parsing window, if a longer actor candidate contains a shorter actor head and both refer to the same entity, keep the longer candidate and suppress the shorter generic one.
+
+Final owner modules:
+
+ActorNameExtractor
+EntityIdentityResolver
+ActorCandidateRanker
+ActorReducerLite
+ThreatProfileSystem
+
+Required tests:
+
+A veteran guard stands nearby -> one actor: Veteran Guard
+A high priestess enters -> one actor: High Priestess
+orc warrior, golem, acolyte, general, skeleton, zombie, troll, ogre, farmer, blacksmith -> recognized and properly typed/ranked
+
+ReleaseCheck gate: Fail if compound-shorter suppression is missing before actor reducer activation.
+
+⸻
+
+F013 — Actor presence / absent actor / reference-only actor failures
+
+Evidence pattern: Absent goblins or referenced actors could become local/present actors, and reference-only names could be harmed or mutated.
+
+Old patch intent: Separate present, elsewhere, absent, reference-only, and scene-only actors.
+
+Final core rule: Actor presence must be explicit and local. Reference-only and absent actors cannot act or be harmed in the current scene.
+
+Presence states:
+
+present
+nearby
+elsewhere
+absent
+reference_only
+unknown
+dead
+captured
+
+Final owner modules:
+
+ActorPresenceValidator
+ActorResolver
+ActorReducerLite
+SocialMemoryReducer
+/actors renderer
+
+Required tests:
+
+goblin definitely not here -> no present goblin
+training dummy named after Mira -> does not harm actor Mira
+Mara elsewhere -> cannot act in current scene
+
+ReleaseCheck gate: Fail if actor mutation can apply to absent/reference-only actor without validated presence.
+
+⸻
+
+F014 — Witness memory / reputation leakage
+
+Evidence pattern: A gate guard could witness something while absent Mira should not receive memory. Private witness reports should not become public reputation immediately.
+
+Old patch intent: Isolate witness memory and stage reputation separately.
+
+Final core rule: Witness memory, report routing, reputation, and public knowledge are separate states.
+
+Stages:
+
+witnessed_private
+reported_to_authority
+rumored_public
+confirmed_public
+reputation_mutation
+
+Final owner modules:
+
+WitnessMemorySystem
+ActorMemoryReducer
+ReputationValidator
+ReputationReducer deferred
+SocialMemoryRenderer
+
+Required tests:
+
+gate guard witnesses theft -> guard memory only
+Mira absent -> no Mira memory
+private report -> pending authority report, not public reputation
+rumor -> rumor state, not confirmed reputation
+
+ReleaseCheck gate: Reputation automation disabled until mini-spec; witness memory must not leak globally.
+
+⸻
+
+F015 — Body injury / death boundary accepted rumors or quotes
+
+Evidence pattern: Death rumor and quote-death cases had to be rejected. Nonfatal hostile acts, injury, stunned/hurt, and actual death must be separated.
+
+Old patch intent: Body/death boundary safety.
+
+Final core rule: Body/death changes require validated direct outcome, not rumor/quote/dream/threat/metaphor.
+
+Final owner modules:
+
+BodyClauseValidator
+DeathBoundaryGuard
+BodyReducer
+CanonValidator body rules
+/status renderer
+
+Required tests:
+
+People say you died -> no death
+Mara says "you are dead" -> no death
+wolf bites arm -> injury candidate
+nonfatal hostile shove -> hurt/stunned candidate, not death
+explicit confirmed fatal outcome -> death boundary validates through rules
+
+ReleaseCheck gate: Fail if quote/rumor/dream death can set deathBoundary.
+
+⸻
+
+F016 — Transformation/disguise/illusion identity drift
+
+Evidence pattern: Permanent transformation should change species/body traits; costume/disguise/illusion should not.
+
+Old patch intent: Separate true transformation from temporary identity presentation.
+
+Final core rule: Identity changes require validated transformation. Disguise and illusion are temporary overlays.
+
+Final owner modules:
+
+IdentityGuard
+TransformationValidator
+BodyReducer
+PlayerReducer
+StartupIdentityGuard
+/sheet renderer
+
+Required tests:
+
+permanent wolfkin transformation -> species/body traits update
+wolfkin costume -> activeDisguise only, species unchanged
+illusion makes you look elderly -> activeIllusion only, age unchanged
+
+ReleaseCheck gate: Fail if disguise/illusion/dream can overwrite protected identity fields.
+
+⸻
+
+F017 — World scaling / role benchmark drift
+
+Evidence pattern: Level 1000 player must not force village guards or dragons to rubber-band to player level. Role matrices and benchmark levels must match the plan.
+
+Old patch intent: Preserve world-relative scaling and role benchmark correctness.
+
+Final core rule: World scale is world-relative, not automatically player-relative.
+
+Required examples:
+
+village guard ~ L25
+city guard ~ L50
+elite knight ~ L90
+archmage ~ L150
+wolf ~ L12
+black bear ~ L28
+wyvern ~ L250
+dragon ~ L500
+ancient dragon ~ L750
+merchant / innkeeper low combat/social risk
+
+Final owner modules:
+
+StatBenchmarkSystem
+ThreatProfileSystem
+ActorProfileSystem
+Formula Appendix integration
+ReleaseCheck stat matrix gate
+
+Required tests:
+
+Level 1000 player does not make village guard L1000
+Level 1000 player does not make dragon L1000
+role weights match formula appendix
+common actor heads get correct role/category/rank
+
+ReleaseCheck gate: Fail if player level rubber-bands world threats by default.
+
+⸻
+
+F018 — WorldStructure settlement/project/assignment failures
+
+Evidence pattern: Settlement capture failed, village well/town gate/city wall were misclassified, project/assignment buckets were missing, node cap was off by one, and contains/condition nodes duplicated.
+
+Old patch intent: Stabilize world-structure extraction and storage.
+
+Final core rule: WorldStructure is deferred until its mini-spec, but its old failures become tests and resolver requirements.
+
+Final owner modules:
+
+WorldStructureSystem deferred
+PlaceResolver
+HeadNounClassifier
+ProjectAssignmentSchema deferred
+WorldNodeDedupe
+
+Required tests before enabling WorldStructure:
+
+village well != settlement
+town gate != settlement
+city wall != settlement
+settlement capture works when explicitly confirmed
+projects bucket exists before project creation
+assignments bucket exists before assignment creation
+post-insert caps enforce exact max
+contains/condition nodes dedupe
+
+ReleaseCheck gate: Fail if WorldStructure features are active before mini-spec and schema exist.
+
+⸻
+
+F019 — CardSync pollution, duplicate cards, and broad triggers
+
+Evidence pattern: Old systems struggled with duplicate protected cards, generated junk cards, bad routing, broad triggers, dry-run bloat, false audit failures, connector pollution, and live writes too early.
+
+Old patch intent: Safe Story Card mirroring and player-starter-card policy.
+
+Final core rule: Story Cards mirror state only. CardSync is isolated behind adapter/safe mode. Generated cards remain disabled until beta spec.
+
+Protected card defaults:
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+
+Card rules:
+
+state.aidrpg is truth
+Context is immediate AI-facing truth
+Story Cards are long-term mirrors
+card text cannot become canon
+generated cards disabled in MVP
+live writes guarded by adapter and safe mode
+protected singletons enforced
+broad triggers rejected
+
+Final owner modules:
+
+CardApiAdapter
+ProtectedCardRegistry
+CardSyncLite
+CardNameSanitizer
+TriggerSanitizer
+OperationLedger cardKeys
+/cardaudit renderer
+
+Required tests:
+
+duplicate protected Player Sheet neutralized
+manual edit does not become canon
+deleted protected card restored once if safe
+generated card creation suppressed while disabled
+broad trigger like street rejected for generated cards
+card audit distinguishes dry-run warnings from true failures
+
+ReleaseCheck gate: Fail if generated cards can activate in MVP or Story Card text can create canon.
+
+⸻
+
+F020 — Context bloat and context-as-canon risk
+
+Evidence pattern: Old builds had context budget pressure, internal ID leakage, stale context, broad lore spam, and context mutation risk.
+
+Old patch intent: Context packets should expose immediate truth but not mutate state.
+
+Final core rule: Context is read-only. It serializes selected current state facts within budget.
+
+Final owner modules:
+
+ContextBuilderLite
+ContextBudgetSystem
+ContextPacketSerializer
+ContextNoWritePolicy
+ContextAudit
+
+Required tests:
+
+context includes newly acquired key after reducer commit
+context excludes stale packet after state changes
+context does not mutate inventory/quests/actors
+context budget respected
+internal IDs hidden from player-facing output unless diagnostic
+
+ReleaseCheck gate: Fail if ContextBuilder can call reducers or card writes.
+
+⸻
+
+F021 — Migration/save corruption/old patch layers
+
+Evidence pattern: Old versions needed repair/quarantine for malformed containers, future schema, polluted cards, and layered patch state.
+
+Old patch intent: Preserve valid state while preventing unsafe old data from becoming canon.
+
+Final core rule: Migration is conservative. Unsafe old data is quarantined, not guessed into canon.
+
+Final owner modules:
+
+StateManager
+MigrationManager
+QuarantineManager
+ReleaseCheck migration gate
+/stateaudit renderer
+/quarantine renderer
+
+Required tests:
+
+malformed inventory container repaired/quarantined
+future schema does not crash
+old card prose not imported as item/quest/ability
+valid player/inventory/quest/ledger data preserved
+
+ReleaseCheck gate: Fail if migration imports Story Card prose directly as canon.
+
+⸻
+
+F022 — Runtime hook failure and timeout risk
+
+Evidence pattern: Old scripts needed separated hook bodies, fast paths, no Story Card compaction in Input, bounded per-hook work, duplicate output protection, and fail-soft behavior.
+
+Old patch intent: Keep AI Dungeon hooks stable under runtime constraints.
+
+Final core rule: StateManager first, runtime guarded, command suppressed, context read-only, output deduped, fail-soft always returns valid shape.
+
+Final owner modules:
+
+RuntimeHookContract
+StateManager
+CommandRouter
+OutputReplayGuard
+OperationLedger
+AuditLogger
+
+Required tests:
+
+Input returns valid shape
+Context returns valid shape
+Output returns valid shape
+runtime exception fail-softs
+same output does not double-apply
+commands do not advance gameplay
+no full Story Card scan every hook
+no regex over full history
+
+ReleaseCheck gate: Fail if hook can return undefined or duplicate output can reapply consequences.
+
+⸻
+
+F023 — Quest/reward duplication and promise/payment confusion
+
+Evidence pattern: Old patches addressed reward duplication and promised-vs-paid confusion.
+
+Old patch intent: Rewards should pay once and only when actually paid.
+
+Final core rule: Quest status and reward status are separate. Promised reward is not paid reward.
+
+Reward statuses:
+
+none
+promised
+ready
+paid
+disputed
+denied
+
+Final owner modules:
+
+QuestReducerLite
+RewardValidator
+OperationLedger rewardKeys
+QuestRewardRenderer
+CanonValidator reward rules
+
+Required tests:
+
+Old Bren promises 15 gold -> promised, no currency
+Old Bren pays 15 gold -> paid once
+Old Bren gives your reward -> uses stored promise only if quest ready and payer valid
+same reward output replay -> no duplicate gold
+
+ReleaseCheck gate: Fail if promised reward can add currency.
+
+⸻
+
+F024 — Generated or manual mutation commands unsafe
+
+Evidence pattern: Old debug/admin command behavior could become a backdoor for mutation or CardSync activation.
+
+Old patch intent: Commands should be useful but honest and safe.
+
+Final core rule: MVP commands inspect only. Manual mutation commands require future Manual Override Spec.
+
+Disabled in MVP:
+
+/additem
+/removeitem
+/sethp
+/setlevel
+/addxp
+/completequest
+/payreward
+/setactor
+/setlocation
+/settime
+/importcard
+/resolvequarantine
+/cardsync live on
+/generatecards
+
+Final owner modules:
+
+CommandRouter
+CommandRenderers
+Runtime command suppression
+ReleaseCheck command safety
+
+Required tests:
+
+/additem Crown of Dawn -> disabled, no item
+/cardsync live on -> disabled, generated cards remain off
+/questlog -> routes to /quests safely
+command output through Output hook -> not parsed
+
+ReleaseCheck gate: Fail if manual mutation commands are active in MVP.
+
+⸻
+
+F025 — Whole-system testing gaps
+
+Evidence pattern: Manual testing was too slow and hidden multi-system bugs appeared only under phrasing variation or integration stress.
+
+Old patch intent: Build a local whole-system tester with smoke, core, regression, integration, stress/fuzz, and report grouping.
+
+Final core rule: A feature is not safe without a test. A parser rule is not safe without a rejection case. A card system is not safe without duplicate policy. A command is not safe if it cannot explain itself.
+
+Final owner modules:
+
+WholeSystemTester deferred tool
+TestSpec
+RegressionMatrix
+ReleaseCheck
+PatchTargetReport generator
+
+Required tests:
+
+smoke suite
+AI Dungeon compatibility suite
+core state suite
+turn engine suite
+debug command suite
+intent parser suite
+consequence parser suite
+inventory suite
+ability suite
+quest/reward suite
+scene/place suite
+card/context suite
+migration suite
+performance suite
+adversarial player-breaker suite
+
+ReleaseCheck gate: Fail if current-stage system has no regression tests for known failure class.
+
+⸻
+
+9. Old Fix Salvage Matrix — initial entries
+
+This is the first salvage matrix pass. More entries can be added as more old files are reviewed.
+
+Old System / Fix	Original Purpose	Observed Problem / Risk	Decision	New Owner Module	MVP or Deferred	Required Test / Gate
+RuntimeGate / TurnEngine	Stabilize hooks and turns	Duplicate output, hook crashes, stage overwrite	Rewrite in MVP	RuntimeHookContract	MVP	duplicate output skip, valid hook return, fail-soft
+CoreState	Persist canonical state	Missing fields, corrupt save, old roots	Rewrite in MVP	StateManager	MVP	fresh root, repair, preserve valid truth
+PlayerIdentityGuard	Stop identity drift	NPC/dream/disguise overwrite risk	Rewrite in MVP	IdentityGuard / Startup	MVP	protected fields cannot drift
+StartupIdentityImporter	Import setup once	Repeated setup duplicate items/identity changes	Rewrite in MVP	StartupManager	MVP	setup import idempotency
+ProgressionSystem	XP/level/stat growth	Over-awarded XP, stat matrix drift	Rewrite in MVP shell, full automation later	ProgressionReducerLite	MVP shell / Deferred full	XP duplicate keys, formula matrix tests
+StatBenchmarkSystem	World-relative scale	Role weights wrong, rubber-band risk	Rewrite in MVP planning, code when progression active	StatBenchmarkSystem	Deferred activation	L1000 player does not scale guard/dragon
+InventorySystem	Item ownership	Negative/failure/abstract grants	Rewrite in MVP	InventoryReducer + ItemClauseValidator	MVP	denied/revoked/dream/quote no item
+PatchInventory	Late repair bad inventory	Patch pile risk	Test-only / Rewrite rules	InventoryValidator	MVP	old bad phrases become regression tests
+TransactionLedgerSystem	Payments/currency	Reward duplication, economy scope creep	Defer economy, keep reward ledger in MVP	OperationLedger / RewardValidator	MVP reward, Deferred economy	reward paid once
+AbilitySystem	Abilities/training	Output-only hard-save, junk names	Rewrite in MVP	AbilityReducer + AbilityNameSanitizer	MVP	output-only no hard-save, training clean name
+AbilityCandidateSanitizer	Stop junk abilities	Broad cleanup broke unrelated parsing	Rewrite owner-specific	AbilityNameSanitizer	MVP	travel/inspect/use-object no junk ability
+PersistentTraitSystem	Conditions/passives	Exhausted missing, fatigue escalation risk	Rewrite body/status subset	BodyStatusValidator	MVP	exhausted visible, fatigued separate
+SceneStateSystem	Current scene	Weak mention overwrite, named place drift	Rewrite in MVP	PlaceReducer / SceneValidator	MVP	weak mention no overwrite, strong arrival updates
+WorldEntitySystem	Places/entities	Settlement/project bugs	Defer full world structure, keep place subset	PlaceResolver	MVP place subset / Deferred world structure	head noun classification tests
+TimeTravelSystem	Time/age/routes	Dream/quote time aging, duplicate aging	Rewrite time subset	TimeReducer / AgeGuard	MVP shell	nonliteral no aging, duplicate skip
+QuestLogSystem	Quests/objectives	Narrow verbs, reward confusion	Rewrite in MVP	QuestReducerLite	MVP	repair/escort/deliver/investigate/protect objectives
+ReputationSystem	Social consequences	Private witness leaking to public rep	Defer automation, keep witness memory rules	WitnessMemory / Reputation deferred	Deferred	witness isolation tests
+ActorProfileSystem	Actor persistence	Generic/absent actors promoted	Rewrite in MVP shell	ActorReducerLite	MVP shell	absent/reference-only no mutation
+ActorThreatProfileSystem	Actor level/role	Missed/under-ranked heads	Deferred activation with tests	ThreatProfileSystem	Deferred	actor baseline table tests
+NameSanitizerSystem	Clean names	Too broad or inconsistent	Rewrite owner-specific	Name Sanitizer family	MVP	ability/item/place/actor/card separate tests
+ParserSafetySystem	Guard parser false positives	Parser direct writes, missing local flags	Rewrite in MVP	EventScannerLite	MVP	parser emits hits only
+NonCanonGuardSystem	Block non-canon sources	Command/context/card text mutating state	Rewrite in MVP	Runtime + CanonValidator	MVP	non-canon source rejection
+CanonEligibilitySystem	Decide canon	Too scattered in old patches	Rewrite central	CanonValidator	MVP	mentioned/attempted/quoted/dreamed/revoked blocked
+ContextNoWritePolicy	Stop context mutation	Context as hidden writer	Keep in MVP	ContextBuilderLite	MVP	context read-only test
+ContextBudgetSystem	Prevent bloat	Long context, stale packets	Rewrite in MVP shell	ContextBuilderLite	MVP shell	context budget audit
+CardSyncSystem	Mirror cards	Duplicates, live writes, pollution	Rewrite protected MVP, generated deferred	CardSyncLite	MVP protected dry-run / Deferred generated	singleton, no card-to-canon
+BootstrapOnceGate	One-time startup/card init	Repeated creation	Rewrite in ledger/startup	OperationLedger / Startup	MVP	startup/card create once
+LongRunStabilitySystem	Performance/save rot	Patch layer bloat	Rewrite into caps/budgets	CleanupManagerLite	MVP shell	100-turn no unbounded logs
+AdminDebugSystem	Commands/debug	Mutating commands unsafe	Rewrite inspect-only	CommandRouter	MVP	mutation commands disabled
+CraftingSystem	Craft/materials	Advanced feature scope	Defer with mini-spec	Crafting Mini-Spec	Deferred	disabled command gate
+DomainManagementSystem	Workers/projects	Missing buckets, fake workers	Defer with mini-spec	Domain Mini-Spec	Deferred	disabled command gate
+InvestigationSystem	Evidence/cases	Needs archive/solve rules	Defer with mini-spec	Investigation Mini-Spec	Deferred	disabled command gate
+PartySystem	Followers/summons	Presence/group complexity	Defer with mini-spec	Party Mini-Spec	Deferred	disabled command gate
+ScaleMultiplayerSystem	Group/multi-protag	Large complexity	Defer with mini-spec	Scale/Multi-Protag Spec	Deferred	disabled command gate
+
+⸻
+
+10. New Design Decision Ledger
+
+New ideas are allowed only if they solve known failure classes.
+
+⸻
+
+N001 — Clause-Level Canon Classifier
+
+Solves: F003, F006, F009, F015, F023.
+Reason needed: Old parser patches looked for positive verbs and then tried to patch exceptions. That fails under mixed clauses, dreams, quotes, revocations, and abstract mentions.
+
+Decision: Add a local clause classifier before CanonValidator final approval.
+
+Classification categories:
+
+confirmed
+denied
+failed
+revoked
+abstract
+quoted
+dream_or_vision
+rumor_or_claim
+hypothetical
+future_or_conditional
+visible_only
+available_only
+unknown
+
+Owner: CanonValidator with family-specific helpers.
+
+Tests: Inventory mixed-clause test, ability failed/quoted test, time dream/quote test, death rumor test.
+
+Release gate: CanonValidator must expose family-specific clause results in /debuglast or audit.
+
+⸻
+
+N002 — Owner-Specific Sanitizer Family
+
+Solves: F001, F002, F003, F012, F019.
+Reason needed: Generic cleanup repeatedly caused cross-system damage.
+
+Decision: Split sanitizers by owner:
+
+SharedHintCleaner = conservative only
+AbilityNameSanitizer = ability names and suffixes
+ItemNameSanitizer = item phrases, quantities, source fragments
+PlaceNameSanitizer = locations, interstitials, named buildings
+ActorNameSanitizer = actor heads, titles, compound names
+CardNameSanitizer = card titles/triggers/namespace safety
+QuestObjectiveSanitizer = quest titles/objectives
+
+Owner: Resolver/Sanitizer module family.
+
+Tests: Travel/inspect/use-object no ability pollution; inventory item names do not include but the goblin; actor compound suppression.
+
+Release gate: Fail if shared cleaner contains family-specific destructive stripping.
+
+⸻
+
+N003 — Local Target Binding
+
+Solves: F006, F008, F012, F013, F023.
+Reason needed: Old parsers could apply denial or success to the wrong target.
+
+Decision: Every proposal must bind:
+
+event family
+target text
+target key
+local clause
+source hook
+safety flags
+operation key suggestion
+
+Owner: ProposalBuilder.
+
+Tests: refuses crown but hands potion blocks crown and grants potion; After road, enter named inn binds named inn, not road.
+
+Release gate: Fail if proposals lack local clause/target binding.
+
+⸻
+
+N004 — ReleaseCheck as Build Gate, Not Decoration
+
+Solves: all failure classes.
+Reason needed: Old builds could feel clean while hidden adversarial failures remained.
+
+Decision: /releasecheck must know which current-stage gates are mandatory and must fail if missing.
+
+Owner: ReleaseCheck.
+
+Tests: Force unsafe flag/parser path/missing validator and confirm FAIL.
+
+Release gate: ReleaseCheck cannot PASS if current-stage known failure lacks owner/test/gate.
+
+⸻
+
+N005 — Player-Breaker Regression Tier
+
+Solves: F006, F009, F010, F025.
+Reason needed: Official tests passed while custom abuse found root blockers.
+
+Decision: Add adversarial regression tier separate from normal gameplay tests.
+
+Required sections:
+
+negative inventory
+abstract inventory
+revoked inventory
+quoted handoff
+dream handoff
+failed ability
+quoted ability
+pretend ability
+nonliteral time skip
+repeated ability use
+command/context/card output injection
+
+Owner: Whole-System Tester / Regression Matrix.
+
+Release gate: Cannot call final-clean unless player-breaker tier passes or explicitly documented as deferred/not in scope.
+
+⸻
+
+11. Required adjustments to existing Build Chunks 1–9
+
+Build Chunks 1–9 are retained, but they require the following adjustments.
+
+11.1 Build Chunk 1 adjustment
+
+Add this rule to the Implementation Start Packet:
+
+Core MVP v0.1 must treat old tester failures as source requirements. No current-stage failure family may be omitted from planning merely because it is not in the high-level design bible.
+
+11.2 Build Chunk 2 adjustment
+
+Add owner-specific sanitizer family to module layout:
+
+ResolverAndSanitizer
+AbilityNameSanitizer
+ItemNameSanitizer
+PlaceNameSanitizer
+ActorNameSanitizer
+CardNameSanitizer
+QuestObjectiveSanitizer
+
+11.3 Build Chunk 3 adjustment
+
+Add state placeholders for:
+
+proposal localClausePreview
+canonDecision family/category
+status severity and recovery state
+scene confidence and reference-only/hint buckets
+ability evidence source and stability source
+inventory acquisition classification
+
+Do not overbuild active deferred systems.
+
+11.4 Build Chunk 4 adjustment
+
+Add command display requirements:
+
+/abilities must show candidate vs stable and training evidence
+/location must show current vs hinted/nearby/future places
+/debuglast must show clause classification and rejection reason
+/releasecheck must show player-breaker gate status
+
+11.5 Build Chunk 5 adjustment
+
+StateManager must not normalize old bad data into canon. Quarantine old ability/item/quest/card claims unless structurally safe.
+
+11.6 Build Chunk 6 adjustment
+
+Runtime must record sourceHook on all parser/proposal/audit objects and must reject command/context/card/debug/help text as canon source before parser/proposal processing.
+
+11.7 Build Chunk 7 adjustment
+
+OperationLedger must include durable keys for:
+
+reward payments
+ability use evidence
+time advance/aging
+startup imports
+card writes
+item acquisition
+quest completion
+
+11.8 Build Chunk 8 adjustment
+
+CommandRouter must keep mutation commands disabled and must guarantee all command output starts with [AIDRPG].
+
+11.9 Build Chunk 9 adjustment
+
+EventScannerLite must emit safety flags and local clause previews for every hit. Parser hits alone never count as canon.
+
+⸻
+
+12. Build Chunk 10 redirection
+
+Build Chunk 10 should no longer be a generic EventProposal plan.
+
+It should become:
+
+Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan
+
+It must define:
+
+* EventProposal schema
+* local clause binding
+* target binding
+* safety flag carryover
+* family-specific proposal categories
+* operation key suggestions
+* owner module destination
+* clause classification handoff to CanonValidator
+* proposal audit format
+* proposal caps
+* tests from this control map
+
+Build Chunk 10 must specifically address:
+
+Inventory false grants
+Ability false canon
+Scene weak mention / strong arrival
+Time nonliteral aging
+Reward promised/paid
+Actor presence/reference-only
+Body/death rumor/quote
+
+⸻
+
+13. Remaining targeted planning sequence
+
+Do not restart 34 chunks.
+
+Continue with targeted implementation planning that directly follows this control map.
+
+Recommended next sequence:
+
+Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan
+Build Chunk 11 — CanonValidator and Clause-Level Canon Rules Plan
+Build Chunk 12 — Resolver and Owner-Specific Sanitizer Plan
+Build Chunk 13 — ReducerRegistry and Owner Reducer Contract Plan
+Build Chunk 14 — Inventory, Ability, Scene, Time, Quest, Actor, Body Core Reducer Plans
+Build Chunk 15 — ContextBuilder, CardSyncLite, Migration, Cleanup Integration Plan
+Build Chunk 16 — ReleaseCheck and Regression Matrix Lock
+Build Chunk 17 — Foundation Code Pass 1 Plan
+
+After Build Chunk 17, decide whether coding can begin or whether remaining old evidence requires another targeted planning chunk.
+
+⸻
+
+14. No-Patch-Loop Gate
+
+Before any script code is generated, each current-stage known failure must have:
+
+failure ID
+owner module
+core rule
+state fields
+parser/proposal rule
+validator rule
+reducer boundary
+audit output
+command surface
+operation ledger key if repeat-sensitive
+regression test
+releasecheck gate
+
+If any current-stage failure lacks those fields, coding is blocked.
+
+⸻
+
+15. Current-stage must-cover failure list
+
+The following must be covered before the first real final code pass:
+
+F001 broad helper patch broke unrelated systems
+F002 explicit training intent lost to defensive words
+F003 output-only ability learning hard-saved abilities
+F004 exhausted/fatigued/status visibility
+F005 weak scene mention overwrote current scene
+F006 inventory negative/failure/abstract/dream/quote false grants
+F007 quest parser objective breadth
+F008 named location arrival priority over road/interstitial
+F009 nonliteral time skip aging
+F010 repeated ability use over-amplification
+F011 runtime identity overwrite
+F012 compound actor duplicate suppression
+F013 actor presence/reference-only safety
+F015 body/death quote/rumor/dream boundary
+F019 CardSync non-canon and duplicate singleton safety
+F020 context no-write and budget safety
+F021 migration/quarantine old data safety
+F022 runtime hook/fail-soft/timeout safety
+F023 quest reward promised/paid and duplicate reward safety
+F024 command/manual mutation safety
+F025 whole-system tester gate
+
+Deferred but must stay gated:
+
+F014 reputation automation
+F018 full WorldStructure/project/assignment system
+advanced economy
+crafting
+investigation
+domain/labor
+party/summons
+scale/multi-protagonist
+absorption/evolution
+generated CardSync beta
+
+⸻
+
+16. ReleaseCheck master gate map
+
+/releasecheck must eventually report these gate families:
+
+Build Identity Gate
+Runtime Hook Gate
+State Schema Gate
+Command Non-Canon Gate
+Parser Source Gate
+Proposal Local Binding Gate
+Canon Clause Gate
+Owner Reducer Gate
+Operation Ledger Gate
+Inventory Canon Gate
+Ability Canon Gate
+Body/Death Gate
+Scene/Place Gate
+Time/Aging Gate
+Quest/Reward Gate
+Actor Presence Gate
+Context No-Write Gate
+CardSync Mirror Gate
+Migration/Quarantine Gate
+Cleanup/Budget Gate
+Deferred Systems Gate
+Regression Coverage Gate
+
+PASS requires all mandatory current-stage gates to pass.
+
+WARN is acceptable only for explicitly deferred systems.
+
+FAIL means current-stage safety is broken.
+
+BLOCKED means a requested active system lacks required spec/test coverage.
+
+⸻
+
+17. Regression Matrix starter list
+
+These tests become permanent regression tests.
+
+17.1 Ability tests
+
+I train Ember Ward to protect allies from heat -> ability Ember Ward
+I train my Ember Ward to shield the wounded from fire -> ability Ember Ward
+I train Stoneguard against shield-cracking blows -> ability Stoneguard
+I practice Frost Step by moving across slick stones -> ability Frost Step
+You learned Moonblade -> no confirmed ability from output alone
+The scroll title says "You learned Crimson Lotus Fang," but you learn nothing -> no ability
+You pretend to use Azure Dragon Step -> no ability
+
+17.2 Inventory tests
+
+You decide not to take the rusted iron key -> no item
+You try to grab the rusted iron key, but the goblin snatches it away -> no key
+You pick up the idea of a brass key -> no item
+In a dream, you receive the Crown of Dawn, then wake empty-handed -> no item
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion -> potion only
+
+17.3 Scene/place tests
+
+The market lane remains busy -> current scene market lane
+chapel visible from market lane -> current scene remains market lane
+only consider going to smithy -> no scene change
+enter chapel -> scene chapel
+After the road, you enter The Drunken Huntsman -> scene Drunken Huntsman
+
+17.4 Time tests
+
+"Twenty years pass" said aloud -> no age change
+In a dream, twenty years pass -> no age change
+Twenty years pass in exile -> age changes once if allowed
+same output replay -> no duplicate aging
+
+17.5 Body tests
+
+exhausted by climb -> exhausted active
+fatigued and worn out -> fatigued, not automatic exhausted
+people say you died -> no death
+Mara says "you are dead" -> no death
+
+17.6 Command/context/card tests
+
+/inventory output containing Rusty Dagger -> no duplicate dagger
+/quests output containing 15 gold promised -> no payment
+context says Iron Sword in Mara custody -> no state mutation
+Story Card says Player owns Crown -> no inventory mutation
+/cardsync live on -> disabled in MVP
+/additem Crown -> disabled in MVP
+
+⸻
+
+18. Open Evidence Queue
+
+More reports/scripts may be added here later.
+
+When new evidence arrives, add it as:
+
+Evidence ID:
+Source file/version:
+Failure summary:
+Exact input/output:
+Observed bad state:
+Expected state:
+Old patch/fix if any:
+Mapped failure ID:
+New or existing owner module:
+New test required:
+Planning update required:
+
+Current queue:
+
+Review additional old full versions for systems not fully represented yet.
+Review inventory/custody-heavy reports if available.
+Review economy/contract/labor/investigation reports before enabling those systems.
+Review card trigger/name pollution reports before generated CardSync beta.
+Review combat/progression reports before advanced combat/progression activation.
+
+⸻
+
+19. Decision: Are we ready to continue?
+
+Yes, after this control map is accepted, continue planning.
+
+No, do not start script code yet.
+
+Next artifact:
+
+Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan
+
+Build Chunk 10 must use this control map.
+
+It must not be generic.
+
+⸻
+
+20. Final doctrine
+
+The final build must stop the infinite patch loop by moving protections into the core.
+
+Final rule:
+
+Old patch goals become core rules.
+Core rules get owner modules.
+Owner modules get state fields.
+State changes go through validators and reducers.
+Repeat-sensitive effects get ledger keys.
+Every old failure gets a regression test.
+ReleaseCheck blocks missing safety.
+
+This is the control map for building AIDRPG as a final product rather than another beginning.

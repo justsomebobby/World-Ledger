@@ -1,0 +1,1893 @@
+AIDRPG Gap Closure Addendum v1
+
+0. Document status
+
+Document name: AIDRPG Gap Closure Addendum v1
+Purpose: Lock the missing safety plans that must exist before coding so old AIDRPG/TASIS problems do not reappear.
+Status: Pre-code blocker and planning addendum.
+Applies after: Script Build Roadmap v1.
+Applies before: Script v0.1 coding begins.
+This document does not contain final script code.
+
+This addendum exists because the master package already defines the dream, architecture, MVP, tests, formulas, and roadmap, but the old versions show many specific repairs that must not be lost.
+
+The old systems tried to fix:
+
+* duplicate card creation
+* wrong Story Card API assumptions
+* live card writes happening too early
+* polluted protected cards
+* generated junk cards
+* command/help dishonesty
+* quoted/rumored/pretend text becoming canon
+* failed ability attempts becoming real abilities
+* visible items becoming owned inventory
+* handoff wording being parsed incorrectly
+* absent companions acting
+* player identity drift
+* player setup being overwritten
+* quest reward duplication
+* vague quest setup becoming active quest
+* context mutating state
+* Story Cards mutating state
+* parser false positives
+* over-awarded XP
+* dirty queue bloat
+* state migration damage
+* long-run save rot
+* runtime hook failures
+* testing gaps
+
+This document turns those old repair goals into exact planning requirements.
+
+⸻
+
+1. Authority order after this addendum
+
+Implementation authority order becomes:
+
+1. AIDRPG Gap Closure Addendum v1 for missing safety blockers and old-fix preservation.
+2. AIDRPG Script Build Roadmap v1 for build chunk order.
+3. AIDRPG Test Spec v1 for MVP pass/fail tests.
+4. AIDRPG Formula Appendix v1 for math.
+5. AIDRPG MVP Build Spec v1 for first script target.
+6. AIDRPG Developer Spec v1.1 Correction Pass for implementation boundaries.
+7. AIDRPG Developer Spec v1 for architecture.
+8. Chunk 33 Final Pre-Build Lockdown.
+9. Design Bible Chunks 1–32.
+
+If this addendum says a safety spec is required before coding, it is required.
+
+If this addendum marks a feature as deferred, do not code it early just because an older script had it.
+
+⸻
+
+2. Core gap-closure doctrine
+
+The old patches must not be copied blindly.
+
+The old problems must not be forgotten.
+
+The rule is:
+
+Keep the tested fix intention.
+Discard brittle patch behavior.
+Rebuild each protection inside the new canon pipeline.
+
+Every old fix must be classified as one of:
+
+* Keep in MVP
+* Rewrite in MVP
+* Defer with mini-spec
+* Discard because dangerous/redundant
+* Keep as test only
+
+No old module should be pasted directly into the new build unless the build chunk explicitly says it has been rewritten to match the new architecture.
+
+⸻
+
+3. Old Fix Salvage Matrix requirement
+
+Before coding starts, create an Old Fix Salvage Matrix.
+
+It must list every meaningful old system or repair layer and map it to the new plan.
+
+Required matrix fields
+
+Old System / Fix:
+Original Purpose:
+Observed Problem / Risk:
+Keep, Rewrite, Defer, Discard, or Test Only:
+New Owner Module:
+MVP or Deferred:
+Required State Fields:
+Required Event Types:
+Required Validator Rules:
+Required Tests:
+Risk if Skipped:
+Notes:
+
+Old systems that must be included
+
+* RuntimeGate
+* TurnEngine
+* CoreState
+* PlayerSystem
+* PlayerIdentityGuard
+* StartupIdentityImporter
+* BuildIdentitySystem
+* ProgressionSystem
+* StatBenchmarkSystem
+* XPBudgetGuardSystem
+* InventorySystem
+* PatchInventory
+* TransactionLedgerSystem
+* MaterialRequirementSystem
+* AbilitySystem
+* AbilityUseResolver
+* AbilityCandidateSanitizer
+* AbilityFormationHardening
+* PersistentTraitSystem
+* StatusInteractionSystem
+* SceneStateSystem
+* WorldEntitySystem
+* TimeTravelSystem
+* QuestLogSystem
+* ReputationSystem
+* ActorProfileSystem
+* ActorThreatProfileSystem
+* MajorActorMemorySystem
+* ActorNameExtractionGuard
+* EntityIdentityResolver
+* NameSanitizerSystem
+* ParserSafetySystem
+* NonCanonGuardSystem
+* CanonEligibilitySystem
+* ContextNoWritePolicy
+* ContextBudgetSystem
+* ContextPacketSystem
+* CardSyncSystem
+* BootstrapOnceGate
+* RegressionHardeningSystem
+* CatRegressionRepairSystem
+* LongRunStabilitySystem
+* LongRunPolishSystem
+* CoreAuthoritySystem
+* FinalGameplayPolishSystem
+* Step6ContinuitySystem
+* Step7FinalizationSystem
+* PartySystem
+* ScaleMultiplayerSystem
+* CraftingSystem
+* DomainManagementSystem
+* InvestigationSystem
+* AdminDebugSystem
+
+Required outcome
+
+No old protection can be silently dropped.
+
+If it is dropped, the matrix must explain why and which new rule/test replaces it.
+
+⸻
+
+4. Runtime and Hook Contract Spec requirement
+
+Before coding starts, create a Runtime and Hook Contract Spec.
+
+The script must not rely on vague hook behavior.
+
+Must define
+
+Input hook
+
+* validates runtime
+* initializes state
+* starts turn safely
+* routes commands
+* suppresses command output scanning
+* records player intent only
+* never completes normal player actions from input alone
+* returns valid { text } shape
+* fail-softs on errors
+
+Context hook
+
+* validates runtime
+* initializes state
+* builds context packets
+* never mutates gameplay state
+* never creates cards
+* never creates proposals
+* returns valid { text } shape
+* fail-softs on errors
+
+Output hook
+
+* validates runtime
+* initializes state
+* ignores command-output replay
+* scans AI output only
+* creates proposals
+* validates proposals
+* routes accepted proposals to reducers
+* writes ledger keys
+* marks dirty targets
+* updates protected cards if allowed
+* returns valid { text } shape
+* fail-softs on errors
+
+Must define hook state fields
+
+currentHook
+currentTurn
+lastInputHash
+lastOutputHash
+lastAppliedOutputHash
+hookTrace
+commandActive
+suppressEventScanForCommandOutput
+runtimeWarnings
+
+Must define fail-soft behavior
+
+If a hook fails:
+
+* do not erase state
+* do not create partial gameplay commits
+* log error in audit
+* return original text if safe
+* set diagnostic warning
+
+Required tests
+
+* hook returns valid shape
+* Input does not complete actions
+* Context does not mutate state
+* Output duplicate replay does not double-apply
+* command output suppression works
+* runtime exception does not break scenario
+* lastAppliedOutputHash prevents duplicate output consequences
+
+⸻
+
+5. Story Card API Adapter Spec requirement
+
+Before any live Story Card writes, create a Story Card API Adapter Spec.
+
+Old failures came from brittle assumptions about Story Card creation and lookup. The new script must isolate all Story Card API calls behind one adapter.
+
+Required adapter functions
+
+CardApi.detectCapabilities()
+CardApi.safeListCards()
+CardApi.safeFindCard(query)
+CardApi.safeFindProtectedCard(canonicalKey)
+CardApi.safeAddCard(payload)
+CardApi.safeUpdateCard(cardRef, payload)
+CardApi.safeRemoveCard(cardRef)
+CardApi.safeDisableCard(cardRef, reason)
+CardApi.safeEnsureSingletonProtectedCard(definition)
+CardApi.safeDryRun(operation)
+
+Must define
+
+* supported addStoryCard signatures
+* how to detect if the API is unavailable
+* how to detect if creation succeeded
+* how to detect if update succeeded
+* how to handle card lookup failure
+* how to avoid assuming immediate same-turn activation
+* how to handle title duplicates
+* how to handle trigger duplicates
+* how to store card identity in state
+* how to avoid hidden-metadata-only detection
+* how to operate in dry-run mode
+* how to operate in safe mode
+* how to log card failures
+
+CardSync mode flags
+
+cardSync.liveWritesEnabled = false
+cardSync.safeMode = true
+cardSync.dryRun = true
+cardSync.generatedCardsEnabled = false
+
+Default behavior:
+
+* protected card writes may be planned, but live writes remain guarded
+* generated cards are disabled
+* if card API is unknown, CardSync must stay in dry-run
+
+Required tests
+
+* protected card creation dry-run works
+* live write stays blocked by safe mode
+* card API failure does not crash
+* duplicate protected card detected
+* deleted protected card restored only once
+* generated card creation suppressed while disabled
+* card text is never scanned as canon
+
+⸻
+
+6. Protected Story Card Singleton Contract requirement
+
+Before CardSyncLite is coded, create a Protected Story Card Singleton Contract.
+
+Protected cards must be exact singletons.
+
+Required protected cards
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+
+For each protected card define
+
+Canonical Key:
+Visible Title:
+Allowed Trigger(s):
+Trigger Safety:
+Owner State Buckets:
+Render Function:
+Dirty Targets:
+Update Priority:
+Max Length:
+Restore Rule:
+Duplicate Rule:
+Manual Edit Rule:
+Migration Rule:
+
+Singleton rules
+
+* one canonical protected card per key
+* duplicate titles must be neutralized or disabled
+* manually edited cards must be overwritten from state, not imported as truth
+* deleted protected cards may be restored if safe
+* protected card text cannot create state
+* protected card triggers must not be broad generic keys
+* protected card identity must not rely only on hidden metadata
+
+Required tests
+
+* all protected cards created once
+* duplicate Player Sheet is neutralized
+* protected card delete/restore works once
+* manual edit does not become canon
+* protected card text cannot create quest/item/ability
+* max 3 protected card writes per turn
+
+⸻
+
+7. Generated CardSync Beta Spec requirement
+
+Generated cards are deferred until after MVP gates pass.
+
+Before enabling them, create a Generated CardSync Beta Spec.
+
+Generated card families
+
+Allowed in first beta only:
+
+* promoted actor card
+* promoted place card
+* stable ability card
+
+Deferred from beta:
+
+* item cards
+* quest cards
+* case cards
+* contract cards
+* domain cards
+* faction cards
+* world entity cards
+
+Required eligibility fields
+
+importanceScore
+stabilityStatus
+truthStatus
+canonicalKey
+safeDisplayName
+safeTriggers
+sourceStateIds
+duplicateCheck
+cardCooldown
+lastTouchedTurn
+
+Generated card creation rules
+
+Create only if:
+
+* generatedCardsEnabled is true
+* CardSync live writes are explicitly allowed
+* entity is promoted
+* name passes sanitizer
+* trigger passes sanitizer
+* canonical key has no active duplicate
+* facts are confirmed or clearly labeled uncertain
+* max card write limit not exceeded
+* card would help continuity
+
+Reject if:
+
+* generic name
+* generic trigger
+* candidate ability
+* one-scene NPC
+* visible-only item
+* rumor-only fact
+* low confidence
+* broad AIDRPG trigger
+* duplicate alias collision
+
+Required tests
+
+* random guard does not get card
+* named recurring captain gets one card
+* street, door, room, wolf, sword, skill, quest triggers are rejected
+* Frostmaw can get card, generic wolf cannot
+* generated card duplicate blocked
+* generated card updates from state only
+* safe mode blocks live writes
+
+⸻
+
+8. Parser Rulebook v1 requirement
+
+Before EventScannerLite expands beyond simple tests, create a Parser Rulebook v1.
+
+The parser must be conservative.
+
+Universal parser flags
+
+Every parser hit must set:
+
+completedAction
+negated
+hypothetical
+attemptOnly
+quotedSpeech
+dreamOrVision
+rumorOrClaim
+failedOrRevoked
+sourceHook
+confidence
+rawText
+normalizedText
+
+Required parser categories
+
+* item visibility parser
+* item acquisition parser
+* item handoff parser
+* item loss/sale/destruction parser
+* ability attempt parser
+* ability failure parser
+* ability success parser
+* damage/injury parser
+* healing/recovery parser
+* quest rumor/offer/accept/parser
+* reward promise/payment parser
+* actor presence parser
+* actor claim parser
+* location intent/arrival parser
+* time/rest parser
+* command suppression parser
+* context/card suppression parser
+
+Required phrase classifications
+
+Accept as completed item acquisition only if direct and unquoted
+
+Examples:
+
+* you pick up the iron key
+* you take the iron key
+* you receive the iron key
+* Mara hands you the iron key and you accept it
+* she places the key in your hand
+
+Do not accept as acquisition
+
+Examples:
+
+* you see the key
+* you could take the key
+* you almost take the key
+* you reach for the key
+* you try to take the key
+* you do not take the key
+* Mara says, "take the key"
+* in a dream, you gain a sword
+* a rumor says you found a relic
+
+Ability failure phrases
+
+* nothing happens
+* it fizzles
+* it fails to activate
+* no effect
+* you cannot form it
+* the spell collapses
+
+These may add evidence but must not create stable success.
+
+Non-canon phrases
+
+* pretend
+* imagine
+* dream
+* rumor
+* someone says
+* it seems
+* might
+* could
+* almost
+* tries to
+
+These reduce confidence or block canon.
+
+Required tests
+
+* quoted item command rejected
+* real handoff accepted
+* refused item rejected
+* dream item rejected
+* failed ability stays failed/candidate
+* rumor death rejected
+* attempted location change does not arrive
+
+⸻
+
+9. Resolver / Alias / Similar-Name Spec requirement
+
+Before persistent actors/items/places/abilities are merged, create a Resolver Spec.
+
+Required resolver result
+
+ResolverResult {
+  matchedId,
+  confidence,
+  ambiguous,
+  candidates,
+  rejectedCandidates,
+  reason,
+  matchType
+}
+
+Resolver scoring factors
+
+* exact canonical key
+* exact display name
+* alias
+* current scene presence
+* recent mention
+* item custody/access
+* quest link
+* actor relation term
+* place full phrase
+* spelling similarity
+* generic-name penalty
+* substring penalty
+* duplicate candidate count
+
+Must not auto-merge
+
+* iron key / iron keyring
+* rusted key / keyring
+* Mara / Mara’s sister
+* Old Chapel / Old Chapel Road
+* Frostmaw / wolf
+* Captain Mora / random guard
+* player / NPC with similar name
+* sword / sword hilt / broken sword
+* inn / innkeeper
+
+Safe merge requirements
+
+At least two of:
+
+* same canonical name
+* explicit alias phrase
+* same role
+* same location
+* same quest link
+* same custody link
+* repeated consistent description
+
+Required tests
+
+* Take the iron key, not the keyring selects key only
+* Mara's sister does not resolve to Mara
+* Old Chapel Road does not resolve to Old Chapel
+* Frostmaw does not merge into generic wolf
+* typo merge works only with enough evidence
+* ambiguous the sword does not choose randomly
+
+⸻
+
+10. Junk Name and Bad Trigger Policy requirement
+
+Before any entity promotion or card creation, create a Name and Trigger Safety Policy.
+
+Junk actor names reject list
+
+Reject unless explicitly promoted by context:
+
+* man
+* woman
+* guard
+* stranger
+* someone
+* somebody
+* voice
+* figure
+* shadow
+* you
+* player
+* narrator
+* system
+* debug
+* AIDRPG
+* story begins
+* unknown person
+
+Junk place names reject list
+
+Reject as standalone card/entity names:
+
+* street
+* road
+* room
+* door
+* wall
+* floor
+* table
+* chair
+* city
+* town
+* forest
+* shop
+* building
+* house
+* hallway
+
+Specific names are allowed:
+
+* Blackwood Road
+* Old Chapel Road
+* Greyford Tavern
+* Northwatch Gate
+
+Junk item names reject list
+
+Reject:
+
+* hand
+* your hand
+* inventory
+* quest log
+* something
+* nothing
+* pain
+* warmth
+* blood, unless itemized sample/evidence
+* the room
+* text fragments
+* command fragments
+
+Bad card triggers
+
+Reject standalone triggers:
+
+* wolf
+* sword
+* key
+* magic
+* skill
+* quest
+* item
+* town
+* road
+* street
+* guard
+* enemy
+* companion
+
+Required tests
+
+* no Street card
+* no Door card
+* no Your Hand item
+* no AIDRPG actor
+* no Wolf generated card unless named/promoted
+* Blackwood Road accepted as specific route/place
+
+⸻
+
+11. Legacy Migration and Polluted Save Repair Spec requirement
+
+Before old saves or old Story Cards are used, create a Legacy Migration and Polluted Save Repair Spec.
+
+Migration must define
+
+* old version detection
+* old schema detection
+* old card detection
+* safe import fields
+* quarantine fields
+* ignored fields
+* legacy card neutralization
+* duplicate protected card collapse
+* generated junk card disable/archive
+* tombstone handling
+* old dirty queue cleanup
+* old pending candidate cleanup
+* migration idempotency
+* migration audit output
+
+Required migration buckets
+
+migration.imported
+migration.quarantined
+migration.ignored
+migration.neutralizedCards
+migration.duplicateCards
+migration.warnings
+migration.errors
+
+Must never do during migration
+
+* import old Story Card prose as confirmed state
+* duplicate inventory from card text
+* duplicate ability candidates from old card text
+* delete user-created cards blindly
+* overwrite player identity with NPC name
+* activate generated cards by default
+* clear valid inventory/quests/actors
+
+Required tests
+
+* migration can run twice safely
+* old polluted Player Sheet does not duplicate state
+* duplicate protected cards neutralized
+* old broad triggers disabled
+* invalid old state quarantined
+* valid item remains valid
+* card prose does not create canon
+
+⸻
+
+12. Release Check and Audit Command Spec requirement
+
+Before MVP is considered releasable, create a Release Check and Audit Command Spec.
+
+Required commands
+
+/help
+/version
+/debuglast
+/stateaudit
+/cardaudit
+/contextaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/cleanup
+/releasecheck
+/startupaudit
+/falsepositiveaudit
+
+/releasecheck must verify
+
+* schema exists
+* version exists
+* flags exist
+* generated cards disabled in MVP
+* all required state buckets exist
+* hook contract installed
+* command output suppression active
+* parser cannot directly mutate state
+* CanonValidator active
+* ReducerRegistry active
+* OperationLedger buckets active
+* dirty queue active
+* ContextBuilder read-only
+* CardSync mirror-only
+* protected card singleton registry exists
+* no duplicate protected cards
+* no broad protected triggers
+* audit logs capped
+* cleanup capped
+* deferred systems inert
+* /help honest
+* required tests passed or not run
+
+Blocker failures
+
+Releasecheck must fail if:
+
+* ledger missing
+* generated cards live in MVP
+* Story Cards can create state
+* Context can create state
+* command output can create state
+* duplicate protected cards active
+* CardSync live writes enabled without safe conditions
+* parser writes inventory directly
+* reducers not owner-bound
+* /help lists unsupported systems as active
+
+Required tests
+
+* releasecheck fails missing ledger
+* releasecheck fails generated cards enabled
+* releasecheck fails duplicate protected card
+* releasecheck fails dishonest help
+* releasecheck passes only after MVP gates pass
+
+⸻
+
+13. Whole-System Tester Build Spec requirement
+
+Before expansion beyond MVP, create a Whole-System Tester Build Spec.
+
+Tester must emulate
+
+* state
+* info
+* history
+* storyCards
+* memory
+* input hook
+* context hook
+* output hook
+* mock addStoryCard
+* mock updateStoryCard
+* mock removeStoryCard
+* command input
+* duplicate output replay
+* multi-turn gameplay
+
+Tester functions
+
+loadScript()
+loadState()
+runInput(text)
+runContext(text)
+runOutput(text)
+runTurn(input, output)
+runTurnSequence(turns)
+runCommand(command)
+inspectState()
+inspectCards()
+inspectAudit()
+compareSnapshot(before, after)
+reportFailures()
+
+Tester must capture
+
+* thrown errors
+* invalid hook returns
+* state mutations
+* card operations
+* context output
+* command output
+* operation keys
+* dirty targets
+* audit logs
+* duplicate skips
+
+Required tests
+
+* hooks run in order
+* duplicate output replay works
+* fake Story Card operations captured
+* command output suppressed
+* failure report identifies system
+* discovered bug can become permanent regression test
+
+⸻
+
+14. Full Regression Matrix v1 requirement
+
+Before claiming old issue coverage is complete, create a Full Regression Matrix v1.
+
+Required suites
+
+* startup/setup import
+* hook lifecycle
+* state/migration
+* command/help honesty
+* parser false positives
+* natural confirmation/handoff
+* item/custody
+* ability candidate/stability
+* body/injury/death
+* XP/progression/anti-farm
+* quest/reward
+* contract
+* economy/transactions
+* crafting/materials
+* actor memory
+* place memory
+* time/travel
+* context packets
+* protected cards
+* generated cards
+* polluted-save repair
+* cleanup/dirty queue
+* reputation/faction/titles
+* investigation/evidence
+* party/followers/summons
+* scale/group combat
+* domain/labor
+* absorption/evolution
+* performance/budget
+* long-run replay
+* fuzz/mutation
+
+Required result fields
+
+Test ID
+Suite
+Purpose
+Starting State
+Input
+Output
+Expected Proposal
+Expected Validation
+Expected State Change
+Expected No-Change
+Expected Audit
+Pass/Fail
+Regression Bug Link
+
+⸻
+
+15. Production Coding Rules and Line Budget Spec requirement
+
+Before script generation starts, create a Production Coding Rules v1.
+
+Required production rules
+
+* one official build version at a time
+* one chunk at a time
+* no hidden patch piles
+* no full rewrites after foundation freeze unless explicitly approved
+* each chunk declares touched modules
+* each chunk declares tests affected
+* each chunk declares deferred systems untouched
+* each chunk has rollback notes
+* each chunk updates version/build stage
+* each chunk avoids requiring user to search inside editor
+
+Line-budget rules
+
+Recommended:
+
+Target max per production chunk: 700 lines
+Absolute max per production chunk: 800 lines
+No module should grow without a split/section plan
+
+Hook-budget rules
+
+Define max per hook for:
+
+* parser passes
+* resolver candidates
+* card operations
+* cleanup records
+* context packets
+* audit entries
+* dirty target processing
+
+Required tests
+
+* chunk stays within line budget
+* chunk does not activate deferred systems
+* chunk passes relevant tests
+* chunk does not rewrite unrelated modules
+* build stage matches contents
+
+⸻
+
+16. Context Budget and Packet Serializer Spec requirement
+
+Before ContextBuilderLite is coded, create a Context Packet Serializer Spec.
+
+Required packet schema
+
+ContextPacket {
+  packetId,
+  priority,
+  sourceStateIds,
+  text,
+  hash,
+  expiresTurn,
+  reason,
+  uncertaintyLabels,
+  hiddenTruthSafe
+}
+
+Packet priority
+
+1. critical correction
+2. current location/scene
+3. player danger/status
+4. actor presence/absence
+5. inventory custody/access
+6. active quest/deadline
+7. ability limits/costs
+8. time/travel note
+9. archive callback only if directly relevant
+
+Serializer rules
+
+* short lines only
+* no full dumps
+* no hidden spoilers
+* label uncertainty
+* include relevant new key items
+* include custody warnings
+* include absent companion warnings
+* include low resource warnings
+* hash repeated packets
+* audit skipped packets
+
+Required tests
+
+* newly acquired key appears if relevant
+* unrelated inventory not dumped
+* rumor remains rumor
+* absent companion correction appears
+* low MP warning appears
+* packet hashes prevent audit spam
+
+⸻
+
+17. Dirty Queue and Cleanup Spec requirement
+
+Before long-run play, create a Dirty Queue and Cleanup Spec.
+
+Dirty target schema
+
+DirtyTarget {
+  id,
+  family,
+  stateId,
+  reason,
+  priority,
+  createdTurn,
+  lastAttemptTurn,
+  attempts,
+  status
+}
+
+Dirty families
+
+* player_sheet
+* body_status
+* abilities
+* inventory_equipment
+* quest_log
+* social_memory
+* current_location
+* context
+* card_registry
+
+Cleanup categories
+
+* stale parser candidates
+* old scene actors
+* old visible scene items
+* old dirty queue rows
+* old audit logs
+* old recent operation keys
+* stale ability hints
+* stale actor/place candidates
+* duplicate aliases
+* polluted card records
+
+Cleanup may never remove
+
+* player state
+* active inventory
+* active quests
+* important actors
+* protected card registry
+* permanent operation keys
+* reward keys
+* card keys
+* major archived outcomes
+
+Required tests
+
+* dirty queue dedupes
+* old visible loot removed after scene change
+* important item not removed
+* important actor not removed
+* cleanup runs in batches
+* cleanup logs destructive actions
+* cleanup never creates truth
+
+⸻
+
+18. Command Honesty and Help Text Spec requirement
+
+Before commands are coded, create a Command Honesty Spec.
+
+Required command categories
+
+MVP active commands
+
+* /help
+* /version
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+* /debuglast
+* /cardaudit
+* /contextaudit
+
+Diagnostic commands
+
+* /stateaudit
+* /ledger
+* /dirty
+* /releasecheck
+* /migration
+* /quarantine
+* /cleanup
+* /startupaudit
+* /falsepositiveaudit
+
+Disabled/deferred commands
+
+* economy commands
+* crafting commands
+* investigation commands
+* domain commands
+* absorption commands
+* generated CardSync live controls, unless beta enabled
+
+Alias policy
+
+Old command aliases must either:
+
+* map safely to new commands, or
+* return a clear disabled message
+
+Examples:
+
+/questlog -> /quests
+/actormemory -> /actors
+/finalcheck -> /releasecheck
+/hardening -> /stateaudit
+/cardsync live on -> disabled until CardSync beta
+
+Required tests
+
+* /help is honest
+* disabled command says disabled
+* old alias does not crash
+* command output is not parsed as story
+* command does not mutate unrelated state
+
+⸻
+
+19. Startup / Setup Import Spec requirement
+
+Before player setup import is coded, create a Startup Setup Import Spec.
+
+Setup may import
+
+* player name
+* race/species
+* age
+* appearance
+* starting location
+* starting equipment
+* starting currency
+* starting ability candidates/stable abilities
+* starting quest if explicit
+* starting companion if explicit
+
+Setup must not import
+
+* random opening prose as ability
+* dream items
+* quoted commands
+* generated card text
+* old card prose as fact
+* unconfirmed NPC biography as player identity
+
+Setup lock rules
+
+* setup import runs once
+* after gameplay starts, setup import cannot overwrite core identity
+* manual override is required for later identity repair
+* invalid setup names are quarantined
+* imported starting abilities must be labeled stable/candidate/passive explicitly or conservatively
+
+Required tests
+
+* setup imports once
+* setup does not overwrite after gameplay begins
+* starting item explicit becomes inventory
+* vague item mention does not
+* candidate ability stays candidate
+* NPC name does not become player name
+
+⸻
+
+20. Player Identity and Appearance Drift Spec requirement
+
+Before identity automation expands, create a Player Identity Drift Spec.
+
+Protected fields
+
+* name
+* race/species
+* age
+* appearance
+* body type
+* title versus name
+* disguise
+* transformation
+
+Drift rules
+
+* NPC name cannot overwrite player name
+* title cannot overwrite name
+* disguise does not overwrite permanent appearance
+* dream/vision transformation does not persist
+* confirmed transformation can update body/species/appearance
+* time skip ages player once if applicable
+* ageless/immortal trait modifies aging
+* temporary condition does not become identity
+
+Required tests
+
+* random NPC name does not rename player
+* dream species change rejected
+* disguise tracked separately
+* confirmed transformation updates correctly
+* time skip ages once
+* title stored as title, not name
+
+⸻
+
+21. Natural Confirmation / Handoff Spec requirement
+
+Before item handoff parsing is active, create a Natural Confirmation / Handoff Spec.
+
+Accepted handoff patterns
+
+* Mara hands you the iron key
+* Mara gives you the iron key
+* she places the key in your hand
+* you accept the key from Mara
+* you receive the pouch
+* he passes you the sealed letter
+
+Rejected/non-acquisition patterns
+
+* Mara says, "take the key"
+* Mara tells you to take the key
+* you could take the key
+* you almost take the key
+* you reach for the key
+* you refuse the key
+* you dream you receive a sword
+* someone mentions a key
+
+Handoff requirements
+
+* unquoted actual transfer
+* item name passes sanitizer
+* source actor resolved or allowed unknown giver
+* player acceptance if wording requires it
+* no duplicate operation key
+* item enters held/stored state only after accepted transfer
+
+Required tests
+
+* actual handoff accepted
+* quoted command rejected
+* refused item rejected
+* dream handoff rejected
+* duplicate handoff skipped
+* bad item name rejected
+
+⸻
+
+22. Quest, Contract, and Reward Flow Spec requirement
+
+Before quest expansion, create a Quest and Reward Flow Spec.
+
+Quest lifecycle
+
+rumored -> offered -> active -> blocked/ready_to_turn_in -> completed -> rewarded -> archived
+
+Reward lifecycle
+
+none -> promised -> ready -> paid/disputed/denied
+
+Must define
+
+* quest rumor detection
+* quest offer detection
+* acceptance detection
+* objective progress
+* objective completion
+* proof required
+* reward promised
+* reward paid
+* reward denied
+* reward duplicate key
+* quest giver presence
+* stored promise fallback
+* vague payout resolution
+* contract distinction
+
+Required tests
+
+* rumor not active quest
+* offered not accepted
+* promised reward not paid
+* objective complete does not pay
+* reward payment once
+* vague payout uses stored promise
+* contract terms do not mutate inventory from card text
+
+⸻
+
+23. Economy / Transaction Ledger Mini-Spec requirement
+
+Before EconomyReducer is enabled, create an Economy Mini-Spec.
+
+Must define
+
+* transaction schema
+* buyer
+* seller
+* item/service
+* price
+* currency source
+* accessible personal funds
+* stored funds
+* domain treasury
+* payment status
+* debt
+* refund
+* sale ownership transfer
+* barter
+* shop availability
+* duplicate transaction key
+
+Must prevent
+
+* spending inaccessible funds
+* selling inaccessible item
+* selling same item twice
+* buying unavailable item
+* promise being treated as payment
+* domain treasury acting like purse
+
+Required tests
+
+* cannot buy without funds
+* cannot spend domain treasury from road
+* cannot sell item in NPC custody
+* cannot sell sold item again
+* promise to pay is not payment
+
+⸻
+
+24. Crafting / Materials Mini-Spec requirement
+
+Before CraftingReducer is enabled, create a Crafting Mini-Spec.
+
+Must define
+
+* material records
+* material ownership/access
+* recipe requirements
+* tool/workshop requirements
+* project lifecycle
+* material reservation
+* progress units
+* failure outcomes
+* output item creation
+* repair/update existing item
+* upgrade/enchant item
+* quality and condition
+* time cost
+* labor help
+* duplicate output key
+
+Must prevent
+
+* instant major crafting from intent
+* visible material becoming owned
+* consuming unavailable materials
+* duplicate crafted item from repeated output
+* repair creating duplicate original item
+
+Required tests
+
+* material visible not owned
+* project reserves material
+* failed craft no final item
+* repair updates item
+* completion creates item once
+
+⸻
+
+25. Investigation / Evidence Mini-Spec requirement
+
+Before InvestigationReducer is enabled, create an Investigation Mini-Spec.
+
+Must define
+
+* case schema
+* clue schema
+* evidence schema
+* witness statement schema
+* suspect schema
+* theory schema
+* proof threshold
+* truth status
+* chain of custody
+* false clue
+* disputed evidence
+* solved case rules
+* archive rules
+* actor/place links
+
+Must prevent
+
+* rumor becoming proof
+* witness claim becoming confirmed fact
+* theory solving case alone
+* card text adding evidence
+* duplicate clue collection
+* private witness knowledge becoming public truth
+
+Required tests
+
+* clue found once
+* physical evidence collected once
+* rumor culprit does not solve case
+* confession validates only if direct and credible
+* case archive preserves result
+
+⸻
+
+26. Reputation / Faction / Titles Mini-Spec requirement
+
+Before ReputationReducer/FactionReducer is enabled, create a Reputation Mini-Spec.
+
+Must define
+
+* private relationship
+* local reputation
+* public reputation
+* faction standing
+* witness awareness
+* rumor spread
+* authority report
+* title grant
+* title scope
+* wanted/crime state
+* hidden identity
+* reputation decay/spread
+* false accusation
+
+Must prevent
+
+* private deed becoming public fame automatically
+* one rumor becoming confirmed reputation
+* one witness becoming whole-city knowledge instantly
+* title being granted without authority/story support
+* faction standings changing without faction awareness
+
+Required tests
+
+* private rescue changes only witness relationship
+* crowd witness creates local reputation
+* authority witness creates pending report
+* rumor accusation remains rumor
+* title stored with scope and source
+
+⸻
+
+27. Party / Followers / Summons / Multi-Protagonist Spec requirement
+
+Before PartySystem expands, create a Party and Multi-Protagonist Spec.
+
+Must define
+
+* companion
+* party member
+* follower
+* summon
+* temporary ally
+* worker/foreman separation
+* protagonist
+* active viewpoint
+* shared inventory
+* personal inventory
+* separate HP/MP/EP
+* party split
+* presence
+* loyalty
+* summon duration
+* command scope
+* you resolution
+
+Must prevent
+
+* absent party members acting
+* followers becoming companions automatically
+* summons lasting forever
+* multi-protagonist logic activating in MVP
+* shared inventory ignoring custody
+
+Required tests
+
+* absent companion cannot act
+* present companion can act
+* summon expires
+* follower stays follower
+* multi-protagonist disabled until enabled
+* you resolves only to active protagonist when system exists
+
+⸻
+
+28. Scale / Group Combat / Warfare Spec requirement
+
+Before group combat is enabled, create a Scale and Group Combat Spec.
+
+Must define
+
+* individual enemy
+* group enemy
+* swarm
+* squad
+* army
+* boss
+* count tracking
+* casualty tracking
+* morale
+* battlefield state
+* player contribution
+* companion contribution
+* summon contribution
+* environment contribution
+* retreat/capture
+* victory condition
+* XP distribution
+* loot/proof distribution
+
+Must prevent
+
+* double-killing enemies
+* group victory before all enemies resolved
+* over-awarding XP for allies’ work
+* army-scale outcome becoming personal stat gain
+* vague “they fall” killing every enemy unless clear
+
+Required tests
+
+* enemy count decreases once
+* repeated output does not double-kill
+* remaining enemies tracked
+* contribution affects XP
+* retreat is not death
+* boss phase is not full defeat unless confirmed
+
+⸻
+
+29. Body Compatibility / Death Boundary Spec requirement
+
+Before advanced body/death automation, create a Body Compatibility Spec.
+
+Body types
+
+* organic humanoid
+* beast
+* slime
+* undead
+* skeleton
+* construct
+* spirit
+* plant
+* dragon
+* swarm
+* living item
+* demon/celestial
+* shapeshifter
+
+Must define per body type
+
+* valid injuries
+* invalid injuries
+* poison compatibility
+* bleeding compatibility
+* disease compatibility
+* suffocation compatibility
+* healing compatibility
+* repair compatibility
+* unconsciousness boundary
+* death boundary
+* defeat alternatives
+
+Must prevent
+
+* skeleton bleeding normally
+* construct healed like flesh
+* slime receiving normal bone fracture
+* ghost stabbed normally
+* dream death killing player
+* 0 HP always meaning permanent death
+* duplicate death replay
+
+Required tests
+
+* skeleton does not bleed normally
+* construct needs repair-style healing
+* slime handles cuts differently
+* spirit ignores ordinary stab unless magic
+* 0 HP can mean unconscious/dying/captured depending context
+* death applies once
+
+⸻
+
+30. Ability Cost / Formation / Alias Spec requirement
+
+Before advanced ability development, create an Ability Formation Spec.
+
+Must define
+
+* ability categories
+* active ability
+* passive
+* talent
+* skill
+* specialization
+* variant
+* alias
+* candidate
+* unstable
+* stable
+* sealed
+* unavailable
+* cost resource
+* cooldown
+* charge time
+* backlash
+* evidence type
+* evidence decay
+* duplicate merge
+* card eligibility
+
+Must prevent
+
+* failed ability becoming stable
+* duplicate ability names
+* ability variant becoming duplicate ability incorrectly
+* passive triggering active cost incorrectly
+* sealed ability use
+* unknown anime power becoming mastered instantly
+* ability card from candidate
+
+Required tests
+
+* failed use adds evidence only
+* candidate not stable
+* stable ability costs resource
+* weapon-required ability fails without weapon
+* duplicate ability aliases merge safely
+* sealed ability rejected
+
+⸻
+
+31. Context No-Write and Non-Canon Source Spec requirement
+
+Before parser/ContextBuilder are coded, create a Non-Canon Source Spec.
+
+Source types allowed to mutate only through validation
+
+* AI output
+* manual override command
+* migration path
+* setup import before gameplay lock
+
+Source types not allowed to mutate gameplay state
+
+* context text
+* Story Card text
+* protected card text
+* generated card text
+* command output
+* debug output
+* examples
+* archived summaries
+* help text
+* old logs
+
+Required rules
+
+* non-canon sources may inform display, never canon
+* card/context text cannot create proposals
+* command output scan suppression required
+* manual override must be explicit and audited
+* setup import stops after gameplay lock
+
+Required tests
+
+* context item does not enter inventory
+* card quest does not create quest
+* command inventory does not duplicate item
+* archive summary does not reactivate quest
+* manual override logs source
+
+⸻
+
+32. Performance / Budget Safeguards Spec requirement
+
+Before long-turn play, create a Performance Budget Spec.
+
+Must define per-hook limits
+
+* max parser passes
+* max scanned text length
+* max resolver candidates
+* max card reads
+* max card writes
+* max cleanup records
+* max dirty targets processed
+* max context packets
+* max audit entries added
+* max recent keys
+* max scene items
+* max scene actors
+* max actor candidates
+* max place candidates
+
+Must prevent
+
+* full Story Card scan every hook
+* full actor/place scan every hook
+* regex over entire story history
+* generated card write storms
+* cleanup loops without budget
+* unbounded arrays
+* repeated parsing of same output hash
+* context bloat
+
+Required tests
+
+* 100-turn replay no timeout
+* broad Story Card pressure no explosion
+* logs capped
+* dirty queue capped
+* repeated output hash skipped
+* cleanup batched
+
+⸻
+
+33. Gap Closure blocker checklist
+
+Before Script v0.1 coding starts, these must exist at least as planning documents:
+
+1. Old Fix Salvage Matrix
+2. Runtime and Hook Contract Spec
+3. Story Card API Adapter Spec
+4. Protected Story Card Singleton Contract
+5. Parser Rulebook v1
+6. Resolver / Alias / Similar-Name Spec
+7. Junk Name and Bad Trigger Policy
+8. Legacy Migration and Polluted Save Repair Spec
+9. Release Check and Audit Command Spec
+10. Production Coding Rules and Line Budget Spec
+11. Context Packet Serializer Spec
+12. Dirty Queue and Cleanup Spec
+13. Command Honesty and Help Text Spec
+14. Startup / Setup Import Spec
+15. Player Identity and Appearance Drift Spec
+16. Natural Confirmation / Handoff Spec
+17. Context No-Write and Non-Canon Source Spec
+18. Performance / Budget Safeguards Spec
+
+Before advanced systems are enabled, these must exist:
+
+19. Generated CardSync Beta Spec
+20. Whole-System Tester Build Spec
+21. Full Regression Matrix v1
+22. Quest / Contract / Reward Flow Spec
+23. Economy / Transaction Ledger Mini-Spec
+24. Crafting / Materials Mini-Spec
+25. Investigation / Evidence Mini-Spec
+26. Reputation / Faction / Titles Mini-Spec
+27. Party / Followers / Summons / Multi-Protagonist Spec
+28. Scale / Group Combat / Warfare Spec
+29. Body Compatibility / Death Boundary Spec
+30. Ability Cost / Formation / Alias Spec
+
+⸻
+
+34. Relationship to Script Build Roadmap v1
+
+This addendum does not replace the roadmap.
+
+It adds safety blockers to it.
+
+Roadmap update
+
+Before Build Chunk 1 coding begins, insert these planning chunks:
+
+Gap Chunk A — Old Fix Salvage Matrix
+Gap Chunk B — Runtime and Hook Contract Spec
+Gap Chunk C — Story Card API Adapter + Protected Singleton Contract
+Gap Chunk D — Parser Rulebook + Resolver + Name/Trigger Policy
+Gap Chunk E — Migration + ReleaseCheck + Command Honesty Spec
+Gap Chunk F — Context/Dirty/Cleanup/Performance Spec
+Gap Chunk G — Startup/Identity/Natural Confirmation Spec
+
+Then proceed with Build Chunk 1.
+
+Deferred mini-specs can be created later when their systems unlock.
+
+⸻
+
+35. Final addendum doctrine
+
+AIDRPG must not restart from the same old bugs.
+
+The new plan must preserve the lessons from the old versions without copying their unstable patch pile.
+
+The final rule is:
+
+No old bug category is considered handled until it has:
+1. a named safety rule,
+2. an owner module,
+3. a validator rule or non-canon rule,
+4. a reducer boundary,
+5. an audit surface,
+6. a regression test.
+
+If a feature has no test, it is not safe.
+
+If a parser rule has no rejection case, it is not safe.
+
+If a card system has no duplicate policy, it is not safe.
+
+If a command cannot explain what happened, it is not safe.
+
+If cleanup can delete important truth, it is not safe.
+
+If a future system does not have a mini-spec, it is not ready to code.
+
+This addendum closes the planning gap between the high-level rebuild plan and the old tested repair history.
+
+The next step should be:
+
+Create Gap Chunk A — Old Fix Salvage Matrix
+
+Only after Gap Chunks A–G are done should Script v0.1 Phase 1 begin.

@@ -1,0 +1,27 @@
+# Package Update v1.4.15
+
+Date: 2026-05-03
+
+This package update adds Production Chunk 18 and rebuilds the latest all-in-one production roadmap file.
+
+Verified before packaging:
+
+- Production Chunk 17 exists in the source package.
+- Production Chunk 17 is named correctly.
+- Production Chunk 17 is non-empty and contains the expected Creature Ecology / Bestiary Boundaries content.
+- Production Chunk 18 has been added under 40_Production_Roadmap/.
+- The 01-to-18 all-in-one file was regenerated from ordered chunk files 01 through 18.
+- A fresh v1.4.15 manifest was generated.
+
+New chunk added:
+
+- 18_AIDRPG_Production_Chunk_18_Economy_Shops_Trade_Debt_and_Service_Contracts.txt
+
+Core PC18 focus:
+
+- Price is not purchase.
+- Shop stock is not owned inventory.
+- Offer is not acceptance.
+- Debt is not free currency.
+- Service payment is not service completion.
+- Every real item/currency change must be owner-routed and duplicate-safe.

@@ -1,0 +1,13 @@
+# AIDRPG Package Update v1.4.10
+
+Added Production Chunk 13 to the production roadmap package.
+
+New files:
+
+- 40_Production_Roadmap/13_AIDRPG_Production_Chunk_13_Body_Form_Race_Logic_Transformation_Consequence_and_Non_Humanoid_Constraints.txt
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_13_ALL_IN_ONE.txt
+- 00_PACKAGE_UPDATE_v1_4_10.txt
+- 00_FILE_MANIFEST_v1_4_10.csv
+- 00_FILE_MANIFEST_v1_4_10.json
+
+Production Chunk 13 locks body form, true race/species separation, transformation consequences, non-humanoid constraints, reversion/expiry, and no unsafe race/form power grants.

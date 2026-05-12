@@ -1,0 +1,313 @@
+# AIDRPG Script Build Roadmap v1
+
+## 0. Document status
+
+Document name: AIDRPG Script Build Roadmap v1
+Purpose: Turn the design bible, developer specs, MVP build spec, test spec, formula appendix, and gap closure docs into a practical production sequence.
+Status: No-code build roadmap.
+Use: Request “Build Chunk X” to generate one safely sized production output at a time.
+This document does not contain final script code.
+
+## 1. Roadmap doctrine
+
+Build the smallest stable truth engine first. Do not enable generated cards early. Do not let advanced systems mutate state before the core pipeline is proven. Every chunk must be testable. Every state change must be auditable.
+
+## 2. Gap closure insertion before coding
+
+Before Build Chunk 1 coding begins, the pre-code gap set must exist: Gap Chunk A Old Fix Salvage Matrix; Gap Chunk B Runtime and Hook Contract; Gap Chunk C Story Card API Adapter and Protected Singleton Contract; Gap Chunk D Parser Rulebook, Resolver, and Name/Trigger Policy; Gap Chunk E Migration, ReleaseCheck, and Command Honesty; Gap Chunk F Context, Dirty Queue, Cleanup, and Performance; Gap Chunk G Startup, Identity Drift, and Natural Confirmation.
+
+## 3. Production stages
+
+Stage A — Pre-code lock: Build Chunks 1–4.
+Stage B — Script v0.1 foundation: Build Chunks 5–8.
+Stage C — Canon pipeline: Build Chunks 9–13.
+Stage D — MVP reducers: Build Chunks 14–20.
+Stage E — Context and protected cards: Build Chunks 21–23.
+Stage F — MVP testing and stabilization: Build Chunks 24–30.
+Stage G — Post-MVP planning: Build Chunks 31–34.
+
+## 4. Build chunks
+
+### Build Chunk 1 — Implementation Start Packet
+
+Purpose: Lock what AIDRPG Core MVP v0.1 is allowed to build first: source docs, authority order, disabled systems, first modules, first commands, and first tests.
+
+Must not include yet: No full script code, no combat automation, no generated cards, no economy/crafting/investigation/domain/absorption.
+
+Acceptance: A coder cannot confuse MVP v0.1 with the full final system.
+
+### Build Chunk 2 — File/Module Layout Plan
+
+Purpose: Define the internal script sections and module boundaries for one-file AI Dungeon scripting.
+
+Must not include yet: No code unless coding has officially started.
+
+Acceptance: The layout supports MVP and leaves clean room for future systems.
+
+### Build Chunk 3 — State Schema Lock
+
+Purpose: Lock the root state schema, required buckets, defaults, version fields, flags, integrity, player/body/progression/inventory/abilities/quests/actors/places/time/cards/ledger/audits/cleanup.
+
+Must not include yet: No full economy, crafting, investigation, domain, absorption, or generated-card state beyond disabled flags.
+
+Acceptance: A coder can initialize state without guessing field names.
+
+### Build Chunk 4 — Command Output Format Lock
+
+Purpose: Define exact outputs for help, sheet, status, inventory, abilities, quests, actors, location, time, debuglast, cardaudit, contextaudit.
+
+Must not include yet: No mutation commands.
+
+Acceptance: Commands are readable, safe, honest, and not parsed as narration.
+
+### Build Chunk 5 — StateManager Plan
+
+Purpose: Define init, ensureDefaults, migrate, validateIntegrity, nextTurn, missing-field repair, version migration, and warnings.
+
+Must not include yet: No feature-specific reducer logic.
+
+Acceptance: State initializes and repairs without deleting valid records.
+
+### Build Chunk 6 — CommandRouter Plan
+
+Purpose: Define slash command detection, routing, unknown command behavior, command-output suppression, inspect-only policy, and debug policy.
+
+Must not include yet: No gameplay mutation commands.
+
+Acceptance: Commands are safe and do not mutate gameplay unless explicitly designed later.
+
+### Build Chunk 7 — Inspection Commands Plan
+
+Purpose: Define /help, /sheet, /status, /inventory, /abilities, /quests, /actors, /location, /time with empty-state behavior and disabled-system labels.
+
+Must not include yet: No hidden implementation clutter in player-facing output.
+
+Acceptance: Players can inspect MVP state clearly.
+
+### Build Chunk 8 — Audit Shell Plan
+
+Purpose: Define proposal/validation/duplicate/card/context/cleanup audits and debug commands.
+
+Must not include yet: No advanced gameplay systems.
+
+Acceptance: Debug tools exist before complex gameplay is added.
+
+### Build Chunk 9 — EventScannerLite Plan
+
+Purpose: Define first scanner targets: visible item, loot, pickup/drop/equip, simple damage/healing, ability attempt/use, quest offer/accept/reward, actor presence, location intent/arrival, time/rest.
+
+Must not include yet: No full NLP, economy, crafting, investigation, or generated card parsing.
+
+Acceptance: Scanner creates hits only and never commits state.
+
+### Build Chunk 10 — EventProposal / ProposalBuilder Plan
+
+Purpose: Define EventProposal schema, owner reducer selection, operation keys, confidence defaults, truth status, dirty targets, and notes.
+
+Must not include yet: No direct state mutation.
+
+Acceptance: Every future event uses one proposal structure.
+
+### Build Chunk 11 — CanonValidator Plan
+
+Purpose: Define source eligibility, event type, owner reducer, duplicate key, confidence, negation/hypothetical/dream, actor presence, item custody, ability status, quest reward, location intent, and non-canon source checks.
+
+Must not include yet: No reducer commits before validation.
+
+Acceptance: No state mutates without validation.
+
+### Build Chunk 12 — ReducerRegistry Plan
+
+Purpose: Define owner reducer map, unknown reducer rejection, reducer API, dirty target return behavior, and audit integration.
+
+Must not include yet: No multiple writers for one truth.
+
+Acceptance: Only owner reducers commit their own truth.
+
+### Build Chunk 13 — OperationLedger Plan
+
+Purpose: Define permanent, recent, reward, card, and source-use keys; compaction; duplicate audit; reward/item/XP/card dedupe.
+
+Must not include yet: No unkeyed major commits.
+
+Acceptance: Repeated output cannot double-apply important changes.
+
+### Build Chunk 14 — BodyReducer MVP Plan
+
+Purpose: Define HP damage/healing, MP/EP cost/recovery, injuries, conditions, fatigue, death boundary.
+
+Must not include yet: No full body compatibility table, advanced poison/disease, or permanent injury automation.
+
+Acceptance: Body changes are validated, deduped, auditable.
+
+### Build Chunk 15 — InventoryReducer MVP Plan
+
+Purpose: Define visible, available_loot, held, equipped, stored, npc_custody, inaccessible, lost, sold, destroyed, consumed.
+
+Must not include yet: No economy/crafting transactions.
+
+Acceptance: Visible/loot/custody distinctions stop item duplication.
+
+### Build Chunk 16 — AbilityReducer MVP Plan
+
+Purpose: Define unknown, hint, candidate, unstable, stable, sealed, unavailable; evidence; cost and requirement checks.
+
+Must not include yet: No full advanced ability formation or generated ability cards.
+
+Acceptance: Ability growth is gradual and auditable.
+
+### Build Chunk 17 — QuestReducerLite Plan
+
+Purpose: Define rumored/offered/active/blocked/ready/completed/rewarded/failed/abandoned/archived and promised vs paid rewards.
+
+Must not include yet: No contracts/domain/investigation quest expansion.
+
+Acceptance: Quest state and rewards cannot over-eagerly or repeatedly resolve.
+
+### Build Chunk 18 — ActorReducerLite Plan
+
+Purpose: Define actor identity, importance, presence, companions, scene actors, simple memory, claims and rumors.
+
+Must not include yet: No full party/reputation/faction system.
+
+Acceptance: Prevents companion teleporting and random NPC memory spam.
+
+### Build Chunk 19 — PlaceReducerLite and TimeReducerLite Plan
+
+Purpose: Define current location, scene, arrivals vs travel intent, substring place safety, text time, rest, and deadlines.
+
+Must not include yet: No full route/weather/calendar/travel simulator.
+
+Acceptance: Prevents teleporting and time jumps from intent.
+
+### Build Chunk 20 — ProgressionReducerLite Plan
+
+Purpose: Define simple XP tracking, duplicate XP prevention, display XP, and formula status placeholder.
+
+Must not include yet: No full combat rewards, Level 1000 automation, or stat training automation yet.
+
+Acceptance: XP can be tracked safely without pretending final progression is automated.
+
+### Build Chunk 21 — ContextBuilderLite Plan
+
+Purpose: Define compact context packet priority, correction packets, uncertainty labels, hashes, and read-only behavior.
+
+Must not include yet: No full memory dumps or canon creation.
+
+Acceptance: Context is useful without corrupting state.
+
+### Build Chunk 22 — Protected CardSyncLite Plan
+
+Purpose: Define protected cards: Player Sheet, Body Status, Abilities, Inventory/Equipment, Quest Log, Social Memory, Current Location.
+
+Must not include yet: No generated cards; no card text as canon.
+
+Acceptance: Protected cards stabilize memory without creating truth.
+
+### Build Chunk 23 — Dirty Target System Plan
+
+Purpose: Define dirty targets for summaries/cards/context and how reducers mark changed systems.
+
+Must not include yet: No gameplay commits from dirty targets.
+
+Acceptance: Only changed systems update mirrors/context.
+
+### Build Chunk 24 — Test Harness Plan
+
+Purpose: Define manual/controlled test method, replay method, duplicate output method, inspection method, and pass/fail recording.
+
+Must not include yet: No need for perfect automated framework if platform impractical.
+
+Acceptance: The project can verify tests before expansion.
+
+### Build Chunk 25 — Gate 1 and Gate 2 Test Plan
+
+Purpose: Prepare state, command, and pipeline tests T001–T008.
+
+Must not include yet: No feature expansion.
+
+Acceptance: Core initialization and pipeline tests are ready.
+
+### Build Chunk 26 — Gate 3 and Gate 4 Test Plan
+
+Purpose: Prepare inventory and ability safety tests T009–T017.
+
+Must not include yet: No advanced systems.
+
+Acceptance: Inventory and ability corruption tests are ready.
+
+### Build Chunk 27 — Gate 5 and Gate 6 Test Plan
+
+Purpose: Prepare actor, location, and quest tests T018–T030.
+
+Must not include yet: No full party/reputation/domain.
+
+Acceptance: Actor, location, and quest reward tests are ready.
+
+### Build Chunk 28 — Gate 7 and Gate 8 Test Plan
+
+Purpose: Prepare context and protected card tests T031–T039.
+
+Must not include yet: No generated cards.
+
+Acceptance: Context and card safety tests are ready.
+
+### Build Chunk 29 — Cross-System and Negative Test Plan
+
+Purpose: Prepare tests T040–T050 for reward/inventory/ledger, inaccessible equipment, command output, claims, non-canon sources, and hypotheticals.
+
+Must not include yet: No system unlocks before failures are fixed.
+
+Acceptance: Dangerous cross-system failures are covered.
+
+### Build Chunk 30 — MVP Stabilization Checklist
+
+Purpose: Create final completion, command, event, reducer, ledger, context, card, test, known-limits, and next-step checklist.
+
+Must not include yet: No expansion until stable.
+
+Acceptance: Team knows whether MVP v0.1 is ready for expansion.
+
+### Build Chunk 31 — Combat/Progression v0.2 Expansion Plan
+
+Purpose: Plan basic combat event support, damage severity, challenge XP, overlevel decay, underlevel warnings, resource costs, level-up application.
+
+Must not include yet: No full group combat matrix, boss phases, enemy database, or body compatibility table.
+
+Acceptance: Combat/progression expansion is bounded and safe.
+
+### Build Chunk 32 — Generated CardSync Beta Plan
+
+Purpose: Plan generated card eligibility, trigger safety, registry keys, write limits, safe mode, duplicate prevention, actor/place/ability beta only.
+
+Must not include yet: No all-card-type sprawl.
+
+Acceptance: Generated cards are introduced cautiously.
+
+### Build Chunk 33 — Economy/Crafting Mini-Spec Queue Plan
+
+Purpose: Plan future economy and crafting mini-spec requirements: transactions, currency, debts, material reservation, quality, repair vs duplicate.
+
+Must not include yet: No direct code for economy/crafting yet.
+
+Acceptance: Economy and crafting are not improvised into code.
+
+### Build Chunk 34 — Investigation/Faction/Domain/Absorption Mini-Spec Queue Plan
+
+Purpose: Plan future mini-specs for cases/evidence, faction/reputation, domain/labor, absorption/evolution.
+
+Must not include yet: No advanced systems before specs.
+
+Acceptance: Complex systems receive specs before code.
+
+## 5. Required generated Build Chunk format
+
+Each generated Build Chunk should include: Purpose; Inputs from previous specs; What this chunk defines; What this chunk must not build yet; Required structures/decisions; Module/system behavior; Edge cases; Tests this chunk supports; Completion checklist; Handoff to next chunk.
+
+## 6. Recommended request sequence
+
+Create Build Chunk 1 through Create Build Chunk 30 in order. Only after Build Chunk 30 should post-MVP expansion planning begin with Build Chunks 31–34.
+
+## 7. Final roadmap doctrine
+
+Plan -> Core shell -> State -> Commands -> Proposal pipeline -> Validation -> Reducers -> Ledger -> Context -> Protected cards -> Tests -> Basic gameplay -> Expansion.

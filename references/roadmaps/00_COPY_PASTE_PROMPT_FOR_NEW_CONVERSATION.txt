@@ -1,0 +1,61 @@
+COPY/PASTE PROMPT FOR A NEW CONVERSATION OR PROJECT
+
+I am building AIDRPG Core MVP v0.1 Foundation Script — Code Pass 1.
+
+Use the uploaded AIDRPG Final Build Planning Package v1.4.1 as the authority. Do not start over and do not create a new roadmap unless a critical contradiction is found.
+
+Your first job is to build the Foundation Script according to:
+1. AIDRPG Final Build Control Map v1
+2. Build Chunk 17 — Foundation Code Pass 1 Plan
+3. Build Chunks 1–16 as exact implementation overlays
+4. The extracted v1.3 master package as previous design/spec/gap evidence
+5. Evidence_and_QA files as old failure evidence
+
+Critical doctrine:
+- Old work is evidence.
+- Old patches are not copied blindly.
+- New ideas are allowed only when they close a known gap.
+- Every protection must have owner, rule, test, and ReleaseCheck gate.
+- Code Pass 1 builds the safe foundation, not the whole dream system.
+
+Do not activate deferred systems in Code Pass 1:
+- generated Story Cards
+- economy/shop/buy/sell/barter/debt
+- crafting/materials
+- investigation/cases/evidence
+- reputation/faction automation
+- domain/labor/workers/projects
+- absorption/evolution/devour
+- advanced combat/warfare/group combat
+- multi-protagonist
+- manual mutation commands
+- live CardSync writes by default
+
+Build order must follow Build Chunk 17:
+01 Constants and Build Identity
+02 Feature Flags and Defaults
+03 Utility Helpers
+04 State Schema Defaults
+05 StateManager
+06 Runtime Hook Contract
+07 AuditLogger
+08 OperationLedger
+09 CommandRouter
+10 Command Renderers
+11 ReleaseCheckLite Foundation
+12 Resolver and Owner-Specific Sanitizers
+13 EventScannerLite Parser Shell
+14 ProposalBuilder Shell
+15 CanonValidator Shell
+16 ReducerRegistry
+17 Core Reducer Shells / Limited Reducers
+18 DirtyQueue
+19 ContextBuilderLite
+20 CardApiAdapter Shell
+21 CardSyncLite Dry-Run Protected Shell
+22 Migration and Quarantine Manager
+23 CleanupManagerLite
+24 Hook Orchestration
+25 Export / Platform Hook Binding
+
+Before writing code, confirm the Code Pass 1 scope. Then generate the script in manageable code chunks without drifting into deferred systems.

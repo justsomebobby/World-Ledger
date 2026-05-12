@@ -1,0 +1,902 @@
+[
+  {
+    "filename": "00_COPY_PASTE_PROMPT_FOR_NEW_CONVERSATION.txt",
+    "file_size": 2115,
+    "compress_size": 1176,
+    "crc": "896147e1"
+  },
+  {
+    "filename": "00_FILE_MANIFEST.csv",
+    "file_size": 5149,
+    "compress_size": 2261,
+    "crc": "8bffc89b"
+  },
+  {
+    "filename": "00_FILE_MANIFEST.json",
+    "file_size": 7878,
+    "compress_size": 2371,
+    "crc": "cb932da6"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_REVIEWED_v1_4_1.csv",
+    "file_size": 18528,
+    "compress_size": 6547,
+    "crc": "8726416e"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_REVIEWED_v1_4_1.json",
+    "file_size": 23932,
+    "compress_size": 6793,
+    "crc": "d35fb42a"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_10.csv",
+    "file_size": 24546,
+    "compress_size": 9231,
+    "crc": "2b873f9c"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_10.json",
+    "file_size": 31684,
+    "compress_size": 9588,
+    "crc": "3d6c4616"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_11.csv",
+    "file_size": 25198,
+    "compress_size": 9505,
+    "crc": "d9ed5449"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_11.json",
+    "file_size": 32601,
+    "compress_size": 9880,
+    "crc": "a761404f"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_12.csv",
+    "file_size": 25853,
+    "compress_size": 9785,
+    "crc": "821bd8c8"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_12.json",
+    "file_size": 34241,
+    "compress_size": 10187,
+    "crc": "858dda02"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_2.csv",
+    "file_size": 13715,
+    "compress_size": 3053,
+    "crc": "1ad5c7bc"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_2.json",
+    "file_size": 18258,
+    "compress_size": 3252,
+    "crc": "d8b3df4f"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_3.csv",
+    "file_size": 20852,
+    "compress_size": 7606,
+    "crc": "f12c5a33"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_3.json",
+    "file_size": 26978,
+    "compress_size": 7908,
+    "crc": "31b59f78"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_5.csv",
+    "file_size": 14278,
+    "compress_size": 3209,
+    "crc": "8c2ee6b2"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_5.json",
+    "file_size": 18264,
+    "compress_size": 3366,
+    "crc": "bd3154ef"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_6.csv",
+    "file_size": 17727,
+    "compress_size": 3899,
+    "crc": "7dd0ecdb"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_6.json",
+    "file_size": 25059,
+    "compress_size": 4120,
+    "crc": "39d63655"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_7.csv",
+    "file_size": 14796,
+    "compress_size": 3316,
+    "crc": "687c137a"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_7.json",
+    "file_size": 19701,
+    "compress_size": 3499,
+    "crc": "4363d8cc"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_8.csv",
+    "file_size": 15112,
+    "compress_size": 3392,
+    "crc": "924b77a1"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_8.json",
+    "file_size": 21320,
+    "compress_size": 3659,
+    "crc": "ba32078f"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_9.csv",
+    "file_size": 15429,
+    "compress_size": 3455,
+    "crc": "c1bb9977"
+  },
+  {
+    "filename": "00_FILE_MANIFEST_v1_4_9.json",
+    "file_size": 21885,
+    "compress_size": 3732,
+    "crc": "7f9d6927"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_10.txt",
+    "file_size": 604,
+    "compress_size": 330,
+    "crc": "3bab8ab7"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_11.txt",
+    "file_size": 598,
+    "compress_size": 332,
+    "crc": "c779c0a1"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_12.txt",
+    "file_size": 906,
+    "compress_size": 456,
+    "crc": "7ffd2c2c"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_5.txt",
+    "file_size": 468,
+    "compress_size": 282,
+    "crc": "775cdb31"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_6.txt",
+    "file_size": 527,
+    "compress_size": 319,
+    "crc": "91e5c3df"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_7.txt",
+    "file_size": 587,
+    "compress_size": 364,
+    "crc": "162cc3de"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_8.txt",
+    "file_size": 559,
+    "compress_size": 341,
+    "crc": "e9f3536e"
+  },
+  {
+    "filename": "00_PACKAGE_UPDATE_v1_4_9.txt",
+    "file_size": 579,
+    "compress_size": 342,
+    "crc": "6e83a1de"
+  },
+  {
+    "filename": "00_PRODUCTION_CHUNK_UPDATE_v1_4_2.txt",
+    "file_size": 834,
+    "compress_size": 488,
+    "crc": "e96b2533"
+  },
+  {
+    "filename": "00_PRODUCTION_CHUNK_UPDATE_v1_4_3.txt",
+    "file_size": 643,
+    "compress_size": 391,
+    "crc": "9c4e757d"
+  },
+  {
+    "filename": "00_README_INDEX_AND_VERIFICATION.txt",
+    "file_size": 4783,
+    "compress_size": 1357,
+    "crc": "da4046ea"
+  },
+  {
+    "filename": "00_REVIEW_RESULT_GOOD_TO_GO.txt",
+    "file_size": 2026,
+    "compress_size": 1079,
+    "crc": "6309de38"
+  },
+  {
+    "filename": "00_START_HERE_CODEPASS1_HANDOFF.txt",
+    "file_size": 3395,
+    "compress_size": 1680,
+    "crc": "f5ae59e6"
+  },
+  {
+    "filename": "10_Final_Build_Control_Map/00_AIDRPG_Final_Build_Control_Map_v1.txt",
+    "file_size": 52570,
+    "compress_size": 17819,
+    "crc": "d4e378c7"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/00_AIDRPG_Build_Chunks_01_to_17_ALL_IN_ONE.txt",
+    "file_size": 546558,
+    "compress_size": 153860,
+    "crc": "769212a9"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/01_AIDRPG_Build_Chunk_01_Implementation_Start_Packet.txt",
+    "file_size": 21816,
+    "compress_size": 7465,
+    "crc": "cfb41c38"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/02_AIDRPG_Build_Chunk_02_File_and_Module_Layout_Plan.txt",
+    "file_size": 27608,
+    "compress_size": 9327,
+    "crc": "740b0ba7"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/03_AIDRPG_Build_Chunk_03_State_Schema_Lock.txt",
+    "file_size": 40406,
+    "compress_size": 11556,
+    "crc": "4822b0d5"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/04_AIDRPG_Build_Chunk_04_Command_Output_Format_Lock.txt",
+    "file_size": 33953,
+    "compress_size": 10641,
+    "crc": "768756bb"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/05_AIDRPG_Build_Chunk_05_StateManager_Plan.txt",
+    "file_size": 22652,
+    "compress_size": 7602,
+    "crc": "296e03c2"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/06_AIDRPG_Build_Chunk_06_Runtime_Hook_Contract_Implementation_Plan.txt",
+    "file_size": 27442,
+    "compress_size": 8624,
+    "crc": "5c83e371"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/07_AIDRPG_Build_Chunk_07_AuditLogger_and_OperationLedger_Implementation_Plan.txt",
+    "file_size": 30869,
+    "compress_size": 9789,
+    "crc": "94a78fdd"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/08_AIDRPG_Build_Chunk_08_CommandRouter_and_Command_Renderer_Implementation_Plan.txt",
+    "file_size": 28437,
+    "compress_size": 9154,
+    "crc": "a47b6d72"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/09_AIDRPG_Build_Chunk_09_EventScannerLite_Parser_Shell_Plan.txt",
+    "file_size": 29108,
+    "compress_size": 9713,
+    "crc": "c204df0f"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/10_AIDRPG_Build_Chunk_10_EventProposal_Local_Clause_Binding_and_ProposalBuilder_Plan.txt",
+    "file_size": 36016,
+    "compress_size": 11606,
+    "crc": "cbb8359a"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/11_AIDRPG_Build_Chunk_11_CanonValidator_and_Clause_Level_Canon_Rules_Plan.txt",
+    "file_size": 28011,
+    "compress_size": 9467,
+    "crc": "9bf67441"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/12_AIDRPG_Build_Chunk_12_Resolver_and_Owner_Specific_Sanitizer_Plan.txt",
+    "file_size": 26965,
+    "compress_size": 9152,
+    "crc": "6f4b73bc"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/13_AIDRPG_Build_Chunk_13_ReducerRegistry_and_Owner_Reducer_Contract_Plan.txt",
+    "file_size": 27393,
+    "compress_size": 8640,
+    "crc": "f15fa972"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/14_AIDRPG_Build_Chunk_14_Core_Reducer_Plans.txt",
+    "file_size": 31340,
+    "compress_size": 10277,
+    "crc": "27200ce3"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/15_AIDRPG_Build_Chunk_15_ContextBuilder_CardSyncLite_Migration_DirtyQueue_and_Cleanup_Integration_Plan.txt",
+    "file_size": 23345,
+    "compress_size": 7977,
+    "crc": "3b66d133"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/16_AIDRPG_Build_Chunk_16_ReleaseCheck_and_Regression_Matrix_Lock.txt",
+    "file_size": 30596,
+    "compress_size": 10314,
+    "crc": "5bbbc26a"
+  },
+  {
+    "filename": "20_Build_Chunks_01_to_17/17_AIDRPG_Build_Chunk_17_Foundation_Code_Pass_1_Plan.txt",
+    "file_size": 22594,
+    "compress_size": 8212,
+    "crc": "5a6a6be5"
+  },
+  {
+    "filename": "30_Evidence_and_QA/01_AIDRPG_v1_5_0_Category_7_to_12_QA_Result.txt",
+    "file_size": 43966,
+    "compress_size": 13637,
+    "crc": "2d494b3e"
+  },
+  {
+    "filename": "30_Evidence_and_QA/02_Phase_5_Ability_Training_and_Exhaustion_Fix_Recovery_Notes.txt",
+    "file_size": 99041,
+    "compress_size": 26963,
+    "crc": "fbd26eab"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/00_Original_v1_1_Master_Notes/00_README_MASTER_PACKAGE.txt",
+    "file_size": 1293,
+    "compress_size": 704,
+    "crc": "19bd8bd9"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/00_Original_v1_1_Master_Notes/01_PROJECT_AUTHORITY_ORDER.txt",
+    "file_size": 1862,
+    "compress_size": 842,
+    "crc": "8c60961b"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/00_Original_v1_1_Master_Notes/02_FILE_MANIFEST_AND_SOURCE_MAP.txt",
+    "file_size": 1690,
+    "compress_size": 650,
+    "crc": "45e237f3"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/00_README_MASTER_PACKAGE_v1_2.txt",
+    "file_size": 1073,
+    "compress_size": 553,
+    "crc": "83651f97"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/00_README_MASTER_PACKAGE_v1_3.txt",
+    "file_size": 855,
+    "compress_size": 479,
+    "crc": "48c80274"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_PROJECT_AUTHORITY_ORDER_v1_2.txt",
+    "file_size": 2378,
+    "compress_size": 933,
+    "crc": "041ebbc0"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_PROJECT_AUTHORITY_ORDER_v1_3.txt",
+    "file_size": 1131,
+    "compress_size": 599,
+    "crc": "da98f63c"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/00_README_REPAIRED_PACKAGE.txt",
+    "file_size": 1175,
+    "compress_size": 615,
+    "crc": "94d5072a"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_01_Core_Play_Philosophy_and_Canon_Law.txt",
+    "file_size": 29467,
+    "compress_size": 10234,
+    "crc": "189336b9"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_02_State_Ownership_and_Data_Boundaries.txt",
+    "file_size": 37923,
+    "compress_size": 11996,
+    "crc": "03ac0aa1"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_03_Event_Taxonomy_and_Validation_Outcomes.txt",
+    "file_size": 46358,
+    "compress_size": 14443,
+    "crc": "fb2e7147"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_04_Progression_Leveling_and_XP_Economy.txt",
+    "file_size": 38778,
+    "compress_size": 12977,
+    "crc": "de900f85"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_05_Stats_Resources_Recovery_and_Scaling_Basics.txt",
+    "file_size": 38937,
+    "compress_size": 13799,
+    "crc": "47bf629f"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_06_Ability_Skill_Talent_Passive_and_Specialization_Lifecycle.txt",
+    "file_size": 41077,
+    "compress_size": 13955,
+    "crc": "14de93da"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_07_Combat_Matrix_and_Consequence_Model.txt",
+    "file_size": 42773,
+    "compress_size": 14756,
+    "crc": "d6acff92"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_08_Group_Combat_Party_Followers_Summons_and_Scale.txt",
+    "file_size": 35513,
+    "compress_size": 12303,
+    "crc": "fe78d79f"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_09_Inventory_Equipment_Ownership_Custody_Economy_and_Transactio.txt",
+    "file_size": 39588,
+    "compress_size": 13130,
+    "crc": "1bba00dd"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_10_Crafting_Materials_Recipes_Quality_Repair_and_Workflows.txt",
+    "file_size": 39947,
+    "compress_size": 13519,
+    "crc": "fc5c951a"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_11_Quests_Contracts_Labor_Domain_Projects_and_Objectives.txt",
+    "file_size": 39805,
+    "compress_size": 12747,
+    "crc": "dbddb88e"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_12_Investigation_Clues_Evidence_Witnesses_and_Reputation.txt",
+    "file_size": 38123,
+    "compress_size": 12309,
+    "crc": "5c177ab3"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_13_Actor_Memory_Place_Memory_Factions_Routes_and_World_Entities.txt",
+    "file_size": 45101,
+    "compress_size": 14635,
+    "crc": "28b193c4"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_14_Time_Travel_Scene_State_Weather_Deadlines_and_Recovery_Ticks.txt",
+    "file_size": 44660,
+    "compress_size": 14578,
+    "crc": "1695e935"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_15_Context_Injection_Story_Cards_CardSync_and_Memory_Safeguards.txt",
+    "file_size": 50056,
+    "compress_size": 15675,
+    "crc": "3bb77ab8"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_16_System_Safeguards_OperationLedger_Quarantine_Cleanup_Migrati.txt",
+    "file_size": 45186,
+    "compress_size": 14703,
+    "crc": "f178d669"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_17_Commands_Player_Controls_Debug_Tools_Configuration_and_Testi.txt",
+    "file_size": 43409,
+    "compress_size": 14691,
+    "crc": "b2b56b04"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_18_Final_Integration_Build_Readiness_MVP_Scope_and_Definition_o.txt",
+    "file_size": 34404,
+    "compress_size": 11586,
+    "crc": "789731d4"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_19_Level_1_1000_Scaling_Matrix_Freeform_Gameplay_Scaling_Player.txt",
+    "file_size": 51482,
+    "compress_size": 18753,
+    "crc": "c621ba6b"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_20_Race_Species_Body_Type_Origin_Scaling_and_Non_Human_Stat_Log.txt",
+    "file_size": 59736,
+    "compress_size": 19999,
+    "crc": "48dfc16d"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_21_Core_Stat_Formulas_Resource_Formulas_Growth_Rates_and_Build_.txt",
+    "file_size": 49223,
+    "compress_size": 17520,
+    "crc": "a16d40d7"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_22_XP_Curves_Level_Up_Rules_Stat_Training_XP_Domain_XP_Ability_.txt",
+    "file_size": 45541,
+    "compress_size": 16135,
+    "crc": "53d26ff8"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_23_Creature_Tier_Matrix_Enemy_Stat_Bands_Boss_Scaling_Group_Thr.txt",
+    "file_size": 49276,
+    "compress_size": 17783,
+    "crc": "ff4f6377"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_24_Combat_Math_Damage_Severity_Defense_Resources_Matchup_Resolu.txt",
+    "file_size": 48827,
+    "compress_size": 17540,
+    "crc": "8b6da0d0"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_25_Ability_Cost_Calculator_Skill_Passive_Talent_Templates_Scali.txt",
+    "file_size": 54818,
+    "compress_size": 19193,
+    "crc": "9c7e24ea"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_26_Stat_Absorption_Copy_Abilities_Devour_Growth_Adaptation_Evol.txt",
+    "file_size": 57355,
+    "compress_size": 19204,
+    "crc": "b75247af"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_27_Crafting_Exact_Specification_Recipe_Templates_Material_Table.txt",
+    "file_size": 52253,
+    "compress_size": 18109,
+    "crc": "fdb1a736"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_28_Economy_Prices_Wages_Domain_Costs_Labor_Output_Project_Scali.txt",
+    "file_size": 55096,
+    "compress_size": 19567,
+    "crc": "f180e975"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_29_Quest_System_Quest_Lifecycle_Contracts_Deadlines_Rewards_Obj.txt",
+    "file_size": 50833,
+    "compress_size": 17441,
+    "crc": "e1186e4f"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_30_Investigation_Cases_Clues_Evidence_Rumors_Witness_Knowledge_.txt",
+    "file_size": 49964,
+    "compress_size": 16883,
+    "crc": "a3246433"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_31_Named_Actors_NPC_Importance_Actor_Memory_Relationships_Reput.txt",
+    "file_size": 57917,
+    "compress_size": 19898,
+    "crc": "47cf0548"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_32_World_State_Time_Travel_Place_Memory_Context_Injection_Story.txt",
+    "file_size": 54005,
+    "compress_size": 18961,
+    "crc": "b7aea3e3"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_33_Final_Pre_Build_Lockdown_and_Implementation_Contract.txt",
+    "file_size": 39050,
+    "compress_size": 14185,
+    "crc": "1543959b"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_REPAIRED_MASTER_INDEX.txt",
+    "file_size": 2360,
+    "compress_size": 1258,
+    "crc": "998c259f"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/01_Repaired_Design_Bible_33_Chunks/AIDRPG_REPAIR_SUMMARY_AND_AUTHORITY_ORDER.txt",
+    "file_size": 2259,
+    "compress_size": 1149,
+    "crc": "efffbf68"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_Developer_Build_Test_and_Formula_Specs/01_AIDRPG_Developer_Spec_v1.txt",
+    "file_size": 43063,
+    "compress_size": 14239,
+    "crc": "7c06f436"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_Developer_Build_Test_and_Formula_Specs/02_AIDRPG_Developer_Spec_v1_1_Correction_Pass.txt",
+    "file_size": 30009,
+    "compress_size": 10820,
+    "crc": "b1743137"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_Developer_Build_Test_and_Formula_Specs/03_AIDRPG_MVP_Build_Spec_v1.txt",
+    "file_size": 40323,
+    "compress_size": 12918,
+    "crc": "29981e9c"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_Developer_Build_Test_and_Formula_Specs/04_AIDRPG_Test_Spec_v1.txt",
+    "file_size": 36967,
+    "compress_size": 11455,
+    "crc": "f45ce10b"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_Developer_Build_Test_and_Formula_Specs/05_AIDRPG_Formula_Appendix_v1.txt",
+    "file_size": 33853,
+    "compress_size": 12869,
+    "crc": "f09057f6"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_FILE_MANIFEST_AND_SOURCE_MAP_v1_2.txt",
+    "file_size": 6893,
+    "compress_size": 1937,
+    "crc": "4d715e88"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/02_FILE_MANIFEST_AND_SOURCE_MAP_v1_3.txt",
+    "file_size": 6433,
+    "compress_size": 1681,
+    "crc": "5b47c7e0"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/00_AIDRPG_Script_Build_Roadmap_v1.txt",
+    "file_size": 13038,
+    "compress_size": 4641,
+    "crc": "0d92f360"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/00_CURRENT_AIDRPG_Script_Build_Roadmap_v1_1_Gap_Aligned_Current_Authority.txt",
+    "file_size": 23012,
+    "compress_size": 7246,
+    "crc": "ba2204e3"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/01_AIDRPG_Gap_Closure_Addendum_v1.txt",
+    "file_size": 40242,
+    "compress_size": 13518,
+    "crc": "2f802262"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/02_AIDRPG_Gap_Chunk_A_Old_Fix_Salvage_Matrix.txt",
+    "file_size": 55689,
+    "compress_size": 16645,
+    "crc": "fd01e939"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/03_AIDRPG_Gap_Chunk_B_Runtime_and_Hook_Contract_Spec.txt",
+    "file_size": 22530,
+    "compress_size": 7844,
+    "crc": "20f5834a"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/04_AIDRPG_Gap_Chunk_C_Story_Card_API_Adapter_and_Protected_Singleton_Contract.txt",
+    "file_size": 32828,
+    "compress_size": 10630,
+    "crc": "92b65ebd"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/05_AIDRPG_Gap_Chunk_D_Parser_Rulebook_Resolver_and_Name_Trigger_Policy.txt",
+    "file_size": 37023,
+    "compress_size": 13018,
+    "crc": "6328ad08"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/06_AIDRPG_Gap_Chunk_E_Migration_ReleaseCheck_and_Command_Honesty_Spec.txt",
+    "file_size": 38125,
+    "compress_size": 12204,
+    "crc": "b3c27f1c"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/07_AIDRPG_Gap_Chunk_F_Context_Dirty_Queue_Cleanup_and_Performance_Spec.txt",
+    "file_size": 35269,
+    "compress_size": 11444,
+    "crc": "91816b1e"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/08_AIDRPG_Gap_Chunk_G_Startup_Identity_Drift_and_Natural_Confirmation_Spec.txt",
+    "file_size": 16723,
+    "compress_size": 6137,
+    "crc": "dd511993"
+  },
+  {
+    "filename": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/03_Roadmap_and_Pre_Code_Gap_Closure/09_AIDRPG_Pre_Code_Gap_Closure_Status.txt",
+    "file_size": 1239,
+    "compress_size": 711,
+    "crc": "25310155"
+  },
+  {
+    "filename": "40_Production_Roadmap/00_AIDRPG_Feature_Implementation_Wave_Map_v1.txt",
+    "file_size": 4318,
+    "compress_size": 2044,
+    "crc": "7def3931"
+  },
+  {
+    "filename": "40_Production_Roadmap/00_AUTO_APPEND_POLICY_FOR_PRODUCTION_CHUNKS.txt",
+    "file_size": 1168,
+    "compress_size": 492,
+    "crc": "e7b2da46"
+  },
+  {
+    "filename": "40_Production_Roadmap/00_PACKAGE_UPDATE_v1_4_13.txt",
+    "file_size": 624,
+    "compress_size": 367,
+    "crc": "9bf45422"
+  },
+  {
+    "filename": "40_Production_Roadmap/01_AIDRPG_Production_Chunk_01_V0_17_Foundation_Acceptance_and_Freeze.txt",
+    "file_size": 8044,
+    "compress_size": 3282,
+    "crc": "3b90a449"
+  },
+  {
+    "filename": "40_Production_Roadmap/02_AIDRPG_Production_Chunk_02_Command_Surface_and_Player_Setup_Expansion.txt",
+    "file_size": 8743,
+    "compress_size": 3468,
+    "crc": "4fe719ae"
+  },
+  {
+    "filename": "40_Production_Roadmap/03_AIDRPG_Production_Chunk_03_State_Schema_Deepening_for_Full_System_Readiness.txt",
+    "file_size": 10258,
+    "compress_size": 3832,
+    "crc": "3f22712e"
+  },
+  {
+    "filename": "40_Production_Roadmap/04_AIDRPG_Production_Chunk_04_Player_Identity_Body_Logic_and_Status_Depth.txt",
+    "file_size": 11932,
+    "compress_size": 4375,
+    "crc": "96cdec81"
+  },
+  {
+    "filename": "40_Production_Roadmap/05_AIDRPG_Production_Chunk_05_Inventory_Equipment_Scene_Items_and_Custody_Depth.txt",
+    "file_size": 13710,
+    "compress_size": 4768,
+    "crc": "e3923e97"
+  },
+  {
+    "filename": "40_Production_Roadmap/06_AIDRPG_Production_Chunk_06_Ability_Candidate_Training_Use_Failure_and_Stability_Depth.txt",
+    "file_size": 28038,
+    "compress_size": 8820,
+    "crc": "c83b0702"
+  },
+  {
+    "filename": "40_Production_Roadmap/07_AIDRPG_Production_Chunk_07_Quest_Objective_Reward_and_Promise_Payment_Depth.txt",
+    "file_size": 40536,
+    "compress_size": 11462,
+    "crc": "bbccf2d5"
+  },
+  {
+    "filename": "40_Production_Roadmap/08_AIDRPG_Production_Chunk_08_Actor_Presence_Social_Memory_Witnessing_and_Relationship_Depth.txt",
+    "file_size": 27820,
+    "compress_size": 8568,
+    "crc": "43f77c7e"
+  },
+  {
+    "filename": "40_Production_Roadmap/09_AIDRPG_Production_Chunk_09_Place_Travel_Time_Scene_and_Deadline_Depth.txt",
+    "file_size": 39166,
+    "compress_size": 11546,
+    "crc": "82a0fd33"
+  },
+  {
+    "filename": "40_Production_Roadmap/10_AIDRPG_Production_Chunk_10_Formula_Matrix_and_Progression_Baseline.txt",
+    "file_size": 35481,
+    "compress_size": 10692,
+    "crc": "ae6e2e37"
+  },
+  {
+    "filename": "40_Production_Roadmap/11_AIDRPG_Production_Chunk_11_Stats_Derived_Values_Conditions_and_Invariant_Checker.txt",
+    "file_size": 23078,
+    "compress_size": 7522,
+    "crc": "bb9962e8"
+  },
+  {
+    "filename": "40_Production_Roadmap/12_AIDRPG_Production_Chunk_12_Combat_Event_Model_and_Damage_Healing_Dispute_Resolver.txt",
+    "file_size": 39157,
+    "compress_size": 11548,
+    "crc": "fc871522"
+  },
+  {
+    "filename": "40_Production_Roadmap/13_AIDRPG_Production_Chunk_13_Body_Form_Race_Logic_Transformation_Consequence_and_Non_Humanoid_Constraints.txt",
+    "file_size": 46317,
+    "compress_size": 13669,
+    "crc": "cc3fadb0"
+  },
+  {
+    "filename": "40_Production_Roadmap/14_AIDRPG_Production_Chunk_14_Threat_Benchmark_Encounter_Logic_and_World_Scaling_Boundaries.txt",
+    "file_size": 44503,
+    "compress_size": 12682,
+    "crc": "5a0f9302"
+  },
+  {
+    "filename": "40_Production_Roadmap/15_AIDRPG_Production_Chunk_15_World_Bible_Import_Lore_Authority_and_Knowledge_Boundaries.txt",
+    "file_size": 33433,
+    "compress_size": 10217,
+    "crc": "8a91b090"
+  },
+  {
+    "filename": "40_Production_Roadmap/16_AIDRPG_Production_Chunk_16_Context_Builder_Budget_Memory_Priority_and_Card_Sync_Safety.txt",
+    "file_size": 31267,
+    "compress_size": 9617,
+    "crc": "ce037001"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_09_ALL_IN_ONE.txt",
+    "file_size": 195407,
+    "compress_size": 53433,
+    "crc": "6b959ce3"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_10_ALL_IN_ONE.txt",
+    "file_size": 231270,
+    "compress_size": 63446,
+    "crc": "f21057ae"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_11_ALL_IN_ONE.txt",
+    "file_size": 252540,
+    "compress_size": 69431,
+    "crc": "68aec7c8"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_12_ALL_IN_ONE.txt",
+    "file_size": 293989,
+    "compress_size": 79802,
+    "crc": "f7c52b81"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_13_ALL_IN_ONE.txt",
+    "file_size": 339235,
+    "compress_size": 92566,
+    "crc": "7983ae20"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_14_ALL_IN_ONE.txt",
+    "file_size": 383940,
+    "compress_size": 104455,
+    "crc": "67a28f46"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_15_ALL_IN_ONE.txt",
+    "file_size": 416283,
+    "compress_size": 113758,
+    "crc": "6e77cfe5"
+  },
+  {
+    "filename": "40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_16_ALL_IN_ONE.txt",
+    "file_size": 446774,
+    "compress_size": 120747,
+    "crc": "3414fa9d"
+  },
+  {
+    "filename": "90_Original_Uploaded_Zips/AIDRPG_MASTER_PACKAGE_v1_3_ROADMAP_GAP_ALIGNED_original_upload.zip",
+    "file_size": 714642,
+    "compress_size": 699759,
+    "crc": "533040b9"
+  },
+  {
+    "filename": "manifest_v1_4_4.csv",
+    "file_size": 22219,
+    "compress_size": 3340,
+    "crc": "d5b474f0"
+  },
+  {
+    "filename": "manifest_v1_4_4.json",
+    "file_size": 27711,
+    "compress_size": 3525,
+    "crc": "aa3279a9"
+  }
+]

@@ -1,0 +1,29 @@
+# AIDRPG Final Package Repair Note — v1_4_23
+
+This repaired final package was rebuilt from the uploaded last-known-good base:
+
+```text
+AIDRPG_Final_Build_Planning_Package_v1_4_18_WITH_PRODUCTION_CHUNKS_01_TO_21.zip
+```
+
+Reason for repair:
+
+```text
+Later package links after v1.4.18 were reported as missing or corrupted/unopenable.
+This package does not rely on those corrupted/missing later zips.
+It copies the verified-good v1.4.18 contents and appends freshly rebuilt Production Chunks 22–25.
+```
+
+Verification performed during rebuild:
+
+```text
+Base zip opened with Python zipfile: PASS
+Base zip testzip(): PASS
+Chunks 01–21 present in base: PASS
+Chunks 22–25 added: PASS
+All-in-one 01–25 rebuilt: PASS
+Manifest v1.4.23 generated: PASS
+Final repaired zip testzip(): PASS
+```
+
+This zip is a planning and handoff package, not the final script code. The next phase is Codepass 1 — Release Candidate Assembly.

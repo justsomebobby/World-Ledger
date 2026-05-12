@@ -1,0 +1,9 @@
+# AIDRPG Final Build Planning Package v1.4.3 Update
+
+This package updates v1.4.2 by adding:
+
+- Production Chunk 06 — Ability Candidate, Training, Use, Failure, and Stability Depth
+- Updated all-in-one production roadmap reference covering Production Chunks 01–06
+- Refreshed file manifest for v1.4.3
+
+Production Chunk 06 keeps the build aligned with the current safety doctrine: ability mentions, failed attempts, dreams, quotes, and output-only “learned” claims do not become stable abilities by default. Abilities must move through evidence, candidate/unstable states, and explicit validated stabilization before they become stable.

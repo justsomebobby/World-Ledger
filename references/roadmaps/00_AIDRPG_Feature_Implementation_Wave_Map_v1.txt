@@ -1,0 +1,127 @@
+# AIDRPG Feature Implementation Wave Map v1
+
+## Purpose
+
+This document is the bridge from WorldLedger V0.17 Foundation Candidate to the full AIDRPG build. It prevents the project from restarting the original Design Bible Chunks 1–32/33 as blind manual testing sessions.
+
+The original Design Bible Chunks remain the full design source. This roadmap converts them into controlled production waves with owners, gates, tests, and forbidden shortcuts.
+
+## Current authority stack
+
+1. Final Build Control Map v1 — old failures become owner/rule/test/release gates.
+2. WorldLedger V0.17 — current foundation candidate and hook/export baseline.
+3. Build Chunks 1–17 — implementation safety overlay and Code Pass 1 rules.
+4. Gap Chunks A–G — old failure protections.
+5. Regression Matrix / QA files — pass/fail authority.
+6. Formula Appendix — progression/stat math authority.
+7. Developer Spec / MVP Spec — intended implementation behavior.
+8. Design Bible Chunks 1–32/33 — full game destination.
+9. World Bible / Story Cards JSON — lore/reference source, not direct gameplay truth.
+10. Old scripts and tester feedback — evidence only, not blind code source.
+
+## Remaining production count
+
+From V0.17 onward:
+
+```text
+24 production chunks
++ 1 final packaging/release chunk
+= 25 total remaining production chunks
+```
+
+This is not 32 manual play/build sessions. It is a finite feature-wave implementation plan.
+
+## Wave overview
+
+### Wave A — Foundation Freeze and Core Surface Polish
+
+```text
+01 Foundation Acceptance and Freeze
+02 Command Surface and Player Setup Expansion
+03 State Schema Deepening for Full System Readiness
+```
+
+### Wave B — Core Character and Moment-to-Moment Gameplay
+
+```text
+04 Player Identity, Body Logic, and Status Depth
+05 Inventory, Equipment, Scene Items, and Custody Depth
+06 Ability Candidate, Training, Use, Failure, and Stability Depth
+07 Quest, Objective, Reward, and Promise/Payment Depth
+08 Actor Presence, Social Memory, Witnessing, and Relationship Depth
+09 Place, Travel, Time, Scene, and Deadline Depth
+```
+
+### Wave C — Progression, Form, Combat Baseline, and World Threat
+
+```text
+10 Formula Matrix and Progression Baseline
+11 Stats, Derived Values, Conditions, and Invariant Checker
+12 Combat Event Model and Damage/Healing Dispute Resolver
+13 Body Form, Race Logic, Transformation Consequence, and Non-Humanoid Constraints
+14 Threat Benchmark, Encounter Logic, and World Scaling Boundaries
+```
+
+### Wave D — World Bible, Persistence, Lore, Factions, and Regions
+
+```text
+15 World Bible Import/Reference Layer and Knowledge Gating
+16 Region, Faction, Nation, and World Pressure Model
+17 Creature Ecology, Body Logic, and Encounter Context Model
+18 Divine Influence, Broken Systems, Anomalies, and Era Logic
+19 World Persistence, Consequence Escalation, and Long-Run Memory
+```
+
+### Wave E — Cards, Context, Migration, and Long-Adventure Stability
+
+```text
+20 Context Budget Manager and Context Priority Allocator
+21 Protected CardSync Live Write Unlock Candidate
+22 Migration, Quarantine, Old Save, and Story Card Recovery Depth
+```
+
+### Wave F — Advanced Systems Activation by Mini-Spec
+
+```text
+23 Economy, Crafting, Investigation, Reputation, and Domain Mini-Spec Activation Pack
+24 Advanced Combat, Party/Summons, Absorption/Evolution, Multi-Protagonist, and Warfare Activation Pack
+```
+
+### Wave G — Final Release Hardening
+
+```text
+25 Final Regression, Install Package, Documentation, and Release Candidate
+```
+
+## Process required for every production chunk
+
+Every production chunk must state:
+
+```text
+1. Exact goal.
+2. Modules touched.
+3. State fields added/changed.
+4. Parser/proposal/validator changes.
+5. Reducer changes.
+6. Command/context/card changes.
+7. Operation keys.
+8. ReleaseCheck gates.
+9. Regression tests.
+10. Forbidden shortcuts.
+11. Implementation order.
+12. Pass/warn/fail criteria.
+13. Handoff to the next chunk.
+```
+
+No production chunk may end with “just play and see what breaks.” Manual playtesting verifies feel; regression tests protect old failures.
+
+## Final doctrine
+
+```text
+No blind 32-session rebuild.
+No manual rediscovery loop.
+No feature activation without owner/rule/test/gate.
+No old patch pasted blindly.
+No PASS on uncertainty.
+Build the full game through controlled production waves.
+```

@@ -1,0 +1,69 @@
+AIDRPG FINAL BUILD PLANNING PACKAGE v1.4.1 — START HERE FOR CODE PASS 1
+
+Purpose
+This package is a roadmap and control handoff for building AIDRPG Core MVP v0.1 Foundation Script — Code Pass 1.
+
+Use this package when starting a new project/conversation so the builder does not restart, overbuild, or reintroduce old patch-loop failures.
+
+What this package IS
+- A final planning/control package for Code Pass 1.
+- A complete ordered implementation-overlay set: Build Chunks 1–17.
+- A control map that converts old failures and old patch goals into core owner/rule/test/releasecheck requirements.
+- A preserved/extracted previous master package with Design Bible Chunks 1–33, developer specs, MVP/test/formula docs, roadmap, and Gap Chunks A–G.
+- Evidence files showing old QA/patch failure patterns that must be treated as requirements.
+
+What this package is NOT
+- It is not final script code.
+- It is not a request to rebuild the entire dream system immediately.
+- It is not permission to activate generated cards, economy, crafting, investigation, domain/labor, reputation automation, absorption/evolution, advanced combat, warfare, or manual mutation commands in Code Pass 1.
+- It is not a replacement for old evidence; old evidence is included as source material.
+
+Read order for a new builder
+1. 00_README_INDEX_AND_VERIFICATION.txt
+2. 10_Final_Build_Control_Map/00_AIDRPG_Final_Build_Control_Map_v1.txt
+3. 20_Build_Chunks_01_to_17/17_AIDRPG_Build_Chunk_17_Foundation_Code_Pass_1_Plan.txt
+4. 20_Build_Chunks_01_to_17/01 through 16 as needed for exact module rules
+5. 40_Previous_Master_Package.../03_Roadmap_and_Pre_Code_Gap_Closure/* for Gap Chunks A–G and current authority
+6. 30_Evidence_and_QA/* when interpreting old patch-loop failures
+7. 20_Build_Chunks_01_to_17/00_AIDRPG_Build_Chunks_01_to_17_ALL_IN_ONE.txt only when a single reference document is easier
+
+Absolute build doctrine
+Input may intend.
+Context may remind.
+Output may propose.
+ParserHits are observations.
+EventProposals are structured claims.
+CanonValidator decides eligibility.
+ReducerRegistry routes.
+OwnerReducers commit.
+OperationLedger dedupes.
+DirtyQueue marks mirror/context refresh.
+Context reads.
+Cards mirror.
+ReleaseCheck tells the truth.
+
+Forbidden Code Pass 1 shortcuts
+- No parser direct writes.
+- No card-to-canon path.
+- No context writes.
+- No command output parsing as story.
+- No generated cards in MVP.
+- No live CardSync writes by default.
+- No manual mutation commands.
+- No old card prose imported as canon.
+- No cleanup deleting active truth.
+- No broad shared sanitizer that strips ability phrases globally.
+- No output-only ability hard-save.
+- No promised reward payment without payment validation.
+- No visible item becoming owned inventory.
+- No weak place mention becoming current scene.
+- No quoted/dreamed/rumored/revoked/denied text becoming canon.
+
+Code Pass 1 target
+Build the smallest stable truth engine that initializes, inspects, audits, validates, reduces limited safe events, blocks unsafe sources, keeps support layers non-canon, and passes ReleaseCheck/regression gates.
+
+Recommended next action
+Begin: AIDRPG Core MVP v0.1 Foundation Script — Code Pass 1.
+Use Build Chunk 17 for assembly order and scope.
+Use Build Chunk 16 for ReleaseCheck and regression gates.
+Use Build Chunks 9–15 for parser/proposal/validator/resolver/reducer/support layer exact rules.

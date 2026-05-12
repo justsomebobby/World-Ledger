@@ -1,0 +1,7 @@
+AIDRPG package update v1.4.6
+
+Added Production Chunk 09 — Place, Travel, Time, Scene, and Deadline Depth.
+
+This update continues the automatic append policy for production chunks. The production roadmap section now includes Production Chunks 01–09 and a refreshed all-in-one production roadmap reference.
+
+Chunk 09 focuses on current location, current scene, travel intent, visible/nearby references, route/interstitial handling, literal vs nonliteral time passage, deadlines, and age-safety rules for AI Dungeon gameplay.

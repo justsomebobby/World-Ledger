@@ -1,0 +1,186 @@
+[
+  {
+    "package_path": "10_Final_Build_Control_Map/00_AIDRPG_Final_Build_Control_Map_v1.txt",
+    "source_filename": "Final build map controlv1.txt",
+    "status": "included",
+    "bytes": "52570",
+    "sha256": "9ba8c180cf02630555cc5b52a96f82ef88ff97fe30048c3ef5b3cfb1341faf42",
+    "note": "Primary control map stabilizing old failures + new design decisions."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/01_AIDRPG_Build_Chunk_01_Implementation_Start_Packet.txt",
+    "source_filename": "Buildchunk1.txt",
+    "status": "included",
+    "bytes": "21816",
+    "sha256": "617f6d8877607f14e837f6c5cdc49e9b1f489d12d7d0f84c0231926db1cfa515",
+    "note": "Build Chunk 1."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/02_AIDRPG_Build_Chunk_02_File_and_Module_Layout_Plan.txt",
+    "source_filename": "Buildchunk2.txt",
+    "status": "included",
+    "bytes": "27608",
+    "sha256": "8243553c4956611be5f585a70042de3e2742933c66b08a813a9daccf4240bc44",
+    "note": "Build Chunk 2."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/03_AIDRPG_Build_Chunk_03_State_Schema_Lock.txt",
+    "source_filename": "Buildchunk3.txt",
+    "status": "included",
+    "bytes": "40406",
+    "sha256": "2d0ed74685333c10b9f6f7d5c4c701c485f2d06ef1730ed3647053f2ff127ebc",
+    "note": "Build Chunk 3."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/04_AIDRPG_Build_Chunk_04_Command_Output_Format_Lock.txt",
+    "source_filename": "Buildchunk4.txt",
+    "status": "included",
+    "bytes": "33953",
+    "sha256": "164611d66a36d052661047b8a27be2db590b2b58dbb1faac9292a937283c1159",
+    "note": "Build Chunk 4."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/05_AIDRPG_Build_Chunk_05_StateManager_Plan.txt",
+    "source_filename": "Buildchunk5.txt",
+    "status": "included",
+    "bytes": "22652",
+    "sha256": "6f9f64c71f6bc864f5e8c9d341f5eb845c8a1660ed5dfa2f4c6c233a14cd43ff",
+    "note": "Build Chunk 5."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/06_AIDRPG_Build_Chunk_06_Runtime_Hook_Contract_Implementation_Plan.txt",
+    "source_filename": "Buildchunk6.txt",
+    "status": "included",
+    "bytes": "27442",
+    "sha256": "ede3c50c9c4df8f767099e63b96807321636f29bc8de1d6ef605e44ae6ba4223",
+    "note": "Build Chunk 6."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/07_AIDRPG_Build_Chunk_07_AuditLogger_and_OperationLedger_Implementation_Plan.txt",
+    "source_filename": "Buildchunk7.txt",
+    "status": "included",
+    "bytes": "30869",
+    "sha256": "4e552c0d8d8aa54557d6da3199c808a5d953f064988c8f6f5c5916b77437a9f6",
+    "note": "Build Chunk 7."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/08_AIDRPG_Build_Chunk_08_CommandRouter_and_Command_Renderer_Implementation_Plan.txt",
+    "source_filename": "Buildchunk8.txt",
+    "status": "included",
+    "bytes": "28437",
+    "sha256": "109b9bdaa40982fb179ea7f5b38a4197f604244e17ed484ce28ecefe628b3744",
+    "note": "Build Chunk 8."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/09_AIDRPG_Build_Chunk_09_EventScannerLite_Parser_Shell_Plan.txt",
+    "source_filename": "Buildchunk9.txt",
+    "status": "included",
+    "bytes": "29108",
+    "sha256": "5783e0f07ad4ad096459cf4401f1c65981bd95e033e3af2539e411e44198679f",
+    "note": "Build Chunk 9."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/10_AIDRPG_Build_Chunk_10_EventProposal_Local_Clause_Binding_and_ProposalBuilder_Plan.txt",
+    "source_filename": "Buildchunk10.txt",
+    "status": "included",
+    "bytes": "36016",
+    "sha256": "ec5a06043cb6c8269652f4e1abf7bfda2ea5efc4cb00e71156ced986a7438077",
+    "note": "Build Chunk 10."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/11_AIDRPG_Build_Chunk_11_CanonValidator_and_Clause_Level_Canon_Rules_Plan.txt",
+    "source_filename": "Buildchunk11.txt",
+    "status": "included",
+    "bytes": "28011",
+    "sha256": "1a8123801e72337197a0738acd65f57cc80d97a1da127ae32ec7d19d8c89d028",
+    "note": "Build Chunk 11."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/12_AIDRPG_Build_Chunk_12_Resolver_and_Owner_Specific_Sanitizer_Plan.txt",
+    "source_filename": "Buildchunk12.txt",
+    "status": "included",
+    "bytes": "26965",
+    "sha256": "dc53afe5d19cf4f525a21c7b32c723f302bb7b431f9d02fbb7b4041ed6d50190",
+    "note": "Build Chunk 12."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/13_AIDRPG_Build_Chunk_13_ReducerRegistry_and_Owner_Reducer_Contract_Plan.txt",
+    "source_filename": "Buildchunk13.txt",
+    "status": "included",
+    "bytes": "27393",
+    "sha256": "5c4a0d88dfe456323587f31ebda493572ce99bec3bf471be827c126091cdcc50",
+    "note": "Build Chunk 13."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/14_AIDRPG_Build_Chunk_14_Core_Reducer_Plans.txt",
+    "source_filename": "Buildchunk14.txt",
+    "status": "included",
+    "bytes": "31340",
+    "sha256": "3db11087cd61dc34c3c7d74f37ccfcb0b1f143448ed50c24df7d2976fb90bb51",
+    "note": "Build Chunk 14."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/15_AIDRPG_Build_Chunk_15_ContextBuilder_CardSyncLite_Migration_DirtyQueue_and_Cleanup_Integration_Plan.txt",
+    "source_filename": "Buildchunk15.txt",
+    "status": "included",
+    "bytes": "23345",
+    "sha256": "e4298ca459d881a147b37c101daf6c5c0125d4039057f4c6b7f442d31c71db04",
+    "note": "Build Chunk 15."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/16_AIDRPG_Build_Chunk_16_ReleaseCheck_and_Regression_Matrix_Lock.txt",
+    "source_filename": "Buildchunk16.txt",
+    "status": "included",
+    "bytes": "30596",
+    "sha256": "8d55e4c87a1b744724c7963cdd43e9fbda7e95ed8dad77424cc5e2600252f03b",
+    "note": "Build Chunk 16."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/17_AIDRPG_Build_Chunk_17_Foundation_Code_Pass_1_Plan.txt",
+    "source_filename": "Pasted Text.txt 14(1).txt",
+    "status": "included",
+    "bytes": "22594",
+    "sha256": "0fc5369a752aee9a80e3ae70a097478f5d886f347fee1bc4cd94fd9e044a3083",
+    "note": "Build Chunk 17; source upload was named Pasted Text.txt 14(1).txt."
+  },
+  {
+    "package_path": "30_Evidence_and_QA/01_AIDRPG_v1_5_0_Category_7_to_12_QA_Result.txt",
+    "source_filename": "Test stuff.txt",
+    "status": "included",
+    "bytes": "43966",
+    "sha256": "fd797cae6dfa2992300b5bb134299127d8a3fb352575e2c2a9f29ae326a2eec9",
+    "note": "QA evidence for scene/location, witness, body, transformation, CardSync, state integrity."
+  },
+  {
+    "package_path": "30_Evidence_and_QA/02_Phase_5_Ability_Training_and_Exhaustion_Fix_Recovery_Notes.txt",
+    "source_filename": "Test stuff 2.txt",
+    "status": "included",
+    "bytes": "99041",
+    "sha256": "835443c9acae75778367b9da13127d6d70d6412a0065393d1cbeb8a908f59c78",
+    "note": "Phase 5 patch/recovery evidence showing broad helper cleanup risk and owner-specific cleanup requirement."
+  },
+  {
+    "package_path": "90_Original_Uploaded_Zips/AIDRPG_MASTER_PACKAGE_v1_3_ROADMAP_GAP_ALIGNED_original_upload.zip",
+    "source_filename": "AIDRPG_MASTER_PACKAGE_v1_3_ROADMAP_GAP_ALIGNED(2).zip",
+    "status": "included",
+    "bytes": "714642",
+    "sha256": "7e25aabbb6759e72bf835b1b4fe0da7024597443b923a6ac1687e890bc08c313",
+    "note": "Original uploaded v1.3 master package zip, preserved as received."
+  },
+  {
+    "package_path": "40_Previous_Master_Package_v1_3_ROADMAP_GAP_ALIGNED_EXTRACTED/",
+    "source_filename": "AIDRPG_MASTER_PACKAGE_v1_3_ROADMAP_GAP_ALIGNED(2).zip",
+    "status": "extracted",
+    "bytes": "",
+    "sha256": "",
+    "note": "Extracted with cleaned v1.3 package root; original zip also preserved."
+  },
+  {
+    "package_path": "20_Build_Chunks_01_to_17/00_AIDRPG_Build_Chunks_01_to_17_ALL_IN_ONE.txt",
+    "source_filename": "generated",
+    "status": "generated",
+    "bytes": "546558",
+    "sha256": "89249de9545a399efc401298e8be066a0585fc093cb153f757fc89831b86a0db",
+    "note": "Combined convenience reference for Build Chunks 1\u201317 plus control map."
+  }
+]

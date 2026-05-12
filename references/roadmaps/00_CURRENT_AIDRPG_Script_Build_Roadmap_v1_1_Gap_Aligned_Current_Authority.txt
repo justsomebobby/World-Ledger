@@ -1,0 +1,1051 @@
+# AIDRPG Script Build Roadmap v1.1 — Gap-Aligned Current Build Plan
+
+## 0. Document status
+
+**Document name:** AIDRPG Script Build Roadmap v1.1 — Gap-Aligned Current Build Plan  
+**Purpose:** Update the original Script Build Roadmap v1 so it explicitly incorporates Gap Closure Addendum v1 and Gap Chunks A–G.  
+**Status:** Current build-roadmap authority after v1.2 package.  
+**This document does not contain final script code.**
+
+This document answers the user's question:
+
+> How do the Gap Chunks A–G affect the chunk plan?
+
+The answer is:
+
+The original 34 Build Chunks are still valid, but they are now controlled by a stronger pre-code safety gate. Gap Chunks A–G do not replace the build roadmap. They modify it by adding exact safety rules that every build chunk must obey.
+
+The old roadmap said:
+
+```text
+Create Build Chunk 1, then continue through Build Chunk 34.
+```
+
+The corrected roadmap now says:
+
+```text
+Gap Chunks A–G must be treated as completed pre-code authority.
+Then Build Chunks 1–34 proceed under those rules.
+Every Build Chunk must cite and obey the relevant Gap Chunk rules.
+```
+
+---
+
+# 1. What changed after Gap Chunks A–G
+
+## 1.1 The build has a new pre-code gate
+
+Before coding starts, the build now requires the following safety documents to exist and control implementation:
+
+```text
+Gap Chunk A — Old Fix Salvage Matrix
+Gap Chunk B — Runtime and Hook Contract Spec
+Gap Chunk C — Story Card API Adapter and Protected Singleton Contract
+Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy
+Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec
+Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec
+Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec
+```
+
+These are no longer optional.
+
+They are now the safety layer between the design bible and the first code attempt.
+
+## 1.2 The original roadmap was not wrong
+
+The original Build Roadmap v1 was a correct practical chunk plan.
+
+What it lacked was exact old-fix preservation and blocker mapping.
+
+Gap Chunks A–G close that missing layer.
+
+Therefore:
+
+```text
+Roadmap v1 = correct build order.
+Gap Chunks A–G = exact safety controls.
+Roadmap v1.1 = build order plus safety controls.
+```
+
+## 1.3 Build Chunk 1 is still the next action
+
+Because Gap Chunks A–G are now created, the next chunk remains:
+
+```text
+Build Chunk 1 — Implementation Start Packet
+```
+
+But Build Chunk 1 must now include the gap-closure authority stack and must not begin coding blindly.
+
+---
+
+# 2. New authority order for build chunks
+
+When generating any Build Chunk, use this authority order:
+
+1. **AIDRPG Script Build Roadmap v1.1 — Gap-Aligned Current Build Plan**
+2. **AIDRPG Gap Closure Addendum v1**
+3. **Gap Chunk A — Old Fix Salvage Matrix**
+4. **Gap Chunk B — Runtime and Hook Contract Spec**
+5. **Gap Chunk C — Story Card API Adapter and Protected Singleton Contract**
+6. **Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy**
+7. **Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec**
+8. **Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec**
+9. **Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec**
+10. **AIDRPG Script Build Roadmap v1**
+11. **AIDRPG Test Spec v1**
+12. **AIDRPG Formula Appendix v1**
+13. **AIDRPG MVP Build Spec v1**
+14. **Developer Spec v1.1 Correction Pass**
+15. **Developer Spec v1**
+16. **Design Bible Chunks 1–33**
+
+If any lower document conflicts with a Gap Chunk safety rule, the Gap Chunk wins for MVP implementation safety.
+
+---
+
+# 3. Build chunk output format after v1.1
+
+Every future Build Chunk should use this updated format:
+
+```text
+# AIDRPG Build Chunk X — [Title]
+
+## 1. Purpose
+## 2. Authority inputs used
+## 3. What this chunk defines
+## 4. What this chunk must not build yet
+## 5. Relevant Gap Chunk rules
+## 6. Required structures / decisions
+## 7. Module or system behavior
+## 8. Edge cases and old-bug protections
+## 9. Tests this chunk supports
+## 10. Completion checklist
+## 11. Handoff to next chunk
+```
+
+The important new sections are:
+
+```text
+Authority inputs used
+Relevant Gap Chunk rules
+Edge cases and old-bug protections
+```
+
+This ensures old fixes are not forgotten.
+
+---
+
+# 4. Revised build sequence overview
+
+The corrected sequence is:
+
+```text
+Pre-Code Safety Gate — Gap Chunks A–G COMPLETE
+Build Chunk 1 — Implementation Start Packet
+Build Chunk 2 — File/Module Layout Plan
+Build Chunk 3 — State Schema Lock
+Build Chunk 4 — Command Output Format Lock
+Build Chunk 5 — StateManager Plan
+Build Chunk 6 — CommandRouter Plan
+Build Chunk 7 — Inspection Commands Plan
+Build Chunk 8 — Audit Shell Plan
+Build Chunk 9 — EventScannerLite Plan
+Build Chunk 10 — EventProposal / ProposalBuilder Plan
+Build Chunk 11 — CanonValidator Plan
+Build Chunk 12 — ReducerRegistry Plan
+Build Chunk 13 — OperationLedger Plan
+Build Chunk 14 — BodyReducer MVP Plan
+Build Chunk 15 — InventoryReducer MVP Plan
+Build Chunk 16 — AbilityReducer MVP Plan
+Build Chunk 17 — QuestReducerLite Plan
+Build Chunk 18 — ActorReducerLite Plan
+Build Chunk 19 — PlaceReducerLite and TimeReducerLite Plan
+Build Chunk 20 — ProgressionReducerLite Plan
+Build Chunk 21 — ContextBuilderLite Plan
+Build Chunk 22 — Protected CardSyncLite Plan
+Build Chunk 23 — Dirty Target System Plan
+Build Chunk 24 — Test Harness Plan
+Build Chunk 25 — Gate 1 and Gate 2 Test Plan
+Build Chunk 26 — Gate 3 and Gate 4 Test Plan
+Build Chunk 27 — Gate 5 and Gate 6 Test Plan
+Build Chunk 28 — Gate 7 and Gate 8 Test Plan
+Build Chunk 29 — Cross-System and Negative Test Plan
+Build Chunk 30 — MVP Stabilization Checklist
+Build Chunk 31 — Combat/Progression v0.2 Expansion Plan
+Build Chunk 32 — Generated CardSync Beta Plan
+Build Chunk 33 — Economy/Crafting Mini-Spec Queue Plan
+Build Chunk 34 — Investigation/Faction/Domain/Absorption Mini-Spec Queue Plan
+```
+
+---
+
+# 5. How Gap Chunks A–G affect each Build Chunk
+
+## Build Chunk 1 — Implementation Start Packet
+
+### Original purpose
+
+Create the first coding handoff packet.
+
+### v1.1 adjustment
+
+This chunk must now begin by declaring:
+
+```text
+Gap Chunks A–G are complete and authoritative.
+No code may ignore them.
+```
+
+It must define Script v0.1 as:
+
+```text
+A safety-first MVP foundation, not the full final RPG engine.
+```
+
+### Relevant Gap Chunks
+
+- A: old fixes must be preserved as owner rules/tests
+- B: runtime contract controls hook behavior
+- C: cards mirror state only
+- D: parser is conservative
+- E: releasecheck/commands must be honest
+- F: context/cleanup/performance must be bounded
+- G: startup/identity/handoff must be protected
+
+### New blocker language
+
+Build Chunk 1 must say:
+
+```text
+If a requested code behavior conflicts with Gap Chunk A–G, do not code it.
+If a feature lacks a mini-spec, mark it deferred.
+```
+
+---
+
+## Build Chunk 2 — File/Module Layout Plan
+
+### v1.1 adjustment
+
+The file/module layout must include explicit sections for the new safety owners:
+
+```text
+RuntimeHookContract
+StateManager
+StartupManager
+MigrationManager
+CommandRouter
+AuditLogger
+OperationLedger
+EventScannerLite
+ParserSafetyTables
+ResolverLite
+CanonValidator
+ReducerRegistry
+Reducers
+ContextBuilderLite
+DirtyQueueManager
+CleanupManagerLite
+CardApiAdapter
+CardSyncLite
+ReleaseCheck
+```
+
+### Relevant Gap Chunks
+
+- A maps old systems to new owner modules
+- B requires runtime/hook separation
+- C requires CardApiAdapter as the only raw Story Card access layer
+- E requires ReleaseCheck and migration modules
+- F requires DirtyQueue/Cleanup/Performance boundaries
+- G requires StartupManager/Identity protection
+
+### New rule
+
+No module may call raw Story Card API except CardApiAdapter.
+No parser module may mutate state.
+No context module may mutate gameplay truth.
+
+---
+
+## Build Chunk 3 — State Schema Lock
+
+### v1.1 adjustment
+
+The state schema must now include all safety buckets from Gap Chunks B–G:
+
+```text
+runtime
+startup
+migration
+quarantine
+cards
+cardSync
+operationLedger
+contextAudit
+cardAudit
+dirtyQueue
+cleanup
+audits
+releaseCheck
+```
+
+### Relevant Gap Chunks
+
+- B runtime state fields
+- C card registry/api/sync/tombstone fields
+- E migration/quarantine fields
+- F dirty/context/cleanup/performance fields
+- G startup/identity fields
+
+### New rule
+
+The state schema must be able to represent safety, not just gameplay.
+
+If safety buckets are missing, `/releasecheck` must fail.
+
+---
+
+## Build Chunk 4 — Command Output Format Lock
+
+### v1.1 adjustment
+
+The command list expands from simple inspection commands to include required diagnostics:
+
+```text
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/startupaudit
+/releasecheck
+```
+
+Deferred commands must return honest disabled messages.
+
+### Relevant Gap Chunks
+
+- B command output suppression
+- E command honesty and alias mapping
+- F `/contextaudit`, `/dirty`, `/cleanup`, `/stateaudit`
+- G `/startupaudit`
+
+### New rule
+
+Every command output must be non-canon and must set command-output suppression.
+
+---
+
+## Build Chunk 5 — StateManager Plan
+
+### v1.1 adjustment
+
+StateManager now owns more than defaults.
+
+It must plan:
+
+- root state initialization
+- schema migration
+- missing bucket repair
+- startup setup lock
+- migration idempotency
+- quarantine preservation
+- runtime bucket repair
+- safety flag defaults
+
+### Relevant Gap Chunks
+
+- A CoreState salvage
+- B runtime validation
+- E migration/quarantine
+- G setup lock and identity import
+
+### New rule
+
+StateManager may repair shape, but it may not invent gameplay truth from old prose.
+
+---
+
+## Build Chunk 6 — CommandRouter Plan
+
+### v1.1 adjustment
+
+CommandRouter must include:
+
+- command detection
+- command output suppression
+- disabled command messages
+- old command alias mapping
+- diagnostic command routing
+- no mutation policy for MVP
+
+### Relevant Gap Chunks
+
+- B command suppression
+- E command honesty and alias mapping
+- F diagnostic command safety
+- G startup audit command
+
+### New rule
+
+MVP commands inspect and explain. They do not mutate gameplay state.
+
+---
+
+## Build Chunk 7 — Inspection Commands Plan
+
+### v1.1 adjustment
+
+Inspection commands must show custody, uncertainty, disabled features, and candidate/stable distinctions clearly.
+
+Examples:
+
+- `/inventory` separates visible/available/held/equipped/custody/lost/sold/destroyed
+- `/abilities` separates stable/unstable/candidate/passive/sealed
+- `/quests` separates rumor/offer/active/ready/completed/rewarded
+- `/actors` separates present/nearby/elsewhere/unknown/dead/captured
+
+### Relevant Gap Chunks
+
+- D parser/resolver distinctions
+- E command honesty
+- G promise/payment and offer/acceptance distinctions
+
+---
+
+## Build Chunk 8 — Audit Shell Plan
+
+### v1.1 adjustment
+
+Audit shell now must support:
+
+```text
+runtime audit
+proposal audit
+validation audit
+duplicate audit
+card audit
+context audit
+migration audit
+quarantine audit
+cleanup audit
+startup audit
+releasecheck summary
+false-positive audit
+```
+
+### Relevant Gap Chunks
+
+- A every old fix needs audit surface
+- B runtime errors and hook trace
+- C card audit
+- D parser false-positive audit
+- E releasecheck/migration/quarantine
+- F context/dirty/cleanup audit
+- G startup audit
+
+---
+
+## Build Chunk 9 — EventScannerLite Plan
+
+### v1.1 adjustment
+
+EventScannerLite must be explicitly bound to Parser Rulebook v1.
+
+It must generate ParserHits only, never state mutations.
+
+Required flags:
+
+```text
+completedAction
+attemptOnly
+negated
+hypothetical
+quotedSpeech
+dreamOrVision
+rumorOrClaim
+failedOrRevoked
+conditional
+futureIntent
+confidence
+```
+
+### Relevant Gap Chunks
+
+- D parser rulebook
+- B source authority
+- E non-canon command suppression
+- G natural confirmation rules
+
+---
+
+## Build Chunk 10 — EventProposal / ProposalBuilder Plan
+
+### v1.1 adjustment
+
+ProposalBuilder must preserve parser flags, resolver results, operation key candidates, sourceHook, truthStatus, confidence, and dirty target hints.
+
+### Relevant Gap Chunks
+
+- B source authority
+- D ParserHit/ResolverResult schemas
+- G natural handoff confirmation
+
+---
+
+## Build Chunk 11 — CanonValidator Plan
+
+### v1.1 adjustment
+
+CanonValidator must now enforce the specific blockers from Gap Chunks B–G:
+
+- non-canon source blocks
+- duplicate operation key blocks
+- quoted/hypothetical/dream/rumor blockers
+- visible item not inventory
+- promised reward not paid
+- candidate ability not stable
+- absent actor cannot act
+- travel intent not arrival
+- command/card/context text cannot mutate state
+- startup lock protection
+
+### Relevant Gap Chunks
+
+All A–G, especially B, C, D, E, G.
+
+---
+
+## Build Chunk 12 — ReducerRegistry Plan
+
+### v1.1 adjustment
+
+ReducerRegistry must reject unknown owners and prevent broad utility systems from committing gameplay state.
+
+### Relevant Gap Chunks
+
+- A old fix owner mapping
+- B output commit order
+- D parser cannot commit
+- F dirty target generation after reducer commits
+
+---
+
+## Build Chunk 13 — OperationLedger Plan
+
+### v1.1 adjustment
+
+OperationLedger must support not only gameplay operations but also migration, startup, cleanup, card, reward, output replay, and duplicate prevention keys.
+
+Required buckets:
+
+```text
+permanentKeys
+recentKeys
+rewardKeys
+cardKeys
+sourceUseKeys
+migrationKeys
+startupKeys
+cleanupKeys
+```
+
+### Relevant Gap Chunks
+
+- B duplicate output
+- C card operation keys
+- E migration operation keys
+- F cleanup operation keys
+- G startup/aging/handoff keys
+
+---
+
+## Build Chunk 14 — BodyReducer MVP Plan
+
+### v1.1 adjustment
+
+BodyReducer must obey identity/body drift boundaries.
+
+It can track HP/MP/EP, injury, conditions, fatigue, and death boundary.
+
+It must not permanently change race/species/appearance unless a validated transformation pathway exists.
+
+### Relevant Gap Chunks
+
+- G transformation/disguise/dream rules
+- D body parser flags
+- F context status packet rules
+
+---
+
+## Build Chunk 15 — InventoryReducer MVP Plan
+
+### v1.1 adjustment
+
+InventoryReducer must be fully aligned with Natural Confirmation and Parser Rulebook.
+
+Required distinctions:
+
+```text
+visible != available_loot != held != equipped != stored != npc_custody != inaccessible != lost/sold/destroyed/consumed
+```
+
+### Relevant Gap Chunks
+
+- D item parser/resolver
+- G handoff/refusal/future promise rules
+- E command output non-canon
+- F cleanup must not delete active inventory
+
+---
+
+## Build Chunk 16 — AbilityReducer MVP Plan
+
+### v1.1 adjustment
+
+AbilityReducer must prevent old freeform power bugs.
+
+Required statuses:
+
+```text
+unknown
+hint
+candidate
+unstable
+stable
+sealed
+unavailable
+```
+
+Failed attempts may add evidence, not stable mastery.
+
+### Relevant Gap Chunks
+
+- D ability parser/resolver/name policy
+- G starting ability import and vague trait rules
+- E command output non-canon
+- F context ability warning packets
+
+---
+
+## Build Chunk 17 — QuestReducerLite Plan
+
+### v1.1 adjustment
+
+QuestReducerLite must incorporate promise/payment and offer/acceptance distinctions from Gap G and command honesty from Gap E.
+
+Statuses must separate:
+
+```text
+rumored
+offered
+active
+blocked
+ready_to_turn_in
+completed
+rewarded
+failed
+archived
+```
+
+Reward states must separate:
+
+```text
+none
+promised
+ready
+paid
+disputed
+denied
+```
+
+### Relevant Gap Chunks
+
+- D quest/reward parser
+- E migration/releasecheck reward safety
+- G offer/acceptance/promise/payment rules
+
+---
+
+## Build Chunk 18 — ActorReducerLite Plan
+
+### v1.1 adjustment
+
+ActorReducerLite must enforce actor identity and presence safety:
+
+- generic NPCs scene-only unless promoted
+- relation phrases do not overwrite actor identity
+- absent actors cannot act
+- claims are labeled claimed/rumored/suspected unless confirmed
+
+### Relevant Gap Chunks
+
+- D actor parser/resolver/name policy
+- G NPC name cannot overwrite player
+- F scene cleanup and actor context corrections
+
+---
+
+## Build Chunk 19 — PlaceReducerLite and TimeReducerLite Plan
+
+### v1.1 adjustment
+
+Place/time must enforce:
+
+- travel intent is not arrival
+- dream/flashback location not current location
+- Old Chapel Road not Old Chapel
+- time skips use operation keys
+- age changes once if applicable
+
+### Relevant Gap Chunks
+
+- D place/time parser/resolver
+- G arrival and aging rules
+- F context scene packets and cleanup
+
+---
+
+## Build Chunk 20 — ProgressionReducerLite Plan
+
+### v1.1 adjustment
+
+ProgressionReducerLite must not treat vague growth text as XP/stat gain.
+
+Allowed MVP:
+
+- explicit XP gain if safe
+- duplicate XP prevention
+- display XP
+
+Not allowed yet:
+
+- full combat XP automation
+- stat absorption
+- stat training automation unless explicitly scoped
+
+### Relevant Gap Chunks
+
+- D progression parser
+- G vague stat/trait rejection
+- A XPBudgetGuard salvage
+- Formula Appendix v1
+
+---
+
+## Build Chunk 21 — ContextBuilderLite Plan
+
+### v1.1 adjustment
+
+ContextBuilderLite must use Gap F directly.
+
+It must define:
+
+- packet schema
+- packet priority
+- packet budgets
+- packet expiration
+- packet hashing
+- context audit
+- correction packets
+- read-only rule
+
+### Relevant Gap Chunks
+
+- B Context hook read-only
+- F full context packet spec
+- E non-canon diagnostics
+
+---
+
+## Build Chunk 22 — Protected CardSyncLite Plan
+
+### v1.1 adjustment
+
+Protected CardSyncLite must use Gap C directly.
+
+It must define:
+
+- CardApiAdapter
+- dry-run mode
+- safe mode
+- protected singleton map
+- protected trigger policy
+- render hash skip
+- duplicate card detection
+- generated cards disabled
+
+### Relevant Gap Chunks
+
+- C complete card spec
+- F dirty card budget
+- E releasecheck card checks
+
+---
+
+## Build Chunk 23 — Dirty Target System Plan
+
+### v1.1 adjustment
+
+Dirty Target System is now controlled by Gap F.
+
+It must handle:
+
+- DirtyTarget schema
+- dirty families
+- queue dedupe
+- priority
+- caps
+- lifecycle
+- card/context coordination
+- cleanup interaction
+
+### Relevant Gap Chunks
+
+- F primary authority
+- C card dirty coordination
+- B output hook dirty marking
+
+---
+
+## Build Chunk 24 — Test Harness Plan
+
+### v1.1 adjustment
+
+Test Harness must include Gap Tests A–G in addition to Test Spec v1.
+
+It must support:
+
+- hook simulation
+- duplicate output replay
+- command output suppression
+- fake Story Card API
+- migration/quarantine tests
+- context budget tests
+- startup/identity tests
+
+### Relevant Gap Chunks
+
+A–G all affect this chunk.
+
+---
+
+## Build Chunks 25–29 — Test Gate Plans
+
+### v1.1 adjustment
+
+The test gates must be expanded to include:
+
+```text
+B001–B010 runtime tests
+C001–C014 Story Card tests
+D001–D025 parser/resolver tests
+E001–E030 migration/command tests
+F001–F035 context/cleanup/performance tests
+G001–G035 startup/identity/natural confirmation tests
+```
+
+### New rule
+
+The MVP cannot be called stable unless the relevant gap tests are either passed or explicitly deferred with reason.
+
+---
+
+## Build Chunk 30 — MVP Stabilization Checklist
+
+### v1.1 adjustment
+
+The stabilization checklist must include a specific section:
+
+```text
+Pre-code gap closure compliance: A–G
+```
+
+It must confirm:
+
+- no old fix category was dropped
+- no parser direct mutation exists
+- no Story Card-to-canon path exists
+- no Context write path exists
+- no command output parsing exists
+- no generated cards live in MVP
+- no unsafe cleanup
+- no identity drift
+- no duplicated startup import
+
+---
+
+## Build Chunk 31 — Combat/Progression v0.2 Expansion Plan
+
+### v1.1 adjustment
+
+Combat/progression expansion is now explicitly blocked until:
+
+- MVP runtime pipeline passes
+- OperationLedger passes duplicate tests
+- BodyReducer/ProgressionReducer MVP are stable
+- Formula Appendix v1 tests pass
+- Scale/Body/Ability advanced specs exist for advanced mechanics
+
+### Relevant Gap Chunks
+
+- D parser success/failure rules
+- G vague stat/trait rejection
+- F long-run performance
+- A old XP/threat/combat salvage mapping
+
+---
+
+## Build Chunk 32 — Generated CardSync Beta Plan
+
+### v1.1 adjustment
+
+Generated CardSync Beta is now explicitly blocked until:
+
+- Protected CardSyncLite passes
+- CardApiAdapter passes
+- Name/Trigger Policy passes
+- Resolver tests pass
+- dirty/card budgets pass
+- generated card beta spec is written
+
+### Relevant Gap Chunks
+
+- C primary authority
+- D name/trigger policy
+- F dirty/performance budget
+- E releasecheck blocks generated cards in MVP
+
+---
+
+## Build Chunk 33 — Economy/Crafting Mini-Spec Queue Plan
+
+### v1.1 adjustment
+
+Economy/crafting mini-specs must explicitly preserve:
+
+- inventory custody/access rules
+- transaction duplicate prevention
+- visible material not owned
+- promised payment not paid
+- repair does not duplicate items
+- domain treasury not personal purse
+
+### Relevant Gap Chunks
+
+- A old TransactionLedger/Crafting salvage
+- D parser false-positive rules
+- E command honesty/deferred commands
+- F cleanup/state bloat rules
+- G handoff/payment rules
+
+---
+
+## Build Chunk 34 — Investigation/Faction/Domain/Absorption Mini-Spec Queue Plan
+
+### v1.1 adjustment
+
+These future mini-specs must explicitly preserve:
+
+- rumor is not proof
+- private deed is not public reputation
+- one witness is not global knowledge
+- followers are not companions automatically
+- domain/labor cannot create free resources
+- absorption/evolution cannot create infinite stats
+- advanced body/identity changes need validation
+
+### Relevant Gap Chunks
+
+- A old system salvage
+- D rumor/claim parser rules
+- E deferred command honesty
+- F performance and cleanup limits
+- G transformation/identity rules
+
+---
+
+# 6. New pre-build compliance checklist
+
+Before asking for Build Chunk 1, confirm:
+
+```text
+[ ] Gap Closure Addendum v1 exists
+[ ] Gap Chunk A exists
+[ ] Gap Chunk B exists
+[ ] Gap Chunk C exists
+[ ] Gap Chunk D exists
+[ ] Gap Chunk E exists
+[ ] Gap Chunk F exists
+[ ] Gap Chunk G exists
+[ ] Roadmap v1.1 alignment exists
+[ ] v1.3 package includes all current roadmap/gap files
+```
+
+In this package, all are present.
+
+---
+
+# 7. What this means practically
+
+The next request should be:
+
+```text
+Create Build Chunk 1
+```
+
+Build Chunk 1 should not write script code yet unless specifically requested.
+
+Build Chunk 1 should produce the implementation start packet using:
+
+- MVP scope
+- authority stack
+- hard disabled systems
+- first modules
+- first commands
+- first tests
+- gap compliance rules
+- build chunk production rules
+
+---
+
+# 8. Final v1.1 roadmap doctrine
+
+The corrected plan is now:
+
+```text
+The design bible explains the dream.
+The developer specs explain the architecture.
+The formula appendix explains the math.
+The test spec explains pass/fail gates.
+The roadmap explains build order.
+The gap closure documents preserve old fixes.
+Roadmap v1.1 binds them together into the actual working sequence.
+```
+
+The build should no longer be improvised.
+
+Every future chunk should know:
+
+- what it is building
+- what it must not build yet
+- which old bugs it protects against
+- which Gap Chunk controls its safety rules
+- which tests prove it works
+
+That is the corrected chunk plan moving forward.

@@ -1,0 +1,43 @@
+# AIDRPG Final Release Candidate Handoff — v1.4.23 Repaired Final
+
+## What this package is
+
+This package is the complete final planning and implementation-control roadmap for building the AIDRPG / WorldLedger release candidate.
+
+It contains:
+
+```text
+Build Chunks 01–17 foundation planning
+Production Chunks 01–25 system roadmap
+Final assembly / QA / migration / release candidate handoff
+Repair note proving this was rebuilt from last-known-good v1.4.18
+Fresh all-in-one Production Roadmap 01–25
+Fresh manifest
+```
+
+## What this package is not
+
+```text
+It is not the final AI Dungeon script code.
+It is not a live Card Sync package.
+It is not permission to bypass ReleaseCheck.
+It is not permission to activate deferred systems without tests.
+```
+
+## Next phase
+
+```text
+Codepass 1 — Release Candidate Assembly
+Target: WorldLedgerV0.18.0_RC_ASSEMBLY_START
+```
+
+## Build law
+
+```text
+Every feature has an owner.
+Every mutation has a validator.
+Every duplicate has a key.
+Every unsafe source is blocked.
+Every deferred system is honest.
+Every release claim is tested.
+```

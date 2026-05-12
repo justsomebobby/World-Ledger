@@ -1,0 +1,16 @@
+# Package Update v1.4.13
+
+Added Production Chunk 16 to the production roadmap package.
+
+New file:
+- 40_Production_Roadmap/16_AIDRPG_Production_Chunk_16_Context_Builder_Budget_Memory_Priority_and_Card_Sync_Safety.txt
+
+Updated file:
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_16_ALL_IN_ONE.txt
+
+Core PC16 purpose:
+- Context is guidance, not evidence.
+- Generated summaries, command output, context output, debug output, and card mirror output are non-canon.
+- Card Sync remains dry-run only.
+- Hidden lore stays hidden.
+- Budget pressure must preserve critical current state before background lore.

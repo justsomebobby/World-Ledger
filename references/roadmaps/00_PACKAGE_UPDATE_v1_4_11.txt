@@ -1,0 +1,13 @@
+# AIDRPG Package Update v1.4.11
+
+Added Production Chunk 14 to the production roadmap package.
+
+New files:
+
+- 40_Production_Roadmap/14_AIDRPG_Production_Chunk_14_Threat_Benchmark_Encounter_Logic_and_World_Scaling_Boundaries.txt
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_14_ALL_IN_ONE.txt
+- 00_PACKAGE_UPDATE_v1_4_11.txt
+- 00_FILE_MANIFEST_v1_4_11.csv
+- 00_FILE_MANIFEST_v1_4_11.json
+
+Production Chunk 14 locks threat benchmarks, encounter activation boundaries, no-rubber-band scaling, danger context, no auto XP/loot from encounters, and AI Dungeon-safe threat display.

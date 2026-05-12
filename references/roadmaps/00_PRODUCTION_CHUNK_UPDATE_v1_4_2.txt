@@ -1,0 +1,16 @@
+# AIDRPG Planning Package v1.4.2 Update
+
+Created: 2026-05-03
+
+This version adds the new `40_Production_Roadmap` folder containing:
+
+- Feature Implementation Wave Map v1
+- Production Chunk 01 — V0.17 Foundation Acceptance and Freeze
+- Production Chunk 02 — Command Surface and Player Setup Expansion
+- Production Chunk 03 — State Schema Deepening for Full System Readiness
+- Production Chunk 04 — Player Identity, Body Logic, and Status Depth
+- Production Chunk 05 — Inventory, Equipment, Scene Items, and Custody Depth
+- All-in-one Production Roadmap and Chunks 01-05 reference
+- Auto-append policy for future production chunks
+
+The previous Code Pass 1 handoff package contents remain preserved. This update does not remove or rename the existing Build Chunks 1-17, Control Map, QA files, or extracted v1.3 master package.

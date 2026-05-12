@@ -1,0 +1,22 @@
+# AIDRPG Package Update v1.4.12
+
+This package confirms Production Chunk 14 is included and adds Production Chunk 15.
+
+Added / verified:
+
+- 40_Production_Roadmap/14_AIDRPG_Production_Chunk_14_Threat_Benchmark_Encounter_Logic_and_World_Scaling_Boundaries.txt
+- 40_Production_Roadmap/15_AIDRPG_Production_Chunk_15_World_Bible_Import_Lore_Authority_and_Knowledge_Boundaries.txt
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_15_ALL_IN_ONE.txt
+
+Chunk 15 adds the World Bible / Lore Authority layer:
+
+- WorldBibleRecord / LoreSource / LoreClaim schemas
+- LoreAuthority / LoreConflict handling
+- PlayerKnowledge / KnowledgeBoundary / Discovery / HiddenLore records
+- Story Card lore boundary
+- Context lore boundary
+- Hidden lore filtering
+- Owner-state protection from lore text
+- PC15 ReleaseCheck gates and tests
+
+Core rule: World lore can guide the game, but it cannot bypass the game.

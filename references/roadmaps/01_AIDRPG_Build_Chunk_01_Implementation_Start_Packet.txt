@@ -1,0 +1,1155 @@
+AIDRPG Build Chunk 1 — Implementation Start Packet
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 1 — Implementation Start Packet
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact first coding target and safe build boundary before script code is generated.
+Status: First practical build document.
+This document does not contain final script code.
+
+This packet exists so the first coding attempt does not accidentally build the whole dream system at once.
+
+The first build is not the full AIDRPG final product.
+
+The first build is the stable foundation that future systems depend on.
+
+⸻
+
+1. Official first build name
+
+The first script build is:
+
+AIDRPG Core MVP v0.1
+
+Short name:
+
+Core MVP v0.1
+
+Build phase:
+
+Script v0.1 Phase 1 — Core State + Runtime + Commands Foundation
+
+This is the first safe implementation target.
+
+⸻
+
+2. Purpose of Core MVP v0.1
+
+Core MVP v0.1 exists to create a trustworthy engine foundation.
+
+It must prove that the script can:
+
+* initialize state safely
+* preserve state safely
+* expose honest commands
+* isolate command output from story parsing
+* track runtime hook metadata
+* fail softly instead of crashing
+* keep Context read-only
+* keep Story Cards mirror-only
+* keep generated cards disabled
+* prepare the proposal/validation/reducer architecture without overbuilding it
+* prevent duplicate operation application
+* provide debug/audit surfaces
+
+Core MVP v0.1 is successful only if it is boring, stable, inspectable, and safe.
+
+⸻
+
+3. What Core MVP v0.1 is not
+
+Core MVP v0.1 is not:
+
+* the final game system
+* full combat automation
+* full XP/stat progression automation
+* generated Story Card automation
+* economy
+* crafting
+* investigation
+* reputation/faction simulation
+* domain/labor management
+* absorption/evolution
+* multi-protagonist play
+* large-scale warfare
+* full body compatibility simulation
+* full advanced ability formation
+* full party/summon system
+* full migration resolver for every old save shape
+
+Those are later systems.
+
+They are not allowed in the first build.
+
+⸻
+
+4. Current authority stack
+
+Core MVP v0.1 must follow this authority order.
+
+1. AIDRPG Master Package v1.3 Roadmap Gap Aligned
+2. AIDRPG Build Chunk 1 — Implementation Start Packet
+3. AIDRPG Gap Chunks A–G
+4. AIDRPG Script Build Roadmap v1.1 Gap-Aligned
+5. AIDRPG Gap Closure Addendum v1
+6. AIDRPG Test Spec v1
+7. AIDRPG Formula Appendix v1
+8. AIDRPG MVP Build Spec v1
+9. AIDRPG Developer Spec v1.1 Correction Pass
+10. AIDRPG Developer Spec v1
+11. Repaired Design Bible / Chunk 33 Final Pre-Build Lockdown
+12. Design Bible Chunks 1–32
+
+If there is a conflict:
+
+* Gap Chunks A–G control pre-code safety.
+* MVP Build Spec controls what v0.1 may include.
+* Test Spec controls pass/fail behavior.
+* Formula Appendix controls math only.
+* Design Bible controls long-term intention, not immediate implementation scope.
+
+⸻
+
+5. Required source documents for this build
+
+The developer or coding attempt must have access to these files before coding Core MVP v0.1:
+
+AIDRPG_Developer_Spec_v1.txt
+AIDRPG_Developer_Spec_v1_1_Correction_Pass.txt
+AIDRPG_MVP_Build_Spec_v1.txt
+AIDRPG_Test_Spec_v1.txt
+AIDRPG_Formula_Appendix_v1.txt
+AIDRPG_Script_Build_Roadmap_v1_1_Gap_Aligned.txt
+AIDRPG_Gap_Closure_Addendum_v1.txt
+AIDRPG_Gap_Chunk_A_Old_Fix_Salvage_Matrix.txt
+AIDRPG_Gap_Chunk_B_Runtime_and_Hook_Contract_Spec.txt
+AIDRPG_Gap_Chunk_C_Story_Card_API_Adapter_and_Protected_Singleton_Contract.txt
+AIDRPG_Gap_Chunk_D_Parser_Rulebook_Resolver_and_Name_Trigger_Policy.txt
+AIDRPG_Gap_Chunk_E_Migration_ReleaseCheck_and_Command_Honesty_Spec.txt
+AIDRPG_Gap_Chunk_F_Context_Dirty_Queue_Cleanup_and_Performance_Spec.txt
+AIDRPG_Gap_Chunk_G_Startup_Identity_Drift_and_Natural_Confirmation_Spec.txt
+
+The developer does not need to reread all 33 design-bible chunks before every code change.
+
+The immediate implementation should be controlled by the MVP/gap/roadmap documents.
+
+⸻
+
+6. First build goal in one sentence
+
+Core MVP v0.1 must build the smallest stable truth engine that can initialize, inspect, audit, and protect state without enabling advanced gameplay automation too early.
+
+⸻
+
+7. Core safety doctrine for v0.1
+
+The first build must obey this doctrine:
+
+Input may intend.
+Context may remind.
+Output may propose.
+CanonValidator may approve.
+Reducers may commit.
+OperationLedger may dedupe.
+Cards may mirror.
+Commands may inspect.
+Audits must explain.
+
+This means:
+
+* player input does not automatically succeed
+* context text does not mutate state
+* command output does not mutate state
+* Story Cards do not create canon
+* generated cards are disabled
+* parser hits are not direct state changes
+* all meaningful mutations eventually go through owner reducers
+* duplicate operations must be skipped
+
+⸻
+
+8. Core MVP v0.1 allowed systems
+
+The first implementation may include only these systems.
+
+8.1 State foundation
+
+Allowed:
+
+* root state.aidrpg
+* schema version
+* build version
+* feature flags
+* default state creation
+* missing-field repair
+* integrity warnings
+* basic migration bucket
+* quarantine bucket
+* startup bucket
+* runtime bucket
+* audit buckets
+* cleanup/dirty buckets
+
+8.2 Runtime foundation
+
+Allowed:
+
+* hook metadata
+* current turn tracking
+* input hash
+* output hash
+* last applied output hash
+* command suppression flag
+* fail-soft handler design
+* runtime warnings/errors
+* hook trace
+
+8.3 Command foundation
+
+Allowed commands:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+/startupaudit
+
+These are inspect-only or diagnostic-only in MVP.
+
+8.4 Audit foundation
+
+Allowed:
+
+* last turn summary
+* runtime warnings
+* parser/proposal placeholders
+* validation placeholders
+* duplicate skip logs
+* card audit
+* context audit
+* migration audit
+* cleanup audit
+* state audit
+
+8.5 OperationLedger foundation
+
+Allowed buckets:
+
+permanentKeys
+recentKeys
+rewardKeys
+cardKeys
+sourceUseKeys
+
+The ledger may exist before all systems use it.
+
+8.6 Protected card foundation
+
+Allowed:
+
+* protected card registry definitions
+* protected card dirty targets
+* card audit dry-run planning
+* generated card suppression
+
+Live Story Card writes are not required in the first foundation chunk.
+
+Generated cards are forbidden.
+
+8.7 Context foundation
+
+Allowed:
+
+* context packet structure
+* context audit
+* read-only context doctrine
+* packet priority placeholders
+
+Full context injection can be implemented later in Build Chunk 21.
+
+⸻
+
+9. Core MVP v0.1 forbidden systems
+
+The first build must not implement these systems as active mechanics.
+
+9.1 Forbidden advanced gameplay systems
+
+Do not implement active:
+
+economy
+crafting
+investigation
+reputation/factions
+domain/labor
+absorption/evolution
+multi-protagonist
+large-scale warfare
+group combat matrix
+advanced party/summon system
+advanced body compatibility
+advanced ability formation
+full generated CardSync
+
+9.2 Forbidden automation
+
+Do not implement yet:
+
+* full combat damage engine
+* full challenge XP automation
+* full level-up automation
+* automatic stat training
+* automated economy transactions
+* automated crafting projects
+* generated actor/place/item/quest cards
+* automatic old Story Card import as canon
+* automatic manual override commands
+
+9.3 Forbidden risky shortcuts
+
+Do not:
+
+* parse Story Card text as truth
+* parse Context text as truth
+* parse command output as story
+* let parser directly mutate inventory
+* let parser directly mutate quests
+* let parser directly award XP
+* allow generated cards in MVP
+* allow visible items to become owned without pickup
+* allow candidate abilities to count as stable
+* allow promised rewards to count as paid
+* allow travel intent to count as arrival
+* allow random NPCs to become permanent actors by default
+
+⸻
+
+10. Required default feature flags
+
+Core MVP v0.1 must initialize explicit feature flags.
+
+Recommended defaults:
+
+features: {
+  generatedCardsEnabled: false,
+  protectedCardWritesEnabled: false,
+  cardSyncDryRun: true,
+  cardSyncSafeMode: true,
+  economyEnabled: false,
+  craftingEnabled: false,
+  investigationEnabled: false,
+  reputationEnabled: false,
+  domainEnabled: false,
+  absorptionEnabled: false,
+  multiProtagonistEnabled: false,
+  advancedCombatEnabled: false,
+  manualMutationCommandsEnabled: false
+}
+
+If a disabled system is requested, commands must explain that it is deferred.
+
+⸻
+
+11. Required root state buckets
+
+Core MVP v0.1 must initialize these root buckets under state.aidrpg.
+
+meta
+features
+runtime
+startup
+player
+body
+progression
+inventory
+abilities
+quests
+actors
+places
+time
+cards
+operationLedger
+audits
+migration
+quarantine
+dirty
+cleanup
+
+A missing bucket must be repaired without erasing valid existing state.
+
+⸻
+
+12. Required metadata fields
+
+Recommended:
+
+meta: {
+  projectName: 'AIDRPG',
+  buildName: 'AIDRPG Core MVP v0.1',
+  schemaVersion: 1,
+  buildStage: 'core_mvp_v0_1_foundation',
+  packageAuthority: 'v1.3 roadmap gap aligned',
+  createdBy: 'AIDRPG script',
+  lastUpdatedTurn: 0
+}
+
+⸻
+
+13. Required player defaults
+
+For a fresh state, use safe defaults.
+
+player: {
+  id: 'player',
+  name: 'Unnamed Player',
+  raceSpecies: 'human',
+  age: 'unknown',
+  appearance: 'unspecified',
+  bodyType: 'humanoid',
+  buildIdentity: 'balanced',
+  specialization: 'none',
+  titles: []
+}
+
+These are defaults, not final character design.
+
+Startup import may replace them once before setup lock.
+
+⸻
+
+14. Required body defaults
+
+body: {
+  hp: { current: 100, max: 100 },
+  mp: { current: 100, max: 100 },
+  ep: { current: 100, max: 100 },
+  injuries: [],
+  conditions: [],
+  fatigue: 'normal',
+  deathBoundary: 'alive'
+}
+
+No advanced body compatibility yet.
+
+⸻
+
+15. Required progression defaults
+
+progression: {
+  level: 1,
+  currentXP: 0,
+  totalXP: 0,
+  xpToNext: 125,
+  stats: {
+    ATK: 10,
+    DEF: 10,
+    SPD: 10,
+    INT: 10,
+    LCK: 10
+  },
+  formulaStatus: 'formula_appendix_v1_available_not_fully_automated'
+}
+
+Full progression automation is deferred.
+
+Formula Appendix exists for later automation.
+
+⸻
+
+16. Required inventory defaults
+
+inventory: {
+  items: [],
+  equipped: [],
+  currency: {},
+  sceneItems: [],
+  accessStates: [
+    'visible',
+    'available_loot',
+    'held',
+    'equipped',
+    'stored',
+    'npc_custody',
+    'inaccessible',
+    'lost',
+    'sold',
+    'destroyed',
+    'consumed'
+  ]
+}
+
+Important MVP rule:
+
+visible != owned
+available_loot != owned
+
+⸻
+
+17. Required ability defaults
+
+abilities: {
+  records: [],
+  statuses: [
+    'unknown',
+    'hint',
+    'candidate',
+    'unstable',
+    'stable',
+    'sealed',
+    'unavailable'
+  ]
+}
+
+Important MVP rule:
+
+candidate != stable
+
+⸻
+
+18. Required quest defaults
+
+quests: {
+  records: [],
+  statuses: [
+    'rumored',
+    'offered',
+    'active',
+    'blocked',
+    'ready_to_turn_in',
+    'completed',
+    'rewarded',
+    'failed',
+    'abandoned',
+    'archived'
+  ],
+  rewardStatuses: [
+    'none',
+    'promised',
+    'ready',
+    'paid',
+    'disputed',
+    'denied'
+  ]
+}
+
+Important MVP rule:
+
+promised reward != paid reward
+
+⸻
+
+19. Required actor defaults
+
+actors: {
+  records: [],
+  sceneActors: [],
+  presenceStates: [
+    'present',
+    'nearby',
+    'elsewhere',
+    'unknown',
+    'absent',
+    'dead',
+    'captured'
+  ]
+}
+
+Important MVP rule:
+
+absent actors cannot act in the current scene
+scene-only actors do not become permanent by default
+
+⸻
+
+20. Required place/time defaults
+
+places: {
+  currentLocation: {
+    placeId: 'unknown',
+    name: 'Unknown Location',
+    confidence: 'unknown'
+  },
+  currentScene: {
+    sceneId: 'initial_scene',
+    summary: 'No scene established yet.',
+    presentActors: [],
+    visibleItems: [],
+    hazards: [],
+    exits: []
+  },
+  travelIntent: null
+}
+time: {
+  text: 'unknown',
+  turn: 0,
+  lastAdvance: null,
+  deadlines: []
+}
+
+Important MVP rule:
+
+heading toward a place != arriving there
+
+⸻
+
+21. Required card defaults
+
+cards: {
+  registry: [],
+  protectedCards: [
+    'protected:player_sheet',
+    'protected:body_status',
+    'protected:abilities',
+    'protected:inventory_equipment',
+    'protected:quest_log',
+    'protected:social_memory',
+    'protected:current_location'
+  ],
+  dirtyCards: [],
+  tombstones: [],
+  duplicateWarnings: [],
+  api: {
+    capabilitiesChecked: false,
+    available: false
+  },
+  sync: {
+    dryRun: true,
+    safeMode: true,
+    liveWritesEnabled: false,
+    protectedWritesEnabled: false,
+    generatedCardsEnabled: false,
+    maxProtectedUpdatesPerTurn: 3,
+    maxGeneratedCreatesPerTurn: 0,
+    maxGeneratedUpdatesPerTurn: 0
+  },
+  lastCardAudit: []
+}
+
+Important MVP rule:
+
+Generated cards are disabled.
+Story Card text is not canon.
+
+⸻
+
+22. Required OperationLedger defaults
+
+operationLedger: {
+  permanentKeys: [],
+  recentKeys: [],
+  rewardKeys: [],
+  cardKeys: [],
+  sourceUseKeys: [],
+  maxRecentKeys: 250
+}
+
+Important MVP rule:
+
+Duplicate operation keys skip repeated effects.
+
+⸻
+
+23. Required audit defaults
+
+audits: {
+  lastTurnSummary: null,
+  recentProposals: [],
+  recentValidationResults: [],
+  debugMessages: [],
+  runtimeWarnings: [],
+  cardAudit: [],
+  contextAudit: [],
+  cleanupAudit: [],
+  migrationAudit: [],
+  releaseCheck: null
+}
+
+Audit arrays must be capped.
+
+⸻
+
+24. Required migration/quarantine defaults
+
+migration: {
+  currentMigrationVersion: 'v0_to_v1_pending_or_clean',
+  lastMigrationTurn: 0,
+  migrationStatus: 'none',
+  imported: [],
+  quarantined: [],
+  ignored: [],
+  repaired: [],
+  neutralizedCards: [],
+  duplicateCards: [],
+  warnings: [],
+  errors: [],
+  migrationOperationKeys: []
+}
+quarantine: {
+  records: [],
+  unresolvedCount: 0
+}
+
+Important MVP rule:
+
+Unsafe old data is quarantined, not guessed into canon.
+
+⸻
+
+25. Required dirty/cleanup defaults
+
+dirty: {
+  targets: [],
+  maxDirtyTargets: 100
+}
+cleanup: {
+  lastCleanupTurn: 0,
+  nextDeepCleanupTurn: 25,
+  warnings: [],
+  errors: []
+}
+
+Important MVP rule:
+
+Cleanup may not delete important truth.
+
+⸻
+
+26. First modules to build
+
+Core MVP v0.1 should begin with these internal modules/sections.
+
+00 Constants and Version
+01 Utility Helpers
+02 StateManager
+03 RuntimeHookContract
+04 CommandRouter
+05 RenderCommands
+06 AuditLogger
+07 OperationLedger
+08 ReleaseCheckLite
+09 Hook Entry Points
+
+Do not start with combat, cards, crafting, economy, or generated cards.
+
+⸻
+
+27. Module responsibilities for first build
+
+27.1 Constants and Version
+
+Defines:
+
+* build name
+* schema version
+* feature flags
+* command names
+* protected card keys
+* caps/budgets
+
+27.2 Utility Helpers
+
+Defines:
+
+* safe object checks
+* array caps
+* stable key normalization
+* hash helper
+* text preview helper
+* enum validation
+* fail-soft helper
+
+27.3 StateManager
+
+Defines:
+
+* initialize root state
+* ensure missing buckets
+* repair safe defaults
+* migrate minimal old shape
+* preserve valid state
+* log integrity warnings
+
+27.4 RuntimeHookContract
+
+Defines:
+
+* input/context/output hook wrappers
+* current hook metadata
+* turn handling
+* hash tracking
+* command suppression
+* fail-soft behavior
+
+27.5 CommandRouter
+
+Defines:
+
+* slash command detection
+* command alias routing
+* disabled command messages
+* inspect-only policy
+* command output suppression
+
+27.6 RenderCommands
+
+Defines outputs for:
+
+* /help
+* /version
+* /sheet
+* /status
+* /inventory
+* /abilities
+* /quests
+* /actors
+* /location
+* /time
+* /debuglast
+* /cardaudit
+* /contextaudit
+* /stateaudit
+* /ledger
+* /dirty
+* /migration
+* /quarantine
+* /releasecheck
+* /startupaudit
+
+27.7 AuditLogger
+
+Defines:
+
+* append debug message
+* append runtime warning
+* append card audit
+* append context audit
+* append cleanup audit
+* cap arrays
+
+27.8 OperationLedger
+
+Defines:
+
+* hasKey
+* addKey
+* addRecentKey
+* addPermanentKey
+* addRewardKey
+* addCardKey
+* compactRecentKeys
+
+27.9 ReleaseCheckLite
+
+Defines initial release checks:
+
+* root buckets exist
+* feature flags safe
+* generated cards disabled
+* OperationLedger exists
+* command output suppression exists
+* context no-write declared
+* deferred systems disabled
+
+27.10 Hook Entry Points
+
+Defines platform-facing hook wrappers.
+
+They must return safe valid shapes.
+
+⸻
+
+28. First build parser/proposal boundary
+
+Core MVP v0.1 may include parser/proposal placeholders.
+
+It should not yet implement the full parser rulebook.
+
+Allowed placeholder:
+
+EventScannerLite exists as inert shell or debug-only placeholder.
+ProposalBuilder exists as inert shell or debug-only placeholder.
+CanonValidator exists as inert shell or minimal always-safe validator.
+ReducerRegistry exists as inert shell.
+
+The placeholders must not falsely claim full parsing works.
+
+If included, /releasecheck should say:
+
+Parser pipeline foundation present; full event scanning not active yet.
+
+⸻
+
+29. First build card boundary
+
+Core MVP v0.1 may include:
+
+* protected card key list
+* card registry defaults
+* dry-run card audit
+* generated card disabled flag
+* /cardaudit
+
+Core MVP v0.1 must not include:
+
+* generated card creation
+* live Story Card writes without adapter tests
+* automatic old card import as canon
+* broad trigger generation
+
+If CardSync is only dry-run, /cardaudit must say so.
+
+⸻
+
+30. First build context boundary
+
+Core MVP v0.1 may include:
+
+* ContextBuilderLite placeholder
+* read-only context doctrine
+* context audit placeholder
+* no-write check in releasecheck
+
+Core MVP v0.1 should not yet require full smart context packet generation unless the build chunk specifically reaches ContextBuilderLite later.
+
+If context is placeholder, /contextaudit must say:
+
+Context packet system not fully active yet; read-only guard present.
+
+⸻
+
+31. First build migration boundary
+
+Core MVP v0.1 may include:
+
+* migration bucket
+* quarantine bucket
+* safe missing-field repairs
+* /migration
+* /quarantine
+* basic old-shape warnings
+
+Core MVP v0.1 should not attempt aggressive old-save/card migration yet.
+
+If old card migration is not fully implemented, /migration must say:
+
+Legacy migration shell present; full polluted-save repair requires migration build step.
+
+⸻
+
+32. Required command honesty in v0.1
+
+Every command must be honest about partial systems.
+
+Examples:
+
+/help
+
+Must say:
+
+AIDRPG Core MVP v0.1 is foundation-focused.
+Generated cards, economy, crafting, investigation, domain, absorption, and advanced combat are disabled.
+
+/cardaudit
+
+Must say whether CardSync is:
+
+dry-run
+safe mode
+live protected writes disabled
+generated cards disabled
+
+/releasecheck
+
+Must not say PASS if required safety buckets are missing.
+
+Disabled commands
+
+Must not crash.
+
+Example:
+
+/craft is disabled in MVP. Crafting requires the Crafting Mini-Spec and later build phase.
+
+⸻
+
+33. Required first tests
+
+Core MVP v0.1 must pass these first tests before expanding.
+
+BC1-001 — Fresh state initializes
+
+Given missing state.aidrpg, run script.
+
+Expected:
+
+* root state created
+* required buckets exist
+* generatedCardsEnabled false
+* no crash
+
+BC1-002 — Missing bucket repairs safely
+
+Given state with missing inventory bucket but valid player data.
+
+Expected:
+
+* inventory bucket added
+* player data preserved
+* repair warning logged
+
+BC1-003 — /help is honest
+
+Run:
+
+/help
+
+Expected:
+
+* active commands listed
+* disabled systems listed
+* no false claims about generated cards/economy/crafting
+
+BC1-004 — Commands do not mutate gameplay
+
+Run:
+
+/inventory
+/quests
+/abilities
+
+Expected:
+
+* output displays state
+* no new item/quest/ability created
+
+BC1-005 — Command output suppression exists
+
+Run /inventory displaying an item.
+
+Expected:
+
+* item does not duplicate from command output
+* suppression flag/audit exists
+
+BC1-006 — Runtime fail-soft exists
+
+Simulate safe internal error.
+
+Expected:
+
+* valid return shape
+* runtime warning/error logged
+* state not erased
+
+BC1-007 — Generated cards disabled
+
+Check state and /cardaudit.
+
+Expected:
+
+* generatedCardsEnabled false
+* generated creates per turn 0
+* card audit says disabled
+
+BC1-008 — OperationLedger exists
+
+Check /ledger or /releasecheck.
+
+Expected:
+
+* permanentKeys, recentKeys, rewardKeys, cardKeys, sourceUseKeys exist
+
+BC1-009 — /releasecheck catches unsafe flag
+
+Set generatedCardsEnabled true in test state.
+
+Expected:
+
+* /releasecheck FAIL
+
+BC1-010 — Context declared read-only
+
+Run Context hook or /contextaudit placeholder.
+
+Expected:
+
+* no gameplay mutation
+* audit says read-only guard present
+
+⸻
+
+34. First blocker failures
+
+Core MVP v0.1 cannot be considered ready if any of these are true:
+
+* root state does not initialize
+* commands crash
+* /help lies about active systems
+* generatedCardsEnabled is true
+* command output can create items/quests/abilities
+* Story Cards are treated as canon
+* Context can mutate gameplay state
+* OperationLedger buckets are missing
+* /releasecheck missing or dishonest
+* missing-field repair erases valid state
+* deferred systems are active
+
+⸻
+
+35. What Build Chunk 2 should do next
+
+After this Implementation Start Packet, the next build document is:
+
+Build Chunk 2 — File/Module Layout Plan
+
+Build Chunk 2 should define the exact single-file section order and internal module layout before code generation.
+
+It should answer:
+
+* what sections appear in the script
+* what order they appear in
+* what each section owns
+* what section cannot call what
+* how future chunks append safely
+* how line budgets are respected
+
+Do not write final script code until the layout is locked.
+
+⸻
+
+36. Final Build Chunk 1 doctrine
+
+This packet begins implementation safely.
+
+The first build must not chase every exciting feature.
+
+The first build must make the engine hard to corrupt.
+
+Final rule:
+
+Build the stable truth shell first.
+Do not build the whole game at once.
+Do not activate deferred systems.
+Do not let old bugs return through shortcuts.
+Make commands honest.
+Make state safe.
+Make runtime fail softly.
+Make duplicates impossible to apply silently.
+
+Core MVP v0.1 begins here.

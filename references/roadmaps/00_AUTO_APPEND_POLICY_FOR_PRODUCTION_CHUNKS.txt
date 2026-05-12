@@ -1,0 +1,16 @@
+# Auto-Append Policy for Production Chunks
+
+After each new AIDRPG Production Chunk is created, append it into this `40_Production_Roadmap/` folder, regenerate the all-in-one production reference, add a package update note, refresh manifests, and return the newest versioned zip.
+
+Current package version: v1.4.8
+Current included production chunks: 01–11
+Next planned chunk: Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver
+
+Update v1.4.10: Production Chunk 13 was appended automatically. Continue appending every new Production Chunk to 40_Production_Roadmap and regenerate the latest 99_ALL_IN_ONE file plus root manifests.
+
+Update v1.4.11: Production Chunk 14 was appended automatically. Continue appending every new Production Chunk to 40_Production_Roadmap and regenerate the latest 99_ALL_IN_ONE file plus root manifests.
+
+
+## v1.4.12 automatic append confirmation
+
+Production Chunk 14 and Production Chunk 15 are included in this package. Going forward, each production chunk should be added directly under `40_Production_Roadmap/`, and a fresh all-in-one roadmap plus manifest should be regenerated with the new package version.

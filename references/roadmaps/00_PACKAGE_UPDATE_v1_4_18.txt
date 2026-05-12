@@ -1,0 +1,21 @@
+# AIDRPG Final Build Planning Package Update v1.4.18
+
+Updated: 2026-05-03
+
+This package adds Production Chunk 21 and rebuilds the combined production-roadmap file.
+
+Added:
+- 40_Production_Roadmap/21_AIDRPG_Production_Chunk_21_Romance_Loyalty_Companions_Party_State_and_Consent_Boundary_Safety.txt
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_21_ALL_IN_ONE.txt
+- 00_FILE_MANIFEST_v1_4_18.csv
+- 00_FILE_MANIFEST_v1_4_18.json
+
+Verification targets:
+- Production Chunks 01 through 21 present
+- Chunk 21 non-empty and named correctly
+- All-in-one file rebuilt through Chunk 21
+- Manifest updated for v1.4.18
+- Zip opens cleanly
+
+Next planned chunk:
+- Production Chunk 22 — Pets, Mounts, Summons, Vehicles, and Controlled-Entity Boundaries

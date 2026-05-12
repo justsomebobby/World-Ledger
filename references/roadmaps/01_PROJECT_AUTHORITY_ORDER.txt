@@ -1,0 +1,44 @@
+AIDRPG Current Authority Model — Corrected v1.1
+
+Use this model when documents disagree. Authority is divided by purpose so one document does not accidentally override another outside its lane.
+
+GLOBAL BUILD / IMPLEMENTATION SCOPE AUTHORITY
+
+1. AIDRPG MVP Build Spec v1
+   - Authority for what the first script target builds, disables, defers, and requires.
+
+2. AIDRPG Developer Spec v1.1 Correction Pass
+   - Authority for corrected implementation boundaries and safety rules.
+
+3. AIDRPG Developer Spec v1
+   - Authority for the overall architecture blueprint.
+
+4. AIDRPG Design Bible Chunk 33: Final Pre-Build Lockdown and Implementation Contract
+   - Authority for repaired design-bible-level build constraints.
+
+5. AIDRPG Design Bible Chunks 1–32
+   - Authority for the full gameplay design vision.
+
+TESTING AUTHORITY
+
+1. AIDRPG Test Spec v1
+   - Authority for required MVP tests, pass/fail behavior, and blocker failures.
+
+2. AIDRPG MVP Build Spec v1
+   - Authority for which features should be tested as active MVP behavior.
+
+FORMULA / MATH AUTHORITY
+
+1. AIDRPG Formula Appendix v1
+   - Authority for formulas, scaling, XP, resources, damage severity, ability thresholds, and math defaults.
+
+2. AIDRPG MVP Build Spec v1
+   - Authority for whether those formulas are active in the MVP build phase.
+
+RULES
+
+- If the question is “Should this be built in MVP?”, follow MVP Build Spec v1.
+- If the question is “What must pass?”, follow Test Spec v1.
+- If the question is “What is the math formula?”, follow Formula Appendix v1.
+- If a later/higher document narrows or disables something described by an earlier/lower document, follow the later/higher document within that authority lane.
+- Formula Appendix v1 does not enable systems that MVP Build Spec v1 disables. It only supplies math once the appropriate build phase reaches those systems.

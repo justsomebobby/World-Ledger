@@ -1,0 +1,40 @@
+# AIDRPG Project Authority Order v1.2
+
+Use this authority order for the next build phase.
+
+## Build-safety and old-fix preservation authority
+1. 03_Roadmap_and_Pre_Code_Gap_Closure/01_AIDRPG_Gap_Closure_Addendum_v1.txt
+2. 03_Roadmap_and_Pre_Code_Gap_Closure/02_AIDRPG_Gap_Chunk_A_Old_Fix_Salvage_Matrix.txt
+3. 03_Roadmap_and_Pre_Code_Gap_Closure/03_AIDRPG_Gap_Chunk_B_Runtime_and_Hook_Contract_Spec.txt
+4. 03_Roadmap_and_Pre_Code_Gap_Closure/04_AIDRPG_Gap_Chunk_C_Story_Card_API_Adapter_and_Protected_Singleton_Contract.txt
+5. 03_Roadmap_and_Pre_Code_Gap_Closure/05_AIDRPG_Gap_Chunk_D_Parser_Rulebook_Resolver_and_Name_Trigger_Policy.txt
+6. 03_Roadmap_and_Pre_Code_Gap_Closure/06_AIDRPG_Gap_Chunk_E_Migration_ReleaseCheck_and_Command_Honesty_Spec.txt
+7. 03_Roadmap_and_Pre_Code_Gap_Closure/07_AIDRPG_Gap_Chunk_F_Context_Dirty_Queue_Cleanup_and_Performance_Spec.txt
+8. 03_Roadmap_and_Pre_Code_Gap_Closure/08_AIDRPG_Gap_Chunk_G_Startup_Identity_Drift_and_Natural_Confirmation_Spec.txt
+
+## Build sequence authority
+9. 03_Roadmap_and_Pre_Code_Gap_Closure/00_AIDRPG_Script_Build_Roadmap_v1.txt
+
+## Testing authority
+10. 02_Developer_Build_Test_and_Formula_Specs/04_AIDRPG_Test_Spec_v1.txt
+
+## Formula/math authority
+11. 02_Developer_Build_Test_and_Formula_Specs/05_AIDRPG_Formula_Appendix_v1.txt
+
+## MVP scope authority
+12. 02_Developer_Build_Test_and_Formula_Specs/03_AIDRPG_MVP_Build_Spec_v1.txt
+13. 02_Developer_Build_Test_and_Formula_Specs/02_AIDRPG_Developer_Spec_v1_1_Correction_Pass.txt
+14. 02_Developer_Build_Test_and_Formula_Specs/01_AIDRPG_Developer_Spec_v1.txt
+
+## Design foundation authority
+15. 01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_33_Final_Pre_Build_Lockdown_and_Implementation_Contract.txt
+16. 01_Repaired_Design_Bible_33_Chunks/AIDRPG_REPAIR_SUMMARY_AND_AUTHORITY_ORDER.txt
+17. 01_Repaired_Design_Bible_33_Chunks/AIDRPG_REPAIRED_MASTER_INDEX.txt
+18. 01_Repaired_Design_Bible_33_Chunks/AIDRPG_Design_Bible_Chunk_01_Core_Play_Philosophy_and_Canon_Law.txt through Chunk 32
+
+Important interpretation:
+- Gap Chunks A–G are pre-code safety requirements.
+- The roadmap controls chunk order.
+- The MVP Build Spec controls what is built first.
+- The Formula Appendix controls math.
+- Generated cards, economy, crafting, investigation, domain/labor, absorption/evolution, party/scale, and advanced combat remain deferred until their mini-specs exist.

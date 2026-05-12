@@ -1,0 +1,8 @@
+# Package Update v1.4.8
+
+Added Production Chunk 11 — Stats, Derived Values, Conditions, and Invariant Checker.
+
+This chunk locks the stat/invariant safety layer after the progression baseline and before combat. It covers base stats, derived values, modifiers, condition modifier bridges, resource formula safety, InvariantChecker behavior, cleanup protections, ReleaseCheck gates, and PC11 regression tests.
+
+Production roadmap now includes chunks 01–11.
+Next planned chunk: Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver.

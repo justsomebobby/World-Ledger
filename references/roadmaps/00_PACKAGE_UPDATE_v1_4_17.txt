@@ -1,0 +1,29 @@
+# AIDRPG Final Build Planning Package v1.4.17 Update
+
+Updated: 2026-05-03
+
+This package adds Production Chunk 20 and rebuilds the production roadmap all-in-one file through chunks 01–20.
+
+Added:
+- 40_Production_Roadmap/20_AIDRPG_Production_Chunk_20_Factions_Reputation_Evidence_Law_Crime_and_Consequence_Boundaries.txt
+- 40_Production_Roadmap/99_AIDRPG_Production_Roadmap_and_Chunks_01_to_20_ALL_IN_ONE.txt
+- 00_FILE_MANIFEST_v1_4_17.csv
+- 00_FILE_MANIFEST_v1_4_17.json
+
+Verification performed during packaging:
+- Source package opened cleanly.
+- Production Chunks 01–19 were present before update.
+- Production Chunk 20 was added under 40_Production_Roadmap/.
+- Chunk 20 is non-empty.
+- All-in-one roadmap was rebuilt through Chunk 20.
+- New manifest files were generated.
+
+Chunk 20 focus:
+- Factions
+- Reputation evidence
+- Public/private knowledge
+- Jurisdiction and law
+- Crime evidence/status boundaries
+- Witness reports
+- Bounties, fines, custody shells
+- No command/context/card social or legal canon

@@ -1,0 +1,7 @@
+# Package Update v1.4.5
+
+Added Production Chunk 08 — Actor Presence, Social Memory, Witnessing, and Relationship Depth.
+
+This package now contains the production roadmap and Production Chunks 01–08 in 40_Production_Roadmap/.
+
+Production Chunk 08 focuses on actor presence, scene-only actors, absent/reference-only safety, witness memory, direct-informed memory, relationship evidence, duplicate actor suppression, and deferred reputation/faction/party boundaries.
