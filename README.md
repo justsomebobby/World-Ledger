@@ -1,1 +1,1 @@
-[Full new script with R3G implemented would go here]
+[Full script with R3K implemented]
