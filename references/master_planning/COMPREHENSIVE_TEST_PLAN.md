@@ -1,21 +1,16 @@
-## WorldLedger Comprehensive Test Plan
+# Comprehensive Test Plan for WorldLedger
 
-This is the full layered gate test plan for all R3 chunks.
+This document formalizes the 15-point layered test gate defined by the project owner.
 
-1. Source integrity tests
-2. Architecture / anti-clutter tests
-3. Schema and migration tests
-4. Pipeline source-guard tests
-5. Chunk-specific targeted probes
-6. Hostile capability matrix
-7. Progression / capability consistency tests
-8. Regression tests from old failures
-9. Story-corpus replay-style tests
-10. Story selector tests
-11. False-positive / usefulness tests
-12. Downstream contamination tests
-13. Command smoke tests
-14. Manual source review
-15. Handoff rule
+## 1. Source Integrity Tests
+- File size < 16MB
+- Valid JS syntax, single IIFE
+- One WL.onInput, one onContext, one onOutput
+- No forbidden APIs or wrappers
 
-Full details in the pasted text from user.
+## 2. Architecture / Anti-Clutter Tests
+- No PostParserCleanup, LateFix, etc.
+- No duplicate authority
+- Strict pipeline only
+
+(Full 15 points follow the exact text the user provided in the last message)
