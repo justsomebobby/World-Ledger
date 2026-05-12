@@ -1,0 +1,2082 @@
+AIDRPG Design Bible — Chunk 12: Investigation, Clues, Evidence, Witnesses, and Reputation
+
+1. Purpose of this chunk
+
+Chunk 12 defines how AIDRPG handles truth, suspicion, proof, rumors, witnesses, social memory, public knowledge, reputation, titles, and solved cases.
+
+This chunk answers:
+
+What is an investigation?
+
+What is a case?
+
+What is a clue?
+
+What is evidence?
+
+What is the difference between a lead, clue, evidence, proof, rumor, and witness knowledge?
+
+When is a case solved?
+
+How does the system avoid treating rumors as truth?
+
+How does reputation change?
+
+How do private witnesses differ from public reputation?
+
+How do titles work?
+
+How does AIDRPG prevent false accusations, false case completion, and reputation drift?
+
+The central rule is:
+
+Investigation and reputation must separate what happened, what is believed, what is known, what is proven, and who knows it.
+
+A rumor is not proof.
+
+A clue is not proof.
+
+A witness claim is not always truth.
+
+A confession may be evidence, but only if directly validated.
+
+Public reputation only changes when knowledge becomes public or socially recognized.
+
+⸻
+
+2. Core philosophy
+
+Investigation should make mystery gameplay feel coherent.
+
+The player should be able to:
+
+* notice clues
+* gather evidence
+* interview witnesses
+* track suspects
+* expose contradictions
+* solve cases
+* wrongly suspect someone
+* prove or disprove claims
+* preserve evidence items
+* affect reputation through public discoveries
+* gain titles or legal consequences
+* archive solved cases
+
+But the system must avoid dangerous shortcuts.
+
+It should not:
+
+* solve a case from one vague clue
+* treat rumor as truth
+* treat suspicion as evidence
+* make every NPC statement true
+* make every clue public knowledge
+* change reputation from private information
+* create titles from casual praise
+* convict suspects without proof
+* create evidence cards for every minor detail
+* complete quests from unverified claims
+
+Investigation should support uncertainty.
+
+That means the system needs levels of confidence instead of only true/false.
+
+⸻
+
+3. Ownership boundaries
+
+Investigation and reputation are related, but they are not the same system.
+
+InvestigationReducer owns
+
+* cases
+* leads
+* clues
+* evidence
+* suspects
+* contradictions
+* witness statements as case material
+* evidence confidence
+* case confidence
+* solved/unsolved state
+* solved-case archive
+* case links to actors, items, places, quests, contracts, and reputation
+
+ReputationReducer owns
+
+* public reputation
+* local reputation
+* faction reputation
+* rumors
+* private witness knowledge
+* pending reports
+* public deeds
+* titles
+* legal/social status
+* known accusations
+* social consequences
+
+ActorReducer owns
+
+* actor identity
+* actor relationships
+* actor knowledge if tied to specific actor memory
+* suspect actor links
+* witness actor links
+* culprit actor links if confirmed
+
+InventoryReducer owns
+
+* evidence items as physical items
+* custody of evidence
+* ownership/access of evidence
+* item condition
+
+QuestReducer owns
+
+* investigation-related quest objectives
+* rewards
+* quest completion
+
+TimeReducer owns
+
+* deadlines
+* time-sensitive cases
+* witness availability over time
+* execution/trial deadlines
+* rumor spread over time if used
+
+CardSync owns
+
+* case cards
+* generated important evidence/item cards
+* reputation summary cards
+* actor cards updated from confirmed investigation/reputation state
+
+The rule:
+
+Investigation decides what is known or proven inside a case.
+
+Reputation decides what people believe or say publicly.
+
+Inventory owns evidence objects.
+
+Quest owns quest objective state.
+
+⸻
+
+4. Core distinction: truth versus knowledge
+
+AIDRPG must separate four things.
+
+Actual canon truth
+
+What really happened in state, if known.
+
+Example:
+
+Mara stole the ring.
+
+This is only canon if validated by strong events or scenario setup.
+
+Case knowledge
+
+What the player or case file has discovered.
+
+Example:
+
+A silver thread matching Mara’s cloak was found.
+
+This may point toward Mara, but does not prove she stole the ring alone.
+
+Witness knowledge
+
+What a specific actor saw, heard, believes, or claims.
+
+Example:
+
+Harlan says he saw Mara near the window.
+
+This is Harlan’s statement. It may be true, mistaken, or false.
+
+Public reputation
+
+What the public, a local area, or faction believes about the player or someone else.
+
+Example:
+
+The village believes the player exposed the thief.
+
+This affects social standing whether or not everyone knows the full truth.
+
+These layers must not collapse into each other.
+
+⸻
+
+5. Investigation terms
+
+5.1 Lead
+
+A lead is a possible direction to investigate.
+
+Examples:
+
+* Mara was seen near the window
+* the old chapel may be connected
+* someone bought poison yesterday
+* muddy footprints lead north
+* a rumor says the mayor is hiding something
+
+Leads are not evidence.
+
+Leads point the player somewhere.
+
+A lead can become a clue or evidence after validation.
+
+5.2 Clue
+
+A clue is an observed fact that may matter.
+
+Examples:
+
+* muddy footprints under the window
+* torn blue cloth on a nail
+* faint smell of bitter almond
+* broken lock
+* ash on the windowsill
+* missing ledger page
+* strange rune carved into doorframe
+
+Clues are stronger than leads but may still be ambiguous.
+
+A clue says:
+
+Something relevant was found.
+
+It does not necessarily prove who did it.
+
+5.3 Evidence
+
+Evidence is a clue, item, statement, or fact that supports or disproves a claim.
+
+Examples:
+
+* bloodstained dagger matching the wound
+* signed confession
+* poison vial with merchant mark
+* footprint matching suspect’s boots
+* witness testimony placing suspect at scene
+* ledger showing payment
+* recovered stolen ring in suspect’s bag
+
+Evidence should have a confidence level.
+
+Evidence can be weak, moderate, strong, confirmed, or disproven.
+
+5.4 Proof
+
+Proof is evidence strong enough to support a conclusion.
+
+Proof may require one major confirmed piece or several supporting pieces.
+
+Example:
+
+Mara confesses directly while holding the stolen ring.
+
+Example:
+
+The stolen ring is found in Harlan’s locked chest, and Harlan’s boot matches the muddy print, and a witness saw him enter the room.
+
+Proof depends on case rules and story context.
+
+5.5 Suspect
+
+A suspect is an actor who might be responsible.
+
+A suspect is not guilty by default.
+
+Suspect states:
+
+* possible
+* likely
+* unlikely
+* cleared
+* accused
+* confirmed culprit
+* false accusation
+* unknown
+
+5.6 Culprit
+
+A culprit is the confirmed responsible actor or force.
+
+A culprit should only be assigned with strong evidence or direct validated truth.
+
+Do not set culprit from rumor alone.
+
+5.7 Contradiction
+
+A contradiction is evidence or statement that conflicts with another claim.
+
+Examples:
+
+* Harlan says he was at the tavern, but the tavern was closed
+* Mara claims she never entered the room, but her cloak thread is found there
+* the ring was stolen at midnight, but suspect was seen elsewhere
+* poison killed the victim, but the suspect only had a blunt weapon
+
+Contradictions are valuable case progress.
+
+They can weaken suspects, expose lies, or create new leads.
+
+5.8 Case
+
+A case is the structured investigation container.
+
+Examples:
+
+* missing ring case
+* poisoned merchant case
+* haunted mine disappearances
+* guild spy case
+* arson at the chapel
+* murder at Greyford Inn
+
+A case organizes leads, clues, evidence, suspects, witnesses, contradictions, and solution state.
+
+⸻
+
+6. Case model
+
+A case should track:
+
+* case ID
+* title
+* status
+* core question
+* opened by whom
+* linked quest if any
+* linked actors
+* linked places
+* linked items
+* linked witnesses
+* linked suspects
+* leads
+* clues
+* evidence
+* contradictions
+* theory notes
+* confidence score
+* solved conclusion
+* confirmed culprit if any
+* false leads
+* disproven evidence
+* deadline if any
+* reward link if any
+* public report state
+* archive summary
+* source/evidence history
+* last updated turn
+* card eligibility
+
+Case statuses:
+
+* possible
+* open
+* active
+* stalled
+* partially solved
+* ready to conclude
+* solved
+* falsely solved
+* failed
+* abandoned
+* archived
+
+⸻
+
+7. Case lifecycle
+
+7.1 Possible case
+
+A possible case exists when something seems suspicious but no formal investigation has begun.
+
+Example:
+
+“Mara’s ring is missing.”
+
+This may create a possible case or quest hook.
+
+7.2 Case opened
+
+A case opens when the player starts investigating or the story clearly frames it as an investigation.
+
+Example:
+
+“You decide to investigate who stole Mara’s ring.”
+
+Status:
+
+* open
+
+7.3 Leads gathered
+
+The player finds directions to investigate.
+
+Example:
+
+“Harlan says he saw someone near the window.”
+
+Lead added.
+
+7.4 Clues discovered
+
+The player finds observed facts.
+
+Example:
+
+“You find muddy footprints below the window.”
+
+Clue added.
+
+7.5 Evidence established
+
+A clue becomes evidence when it supports or disproves a claim.
+
+Example:
+
+“The muddy footprint matches Harlan’s boots.”
+
+Evidence added.
+
+7.6 Suspects tracked
+
+Actors become possible suspects.
+
+Example:
+
+Mara, Harlan, and the stranger become suspects for different reasons.
+
+Suspect status should be evidence-based.
+
+7.7 Contradictions found
+
+Conflicting statements or evidence are recorded.
+
+Example:
+
+Harlan said he never left the tavern, but the tavern keeper says he left before midnight.
+
+7.8 Theory formed
+
+The player or system may summarize a possible theory.
+
+Theories are not canon.
+
+Example:
+
+“Harlan may have planted the thread to frame Mara.”
+
+Theory should be marked as theory, not fact.
+
+7.9 Ready to conclude
+
+The case has enough strong evidence to support a conclusion.
+
+This does not necessarily mean the conclusion has been reported or accepted publicly.
+
+7.10 Solved
+
+A case is solved when the responsible truth is confirmed enough.
+
+This may require:
+
+* direct confession
+* direct witnessed act
+* strong evidence chain
+* recovered item with clear link
+* contradiction resolved
+* culprit identified
+* objective met
+
+7.11 Reported / publicly resolved
+
+A solved case may be reported to an authority, NPC, faction, or public.
+
+This is when reputation or quest completion may trigger.
+
+7.12 Archived
+
+Solved, failed, abandoned, or outdated cases move to archive.
+
+Archive preserves summary and consequences.
+
+⸻
+
+8. Evidence confidence levels
+
+Evidence should have confidence levels.
+
+8.1 Unverified
+
+The claim exists but has not been checked.
+
+Example:
+
+“Someone says Harlan was near the window.”
+
+8.2 Weak
+
+The clue suggests something but is ambiguous.
+
+Example:
+
+“Muddy footprints lead away from the room.”
+
+Could belong to many people.
+
+8.3 Moderate
+
+The evidence supports a claim but does not prove it alone.
+
+Example:
+
+“The footprints are the same size as Harlan’s boots.”
+
+8.4 Strong
+
+The evidence strongly supports a claim.
+
+Example:
+
+“The boot print matches the distinctive broken heel of Harlan’s boot.”
+
+8.5 Confirmed
+
+The fact is directly validated.
+
+Examples:
+
+* direct confession
+* witnessed act
+* magical truth verification if reliable
+* item found in suspect’s possession with strong link
+* multiple independent strong evidence pieces
+
+8.6 Disproven
+
+The evidence or claim is shown false.
+
+Example:
+
+The footprint thought to be Harlan’s is proven to belong to a guard.
+
+Evidence should be able to move up or down as new facts appear.
+
+⸻
+
+9. Evidence types
+
+Physical evidence
+
+Objects or traces.
+
+Examples:
+
+* weapon
+* blood
+* footprints
+* fibers
+* broken lock
+* poison vial
+* letter
+* ledger
+* stolen item
+
+InventoryReducer owns the item.
+
+InvestigationReducer owns its evidence meaning.
+
+Testimonial evidence
+
+Statements from witnesses, suspects, victims, or authorities.
+
+Examples:
+
+* witness saw suspect
+* suspect confesses
+* guard heard scream
+* shopkeeper sold poison
+
+Actor/Reputation may track who knows or claims it.
+
+InvestigationReducer stores statement as case evidence.
+
+Circumstantial evidence
+
+Facts that suggest but do not prove.
+
+Examples:
+
+* suspect had motive
+* suspect was nearby
+* suspect owns similar weapon
+* suspect lied about location
+
+Useful but rarely enough alone.
+
+Direct evidence
+
+Evidence that directly supports conclusion.
+
+Examples:
+
+* seeing culprit commit act
+* direct confession
+* stolen item found in culprit’s locked chest
+* magical recording if setting supports it
+
+Contradictory evidence
+
+Evidence that disproves, weakens, or complicates a claim.
+
+Examples:
+
+* alibi
+* impossible timeline
+* forged letter
+* planted evidence
+* wrong weapon type
+
+Magical evidence
+
+Magical investigation results.
+
+Examples:
+
+* truth spell
+* memory echo
+* spirit witness
+* aura trace
+* scrying vision
+* divination answer
+
+Magical evidence needs reliability rules.
+
+It can be:
+
+* confirmed if magic is trusted and validated
+* strong if likely but fallible
+* weak if dreamlike or symbolic
+* dangerous if curse/illusion may interfere
+
+Do not automatically treat every vision as truth.
+
+⸻
+
+10. Clue versus evidence decision table
+
+Use this distinction:
+
+If it only suggests a direction, it is a lead.
+
+If it is observed and may matter, it is a clue.
+
+If it supports or disproves a claim, it is evidence.
+
+If it is strong enough to justify a conclusion, it may be proof.
+
+Examples:
+
+“A rumor says Harlan did it.”
+
+* rumor / lead
+
+“Muddy footprints are beneath the window.”
+
+* clue
+
+“The footprints match Harlan’s broken-heel boots.”
+
+* evidence
+
+“Harlan confesses he climbed through the window and stole the ring.”
+
+* confirmed evidence / possible proof
+
+“The ring is found in Harlan’s locked chest, and the footprint matches his boots.”
+
+* strong evidence chain
+
+⸻
+
+11. Witness knowledge
+
+Witness knowledge is what a specific actor knows, saw, heard, believes, or claims.
+
+Witness knowledge should track:
+
+* witness actor
+* claim
+* source event
+* confidence
+* whether firsthand or hearsay
+* whether private or public
+* whether truthful, mistaken, lying, or unknown if discoverable
+* linked case
+* linked reputation
+* whether reported to authority
+* whether contradicted
+* last updated turn
+
+Witness knowledge is not automatically public.
+
+Example:
+
+Mara privately tells the player she saw Harlan near the window.
+
+That is:
+
+* witness knowledge
+* possibly testimonial lead/evidence
+* not public reputation unless shared or overheard
+
+Witness statements may be:
+
+* true
+* false
+* mistaken
+* incomplete
+* coerced
+* magically influenced
+* rumor-based
+* self-serving
+
+The system should not assume witness statements are true unless validation says they are.
+
+⸻
+
+12. Rumors
+
+Rumors are claims circulating socially.
+
+Rumors may be true, false, exaggerated, or unknown.
+
+Rumor records should track:
+
+* rumor text
+* source if known
+* subject
+* target actor/place/faction/player
+* location/faction where rumor spreads
+* confidence as rumor, not truth
+* truth status if known separately
+* spread level
+* harm/benefit
+* linked case/quest/reputation
+* last updated turn
+
+Rumor truth levels:
+
+* unverified
+* likely false
+* possible
+* likely true
+* confirmed true
+* disproven
+* intentionally planted
+
+Important:
+
+A rumor can be accepted as a rumor while rejected as physical truth.
+
+Example:
+
+“A rumor spreads that you died in the woods.”
+
+Accepted:
+
+* reputation.rumor.add
+
+Rejected:
+
+* body.death
+
+This distinction is mandatory.
+
+⸻
+
+13. Public versus private knowledge
+
+AIDRPG must separate private facts from public reputation.
+
+Private knowledge
+
+Known only to player, companion, witness, suspect, or small group.
+
+Examples:
+
+* Mara privately confessed
+* player found hidden letter
+* witness saw culprit but has not told anyone
+* player knows ring is fake
+* companion knows player lied
+
+Private knowledge can affect:
+
+* dialogue
+* investigation
+* actor relationship
+* blackmail
+* future choices
+
+It should not automatically change public reputation.
+
+Public knowledge
+
+Known broadly enough to affect social standing.
+
+Examples:
+
+* crowd saw player save child
+* town guard announced culprit
+* player publicly exposed thief
+* guild officially grants title
+* rumor spreads through village
+* trial verdict announced
+
+Public knowledge can affect:
+
+* reputation
+* titles
+* faction standing
+* prices
+* NPC reactions
+* legal status
+* quests
+
+Rule:
+
+Private discovery does not equal public fame.
+
+⸻
+
+14. Reputation model
+
+Reputation is what people, places, or factions believe about the player or another actor.
+
+Reputation should track:
+
+* subject
+* reputation scope
+* reputation type
+* value or tags
+* source
+* confidence/publicity
+* witnesses
+* linked deeds
+* linked rumors
+* linked titles
+* current standing
+* last updated turn
+
+Reputation scopes:
+
+* personal
+* local
+* settlement
+* faction
+* regional
+* global
+* underworld
+* legal
+* religious
+* guild
+* party/internal
+
+Reputation types:
+
+* heroic
+* trustworthy
+* dangerous
+* criminal
+* honorable
+* dishonorable
+* merciful
+* cruel
+* skilled
+* cowardly
+* cursed
+* noble
+* suspicious
+* famous
+* infamous
+* unreliable
+
+Reputation should usually be tag-based and scoped rather than one universal number.
+
+Example:
+
+The player may be respected by villagers but wanted by the city guard.
+
+⸻
+
+15. Reputation change rules
+
+Reputation can change when:
+
+* deed is witnessed
+* deed is reported
+* rumor spreads
+* authority declares result
+* faction records action
+* public quest is completed
+* contract is fulfilled or breached
+* case is solved publicly
+* title is granted
+* crime is discovered
+* mercy/cruelty is observed
+* public duel is won
+* domain project benefits community
+
+Reputation should not change from:
+
+* private action nobody knows about
+* player intent alone
+* dream
+* rumor being treated as fact
+* unverified claim unless it is stored as rumor
+* card text
+* debug text
+* one random compliment unless socially meaningful
+
+Reputation can change from rumor even if rumor is false, but it should be marked as rumor-based.
+
+Example:
+
+False rumor:
+
+“The town believes you stole the ring.”
+
+Reputation may suffer locally even if player did not do it.
+
+But the actual case truth should remain separate.
+
+⸻
+
+16. Reputation values
+
+The system can use tags, scores, or both.
+
+Recommended model:
+
+Use scoped tags plus light numeric values.
+
+Example:
+
+Local reputation in Greyford:
+
+* helpful +2
+* suspicious -1
+* wolf-slayer +1
+* oathbreaker -3
+
+Faction reputation with Silver Guild:
+
+* trusted +3
+* debtor -1
+
+Legal status:
+
+* wanted
+* cleared
+* under suspicion
+* pardoned
+* outlaw
+
+This allows nuance.
+
+One global reputation score is too simplistic.
+
+⸻
+
+17. Titles
+
+Titles are socially recognized labels.
+
+Examples:
+
+* Wolf-Slayer
+* Ring-Finder
+* Friend of Greyford
+* Oathbreaker
+* Guild Apprentice
+* Knight of Northwatch
+* Wanted Thief
+* Blessed of the Moon
+* Cursebearer
+* Champion of the Wall
+* Exile
+
+A title should require recognition.
+
+Titles can come from:
+
+* authority grant
+* public deed
+* faction ceremony
+* repeated reputation
+* legal ruling
+* divine/magical mark
+* public rumor if title is informal
+* domain status
+
+Titles should not come from:
+
+* one private compliment
+* player claiming it
+* dream
+* joke
+* card text
+* weak flavor
+
+Title records should track:
+
+* title name
+* subject
+* granting source
+* scope
+* public/private
+* benefits
+* drawbacks
+* linked deed
+* status
+* revocation condition if any
+
+Titles can affect Context and social interactions.
+
+But titles should be rare enough to matter.
+
+⸻
+
+18. Legal and social status
+
+Legal/social status is a structured reputation consequence.
+
+Examples:
+
+* wanted
+* accused
+* cleared
+* pardoned
+* exiled
+* outlaw
+* under investigation
+* protected witness
+* guild member
+* noble guest
+* banned from town
+* debtor
+* oathbound
+
+Legal status should require authority, public accusation, law/faction action, or clear social recognition.
+
+Example:
+
+A guard captain declares the player wanted for theft.
+
+Legal status may update.
+
+Example:
+
+A random drunk calls the player a thief.
+
+This is insult or rumor, not legal status.
+
+Legal status can link to:
+
+* reputation
+* quests
+* contracts
+* actors
+* factions
+* places
+* travel restrictions
+* prices
+* guards
+* deadlines
+
+⸻
+
+19. Solving cases
+
+A case is solved when the central question is answered with sufficient validated evidence.
+
+Case solution should include:
+
+* conclusion
+* culprit or cause
+* evidence supporting conclusion
+* unresolved doubts if any
+* who knows the solution
+* whether it was reported
+* consequences
+* archive summary
+
+Possible solved states:
+
+Privately solved
+
+The player knows the answer, but has not reported it.
+
+Example:
+
+The player discovers Harlan stole the ring but has not confronted anyone.
+
+Publicly solved
+
+The answer is revealed or accepted by relevant public/authority.
+
+Example:
+
+The guard accepts the evidence and arrests Harlan.
+
+Officially solved
+
+Authority/faction/legal system recognizes solution.
+
+Example:
+
+The mayor declares the case closed.
+
+Falsely solved
+
+A conclusion was accepted but later evidence may show it is wrong.
+
+Example:
+
+Mara is blamed based on planted evidence.
+
+Unsolved but closed
+
+Case abandoned, failed, or closed without truth.
+
+This may happen if evidence is lost, deadline passes, or authority refuses.
+
+⸻
+
+20. Solved-case archive
+
+Solved or closed cases should archive.
+
+Archive should track:
+
+* case title
+* result
+* culprit/cause if known
+* major evidence
+* false leads
+* witnesses
+* public/private resolution
+* reputation effects
+* quest links
+* rewards
+* unresolved notes
+* consequences
+* date/time if available
+
+Archive prevents clutter while preserving history.
+
+Archived cases may later matter if:
+
+* culprit returns
+* false solution exposed
+* reputation questioned
+* old evidence becomes relevant
+* title/reward depends on case
+* faction remembers outcome
+
+⸻
+
+21. Investigation and quests
+
+Investigation can be linked to quests.
+
+Example:
+
+Quest:
+
+“Find Mara’s missing ring.”
+
+Investigation case:
+
+“Who stole Mara’s ring?”
+
+The quest may complete when the ring is returned.
+
+The case may solve when culprit is identified.
+
+Those are related but not identical.
+
+Possible outcomes:
+
+* ring found, culprit unknown
+* culprit identified, ring still missing
+* wrong person accused
+* ring returned quietly, no public case
+* culprit exposed publicly, reputation changes
+* case solved but quest reward pending
+
+The system must not complete both automatically unless both conditions are met.
+
+⸻
+
+22. Investigation and inventory
+
+Evidence items are physical items plus evidence meaning.
+
+Example:
+
+Bloodstained dagger.
+
+InventoryReducer owns:
+
+* dagger item
+* custody
+* condition
+* location
+* ownership
+
+InvestigationReducer owns:
+
+* dagger is evidence in murder case
+* blood matches victim
+* found in Harlan’s room
+* confidence level
+
+If the dagger is lost:
+
+Inventory updates custody/access.
+
+Investigation may mark evidence unavailable or compromised.
+
+If the dagger is cleaned:
+
+Inventory updates condition.
+
+Investigation may reduce evidence strength.
+
+⸻
+
+23. Investigation and actors
+
+Actors can be:
+
+* victim
+* witness
+* suspect
+* culprit
+* investigator
+* authority
+* informant
+* accuser
+* accused
+* accomplice
+* alibi source
+
+ActorReducer owns who they are.
+
+InvestigationReducer owns their case role.
+
+ReputationReducer owns what people believe about them.
+
+Example:
+
+Mara is an actor.
+
+Mara is suspect in missing ring case.
+
+Mara is publicly accused in Greyford.
+
+These are related but separate truths.
+
+⸻
+
+24. Investigation and reputation
+
+Investigation can affect reputation when knowledge spreads.
+
+Examples:
+
+Player privately finds culprit:
+
+* no public reputation yet
+
+Player publicly exposes culprit:
+
+* reputation increases locally
+* suspect legal status changes
+* quest may complete
+* title may be granted
+
+Player falsely accuses innocent person:
+
+* reputation may suffer
+* actor relationship changes
+* legal/social risk
+* case remains unresolved or falsely solved
+
+Player hides evidence:
+
+* private actor/reputation consequences if discovered
+* possible legal risk later
+
+Public knowledge is the bridge from investigation to reputation.
+
+⸻
+
+25. Rumor spread
+
+Rumors may spread over time or by events.
+
+Rumor spread depends on:
+
+* number of witnesses
+* public location
+* social importance
+* faction interest
+* scandal level
+* player fame
+* actor importance
+* time passing
+* deliberate spreading
+* suppression efforts
+* evidence supporting or disproving rumor
+
+Rumor may affect:
+
+* local reputation
+* faction reputation
+* prices
+* NPC behavior
+* guard attention
+* quest opportunities
+* actor relationships
+
+Rumor should not affect:
+
+* physical state
+* inventory
+* HP
+* confirmed case truth
+* actual guilt
+* actual death
+
+unless later validated separately.
+
+⸻
+
+26. Witness publicity levels
+
+Witness knowledge should have publicity levels.
+
+Private
+
+Only witness and maybe player know.
+
+Shared
+
+Small group knows.
+
+Reported
+
+Authority, faction, or relevant NPC has been told.
+
+Public
+
+Community broadly knows.
+
+Widespread
+
+Regional or faction-wide.
+
+Legendary
+
+Long-term/public title-level knowledge.
+
+Reputation changes should depend on publicity.
+
+A private confession does not create public fame until revealed.
+
+⸻
+
+27. Investigation Context behavior
+
+Context should include investigation facts only when relevant.
+
+Good Context examples:
+
+“You are investigating Mara’s missing ring. Current clues: muddy footprints under the window, a silver thread caught on the frame, and Harlan’s inconsistent alibi.”
+
+“Mara is only a suspect, not confirmed guilty. The silver thread points toward her cloak, but the footprint evidence is unresolved.”
+
+“You privately know Harlan confessed, but the village does not know yet.”
+
+Bad Context examples:
+
+Dumping every clue from every old case every turn.
+
+Telling the AI “Harlan is guilty” when the case only has weak evidence.
+
+Turning a rumor into confirmed truth.
+
+Listing hidden culprit if the player has not discovered it, unless state/story setup explicitly allows the AI to know.
+
+Context should be careful with uncertainty.
+
+Use wording like:
+
+* suspected
+* rumored
+* claimed
+* witnessed
+* confirmed
+* disproven
+* privately known
+* publicly known
+
+⸻
+
+28. Reputation Context behavior
+
+Context should include reputation when it affects the scene.
+
+Examples:
+
+“You are known in Greyford as the person who exposed the ring thief.”
+
+“The guards are suspicious of you because a rumor claims you stole from the chapel.”
+
+“The Silver Guild trusts you after you fulfilled their contract.”
+
+“Mara privately trusts you, but the village still suspects her.”
+
+Do not inject every reputation tag every turn.
+
+Reputation Context should be scoped.
+
+If the player is in Greyford, local Greyford reputation matters.
+
+If the player meets Silver Guild members, Silver Guild reputation matters.
+
+If the player is alone in a forest, public reputation may not matter unless pursuers or rumors are relevant.
+
+⸻
+
+29. Investigation and reputation Story Card behavior
+
+Cards should be selective.
+
+Generated or protected cards may mirror:
+
+* major active case
+* solved case archive summary
+* important evidence item
+* major public rumor
+* important reputation status
+* title
+* legal status
+* faction reputation
+* important witness/culprit actor update
+
+Do not create cards for:
+
+* every clue
+* every minor witness statement
+* every rumor
+* every suspicion
+* every small reputation shift
+* every case note
+* every possible suspect
+
+Protected cards may include:
+
+* Investigation & Evidence Summary
+* Reputation & Titles Summary
+* Quest Log
+* Actor cards for major suspects/witnesses/culprits
+* Item cards for important evidence items
+
+CardSync mirrors state.
+
+Cards do not create case truth or reputation truth.
+
+⸻
+
+30. Investigation validation outcomes
+
+Investigation uses the same five outcomes.
+
+Accept
+
+Use when a clue, evidence, statement, case update, or reputation change is directly supported.
+
+Examples:
+
+* player finds footprint
+* witness directly states claim
+* suspect confesses
+* evidence item found
+* public crowd witnesses deed
+* authority grants title
+
+Reject
+
+Use when proposed investigation/reputation change is unsupported.
+
+Examples:
+
+* rumor treated as proof
+* clue not actually found
+* suspect only imagined
+* public reputation from private event
+* title from casual compliment
+* case completion from weak clue
+
+Pending
+
+Use when information may matter but is unverified.
+
+Examples:
+
+* possible suspect
+* rumor
+* lead
+* promised witness meeting
+* possible evidence location
+* unverified claim
+
+Soft_fail
+
+Use when real investigation action produces partial result.
+
+Examples:
+
+* search finds clue but not proof
+* witness refuses to talk but reveals nervousness
+* evidence is damaged but partially readable
+* accusation fails but causes reaction
+* interrogation reveals contradiction but not confession
+
+Hard_deny
+
+Use when event is non-canon or unsafe.
+
+Examples:
+
+* dream clue treated as physical fact
+* quote treated as confession
+* card text creates solved case
+* debug text creates reputation
+* pretend investigation
+* impossible instant solution without evidence
+
+⸻
+
+31. Investigation safety rules
+
+31.1 No rumor as proof
+
+Rumors may become rumor records, not evidence proof.
+
+31.2 No clue as conclusion
+
+One clue rarely solves a case by itself.
+
+31.3 No public reputation from private knowledge
+
+Someone must witness, hear, report, or spread it.
+
+31.4 No confession from quoted example
+
+A quoted or hypothetical confession is not real confession.
+
+31.5 No title from casual praise
+
+Titles require recognition.
+
+31.6 No case completion without solution condition
+
+Finding one clue is progress, not completion.
+
+31.7 No false culprit without confidence tracking
+
+Suspects need status and evidence confidence.
+
+31.8 No inventory evidence without item ownership/custody
+
+Evidence item must exist if physical.
+
+31.9 No duplicate evidence/reputation
+
+Repeated output does not duplicate clues, evidence, rumors, titles, or reputation gain.
+
+31.10 No card-created case truth
+
+Cards mirror investigation state; they do not solve cases.
+
+31.11 No hidden truth forced into player Context
+
+If player has not discovered culprit, Context should not reveal it unless the design explicitly allows omniscient AI guidance.
+
+31.12 No universal reputation
+
+Reputation must be scoped.
+
+⸻
+
+32. Example scenarios
+
+Example 1 — Rumor as lead
+
+Output:
+
+“People whisper that Harlan stole Mara’s ring.”
+
+Expected:
+
+* reputation.rumor.add or investigation.lead.add
+* Harlan may become possible suspect
+* no confirmed culprit
+* no case solved
+
+Example 2 — Clue found
+
+Output:
+
+“You find muddy footprints beneath the window.”
+
+Expected:
+
+* clue.add
+* case progress
+* no suspect confirmed
+
+Example 3 — Evidence link
+
+Output:
+
+“The print matches the broken heel of Harlan’s boot.”
+
+Expected:
+
+* evidence.add
+* Harlan suspect confidence increases
+* still not necessarily solved unless enough evidence exists
+
+Example 4 — Contradiction
+
+Output:
+
+“Harlan says he was at the tavern, but the tavern keeper says he left before midnight.”
+
+Expected:
+
+* witness statement recorded
+* contradiction added
+* suspect confidence may increase
+
+Example 5 — Direct confession
+
+Output:
+
+“Harlan lowers his head and says, ‘I stole the ring. Mara had nothing to do with it.’”
+
+Expected:
+
+* confession evidence
+* Harlan confirmed culprit if source is direct and context supports it
+* Mara may be cleared
+* case may be ready to solve or solved
+* public reputation only if others hear or it is reported
+
+Example 6 — Private confession
+
+Only player hears Harlan confess.
+
+Expected:
+
+* privately known evidence
+* case may be privately solved
+* public reputation unchanged until reported/revealed
+
+Example 7 — Public reveal
+
+Output:
+
+“You present the evidence before the village, and Harlan admits the theft.”
+
+Expected:
+
+* case publicly solved
+* reputation change possible
+* Mara cleared publicly
+* quest may complete if linked
+* title or reward possible if granted
+
+Example 8 — False accusation
+
+Output:
+
+“You accuse Mara, but the crowd turns against you when Harlan produces an alibi.”
+
+Expected:
+
+* accusation event
+* reputation loss possible
+* Mara relationship damage
+* case not solved
+* contradiction/evidence update
+
+Example 9 — Evidence item found
+
+Output:
+
+“You pull a bloodstained dagger from beneath the floorboards.”
+
+Expected:
+
+* inventory.item.gain or evidence item available depending whether taken
+* investigation.evidence.add if linked to case
+* item custody tracked by InventoryReducer
+
+Example 10 — Evidence item seen but not taken
+
+Output:
+
+“A bloodstained dagger lies beneath the floorboards.”
+
+Expected:
+
+* clue/evidence availability
+* not necessarily inventory gain
+* custody/location remains at scene unless taken
+
+Example 11 — Public rumor hurts reputation
+
+Output:
+
+“By morning, half the village believes you stole the ring.”
+
+Expected:
+
+* local rumor
+* local reputation penalty, rumor-based
+* no actual guilt
+* possible quest/investigation complication
+
+Example 12 — Title granted
+
+Output:
+
+“The mayor raises your hand before the crowd and names you Friend of Greyford.”
+
+Expected:
+
+* title.grant
+* local reputation increase
+* title scope: Greyford
+* card/protected summary dirty if important
+
+⸻
+
+33. Commands related to Chunk 12
+
+/cases should show
+
+* active cases
+* case question
+* status
+* suspects
+* current leads
+* confirmed clues/evidence
+* contradictions
+* solved/unsolved status
+* archived cases summary
+
+/investigation should show
+
+* open investigations
+* evidence confidence
+* witness statements
+* private/public knowledge distinction
+* unresolved questions
+* next useful leads if available
+
+/evidence should show
+
+* evidence items
+* custody/access
+* confidence
+* linked cases
+* whether evidence is physical, testimonial, magical, or circumstantial
+
+/reputation should show
+
+* local reputation
+* faction reputation
+* public rumors
+* titles
+* legal/social status
+* private witness knowledge only if appropriate
+
+/rumors should show, if included
+
+* active rumors
+* scope
+* subject
+* spread level
+* known truth status if discovered
+* reputation impact
+
+/debuglast should show
+
+* proposed clue/evidence/reputation events
+* validation outcomes
+* rumor/proof distinction
+* witness publicity level
+* duplicate skips
+* case/reputation owner routing
+
+⸻
+
+34. Chunk 12 acceptance tests
+
+Test 1 — rumor does not prove case
+
+Given:
+
+People say Harlan stole the ring.
+
+Expected:
+
+* rumor or lead recorded
+* Harlan possible suspect
+* no confirmed culprit
+* case not solved
+
+Test 2 — clue is not proof
+
+Given:
+
+Player finds muddy footprints.
+
+Expected:
+
+* clue added
+* no culprit confirmed
+
+Test 3 — evidence increases suspect confidence
+
+Given:
+
+Footprint matches Harlan’s boot.
+
+Expected:
+
+* evidence added
+* Harlan suspect confidence increases
+* case may progress but not necessarily solve
+
+Test 4 — contradiction recorded
+
+Given:
+
+Witness statement conflicts with suspect alibi.
+
+Expected:
+
+* contradiction added
+* suspect confidence or theory updated
+
+Test 5 — private confession does not create public reputation
+
+Given:
+
+Harlan privately confesses to player.
+
+Expected:
+
+* confirmed/private evidence
+* case may be privately solved
+* public reputation unchanged unless reported or witnessed
+
+Test 6 — public confession changes reputation
+
+Given:
+
+Harlan confesses before village.
+
+Expected:
+
+* case publicly solved
+* culprit reputation/legal status may change
+* player reputation may improve if credited
+
+Test 7 — evidence item needs inventory custody
+
+Given:
+
+Player finds dagger but does not pick it up.
+
+Expected:
+
+* evidence/clue at location
+* no inventory item in player custody
+
+Given:
+
+Player takes dagger.
+
+Expected:
+
+* inventory custody player
+* evidence item linked to case
+
+Test 8 — false accusation has consequences
+
+Given:
+
+Player publicly accuses wrong suspect.
+
+Expected:
+
+* reputation/relationship damage possible
+* case not solved
+* wrong suspect not confirmed guilty
+
+Test 9 — title requires recognition
+
+Given:
+
+Random NPC says “you’re a hero.”
+
+Expected:
+
+* possible praise/relationship note
+* no formal title unless social recognition is clear
+
+Test 10 — local reputation is scoped
+
+Given:
+
+Player saves Greyford.
+
+Expected:
+
+* Greyford reputation improves
+* unrelated distant faction reputation unchanged unless news spreads
+
+Test 11 — duplicate evidence blocked
+
+Given:
+
+Same clue output processed twice.
+
+Expected:
+
+* clue added once
+* duplicate skip logged
+
+Test 12 — card text cannot solve case
+
+Given:
+
+Story Card says “Harlan stole the ring.”
+
+Expected:
+
+* no case solution unless state/events validate it
+
+Test 13 — magical vision is not automatically truth
+
+Given:
+
+Player dreams Harlan stole the ring.
+
+Expected:
+
+* dream/vision lead maybe
+* no confirmed culprit unless dream magic is canon and validated
+
+Test 14 — public rumor can affect reputation without changing truth
+
+Given:
+
+False rumor says player stole ring.
+
+Expected:
+
+* local reputation may suffer as rumor-based
+* player actual guilt unchanged
+* case truth unchanged
+
+Test 15 — solved case archives
+
+Given:
+
+Case is solved and reported.
+
+Expected:
+
+* active case moves to archive
+* summary preserved
+* relevant reputation/quest rewards routed through owners
+
+⸻
+
+35. Final Chunk 12 doctrine
+
+Investigation is about discovering truth.
+
+Reputation is about what people believe, know, say, and recognize.
+
+A lead points somewhere.
+
+A clue suggests something.
+
+Evidence supports or disproves a claim.
+
+Proof justifies a conclusion.
+
+A suspect is not a culprit.
+
+A witness statement is not automatically true.
+
+A rumor is not proof.
+
+Private knowledge is not public reputation.
+
+A case can be privately solved before it is publicly resolved.
+
+Titles require recognition.
+
+Legal status requires authority or social/legal consequence.
+
+Physical evidence belongs to Inventory.
+
+Evidence meaning belongs to Investigation.
+
+Public belief belongs to Reputation.
+
+Actors own identity.
+
+Quests own objectives.
+
+Cards mirror stable important investigation/reputation state.
+
+Context must preserve uncertainty instead of overstating it.
+
+The goal is to let mysteries, accusations, witnesses, rumors, titles, and reputation feel alive without corrupting canon truth.
+

@@ -1,0 +1,1645 @@
+# AIDRPG Design Bible — Chunk 33: Final Pre-Build Lockdown, Exactness Repair, Runtime Safety, and Implementation Contract
+
+## 1. Purpose of this repaired chunk
+
+Chunk 33 is the repaired planning layer added after the 32-chunk design bible review.
+
+The original 32 chunks define the intended game system. Chunk 33 makes the plan safer to build by locking down the pieces that were still too vague, repeated, overlapping, or risky for implementation.
+
+This chunk does not replace the developer spec. It comes immediately before the developer spec.
+
+Its purpose is to answer:
+
+- Which chunks have authority when details overlap?
+- What must be built first?
+- What must not be built first?
+- What is the exact canon pipeline?
+- What is the exact event proposal shape?
+- What reducer owns each kind of truth?
+- How should parser confidence work?
+- How should similar names, aliases, negation, and attempted actions be handled?
+- How should OperationLedger keys be built and retained?
+- How should context budget be enforced?
+- How should Story Card creation and updates be limited?
+- Which systems must start disabled or simplified?
+- What needs to be exact before coding?
+- What is the minimum stable MVP?
+
+The central rule of this repaired chunk is:
+
+AIDRPG must be built as a controlled canon pipeline first, then expanded feature by feature. The full 32-chunk design is the end goal, not the first implementation target.
+
+---
+
+# 2. Authority order
+
+When chunks overlap or repeat rules, use this authority order:
+
+1. Chunk 33 — Final Pre-Build Lockdown and exact repair rules.
+2. Chunks 19–32 — detailed final gameplay systems.
+3. Chunks 1–18 — original design foundation and broad architecture.
+4. Older source scripts, old plans, and old tests — reference only, not authority.
+5. AI Dungeon narration — event source only, not automatic canon.
+6. Story Cards — memory surface only, never authority.
+
+If two earlier chunks disagree, use the later, more specific chunk unless Chunk 33 overrides it.
+
+Examples:
+
+- Chunk 24 overrides broad combat language from Chunk 7.
+- Chunk 27 overrides broad crafting language from Chunk 10.
+- Chunk 29 overrides broad quest language from Chunk 11.
+- Chunk 30 overrides broad investigation language from Chunk 12.
+- Chunk 31 overrides broad actor/reputation language from Chunk 13.
+- Chunk 32 controls world state, context, and Story Card integration.
+- Chunk 33 controls build scope, event schema, operation keys, budgets, parser confidence, strictness modes, and runtime safety.
+
+---
+
+# 3. Repaired build doctrine
+
+The 32 chunks are a complete design bible.
+
+They are not a safe first coding order.
+
+The repaired build doctrine is:
+
+1. Build the canon pipeline first.
+2. Build protected state before generated Story Cards.
+3. Build inspection commands before mutation commands.
+4. Build validation before rewards.
+5. Build OperationLedger before XP, inventory, rewards, or CardSync.
+6. Build ContextAllocator before advanced context injection.
+7. Build feature flags before optional advanced systems.
+8. Build regression tests before enabling automatic generated cards.
+9. Build fail-soft behavior before hard denial behavior.
+10. Build small, then expand.
+
+The first implementation should not attempt the whole 32-chunk system.
+
+---
+
+# 4. Mandatory build modes
+
+AIDRPG must support modes because different adventures need different strictness.
+
+## 4.1 Narrative Mode
+
+Use when the player wants light structure.
+
+Rules:
+
+- fewer visible numbers
+- softer validation
+- more partial success
+- less exact economy
+- combat summarized unless major
+- fewer automatic generated cards
+- audits available but quiet
+
+Narrative Mode still prevents duplicates and impossible canon corruption.
+
+## 4.2 Balanced RPG Mode
+
+Default intended mode.
+
+Rules:
+
+- stats, HP, MP, EP matter
+- XP and ability evidence matter
+- inventory/custody matters
+- quests and actors are tracked
+- validation uses fail-soft whenever possible
+- generated cards are conservative
+- audits available by command
+
+## 4.3 Strict Simulation Mode
+
+Use when the player wants stronger system enforcement.
+
+Rules:
+
+- more exact costs
+- stricter time/travel/economy/crafting
+- stronger resource enforcement
+- more detailed command output
+- more frequent audit detail
+- fewer narrative freebies
+
+## 4.4 Debug Mode
+
+Use for testing.
+
+Rules:
+
+- shows proposal counts
+- shows accepted/rejected updates
+- shows operation keys
+- shows dirty targets
+- shows card decisions
+- shows parser confidence when requested
+
+Debug Mode must not change game rules by itself.
+
+## 4.5 Safe Mode
+
+Use when the script detects instability.
+
+Safe Mode disables or limits:
+
+- automatic generated card creation
+- noncritical card updates
+- broad event parsing
+- expensive cleanup
+- advanced parser features
+- optional systems not needed for current scene
+
+Safe Mode keeps:
+
+- player sheet
+- body status
+- inventory/custody
+- current location
+- active quest basics
+- operation ledger
+- context corrections
+- manual commands
+
+Safe Mode is mandatory for long campaigns.
+
+---
+
+# 5. MVP scope lock
+
+The first stable build must be smaller than the full design.
+
+## 5.1 MVP includes
+
+- canonical state container
+- event proposal schema
+- CanonValidator shell
+- OperationLedger
+- DirtyTarget system
+- ContextAllocator
+- protected summary cards only
+- player sheet
+- body status
+- HP/MP/EP
+- basic stats
+- basic level/XP
+- basic ability candidate/stable system
+- basic inventory and equipment
+- ownership/custody/access fields
+- current location and scene state
+- basic actor records
+- basic companion presence
+- basic quest log
+- basic combat validation
+- basic recovery/rest
+- inspection commands
+- debuglast command
+
+## 5.2 MVP excludes or limits
+
+- automatic generated actor cards
+- automatic generated place cards
+- automatic generated ability cards
+- domain management
+- labor/wages
+- full economy
+- full crafting
+- full investigation cases
+- full absorption/evolution
+- advanced faction reputation
+- multi-protagonist mode
+- large-scale war
+- complex weather simulation
+- business income
+- automatic deep cleanup beyond safe pruning
+
+These later systems may be stubbed as disabled modules.
+
+## 5.3 MVP success definition
+
+MVP is successful if it can run a small adventure where:
+
+- player stats persist
+- HP/MP/EP update once
+- inventory does not duplicate
+- items are not owned until acquired
+- a companion cannot act while absent
+- a quest reward pays once
+- an ability candidate is not treated as stable
+- a stable ability costs resources
+- current location remains coherent
+- context corrections prevent obvious AI drift
+- debuglast explains accepted and rejected updates
+
+---
+
+# 6. Full build phase order
+
+The full system should be built in this order.
+
+## Phase 0 — Harness and state shell
+
+- state object
+- version/migration shell
+- command router
+- debug output ring buffer
+- feature flags
+- safe mode toggle
+
+## Phase 1 — Canon pipeline
+
+- event proposal schema
+- parser shell
+- CanonValidator shell
+- reducer dispatcher
+- OperationLedger
+- DirtyTarget queue
+
+## Phase 2 — Protected summaries and context
+
+- protected Player Sheet
+- protected Body Status
+- protected Inventory/Equipment
+- protected Abilities
+- protected Quest Log
+- protected Social Memory
+- protected Current Location
+- ContextAllocator
+
+## Phase 3 — Core player gameplay
+
+- stats/resources
+- level/XP basics
+- rest/recovery basics
+- ability candidates/stable basics
+- resource costs
+- body conditions basics
+
+## Phase 4 — Inventory and equipment
+
+- item identity
+- ownership/custody/access
+- equipped state
+- scene items versus owned items
+- key items
+- item condition
+
+## Phase 5 — Combat MVP
+
+- matchup labels
+- damage severity
+- HP/MP/EP costs
+- injury/condition basics
+- enemy groups lite
+- boss defeat blocking lite
+
+## Phase 6 — Quest MVP
+
+- quest records
+- objective records
+- reward promise versus payment
+- duplicate reward prevention
+- quest archive basics
+
+## Phase 7 — Actor/social MVP
+
+- actor records
+- importance filter
+- companion presence
+- relationship basics
+- faction/reputation lite
+
+## Phase 8 — Generated CardSync limited beta
+
+- card registry
+- canonical keys
+- card write queue
+- max write limits
+- safe triggers
+- only allow generated cards for major actor/place/ability/quest after tests pass
+
+## Phase 9 — Crafting/economy lite
+
+- price bands
+- purchases/sales
+- materials
+- repairs
+- crafting requirements
+- output validation
+
+## Phase 10 — Investigation lite
+
+- cases
+- clues
+- witness claims
+- rumors versus facts
+- solved-case archive
+
+## Phase 11 — Absorption/evolution lite
+
+- source record
+- source cap
+- candidate ability/trait gains
+- stat XP only by default
+
+## Phase 12 — Domain/labor/travel/weather advanced
+
+- workers/foremen
+- domain projects
+- Work Units
+- route/travel ticks
+- weather ticks
+- payroll
+
+## Phase 13 — Full integration and stress tests
+
+- full regression suite
+- long-session tests
+- card spam tests
+- context budget tests
+- duplicate output tests
+- save/load tests
+
+---
+
+# 7. Final reducer ownership table
+
+Use this table when ownership is unclear.
+
+| Truth Type | Owner Reducer | Notes |
+|---|---|---|
+| Player name, race, identity | PlayerReducer | ActorReducer does not own protagonist identity. |
+| Level, total XP, XP to next | ProgressionReducer | Combat/quests only propose XP. |
+| Stat values and stat XP | ProgressionReducer | BodyReducer reads stats but does not award them. |
+| HP/MP/EP current values | BodyReducer | Ability/Combat propose costs/damage. |
+| Injuries, fatigue, conditions | BodyReducer | Must respect body compatibility. |
+| Death/unconscious boundary | BodyReducer | Combat proposes, BodyReducer validates with settings. |
+| Abilities, candidates, ranks | AbilityReducer | Cards mirror only. |
+| Ability costs and limits | AbilityReducer | BodyReducer commits resource costs. |
+| Inventory items | InventoryReducer | Crafting/economy only propose item changes. |
+| Item ownership/custody/access | InventoryReducer | Critical for quests/economy/combat. |
+| Equipped gear | InventoryReducer | Body/Combat read equipment. |
+| Currency balances | EconomyReducer | Inventory may show coins but Economy owns amounts. |
+| Purchase/sale transactions | EconomyReducer | Inventory owns item transfer. |
+| Crafting projects | CraftingReducer | Inventory commits final item. |
+| Materials as inventory | InventoryReducer | Crafting reserves/requests them. |
+| Quest records/objectives | QuestReducer | Economy pays rewards, Progression awards XP. |
+| Contracts | ContractReducer | Quest may link; Economy pays. |
+| Cases/clues/evidence | InvestigationReducer | Inventory owns physical evidence item. |
+| Witness claims | InvestigationReducer | ActorReducer may store actor made claim. |
+| Actor identity/memory | ActorReducer | Reputation owns public perception. |
+| Companion presence/party state | PartyReducer | ActorReducer owns identity, Party owns active party role. |
+| Factions | FactionReducer | Reputation owns standing labels if public. |
+| Reputation/titles | ReputationReducer | Requires awareness/spread. |
+| Places/buildings/routes | PlaceReducer | Travel may update route progress. |
+| Current scene | SceneReducer | Short-lived; PlaceReducer stores persistent facts. |
+| Time/deadlines/ticks | TimeReducer | Travel/recovery/project ticks call owner reducers. |
+| Travel progress | TravelReducer | May be TimeReducer submodule if needed. |
+| Weather | WeatherReducer | Can affect Travel/Combat/Domain. |
+| Domain holdings/projects | DomainReducer | Labor/Economy/Crafting provide sub-events. |
+| Workers/foremen/labor output | LaborReducer | ActorReducer tracks named foremen if promoted. |
+| Story Card registry | CardSync | Cards mirror state only. |
+| Context packets | ContextBuilder | Context owns no truth. |
+| Operation keys | OperationLedger | All reducers must use it. |
+| Debug/audit logs | AuditLog | Logs decisions, not canon. |
+
+If a system needs another system’s state changed, it emits a proposal instead of mutating directly.
+
+---
+
+# 8. Required event proposal schema
+
+Every parsed state change must become a proposal object before validation.
+
+Minimum proposal shape:
+
+{
+  proposalId,
+  turnId,
+  hook,
+  sourceKind,
+  sourceTextHash,
+  sourceSpan,
+  eventType,
+  ownerReducer,
+  actorId,
+  targetId,
+  relatedIds,
+  truthStatus,
+  parserConfidence,
+  validationPriority,
+  evidence,
+  preconditions,
+  proposedChanges,
+  operationKey,
+  duplicatePolicy,
+  riskLevel,
+  failSoftOption,
+  validationResult,
+  rejectReason,
+  dirtyTargets
+}
+
+## 8.1 hook
+
+Allowed values:
+
+- input
+- context
+- output
+- command
+- migration
+- manual
+- cleanup
+
+Normal story canon should come mostly from output and explicit commands.
+
+Player input creates attempts unless command/manual mode says otherwise.
+
+## 8.2 sourceKind
+
+Allowed values:
+
+- player_input_attempt
+- ai_output_claim
+- ai_output_confirmed_event
+- command_request
+- command_mutation
+- manual_override
+- protected_state
+- generated_card_text
+- context_text
+- migration
+- cleanup
+
+Generated card text and context text cannot create new canon.
+
+## 8.3 truthStatus
+
+Allowed values:
+
+- confirmed
+- observed
+- claimed
+- rumored
+- suspected
+- supported
+- disputed
+- contradicted
+- false
+- unknown
+- pending
+
+## 8.4 parserConfidence
+
+Use 0.0 to 1.0.
+
+Suggested bands:
+
+- 0.00–0.29: ignore unless debug
+- 0.30–0.49: pending/lead only
+- 0.50–0.69: low-confidence proposal, needs validation support
+- 0.70–0.84: normal proposal
+- 0.85–0.94: strong proposal
+- 0.95–1.00: explicit command/manual or direct confirmed narration
+
+Confidence does not bypass CanonValidator.
+
+## 8.5 validationPriority
+
+Allowed values:
+
+- critical
+- high
+- normal
+- low
+- background
+
+Critical examples:
+
+- death
+- major item loss
+- major reward
+- card creation
+- location jump
+- companion death
+- quest completion
+- boss defeat
+- permanent ability/race change
+
+Critical proposals require stronger validation.
+
+---
+
+# 9. Validation outcome rules
+
+All proposals must end with one of these outcomes.
+
+## Accept
+
+Commit exactly through owner reducer.
+
+## Reject
+
+Do not commit. Use when unsupported but not necessarily dangerous.
+
+## Pending
+
+Store as possible/uncertain. Do not treat as canon.
+
+## Soft_fail
+
+Commit a weaker consequence instead of the proposed strong consequence.
+
+Examples:
+
+- unsupported dragon kill becomes minor wound
+- unsupported ability mastery becomes candidate evidence
+- unsupported item acquisition becomes visible scene item
+- unsupported case solution becomes theory
+
+## Hard_deny
+
+Block because it would corrupt canon or violate core rules.
+
+Examples:
+
+- duplicate quest reward
+- absent companion acts
+- Story Card creates item
+- source already consumed
+- generic card trigger
+- impossible location jump without travel/magic
+
+## Merge
+
+Same entity as existing record; merge aliases or update existing state.
+
+## Supersede
+
+New confirmed fact replaces older uncertain fact.
+
+## Archive
+
+Move old active state to archive.
+
+## Flag
+
+Do not necessarily block, but log warning and/or inject context correction.
+
+---
+
+# 10. Parser confidence rules
+
+Parser confidence should consider the following.
+
+## 10.1 Increase confidence when
+
+- AI output uses completed-event language: “you pick up,” “you pay,” “the wolf falls.”
+- target is named and present.
+- item is known and accessible.
+- event matches current player input attempt.
+- event is in active scene.
+- event has clear subject, verb, and object.
+- resource/cost is explicitly stated.
+- quest objective directly matches event.
+- command explicitly requests mutation.
+
+## 10.2 Decrease confidence when
+
+- sentence is hypothetical: “could,” “might,” “would.”
+- sentence is attempted only: “you try,” “you attempt,” “you reach for.”
+- sentence is negated: “you do not take it.”
+- sentence is quoted speech.
+- sentence is rumor/hearsay.
+- sentence is dream/vision unless dream has real consequences.
+- sentence comes from card/context/debug text.
+- subject/object is vague.
+- actor/item/place is not present.
+- event contradicts protected state.
+- name is generic.
+- the same source text was processed already.
+
+## 10.3 Negation rule
+
+Negation beats action extraction.
+
+Examples:
+
+- “You do not pick up the dagger” means no item acquisition.
+- “You almost grab the coin” means no coin acquisition.
+- “You consider selling the sword” means no sale.
+- “You refuse the contract” means no contract acceptance.
+- “You try to cast Fireball, but nothing happens” means attempt/failure, not successful cast.
+
+## 10.4 Attempt versus completion rule
+
+Player input usually creates attempt.
+
+AI output determines completion unless command/manual mode applies.
+
+Examples:
+
+Player: “I stab the wolf.”
+
+- attack attempt only.
+
+AI: “Your blade cuts the wolf’s shoulder.”
+
+- damage proposal.
+
+Player: “/additem iron dagger”
+
+- command mutation if valid.
+
+---
+
+# 11. Resolver rules for similar names
+
+AIDRPG must resolve items, actors, places, abilities, quests, and factions carefully.
+
+## 11.1 Resolver score factors
+
+Use a score from 0 to 100.
+
+Suggested weights:
+
+- exact canonical key match: +50
+- exact display name match: +40
+- alias match: +35
+- same type/category: +15
+- same location/current scene: +15
+- same owner/custody: +10
+- same quest/case/link: +10
+- recent mention: +10
+- fuzzy name similarity: +0 to +20
+- conflicting type: -30
+- conflicting location: -20
+- conflicting custody: -20
+- negation/contrast marker: -40
+- generic/common name only: -20
+
+## 11.2 Resolver thresholds
+
+- 80–100: auto-match
+- 60–79: match if no competitor above 50
+- 40–59: pending/ambiguous; do not mutate high-risk state
+- below 40: no match
+
+## 11.3 Similar item examples
+
+“rusted iron key” is not automatically “iron keyring.”
+
+“silver ring” is not automatically “Signet Ring of Veyr.”
+
+“your sword” may mean equipped sword if only one exists, but not if sword is in Mara’s custody.
+
+## 11.4 Similar actor examples
+
+“Mara” and “Maira” may merge if same role, history, and scene.
+
+“Mara’s sister” is not Mara.
+
+“Captain Mora” and “Mara” are different unless state says otherwise.
+
+## 11.5 Similar place examples
+
+“Old Chapel Road” is not “Old Chapel.”
+
+“Blackwood Road” is not every road.
+
+“Veyr Manor basement” is a sub-place of Veyr Manor.
+
+## 11.6 Alias policy
+
+Aliases must be stored only after validation.
+
+Do not add every spelling mistake as permanent alias unless repeated or clearly intended.
+
+---
+
+# 12. OperationLedger exact rules
+
+OperationLedger must exist before any reward, item, damage, XP, or card-write system.
+
+## 12.1 Operation key format
+
+Recommended format:
+
+category.owner.action.subject.source.turnOrStableId
+
+Examples:
+
+- xp.quest.reward.clear_mill_wolves.old_bren.turn_145
+- item.inventory.add.iron_dagger.craft_project_002.turn_91
+- currency.economy.pay.mara_repair.player_purse.turn_47
+- clue.case.add.blue_wax.dalen_murder.turn_122
+- actor.relationship.change.mara.trust.saved_brother.turn_201
+- combat.damage.player.wolf_bite.enemy_wolf_03.turn_33
+- card.create.actor.mara.actor_mara
+- absorption.source.consume.acid_slime_core_17.turn_204
+
+## 12.2 Permanent keys
+
+Permanent keys should be retained for:
+
+- quest rewards
+- contract deposits/final payments
+- unique item gains
+- generated card creation
+- source absorption/consumption
+- ability stabilization
+- race/species evolution
+- boss defeat
+- solved-case archive
+- title grant
+- major domain project completion
+
+## 12.3 Rolling keys
+
+Rolling recent keys may be retained for:
+
+- ordinary damage
+- small XP events
+- minor relationship deltas
+- ordinary time jumps
+- minor clue mentions
+- ordinary combat exchanges
+- routine resource costs
+
+Suggested default rolling retention:
+
+- last 100–300 committed operations, depending storage pressure
+- or last 30–50 turns
+
+Permanent keys must survive cleanup.
+
+## 12.4 Duplicate behavior
+
+If duplicate operation appears:
+
+- do not reapply state change
+- optionally refresh context summary if needed
+- log duplicate skip
+- never pay/award/add/damage twice
+
+---
+
+# 13. ContextAllocator exact rules
+
+Context must be budgeted.
+
+AIDRPG should not dump all memory into AI Dungeon.
+
+## 13.1 Context packet types
+
+Packets:
+
+1. Canon correction packet
+2. Current scene/location packet
+3. Player danger/status packet
+4. Combat packet
+5. Party/presence packet
+6. Inventory/custody packet
+7. Ability limits packet
+8. Quest packet
+9. Case packet
+10. Social/faction packet
+11. Travel/time/weather packet
+12. Domain/economy packet
+13. Archive callback packet
+
+## 13.2 Default priority
+
+1. Canon correction
+2. Current scene/location
+3. Active combat/danger
+4. Player body/resource warning
+5. Present actors/companion presence
+6. Item custody/equipment needed now
+7. Current quest/deadline
+8. Current case/lead
+9. Ability limits relevant to current action
+10. Social/faction facts relevant to present actors/place
+11. Time/travel/weather relevant now
+12. Domain/economy if actively involved
+13. Archive callback only if directly relevant
+
+## 13.3 Suggested packet size limits
+
+These are design defaults for the developer spec to tune.
+
+- Canon correction: 1–3 sentences
+- Scene/location: 1–4 sentences
+- Combat: 1–5 sentences when active
+- Body/status: 1–3 sentences
+- Party/presence: 1–3 sentences
+- Inventory/custody: 1–3 sentences
+- Quest: 1–3 active objectives
+- Case: confirmed facts + one lead only
+- Social: only present actors/relevant faction
+- Domain/economy: one blocker or urgent fact only
+- Archive: one sentence only
+
+## 13.4 Required context exclusions
+
+Do not inject:
+
+- every quest
+- every old actor
+- every old item
+- every old clue
+- every transaction
+- every archived case
+- every ability
+- every stat detail
+- every card
+- every rumor
+- every world fact
+
+## 13.5 Context correction examples
+
+Use short correction notes:
+
+- “Mara is not present; she is at Greyford smithy with the player’s sword.”
+- “Shadow Step is only a candidate and should not work as reliable teleport yet.”
+- “Lord Veyr is suspected, not proven guilty.”
+- “The slime core was already consumed and cannot be absorbed again.”
+- “The player has only 2 silver accessible in their purse.”
+
+---
+
+# 14. CardSync exact limits
+
+Story Card generation is powerful but dangerous.
+
+Generated CardSync should start disabled or very limited until core tests pass.
+
+## 14.1 Protected cards
+
+Protected cards are allowed from MVP.
+
+Required protected cards:
+
+- AIDRPG Player Sheet
+- AIDRPG Body Status
+- AIDRPG Abilities
+- AIDRPG Inventory/Equipment
+- AIDRPG Quest Log
+- AIDRPG Case Log
+- AIDRPG Social Memory
+- AIDRPG Current Location
+
+## 14.2 Generated cards beta limits
+
+When first enabled:
+
+- maximum 1 generated card creation per output hook
+- maximum 2 generated card updates per output hook
+- no full card scan every hook
+- no generated card for candidates unless manually approved
+- no generated card for generic actors/items/places
+- no generated card for temporary combat enemies
+- no generated card for rumors
+- no generated card with generic triggers
+
+## 14.3 Mature generated card limits
+
+Later, after tests:
+
+- maximum 2 card creations per turn
+- maximum 5 card updates per turn
+- dirty queue processes by priority
+- same card update cooldown unless critical
+- failed writes go to retry queue with cap
+- repeated failures trigger Safe Mode
+
+## 14.4 Card creation requirements
+
+A generated card requires:
+
+- stable canonical entity
+- importance threshold passed
+- clean name
+- safe trigger
+- no duplicate canonical key
+- no alias collision
+- stable facts to summarize
+- clear card type
+- value to future context
+
+## 14.5 Card trigger requirements
+
+Triggers must be specific.
+
+Good:
+
+- Frostmaw
+- Captain Mora
+- Old Mill wolves
+- Blackwood Road
+- Mana Slash
+- Dalen murder case
+- Greyford Caravan Escort
+
+Bad:
+
+- street
+- road
+- wolf
+- guard
+- magic
+- skill
+- quest
+- item
+- companion
+- town
+- sword
+- slime
+- dragon
+
+## 14.6 Card deletion/archive
+
+A card may be removed or archived if:
+
+- it was generated by mistake
+- trigger is unsafe
+- duplicate merged
+- entity is temporary
+- minor quest completed and archived
+- card causes repeated accidental activation
+
+Do not delete major history blindly.
+
+---
+
+# 15. Name hygiene exact rules
+
+Name hygiene applies to actors, places, abilities, items, quests, cases, factions, domains, and cards.
+
+## 15.1 Reject names that are
+
+- generic role only
+- common noun only
+- full sentence
+- command text
+- debug label
+- parser fragment
+- raw output phrase
+- too long
+- pronoun
+- repeated junk
+- placeholder
+- description rather than name
+- trigger-dangerous common word
+
+Examples to reject:
+
+- street
+- road
+- guard
+- merchant
+- sword
+- item
+- quest
+- attack
+- skill
+- power
+- the thing
+- unknown
+- NPC
+- Quest Complete
+- You feel stronger
+- Try to use fire
+- AIDRPG Output
+
+## 15.2 Allowed generic temporary labels
+
+Temporary state may use labels like:
+
+- unnamed guard
+- unknown suspect
+- strange slime
+- sealed relic
+- damaged sword
+
+But these should not get generated cards unless identity stabilizes.
+
+## 15.3 Good canonical names
+
+- Mara
+- Captain Mora
+- Old Bren
+- Lord Veyr
+- Frostmaw
+- Blackwood Road
+- Old Mill
+- Slimebound Shield
+- Mana Slash
+- Dalen murder case
+- Greyford Caravan Escort
+
+---
+
+# 16. Body compatibility registry requirement
+
+The developer spec must define a body compatibility registry before advanced combat, healing, poison, absorption, or equipment is fully enabled.
+
+Minimum body types:
+
+- organic humanoid
+- beast
+- giant
+- fairy/tiny humanoid
+- slime/fluid body
+- undead flesh
+- skeleton
+- spirit/incorporeal
+- construct/golem
+- plant/fungus
+- dragon/draconic
+- demon/celestial
+- swarm
+- living item/symbiote
+- shapeshifter
+
+Each body type must define:
+
+- valid injury types
+- invalid injury types
+- bleeding rules
+- poison/disease rules
+- healing compatibility
+- HP/MP/EP meaning
+- equipment compatibility
+- death/defeat boundary
+- absorption compatibility
+- condition compatibility
+- recovery logic
+
+Examples:
+
+- Skeletons do not bleed normally.
+- Constructs do not suffer biological poison normally.
+- Spirits cannot be stabbed by mundane blades unless manifested or special rules apply.
+- Slimes take cohesion/core/mass damage instead of normal organ wounds.
+- Fairies may have low HP but high evasion/flight relevance.
+
+---
+
+# 17. Ability stabilization exact defaults
+
+Chunk 25 defines ability lifecycle. This chunk locks default thresholds.
+
+These values can be tuned later, but a first build needs defaults.
+
+## 17.1 Hint to Candidate
+
+Requires one validated hint or partial manifestation.
+
+Example:
+
+- mana flickers in hand
+- player senses shadow movement
+- dragonkin coughs smoke
+
+## 17.2 Candidate to Unstable Rank 1
+
+Requires either:
+
+- two validated partial manifestations, or
+- one strong breakthrough manifestation with cost/risk, or
+- direct teacher/system confirmation with cost/limit
+
+## 17.3 Rank 1 to Rank 2 Basic
+
+Requires:
+
+- at least three validated uses or practice events
+- at least one successful intentional use
+- rough cost or limit known
+
+## 17.4 Rank 2 to Rank 3 Reliable
+
+Requires:
+
+- at least five meaningful uses after Rank 2
+- at least one use under pressure
+- known cost range
+- known failure mode or counter
+
+## 17.5 Rank 3 to Rank 5 Refined
+
+Requires:
+
+- repeated meaningful use across different contexts
+- cost/limits documented
+- at least one failure/limitation learned
+- domain/stat support sufficient
+
+## 17.6 Rank 6+
+
+Requires:
+
+- major story evidence
+- high domain/stat support
+- appropriate level scale
+- meaningful risk/cost
+- no trivial farming
+
+## 17.7 Generated ability card eligibility
+
+Default requirement:
+
+- stable Rank 2 or higher
+- specific clean name
+- recurring use
+- important to build identity
+- known cost/limits
+- safe trigger
+
+Candidates stay in protected Abilities card.
+
+---
+
+# 18. Level/stat formula lockdown
+
+The design bible contains scaling philosophy. The developer spec will finalize exact formulas, but this repaired plan locks the requirement that formulas must exist before coding progression.
+
+The build must define:
+
+- XP-to-next-level formula
+- total XP formula
+- expected stat by level
+- HP formula
+- MP formula
+- EP formula
+- race/species modifiers
+- domain XP thresholds
+- stat training thresholds
+- ability rank thresholds
+- enemy effective level formula
+- challenge XP formula
+- overlevel XP decay formula
+
+## 18.1 Interim default XP formula
+
+Until replaced by developer spec:
+
+XP to next level at level L:
+
+XP_NEXT(L) = round(100 × L^1.45)
+
+Total XP is cumulative sum of XP_NEXT from level 1 to current level - 1.
+
+## 18.2 Interim default human stat expectation
+
+Base human expected trained stat at level L:
+
+EXPECTED_STAT(L) = round(10 + 1.5L + 0.003L^2)
+
+This gives:
+
+- Level 1: about 12
+- Level 10: about 25
+- Level 100: about 190
+- Level 500: about 1510
+- Level 1000: about 4510
+
+This is not a hard cap. It is a scale reference.
+
+## 18.3 Interim resource formula
+
+Base HP:
+
+HP_MAX = 50 + Level × 10 + DEF × 5 + body_modifier
+
+Base MP:
+
+MP_MAX = 20 + Level × 5 + INT × 5 + race_magic_modifier
+
+Base EP:
+
+EP_MAX = 30 + Level × 7 + ATK × 2 + DEF × 2 + SPD × 2 + body_stamina_modifier
+
+These formulas are placeholders but must be made exact before coding.
+
+## 18.4 Race/species modifiers
+
+Race/species should modify growth through tagged profiles, not random exceptions.
+
+Each race/species profile must define:
+
+- stat multipliers
+- resource modifiers
+- body type
+- injury logic
+- ability affinities
+- weaknesses
+- equipment compatibility
+- evolution rules if any
+
+---
+
+# 19. Combat gameplay adjustment
+
+Combat math guides plausibility. It should not become a heavy dice engine by default.
+
+## 19.1 Default combat mode
+
+Balanced RPG default:
+
+- estimate matchup
+- validate impossible success/failure
+- apply resource costs when action is meaningful
+- apply HP/injury only when output supports consequence
+- track group counts when group is important
+- keep context concise
+
+## 19.2 Strict combat mode
+
+Strict mode may calculate more exact ratios every exchange.
+
+## 19.3 Fail-soft combat
+
+Unsupported strong outcomes should usually soften.
+
+Examples:
+
+- “You instantly kill the ancient dragon” becomes wound/stagger/anger unless support exists.
+- “A rat instantly kills the Level 500 player” becomes scratch/disease risk if plausible.
+- “Your candidate Shadow Step saves you perfectly” becomes partial dodge, stumble, or failure with evidence.
+
+Hard denial should be reserved for state corruption.
+
+---
+
+# 20. Inventory state exact categories
+
+Inventory must separate existence, access, and ownership.
+
+Item states:
+
+- mentioned only
+- visible scene item
+- available loot
+- touched/held
+- carried by player
+- owned by player
+- equipped
+- stored
+- custody by actor
+- custody by faction/shop
+- quest item
+- proof item
+- consumed
+- sold
+- destroyed
+- lost
+- unknown location
+
+Core rule:
+
+Seeing an item is not owning it.
+
+An enemy dropping an item creates available loot, not inventory.
+
+A shop having an item creates market availability, not ownership.
+
+An item with an NPC cannot be used by the player until custody returns.
+
+---
+
+# 21. Quest and investigation repair rules
+
+## 21.1 Quest completion rule
+
+Quest completion requires objective evidence.
+
+“Quest complete” text is not enough.
+
+## 21.2 Reward rule
+
+Rewards have three states:
+
+- promised
+- earned/ready
+- paid
+
+Only paid rewards mutate inventory/currency/XP.
+
+## 21.3 Investigation truth rule
+
+A case can have:
+
+- internal solution
+- public proof
+- public resolution
+
+These are separate.
+
+Rumor, witness claim, theory, and confirmed fact must never collapse into one state.
+
+## 21.4 Actor card rule
+
+Do not write guilt, betrayal, corruption, romance, loyalty, title, or faction membership into an actor card unless the truth status supports it.
+
+---
+
+# 22. Economy and crafting gameplay adjustment
+
+Economy and crafting should start approximate and become exact only when the player engages those systems.
+
+## 22.1 Economy default
+
+Use price bands:
+
+- trivial
+- cheap
+- modest
+- expensive
+- very expensive
+- domain-scale
+- priceless/quest-scale
+
+Exact coins matter for:
+
+- purchases
+- sales
+- wages
+- contracts
+- rewards
+- debts
+- domain treasuries
+
+## 22.2 Crafting default
+
+When the player says “I craft X,” default to requirement assessment unless the craft is trivial and requirements are present.
+
+Example:
+
+“I build a fortress” creates project requirements, not a fortress.
+
+“I sharpen a stick with a knife” may create a crude spear if materials/time are present.
+
+## 22.3 Crafting output rule
+
+CraftingReducer never creates final inventory directly.
+
+InventoryReducer commits final item.
+
+---
+
+# 23. Multi-protagonist lockdown
+
+True multi-protagonist support is not MVP.
+
+MVP supports:
+
+- one primary protagonist
+- companions as actors
+- followers/summons as actors or groups
+
+True multi-protagonist mode requires a separate later spec defining:
+
+- active protagonist
+- per-protagonist sheets
+- shared versus separate inventories
+- per-protagonist XP
+- command scoping
+- context scoping
+- “you” resolver
+- simultaneous actions
+- party quest ownership
+
+Do not build true multi-protagonist support until single-protagonist architecture is stable.
+
+---
+
+# 24. Cleanup and memory compression exact rules
+
+Cleanup must not invent gameplay truth.
+
+## 24.1 Cleanup may remove or compress
+
+- stale candidates
+- expired temporary scene state
+- old dirty queue entries
+- old non-permanent operation keys
+- old debug logs
+- duplicate aliases
+- temporary generic actors
+- temporary generic places
+- completed minor quests into archive
+- resolved minor cases into archive
+- old low-importance rumors
+
+## 24.2 Cleanup must not remove
+
+- player sheet
+- core stats/resources
+- permanent operation keys
+- major actors
+- companions
+- active quests/contracts
+- active cases
+- key items
+- item custody facts
+- paid/unpaid reward status
+- source consumed records
+- generated card canonical keys
+- unresolved promises/debts
+- current location
+- major archive summaries
+
+## 24.3 Cleanup frequency
+
+Cleanup should not run fully every hook.
+
+Suggested:
+
+- light cleanup every turn if cheap
+- medium cleanup every 10–20 turns
+- full cleanup only by command, migration, or safe scheduled interval
+
+## 24.4 Cleanup audit
+
+Cleanup should log what was removed or compressed when debug mode is enabled.
+
+---
+
+# 25. Runtime constraints
+
+AIDRPG must respect AI Dungeon scripting constraints.
+
+## 25.1 Do not do these every hook
+
+- scan all cards
+- scan full story history
+- rewrite all protected cards
+- rewrite all generated cards
+- run heavy cleanup
+- run all modules
+- emit huge debug text
+- parse every possible subsystem when current scene does not need it
+
+## 25.2 Required runtime strategy
+
+- use dirty targets
+- use feature flags
+- use module gating
+- use short context packets
+- use rolling logs
+- use conservative card writes
+- use safe mode
+- use command-triggered deep audits
+
+## 25.3 Module gating
+
+Only run advanced scanners when relevant.
+
+Examples:
+
+- combat scanner when combat-like output appears or combat active
+- quest scanner when quest terms/objectives appear or quest active
+- investigation scanner when active case or clue-like scene appears
+- crafting scanner when crafting verbs/materials appear
+- economy scanner when buy/sell/pay/hire/reward appears
+- card scanner only when dirty targets exist
+
+---
+
+# 26. Test gates before enabling major features
+
+## 26.1 Before XP rewards
+
+Must pass:
+
+- duplicate output does not award XP twice
+- overleveled trivial action gives little/no XP
+- quest XP pays once
+- combat XP and quest XP do not duplicate same event excessively
+
+## 26.2 Before inventory automation
+
+Must pass:
+
+- seeing item does not add item
+- dropped loot is not owned until taken
+- sold item cannot be sold again
+- item in NPC custody cannot be used
+- similar item names do not merge incorrectly
+- negated pickup does not add item
+
+## 26.3 Before ability automation
+
+Must pass:
+
+- unknown ability is not stable
+- candidate ability is not reliable
+- stable ability pays cost once
+- low MP/EP blocks or soft-fails ability
+- duplicate output does not double-pay cost or evidence
+
+## 26.4 Before quest automation
+
+Must pass:
+
+- rumor does not become active quest
+- quest accepted only with evidence
+- completion and reward are separate
+- reward pays once
+- wrong target does not complete quest
+- count objectives dedupe
+
+## 26.5 Before investigation automation
+
+Must pass:
+
+- rumor not fact
+- witness claim not confirmed fact
+- high INT does not solve case
+- duplicate clue blocked
+- false lead can be marked false without deleting history
+
+## 26.6 Before generated CardSync
+
+Must pass:
+
+- generic trigger rejected
+- duplicate actor card blocked
+- generated card does not create canon
+- protected cards update from state
+- card write limit enforced
+- CardSync failure triggers safe mode
+
+## 26.7 Before economy/labor/domain
+
+Must pass:
+
+- purchase requires funds and availability
+- sale requires ownership and buyer
+- workers require wages
+- project requires materials/time/labor
+- domain income requires asset
+- payroll missed creates consequence only if active workers exist
+
+---
+
+# 27. Developer spec handoff checklist
+
+The next document after this repaired design bible must be the developer spec.
+
+The developer spec must produce:
+
+1. Exact state JSON schema.
+2. Exact event proposal schema.
+3. Exact reducer dispatcher rules.
+4. Exact operation key functions.
+5. Exact parser confidence scoring implementation.
+6. Exact resolver implementation for item/actor/place/ability/quest/faction.
+7. Exact context packet builder and budgets.
+8. Exact protected card formats.
+9. Exact generated CardSync registry and queue.
+10. Exact command list for MVP.
+11. Exact formulas for level, XP, stats, HP, MP, EP.
+12. Exact body compatibility registry.
+13. Exact ability stabilization thresholds.
+14. Exact cleanup policy.
+15. Exact feature flags.
+16. Exact safe mode behavior.
+17. Exact test harness and acceptance tests.
+18. Exact build order by code module.
+
+No full implementation should begin before these are specified.
+
+---
+
+# 28. Final repaired doctrine
+
+The 32-chunk design bible is valid as the gameplay vision.
+
+Chunk 33 repairs the planning risk by making the build path exact enough to proceed safely.
+
+The corrected plan is:
+
+- Do not build everything at once.
+- Build the canon pipeline first.
+- Use reducers as ownership boundaries.
+- Use event proposals for all parsed changes.
+- Use CanonValidator for truth.
+- Use OperationLedger before rewards/items/cards.
+- Use protected cards before generated cards.
+- Use ContextAllocator before broad context injection.
+- Use feature flags and Safe Mode.
+- Use exact resolver and parser-confidence rules.
+- Use fail-soft gameplay behavior.
+- Use generated cards only after tests pass.
+- Treat rumors, claims, theories, and card text as non-canon until validated.
+- Keep AI Dungeon freeform, but protect structured truth.
+
+This repaired package is now ready to become a developer specification.

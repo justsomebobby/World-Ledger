@@ -1,0 +1,1983 @@
+AIDRPG Design Bible — Chunk 18: Final Integration, Build-Readiness, MVP Scope, and Definition of Done
+
+1. Purpose of this chunk
+
+Chunk 18 is the final design-bible chunk.
+
+This chunk does not introduce a new gameplay subsystem.
+
+It ties the whole design together.
+
+This chunk answers:
+
+What is AIDRPG as a complete system?
+
+How do all previous chunks connect?
+
+What is the final architecture supposed to do?
+
+What must be true before coding begins?
+
+What belongs in the first working version?
+
+What should be delayed?
+
+What does “done” mean?
+
+What are the final non-negotiable safeguards?
+
+How do we stop this from becoming another pile of patches?
+
+The central rule is:
+
+AIDRPG must be built as a connected event-and-state engine, not as a pile of unrelated feature patches.
+
+Everything should flow through:
+
+source → parser → proposed event → validation → operation ledger → owner reducer → dirty queues → Context/CardSync/commands/audit.
+
+If a feature cannot fit that flow, it should not be in the first build.
+
+⸻
+
+2. What AIDRPG is
+
+AIDRPG is a structured RPG memory and consequence system for AI Dungeon.
+
+It is not a full replacement for AI Dungeon.
+
+It is not a rigid tabletop simulator.
+
+It is not a menu-only game.
+
+It is not supposed to force every story beat into exact math.
+
+AIDRPG exists to make freeform AI Dungeon play more consistent.
+
+It tracks:
+
+* player identity
+* stats
+* resources
+* progression
+* abilities
+* body state
+* injuries
+* conditions
+* combat consequences
+* group scale
+* inventory
+* equipment
+* ownership
+* custody
+* economy
+* crafting
+* quests
+* contracts
+* labor
+* domain projects
+* investigations
+* reputation
+* actors
+* places
+* factions
+* routes
+* time
+* travel
+* weather
+* Context
+* Story Cards
+* audits
+* cleanup
+* migration
+* commands
+
+But the real purpose is simpler:
+
+AIDRPG remembers what is true, rejects what is not true, and feeds the right truth back to the AI at the right time.
+
+⸻
+
+3. The final product goal
+
+The final product should let the player play naturally.
+
+The player should be able to write:
+
+“I sprint toward the chapel, shield raised, and tell Mara to cover me.”
+
+AIDRPG should understand:
+
+* the player is attempting travel or movement
+* the shield must exist and be accessible
+* sprinting may cost EP
+* Mara must be present to act
+* the current location and destination matter
+* hazards/weather may affect the action
+* combat or chase context may affect plausibility
+* no state changes should happen until validated by output or command
+
+Then AI Dungeon writes a response.
+
+AIDRPG reads that response and safely commits only supported consequences.
+
+If the output says:
+
+“You reach the chapel after ten minutes, but the fog leaves you winded.”
+
+AIDRPG may commit:
+
+* time passage
+* travel progress or arrival
+* current location update
+* EP loss
+* weather/hazard relevance
+* route memory
+* quest progress if chapel was objective
+
+If the same output processes twice, those consequences apply once.
+
+If the output says something false, like:
+
+“Mara blocks the arrow beside you,”
+
+but Mara is absent, AIDRPG should reject or flag that.
+
+If a card says the player owns the Dragon Crown, but state does not, AIDRPG should ignore the card as canon.
+
+If the player asks /debuglast, the system should explain exactly what happened.
+
+That is the final product.
+
+⸻
+
+4. The final architecture
+
+The final architecture has these major layers:
+
+1. State
+2. Source classifier
+3. Parser / event proposal layer
+4. CanonValidator
+5. OperationLedger
+6. Owner reducers
+7. Follow-up event router
+8. Dirty queue
+9. ContextBuilder
+10. CardSync
+11. CommandRouter
+12. AuditSystem
+13. MigrationSystem
+14. CleanupSystem
+15. ReleaseCheck
+
+Each layer has one job.
+
+No layer should secretly do another layer’s job.
+
+⸻
+
+5. State is canon
+
+state.aidrpg is the only source of gameplay truth.
+
+Cards are not canon.
+
+Context is not canon.
+
+Command output is not canon.
+
+AI prose is not canon until validated.
+
+Player input is usually intent, not success.
+
+Old migrated data is not canon until validated or restored.
+
+Quarantined data is not canon.
+
+Debug logs are not canon.
+
+The state must be organized by owner buckets.
+
+Recommended top-level state buckets:
+
+* meta
+* player
+* progression
+* body
+* abilities
+* inventory
+* economy
+* crafting
+* quests
+* contracts
+* labor
+* domain
+* investigation
+* reputation
+* actors
+* majorActorMemory
+* places
+* routes
+* factions
+* worldEntities
+* party
+* scale
+* time
+* travel
+* weather
+* scene
+* context
+* cards
+* operationLedger
+* dirty
+* audit
+* quarantine
+* migration
+* cleanup
+* settings
+* commands
+
+The exact code shape can change later.
+
+The ownership boundaries should not.
+
+⸻
+
+6. Source classifier
+
+Every input or text source must be classified before parsing.
+
+Possible sources:
+
+* player narrative input
+* player command
+* AI output
+* generated Context
+* Story Card text
+* manual override
+* migration
+* cleanup
+* debug/test
+* old state
+* system-generated command output
+
+The source classifier prevents false truth.
+
+Examples:
+
+A player command should not be parsed as story action.
+
+Command output should not create state.
+
+Story Card text should not create canon.
+
+Migration should not award XP.
+
+Cleanup should not complete quests.
+
+Context should not mutate state.
+
+This must be one of the first systems built because many bugs come from trusting the wrong source.
+
+⸻
+
+7. Parser / event proposal layer
+
+The parser should not directly mutate state.
+
+It only proposes events.
+
+Examples:
+
+AI output:
+
+“Mara hands you the rusted iron key.”
+
+Parser may propose:
+
+* inventory.item.gain
+* actor.interaction
+* quest.progress if key is quest-related
+
+AI output:
+
+“The wolf bites your arm.”
+
+Parser may propose:
+
+* body.damage
+* body.injury.add
+* combat.exchange
+
+AI output:
+
+“People say you died.”
+
+Parser may propose:
+
+* reputation.rumor.add
+* body.death candidate
+
+CanonValidator then rejects the body death and may accept the rumor.
+
+The parser’s job is to notice possible meaning.
+
+It is not allowed to decide truth alone.
+
+⸻
+
+8. CanonValidator
+
+CanonValidator is the safety judge.
+
+Every proposed event must be labeled:
+
+* accept
+* reject
+* pending
+* soft_fail
+* hard_deny
+
+The validator checks:
+
+* source authority
+* blockers
+* owner rules
+* current state
+* target identity
+* name hygiene
+* similar-name risks
+* whether the event is direct, quoted, rumored, dreamed, hypothetical, or pretend
+* whether the event contradicts state
+* whether required items/actors/resources exist
+* whether the result is plausible
+* whether evidence is strong enough
+* whether the event should be redirected
+
+Examples:
+
+Rumor death:
+
+* body.death: reject
+* reputation.rumor.add: accept or pending
+
+Failed ability:
+
+* ability.stabilize: reject
+* ability.attempt: soft_fail
+
+Price quote:
+
+* economy.price.quote: accept
+* coins.spend: reject
+* inventory.item.gain: reject
+
+Travel intent:
+
+* travel.intent: accept or pending
+* currentLocation.change: reject until arrival
+
+This validator is the heart of the system.
+
+⸻
+
+9. OperationLedger
+
+OperationLedger makes the system idempotent.
+
+Every committed consequence needs an operation key.
+
+This prevents:
+
+* duplicate XP
+* duplicate damage
+* duplicate item gain
+* duplicate card creation
+* duplicate quest completion
+* duplicate time passage
+* duplicate recovery
+* duplicate group casualties
+* duplicate reward payouts
+
+The same output should not apply twice.
+
+OperationLedger must be global enough to cover all owner systems.
+
+It should also support owner-specific duplicate checks.
+
+Example:
+
+The same wolf bite output cannot apply HP damage twice.
+
+The same quest reward output cannot pay coins twice.
+
+The same travel output cannot advance time twice.
+
+The same card creation event cannot create two Mara cards.
+
+Without OperationLedger, AIDRPG cannot be trusted.
+
+⸻
+
+10. Owner reducers
+
+Reducers are the only systems allowed to commit their own state.
+
+Examples:
+
+ProgressionReducer owns XP.
+
+BodyReducer owns HP, MP, EP, injuries, conditions.
+
+InventoryReducer owns items, ownership, custody, access, equipment.
+
+AbilityReducer owns ability candidates and stable abilities.
+
+QuestReducer owns quests.
+
+ContractReducer owns contracts.
+
+InvestigationReducer owns cases, clues, evidence.
+
+ReputationReducer owns rumors, titles, public reputation.
+
+ActorReducer owns actors.
+
+PlaceReducer owns places and current location.
+
+TimeReducer owns time passage.
+
+CardSync owns cards only.
+
+ContextBuilder owns Context only.
+
+No reducer should directly write another reducer’s state.
+
+Instead, it emits follow-up events.
+
+Example:
+
+Combat output may imply XP.
+
+Combat does not directly award XP.
+
+It proposes progression.xp.gain.
+
+ProgressionReducer decides.
+
+Example:
+
+Quest completion may imply coins.
+
+QuestReducer does not add coins.
+
+It proposes economy/inventory reward events.
+
+Inventory/Economy commits.
+
+This keeps the system understandable.
+
+⸻
+
+11. Follow-up event router
+
+Some accepted events naturally cause other possible events.
+
+Examples:
+
+Quest complete may propose:
+
+* XP reward
+* item reward
+* coin reward
+* reputation change
+* actor relationship update
+* quest archive
+* card dirty target
+
+Ability use may propose:
+
+* MP cost
+* EP cost
+* ability evidence
+* domain XP
+* stat XP
+
+Travel arrival may propose:
+
+* current location update
+* time passage
+* route memory
+* quest progress
+* weather exposure
+* recovery denial if forced march
+
+Follow-up events must still pass through validation and owner reducers.
+
+No follow-up should skip safety.
+
+The follow-up router prevents one system from directly mutating everything else.
+
+⸻
+
+12. Dirty queue
+
+Dirty queues tell ContextBuilder and CardSync what needs refreshing.
+
+Reducers mark dirty targets after state changes.
+
+Examples:
+
+Inventory changes:
+
+* dirty context inventory
+* dirty protected Inventory Overview card
+* dirty item card if item is card-eligible
+
+Ability stabilizes:
+
+* dirty abilities Context
+* dirty Abilities Overview card
+* dirty generated ability card
+
+Quest progresses:
+
+* dirty quest Context
+* dirty Quest Log
+* dirty quest card if eligible
+
+Actor relationship changes:
+
+* dirty actor Context if actor relevant
+* dirty actor card if eligible
+
+Dirty queues should:
+
+* dedupe repeated targets
+* preserve priority
+* store reason
+* respect budgets
+* expire irrelevant entries
+* avoid rebuilding everything every turn
+
+Dirty queues connect state change to memory updates without causing chaos.
+
+⸻
+
+13. ContextBuilder
+
+ContextBuilder reads state and creates immediate AI guidance.
+
+It should answer:
+
+What does the AI need to know right now?
+
+It should include:
+
+* current location
+* scene type
+* immediate hazards
+* current objective
+* relevant injuries/resources
+* present actors
+* absent actors if the AI may confuse them
+* relevant inventory/equipment
+* important ability limits
+* urgent deadlines
+* active travel/combat/crafting/case facts
+
+It should not include:
+
+* every item
+* every actor
+* every old quest
+* every archived case
+* every debug ID
+* every card
+* full state dumps
+
+ContextBuilder must not mutate gameplay state.
+
+Context should be compact, current, and uncertainty-aware.
+
+If cards are stale, Context should follow state and correct the immediate turn.
+
+⸻
+
+14. CardSync
+
+CardSync writes Story Cards.
+
+It does not write gameplay truth.
+
+CardSync should manage:
+
+* protected summary cards
+* generated actor cards
+* generated place cards
+* generated ability cards
+* generated item cards
+* generated quest cards
+* generated contract cards
+* generated domain cards
+* generated faction/world cards
+* duplicate detection
+* stale card updates
+* tombstones
+* neutralization
+* card budgets
+* card audits
+
+CardSync creates cards only from validated state.
+
+It never imports card text into canon by default.
+
+It updates cards when facts change.
+
+It prevents duplicates.
+
+It rejects junk names.
+
+It avoids broad trigger keys.
+
+It should be conservative in v1.
+
+A broken CardSync can corrupt AI behavior even if state is correct, so CardSync should be built carefully and tested heavily.
+
+⸻
+
+15. CommandRouter
+
+CommandRouter gives the player control.
+
+It should:
+
+* intercept slash commands
+* prevent command text from becoming narrative
+* route commands to handlers
+* display state honestly
+* allow manual corrections through safe paths
+* expose audits
+* expose release checks
+* expose Context and card state
+* validate command arguments
+* log manual overrides
+
+Commands are required for trust.
+
+The essential commands for first testing are:
+
+* /help
+* /sheet
+* /status
+* /inventory
+* /equipment
+* /quests
+* /debuglast
+* /stateaudit
+* /cardaudit
+* /context
+* /cards
+* /releasecheck
+
+More commands can come later.
+
+⸻
+
+16. AuditSystem
+
+AuditSystem explains what happened.
+
+Every meaningful turn should be inspectable.
+
+Audit should show:
+
+* source classification
+* parsed signals
+* proposed events
+* validation outcomes
+* accepted commits
+* rejected events
+* pending events
+* soft failures
+* hard denials
+* operation keys
+* duplicate skips
+* dirty targets
+* Context packets
+* CardSync actions
+* warnings
+
+Without audit, the system becomes impossible to debug.
+
+Audit should be clear enough that the player can say:
+
+“I see why the key was not added.”
+
+or:
+
+“I see why Mana Slash did not stabilize.”
+
+or:
+
+“I see why the reward did not duplicate.”
+
+Audit is not optional.
+
+⸻
+
+17. MigrationSystem
+
+MigrationSystem handles old versions.
+
+Because many old script versions may exist, migration must be safe.
+
+Migration should:
+
+* snapshot old state
+* detect schema version
+* create missing buckets
+* normalize old records
+* migrate valid data
+* quarantine malformed data
+* dedupe obvious duplicates
+* refuse unsupported card imports
+* mark dirty targets
+* produce a report
+* stamp schema only after success
+
+Migration should not:
+
+* award XP
+* create abilities from old card text
+* grant items from cards
+* kill actors
+* move current location without evidence
+* complete quests
+* trust old patch fields blindly
+
+Migration is a translator, not a storyteller.
+
+⸻
+
+18. CleanupSystem
+
+CleanupSystem keeps the system from growing forever.
+
+Cleanup may:
+
+* remove stale candidates
+* compress old memories
+* archive resolved objectives
+* clear old dirty entries
+* prune diagnostics
+* expire temporary hazards
+* expire summons
+* neutralize duplicate cards
+* tombstone junk card identities
+* compress quarantine reports
+
+Cleanup may not:
+
+* invent truth
+* delete key items
+* delete important actors
+* complete quests
+* award XP
+* change HP/MP/EP
+* create cards from raw prose
+* trust cards as state
+* change current location
+* erase important archives
+
+Cleanup must be safe, budgeted, and auditable.
+
+⸻
+
+19. ReleaseCheck
+
+ReleaseCheck decides whether the build is safe to test.
+
+It should fail if:
+
+* OperationLedger is missing
+* parser writes state directly
+* ContextBuilder mutates state
+* CardSync creates canon
+* multiple systems write XP
+* multiple systems write inventory
+* multiple systems write HP/MP/EP
+* name hygiene is missing
+* card dedupe is missing
+* command output is parsed as gameplay
+* /help claims unimplemented features
+* migration can import card text as state
+* cleanup can invent gameplay truth
+
+ReleaseCheck should show:
+
+* passed checks
+* warnings
+* critical failures
+* unimplemented features
+* safe-to-test status
+
+ReleaseCheck is the gate before trusting the script.
+
+⸻
+
+20. The integrated turn lifecycle
+
+A normal story turn should work like this:
+
+1. Player input arrives.
+2. CommandRouter checks whether it is a slash command.
+3. If command, route command and stop narrative parsing.
+4. If narrative, classify source as player input.
+5. Player input may create intent proposals.
+6. AI Dungeon generates output.
+7. AI output is classified as AI output.
+8. Parser proposes possible events.
+9. Events pass through CanonValidator.
+10. OperationLedger checks duplicates.
+11. Owner reducers commit accepted events.
+12. Reducers emit follow-up proposals if needed.
+13. Follow-ups pass validation and owner reducers.
+14. Dirty targets are marked.
+15. Audit trace records decisions.
+16. ContextBuilder refreshes relevant Context within budget.
+17. CardSync updates cards within budget.
+18. Commands can inspect the result.
+
+No step should secretly bypass validation.
+
+No step should directly trust prose as canon.
+
+⸻
+
+21. Final owner map
+
+This owner map is the final reference.
+
+PlayerReducer
+
+Owns:
+
+* player identity
+* player sheet
+* race/species
+* age
+* appearance
+* level display references if needed
+* primary protagonist selection
+
+ProgressionReducer
+
+Owns:
+
+* XP
+* total XP
+* XP-to-next
+* level-up
+* domain XP
+* stat training XP
+* progression rewards
+* anti-farm logic
+
+BodyReducer
+
+Owns:
+
+* HP
+* MP
+* EP
+* max resources
+* injuries
+* conditions
+* fatigue
+* body state
+* death/unconsciousness boundary
+* recovery effects
+
+AbilityReducer
+
+Owns:
+
+* ability candidates
+* stable abilities
+* skills
+* talents
+* passives
+* traits if capability-facing
+* specializations
+* ability costs
+* ability evidence
+* aliases
+* variants
+* evolution
+
+InventoryReducer / ItemAuthority
+
+Owns:
+
+* items
+* materials
+* equipment
+* ownership
+* custody
+* access
+* condition
+* quality
+* key item flags
+* currency storage if simple
+* item identity
+
+EconomyReducer
+
+Owns:
+
+* prices
+* transactions
+* purchases
+* sales
+* barter
+* debts
+* wages
+* fees
+* payments
+
+CraftingReducer
+
+Owns:
+
+* crafting workflow
+* repair workflow
+* upgrade workflow
+* recipes
+* material reservation proposals
+* crafting progress
+* quality proposals
+
+QuestReducer
+
+Owns:
+
+* quests
+* quest objectives
+* quest progress
+* completion
+* failure
+* archive
+
+ContractReducer
+
+Owns:
+
+* agreements
+* terms
+* obligations
+* payment status
+* custody obligations
+* breach
+* fulfillment
+* contract archive
+
+LaborReducer
+
+Owns:
+
+* workers
+* worker groups
+* foremen
+* assigned work
+* morale
+* productivity
+* labor blockers
+
+DomainReducer
+
+Owns:
+
+* holdings
+* bases
+* domain assets
+* domain projects
+* project progress
+* domain blockers
+* domain benefits
+
+InvestigationReducer
+
+Owns:
+
+* cases
+* leads
+* clues
+* evidence meaning
+* suspects
+* contradictions
+* solved-case archive
+
+ReputationReducer
+
+Owns:
+
+* public reputation
+* local reputation
+* faction reputation
+* rumors
+* witness publicity
+* titles
+* legal/social status
+
+ActorReducer
+
+Owns:
+
+* actors
+* actor candidates
+* actor identity
+* actor aliases
+* actor status
+* actor location
+* actor relationship
+* actor importance
+
+MajorActorMemoryReducer
+
+Owns:
+
+* long-term memories for major actors
+
+PlaceReducer
+
+Owns:
+
+* places
+* current location
+* building memory
+* local exits
+* local hazards
+* scene-place links
+
+RouteReducer
+
+Owns:
+
+* routes
+* endpoints
+* discovered routes
+* route hazards
+* route status
+
+FactionReducer
+
+Owns:
+
+* faction identity
+* faction relationships
+* faction memory
+* faction goals
+* faction territory
+
+WorldEntityReducer
+
+Owns:
+
+* persistent non-standard world forces/entities
+
+PartyReducer
+
+Owns:
+
+* companions in party
+* party presence
+* followers
+* summons
+* temporary allies
+* separated/absent states
+
+ScaleReducer
+
+Owns:
+
+* group records
+* group counts
+* group casualties
+* group morale
+* large-scale conflict summaries
+* multi-protagonist support if enabled
+
+TimeReducer
+
+Owns:
+
+* time passage
+* day/time state
+* deadline ticking
+* recovery tick timing
+* project time proposals
+
+TravelReducer
+
+Owns:
+
+* travel state
+* origin/destination
+* route progress
+* travel interruption
+* arrival proposals
+
+WeatherSystem
+
+Owns:
+
+* weather state
+* weather scope
+* weather severity
+* weather duration
+* weather effects
+
+ContextBuilder
+
+Owns:
+
+* Context packets only
+
+CardSync
+
+Owns:
+
+* Story Cards only
+
+AuditSystem
+
+Owns:
+
+* diagnostic records only
+
+MigrationSystem
+
+Owns:
+
+* schema migration process
+
+CleanupSystem
+
+Owns:
+
+* safe cleanup process
+
+CommandRouter
+
+Owns:
+
+* command parsing and display
+
+⸻
+
+22. MVP scope
+
+The first working version should be smaller than the full design.
+
+The goal of MVP is not to implement everything.
+
+The goal is to prove the architecture is safe.
+
+MVP must include:
+
+* state schema
+* source classifier
+* command routing
+* core player sheet
+* HP/MP/EP
+* ATK/DEF/SPD/INT/LCK
+* basic progression
+* basic inventory
+* ownership/custody/access
+* basic equipment
+* basic ability candidates/stable abilities
+* basic quest tracking
+* basic actor/place memory
+* current location
+* basic time/travel
+* OperationLedger
+* CanonValidator
+* name hygiene
+* duplicate prevention
+* ContextBuilder
+* protected summary cards
+* conservative CardSync
+* /debuglast
+* /stateaudit
+* /cardaudit
+* /releasecheck
+* migration skeleton
+* cleanup skeleton
+
+MVP can delay:
+
+* full economy
+* full crafting
+* full domain management
+* full labor
+* full investigation depth
+* full reputation scoring
+* full faction systems
+* full weather simulation
+* full group battle simulation
+* full multi-protagonist support
+* advanced ability evolution
+* advanced generated card families
+* large-scale domain projects
+
+The MVP should be safe before it is broad.
+
+⸻
+
+23. What must be built first
+
+The first build should start with foundations, not gameplay features.
+
+Required foundation order:
+
+1. State schema
+2. Source classifier
+3. CommandRouter
+4. AuditSystem
+5. OperationLedger
+6. CanonValidator
+7. Name hygiene
+8. Owner reducer pattern
+9. Dirty queue
+10. ContextBuilder
+11. Protected card rebuild
+12. Card identity/dedupe skeleton
+13. ReleaseCheck
+
+Only after those exist should gameplay systems expand.
+
+Why?
+
+Because without those foundations, every feature becomes another patch.
+
+AIDRPG failed before because ideas were added faster than the safety spine.
+
+This final plan reverses that.
+
+Safety first.
+
+Features second.
+
+Cards last.
+
+⸻
+
+24. First gameplay systems to implement
+
+After the foundation exists, build gameplay in this order:
+
+Phase A — Player core
+
+* player identity
+* stats
+* HP/MP/EP
+* /sheet
+* /status
+* /resources
+* resource changes
+* injuries/conditions basic
+* recovery tick basic
+
+Phase B — Inventory core
+
+* item records
+* item name hygiene
+* item gain/loss validation
+* ownership/custody/access
+* equipment slots
+* /inventory
+* /equipment
+
+Phase C — Progression core
+
+* XP
+* total XP
+* XP-to-next
+* level
+* stat training XP
+* domain XP basic
+* anti-duplicate XP
+* /progression
+
+Phase D — Ability core
+
+* candidates
+* attempts
+* soft failures
+* stabilization
+* costs
+* limits
+* stable abilities
+* /abilities
+* /abilityaudit
+
+Phase E — Quest and actor/place core
+
+* quest offers/acceptance/progress/completion
+* actor records
+* place records
+* current location
+* /quests
+* /actors
+* /places
+* /scene
+
+Phase F — Time/travel core
+
+* time passage
+* travel intent/start/arrival
+* deadlines basic
+* recovery tick timing
+* /time
+* /travel
+* /deadlines
+
+Phase G — Context and card expansion
+
+* protected summaries
+* generated actor cards
+* generated place cards
+* generated ability cards
+* generated item cards for key items only
+* generated quest cards for major quests only
+
+This order makes testing manageable.
+
+⸻
+
+25. What should be delayed
+
+The following should not be first-build priorities:
+
+* full domain management
+* full labor simulation
+* full crafting economy
+* complex recipe trees
+* detailed weather simulation
+* detailed faction diplomacy
+* deep investigation confidence math
+* large-scale battle simulation
+* multiple protagonists
+* advanced card neutralization UI
+* full migration of every old version
+* every command in the design
+* perfect combat math
+* perfect economy balancing
+* perfect ability evolution trees
+
+These are valuable.
+
+They are not foundation.
+
+They should be added after core safety is proven.
+
+⸻
+
+26. The “no patch pile” rule
+
+Any new idea must be assigned to one of these places:
+
+* parser rule
+* validation rule
+* reducer rule
+* operation ledger rule
+* name hygiene rule
+* identity resolution rule
+* cleanup rule
+* migration rule
+* card sync rule
+* Context rule
+* command display rule
+* audit rule
+* acceptance test
+
+If it cannot be placed, it is not ready.
+
+Examples:
+
+“Stop duplicated cards.”
+
+This becomes:
+
+* card identity rule
+* card dedupe rule
+* card audit rule
+* tombstone rule
+* acceptance test
+
+“Stop junk names.”
+
+This becomes:
+
+* name hygiene rule
+* parser blocker
+* hard-deny outcome
+* audit warning
+* acceptance test
+
+“Make abilities update cards over time.”
+
+This becomes:
+
+* AbilityReducer dirty target
+* CardSync ability card update rule
+* card stale replacement rule
+* acceptance test
+
+“Stop rumors from killing the player.”
+
+This becomes:
+
+* source/blocker rule
+* body death rejection rule
+* reputation rumor redirect rule
+* debug trace
+* acceptance test
+
+No more floating patches.
+
+Every fix must live in the architecture.
+
+⸻
+
+27. Final minimum data contract
+
+Before coding, every feature should know its minimum record shape.
+
+A record should always have:
+
+* id
+* display name or title if applicable
+* canonical key if applicable
+* type/category
+* status
+* source/evidence
+* created turn
+* last updated turn
+* links to other records if applicable
+* card eligibility if applicable
+* dirty behavior if applicable
+
+Important records should also have:
+
+* owner
+* aliases
+* confidence
+* active/archive state
+* operation history summary
+* validation notes
+* cleanup eligibility
+* migration version
+
+This prevents shapeless state blobs.
+
+Shapeless state becomes impossible to migrate, audit, dedupe, or display.
+
+⸻
+
+28. Final acceptance checklist
+
+Before calling the design “ready to build,” the following must be true.
+
+Architecture
+
+* Event pipeline is clear.
+* State ownership is clear.
+* Reducers do not cross-write.
+* Follow-up events are routed.
+* OperationLedger exists.
+* Dirty queue exists.
+* Audit exists.
+* Command layer exists.
+* ContextBuilder reads state only.
+* CardSync writes cards only.
+
+Safety
+
+* Rumors do not become truth.
+* Dreams do not become real state.
+* Quotes do not become player action.
+* Failed attempts do not become success.
+* Pretend actions do not become canon.
+* Duplicate output does not duplicate consequences.
+* Junk names are rejected.
+* Similar names are handled carefully.
+* Cards do not create canon.
+* Cleanup does not invent truth.
+* Migration quarantines unsafe data.
+
+Gameplay
+
+* Player sheet displays correctly.
+* Resources update safely.
+* XP is deduped.
+* Items track ownership/custody/access.
+* Abilities separate candidates from stable abilities.
+* Quests separate hooks, accepted quests, progress, and completion.
+* Actors and places avoid junk/duplicates.
+* Time/travel separates intent, departure, and arrival.
+* Context reflects current truth.
+* Cards update over time.
+
+Commands
+
+* /help is honest.
+* /debuglast explains last turn.
+* /stateaudit finds contradictions.
+* /cardaudit finds card problems.
+* /releasecheck detects unsafe build states.
+* Read-only commands do not mutate state.
+* Manual override is logged.
+
+If any of these fail, the build is not ready to trust.
+
+⸻
+
+29. Final acceptance tests
+
+These are the most important cross-system tests.
+
+Test 1 — key handoff
+
+Output:
+
+“Mara places the rusted iron key in your hand.”
+
+Expected:
+
+* item gained once
+* owner/custody/access player
+* key item if relevant
+* inventory Context dirty
+* no duplicate card unless eligible
+* replay does not duplicate item
+
+Test 2 — quoted key
+
+Output:
+
+“Mara says, ‘You pick up the key.’”
+
+Expected:
+
+* no item gain
+* dialogue may be recorded if relevant
+* debug reason: quoted text
+
+Test 3 — sword repair custody
+
+Output:
+
+“Mira takes your iron sword for repair.”
+
+Expected:
+
+* sword owner remains player
+* custody Mira
+* access unavailable
+* equipment updated if previously equipped
+* Context says sword unavailable
+* card updates if sword/card eligible
+
+Test 4 — unavailable sword use
+
+Input:
+
+“I draw my iron sword.”
+
+State:
+
+Sword custody Mira.
+
+Expected:
+
+* use/equip rejected or blocked
+* no sword attack validation unless retrieved
+* debug reason: item unavailable
+
+Test 5 — candidate ability
+
+Output:
+
+“The mana edge flickers, then collapses.”
+
+Expected:
+
+* ability candidate evidence
+* soft_fail or unstable manifestation
+* MP cost possible
+* no stable ability
+* no generated ability card
+
+Test 6 — stable ability
+
+Output after enough evidence:
+
+“The mana locks into a clean crescent and cuts the post.”
+
+Expected:
+
+* ability stabilizes
+* costs/limits recorded
+* ability Context dirty
+* ability card eligible if important
+
+Test 7 — ability card update
+
+Later output:
+
+“You learn Mana Slash consistently costs 8 MP and 3 EP.”
+
+Expected:
+
+* existing ability record updates
+* existing card updates
+* no duplicate Mana Slash card
+
+Test 8 — wolf bite replay
+
+Output:
+
+“The wolf bites your forearm and blood runs.”
+
+Expected:
+
+* HP loss once
+* arm injury once
+* replay skipped
+
+Test 9 — rumor death
+
+Output:
+
+“A rumor spreads that you died in the woods.”
+
+Expected:
+
+* no death
+* rumor record possible
+* reputation may change if public
+* debug shows body death rejected
+
+Test 10 — travel intent
+
+Input:
+
+“I go to the old chapel.”
+
+Expected:
+
+* travel intent
+* no arrival
+* current location unchanged until output confirms departure/arrival
+
+Test 11 — travel arrival replay
+
+Output:
+
+“After one hour, you arrive at the old chapel.”
+
+Expected:
+
+* time +1 hour once
+* location changes once
+* travel resolved once
+* replay skipped
+
+Test 12 — group count
+
+Output:
+
+“Thirteen goblins attack.”
+
+Then:
+
+“Nine goblins fall.”
+
+Expected:
+
+* group total 13
+* killed 9
+* active remaining 4
+* group not wiped unless resolved
+
+Test 13 — quest hook
+
+Output:
+
+“Mara says her ring is missing.”
+
+Expected:
+
+* quest hook or possible quest
+* no accepted quest unless player agrees
+
+Test 14 — quest accepted
+
+Input/output confirms:
+
+“You promise Mara you will find the ring.”
+
+Expected:
+
+* quest active
+* objective clear
+* actor link Mara
+
+Test 15 — quest reward replay
+
+Output:
+
+“Mara gives you 5 silver for returning the ring.”
+
+Expected:
+
+* reward once
+* replay skipped
+* quest archive once
+
+Test 16 — case rumor
+
+Output:
+
+“People whisper that Harlan stole the ring.”
+
+Expected:
+
+* rumor/lead
+* Harlan possible suspect
+* no confirmed culprit
+
+Test 17 — public proof
+
+Output:
+
+“Harlan confesses before the village.”
+
+Expected:
+
+* evidence accepted
+* case publicly solved if state supports
+* reputation update possible
+* quest progress if linked
+
+Test 18 — generic room
+
+Output:
+
+“You enter the room.”
+
+Expected:
+
+* scene state update only
+* no durable place card
+
+Test 19 — actor/place duplicate
+
+State:
+
+Mara actor exists.
+
+Output:
+
+“Mara Ironhand works at the forge.”
+
+Expected:
+
+* alias/merge if evidence supports
+* no duplicate actor card
+
+Test 20 — card false item
+
+Story Card says:
+
+Player owns Dragon Crown.
+
+State says no.
+
+Expected:
+
+* no item
+* card audit warning
+* Context ignores Dragon Crown
+
+Test 21 — cleanup safety
+
+Cleanup runs.
+
+Expected:
+
+* stale candidates may be removed
+* important actor retained
+* no items/XP/quests/abilities created
+
+Test 22 — migration safety
+
+Old malformed state exists.
+
+Expected:
+
+* valid records migrate
+* malformed records quarantine
+* old cards not imported as canon
+
+Test 23 — command isolation
+
+Input:
+
+/inventory
+
+Expected:
+
+* command output only
+* no parser gameplay events
+* no duplicate inventory
+
+Test 24 — release failure
+
+OperationLedger missing.
+
+Expected:
+
+* /releasecheck critical failure
+* build not safe to trust
+
+These tests define whether the core engine is stable.
+
+⸻
+
+30. What “done” means
+
+AIDRPG is not “done” when every idea exists.
+
+AIDRPG is done enough to build when:
+
+* every system has an owner
+* every state change has a path
+* every dangerous false positive has a safeguard
+* every duplicate-prone operation has ledger protection
+* every memory surface is read/write separated
+* every card is a mirror, not canon
+* every command is honest
+* every old-data path has migration/quarantine
+* every cleanup path is safe
+* every major feature has acceptance tests
+* every MVP feature can be tested independently
+* every delayed feature is clearly delayed
+
+The final product is not measured by feature count.
+
+It is measured by trust.
+
+Can the player trust that:
+
+* the item list is real?
+* the sword is really available or unavailable?
+* the quest is really active or complete?
+* the ability is really stable or only a candidate?
+* the companion is really present or absent?
+* the card is not lying?
+* the same output did not apply twice?
+* the debug command can explain what happened?
+
+If yes, AIDRPG is working.
+
+⸻
+
+31. Final build-readiness doctrine
+
+Do not start by building every gameplay feature.
+
+Start by building the safety spine.
+
+Then build small systems that prove the spine works.
+
+Do not let parser rules write state directly.
+
+Do not let cards create canon.
+
+Do not let Context mutate state.
+
+Do not let cleanup invent truth.
+
+Do not let migration trust old cards.
+
+Do not let commands lie.
+
+Do not let duplicates apply twice.
+
+Do not let candidates pretend to be stable records.
+
+Do not let rumors, dreams, quotes, jokes, hypotheticals, or failed attempts become confirmed truth.
+
+Do not let generated cards freeze old facts.
+
+Do not let broad patch systems become hidden gameplay writers.
+
+Every new feature must fit the event pipeline.
+
+Every reducer must own only its own truth.
+
+Every consequence must be validated.
+
+Every commit must be deduped.
+
+Every card must mirror state.
+
+Every command must be honest.
+
+Every bug fix must become a rule, test, or owner-boundary correction.
+
+⸻
+
+32. Final Chunk 18 doctrine
+
+AIDRPG is a canon-management engine for freeform RPG play.
+
+Its job is not to control the story.
+
+Its job is to keep the story’s consequences coherent.
+
+The full system works when:
+
+* state holds truth
+* validators protect truth
+* reducers own truth
+* ledger dedupes truth
+* Context presents truth
+* cards mirror truth
+* commands reveal truth
+* audits explain truth
+* migration preserves truth
+* cleanup protects truth
+
+The design is complete enough when every major concept has:
+
+* a meaning
+* an owner
+* a lifecycle
+* a validation path
+* a duplicate safeguard
+* a Context rule
+* a CardSync rule
+* a command/audit surface
+* acceptance tests
+
+That is the final design target before coding.
+
+The goal is not a perfect simulator.
+
+The goal is a stable, believable, inspectable RPG layer that lets AI Dungeon stay creative without letting it forget, duplicate, overwrite, or invent confirmed canon.
+

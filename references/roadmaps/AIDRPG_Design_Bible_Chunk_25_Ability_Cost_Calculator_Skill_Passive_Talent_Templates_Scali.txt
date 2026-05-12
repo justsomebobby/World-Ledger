@@ -1,0 +1,3124 @@
+AIDRPG Design Bible — Chunk 25: Ability Cost Calculator, Skill/Passive/Talent Templates, Scaling, Cooldowns, and Failure Modes
+
+1. Purpose of this chunk
+
+Chunk 25 defines how AIDRPG handles abilities, skills, passives, talents, traits, specializations, and power costs.
+
+Earlier chunks established:
+
+* level scaling
+* race/species logic
+* stats and resources
+* XP growth
+* enemy tiers
+* combat math
+
+Chunk 25 answers:
+
+How does AIDRPG determine the cost of an ability?
+
+How does a weak ability differ from a mythic ability?
+
+How does a candidate become a stable ability?
+
+How does a stable ability improve over time?
+
+How do passives work without becoming infinite immunity?
+
+How do talents differ from abilities?
+
+How do racial traits differ from skills?
+
+How does AIDRPG handle freeform anime-style powers without letting every idea become real?
+
+How does the system decide whether an ability costs HP, MP, EP, time, materials, cooldown, focus, or risk?
+
+The central rule is:
+
+Abilities are validated capabilities, not just things the AI or player mentions.
+
+An ability must have:
+
+* source
+* category
+* activation rule
+* effect
+* cost
+* limits
+* failure modes
+* scaling path
+* evidence
+* rank
+* owner
+* update rules
+
+No ability should be infinite, free, perfectly reliable, and universally useful unless the campaign explicitly supports godlike play and the ability has equally meaningful limits.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon freeform play creates powers constantly.
+
+The player may write:
+
+* “I try to channel mana through my sword.”
+* “I copy the monster’s movement.”
+* “I breathe fire.”
+* “I turn my shadow into a blade.”
+* “I let the slime cover my arm as armor.”
+* “I adapt to the poison.”
+* “I use my luck to find a weak point.”
+* “I absorb the wolf’s strength.”
+* “I focus until my body hardens.”
+* “I try to remember boxing from Earth.”
+* “I ask the spirit if I have any skills.”
+* “I activate Quick Learner.”
+* “I use my passive regeneration.”
+
+AIDRPG must support this creativity.
+
+But it must not allow:
+
+* every attempt to instantly create a stable ability
+* every anime idea to work for free
+* every copied power to become mastered instantly
+* every passive to be always-on immunity
+* every failed attempt to become success
+* every AI-generated skill name to become canon
+* ability cards to appear for candidates
+* abilities to ignore MP/EP/HP costs
+* high-level abilities to have low-level costs
+* low-level characters to freely use world-scale effects
+
+The system should allow creativity through candidate abilities, partial success, evidence, cost discovery, failure modes, and stabilization.
+
+⸻
+
+3. Ability ownership
+
+AbilityReducer owns
+
+* ability candidates
+* stable abilities
+* ability ranks
+* ability evidence
+* ability costs
+* ability limits
+* ability categories
+* ability aliases
+* ability variants
+* ability evolution
+* ability failure patterns
+* ability discovery
+* ability stabilization
+* ability loss/sealing
+* ability card eligibility
+
+BodyReducer owns
+
+* HP/MP/EP cost commits
+* backlash injuries
+* fatigue
+* conditions from ability use
+* overexertion consequences
+
+ProgressionReducer owns
+
+* ability-related XP proposals
+* stat XP from ability use
+* domain XP from ability use
+* anti-farm reward logic
+
+CardSync owns
+
+* generated ability cards
+* ability card updates
+* ability card dedupe
+* ability card trigger safety
+
+ContextBuilder owns
+
+* ability context packets
+* current usable ability reminders
+* warnings about costs/limits
+* correction if AI treats candidates as stable
+
+AbilityReducer decides whether the ability exists.
+
+BodyReducer decides resource consequences.
+
+CardSync mirrors stable important abilities.
+
+ContextBuilder tells the AI what matters now.
+
+⸻
+
+4. Ability categories
+
+AIDRPG should separate capability types.
+
+Active Ability
+
+A deliberate power or technique the player activates.
+
+Examples:
+
+* Mana Slash
+* Firebolt
+* Shadow Step
+* Healing Touch
+* Dragon Breath
+* Slime Armor
+* Blood Spear
+
+Skill
+
+A trained action or technique, usually mundane or semi-mundane.
+
+Examples:
+
+* Sword Guard
+* Boxing Jab
+* Lockpicking
+* Silent Step
+* Shield Bash
+* First Aid
+
+Skills may cost EP, tools, time, or focus.
+
+Spell
+
+A magical active ability.
+
+Examples:
+
+* Fireball
+* Ice Lance
+* Barrier
+* Detect Magic
+* Teleport
+
+Spells usually cost MP.
+
+Passive
+
+A trait that works automatically under conditions.
+
+Examples:
+
+* Dragonkin Scales
+* Undead Body
+* Wolfkin Scent
+* Quick Learner
+* Fire Resistance
+* Regeneration
+
+Passives must have scope and limits.
+
+Talent
+
+A learned or natural style advantage.
+
+Examples:
+
+* Brawler’s Instinct
+* Mana Sensitivity
+* Tactical Eye
+* Improvised Weapon Talent
+* Slime Compatibility
+
+Talents influence actions but are not usually activated like spells.
+
+Trait
+
+A body, race, curse, blessing, or origin property.
+
+Examples:
+
+* Slime Body
+* Construct Body
+* Fairy Wings
+* Vampire Hunger
+* Cursed Bloodline
+
+Traits often alter validation.
+
+Specialization
+
+A build-defining focus.
+
+Examples:
+
+* Mana Brawler
+* Fire Mage
+* Defensive Sword Saint
+* Adaptive Slime Knight
+* Shadow Duelist
+
+Specializations guide growth and ability interpretation.
+
+Ultimate / Mythic Ability
+
+A high-cost, high-scale, story-defining ability.
+
+Examples:
+
+* World-Cutting Slash
+* Sunfall Ritual
+* Divine Resurrection
+* Dragon Sovereign Breath
+* Reality Anchor
+
+These require high rank, major costs, cooldowns, or story constraints.
+
+⸻
+
+5. Ability lifecycle
+
+Every ability should follow a lifecycle.
+
+5.1 Not known
+
+No ability exists.
+
+A mention alone does not create it.
+
+5.2 Hint
+
+Something suggests a possible ability.
+
+Example:
+
+The player feels warmth in their palms when focusing mana.
+
+5.3 Candidate
+
+There is enough evidence to track a possible ability.
+
+Example:
+
+Mana gathers along the sword but collapses.
+
+5.4 Unstable
+
+The ability manifests sometimes but is unreliable.
+
+Example:
+
+Mana Slash appears once in panic but cannot be repeated consistently.
+
+5.5 Basic stable
+
+The player can use it in calm or ordinary conditions.
+
+5.6 Reliable
+
+The player can use it under pressure with known cost.
+
+5.7 Refined
+
+The player understands cost, range, limits, and counters.
+
+5.8 Advanced
+
+The ability is strong and flexible.
+
+5.9 Expert / Signature
+
+The ability is central to the build.
+
+5.10 Legendary / Mythic
+
+The ability affects boss fights, regions, domains, or world-scale events.
+
+5.11 Evolved / Variant
+
+The ability develops into a stronger form or branch.
+
+5.12 Sealed / Lost / Corrupted
+
+The ability becomes unavailable, changed, or dangerous.
+
+Cards should only be generated for stable, important abilities.
+
+Candidates should stay in protected Abilities overview only.
+
+⸻
+
+6. Ability rank table
+
+AIDRPG should use ranks for ability maturity.
+
+Rank	Name	Meaning
+None	Not Known	no ability
+Hint	Hint	possible sign, not usable
+Candidate	Candidate	tracked but not reliable
+1	Unstable	weak or inconsistent manifestation
+2	Basic	works in calm/normal conditions
+3	Reliable	works under ordinary pressure
+4	Practiced	lower failure, clearer limits
+5	Refined	cost/limits mostly known
+6	Advanced	strong use under danger
+7	Expert	central build ability
+8	Master	signature power
+9	Legendary	major story power
+10	Mythic	world-scale power
+11+	Ascendant	divine/cosmic scaling
+
+Rank affects:
+
+* reliability
+* cost
+* damage/effect scale
+* range
+* duration
+* precision
+* target count
+* failure chance
+* backlash risk
+* card eligibility
+* evolution potential
+
+⸻
+
+7. Ability evidence types
+
+Abilities grow through evidence.
+
+Evidence types:
+
+* attempted
+* failed attempt
+* partial manifestation
+* successful use
+* controlled use
+* stressful use
+* repeated use
+* taught use
+* observed technique
+* copied pattern
+* absorbed source
+* breakthrough
+* backlash
+* limitation discovered
+* cost discovered
+* weakness discovered
+* counter discovered
+* variant discovered
+* evolution trigger
+* sealed/lost event
+
+Evidence must be validated.
+
+Pretend use, dream use, quotes, card text, or jokes do not count unless the campaign explicitly makes them real.
+
+⸻
+
+8. Evidence quality
+
+Not all evidence is equal.
+
+Evidence Quality	Value
+invalid	ignored
+weak	small candidate support
+normal	useful development
+strong	major development
+breakthrough	may stabilize or rank up
+story milestone	may evolve ability
+
+Examples:
+
+Weak evidence:
+
+* mana flickers once during practice
+
+Normal evidence:
+
+* weak Mana Slash cuts grass
+
+Strong evidence:
+
+* Mana Slash wounds enemy in real combat
+
+Breakthrough:
+
+* Mana Slash works under pressure after training and cost is understood
+
+Story milestone:
+
+* Mana Slash evolves after defeating sword master or absorbing dragon mana
+
+Evidence quality matters more than raw count.
+
+⸻
+
+9. Ability discovery rules
+
+An ability may be discovered from:
+
+* race/species trait
+* class/background
+* training
+* combat stress
+* magical item
+* teacher
+* book/recipe/manual
+* observed enemy technique
+* absorbed essence/core
+* divine blessing
+* curse
+* mutation
+* dream that has real supernatural consequences
+* system/status interface
+* repeated creative attempts
+* story milestone
+
+Discovery should not happen from:
+
+* unsupported player claim
+* random AI list with no source
+* Story Card text alone
+* debug text
+* command output
+* hypothetical statement
+* joke
+* failed pretend action
+
+Example:
+
+Player says:
+
+“I have Fireball.”
+
+If not established:
+
+* reject as stable ability
+* maybe create candidate only if context supports magical background
+
+Player says:
+
+“I try to form fire in my hand.”
+
+AI says:
+
+“A tiny spark appears, then dies.”
+
+* create Fire Spark or Fire Magic candidate, not full Fireball
+
+⸻
+
+10. Ability stabilization rules
+
+An ability stabilizes when enough evidence proves:
+
+* activation method
+* effect
+* cost or cost range
+* repeatability
+* limits
+* failure pattern
+* relevant stat/domain support
+* source legitimacy
+
+Minimum stabilization should usually require:
+
+* at least one successful manifestation
+* at least one repeated or controlled use
+* cost paid or cost estimated
+* no major contradiction
+* ability is not merely dream/quote/card text
+
+Example:
+
+Mana Slash candidate becomes stable when:
+
+* mana forms on blade more than once
+* at least one controlled slash produces real effect
+* MP/EP cost is observed
+* player can intentionally activate it
+* it does not rely on one-time artifact surge unless that is part of ability
+
+⸻
+
+11. Ability cost philosophy
+
+Every meaningful active ability should have some cost or limit.
+
+Cost types:
+
+* MP
+* EP
+* HP
+* time
+* cooldown
+* concentration
+* material
+* item charge
+* ammunition
+* stance/position
+* environmental requirement
+* risk
+* corruption
+* fatigue
+* backlash
+* debt/oath
+* summon upkeep
+* social/legal cost
+* opportunity cost
+
+Not every ability needs MP.
+
+Not every ability needs EP.
+
+But every ability needs at least one balancing factor unless it is tiny or passive with narrow scope.
+
+Examples:
+
+Sword Slash:
+
+* EP cost
+
+Fireball:
+
+* MP cost
+
+Mana Slash:
+
+* MP + EP cost
+
+Blood Spear:
+
+* HP + MP cost
+
+Teleport:
+
+* MP + cooldown + risk
+
+Regeneration:
+
+* passive, but costs time/energy/nutrition/mana or has counter conditions
+
+Quick Learner:
+
+* passive, but affects growth rate only and obeys anti-farm
+
+⸻
+
+12. Cost class table
+
+Ability costs should use cost classes.
+
+Cost Class	Meaning	Resource Cost
+0	negligible / passive	0 or flavor only
+1	tiny	1–2% of relevant max resource
+2	light	3–5%
+3	moderate	6–10%
+4	heavy	11–20%
+5	severe	21–35%
+6	extreme	36–50%
+7	overcharge	50%+ and risk
+8	sacrificial	HP/life/lasting condition/story cost
+9	mythic	requires special story resource, ritual, domain, or cooldown
+
+Relevant max resource means:
+
+* max MP for magic
+* max EP for physical exertion
+* max HP for blood/body cost
+* special pool if ability has one
+
+Percentage costs scale naturally from Level 1 to Level 1000.
+
+⸻
+
+13. Base ability effect tier
+
+Before cost is calculated, determine effect tier.
+
+Effect Tier	Meaning	Example
+0	cosmetic	small glow, harmless spark
+1	minor utility	light, small push, brief sense
+2	basic combat/utility	weak bolt, short dash, minor heal
+3	standard combat	Mana Slash, Firebolt, Shield Bash
+4	strong combat	Fireball, Shadow Step, strong heal
+5	advanced	barrier dome, multi-target strike
+6	elite	battlefield control, powerful summon
+7	legendary	dragon breath-scale attack, resurrection-lite
+8	mythic	army-scale effect, large ritual
+9	world-scale	city/region-scale effect
+10	cosmic/divine	reality, fate, god-scale effect
+
+Effect tier should match player level, ability rank, resources, and story.
+
+A Level 5 candidate ability should usually be Tier 1–2.
+
+A Level 1000 mythic ability may reach Tier 8–10 with proper cost and constraints.
+
+⸻
+
+14. Base cost by effect tier
+
+Suggested base cost class:
+
+Effect Tier	Base Cost Class
+0	0
+1	1
+2	2
+3	3
+4	4
+5	5
+6	5–6
+7	6–7
+8	7–8
+9	8–9
+10	9 / special
+
+Then modify by:
+
+* range
+* duration
+* target count
+* precision
+* speed
+* enemy resistance
+* environment
+* ability rank
+* domain rank
+* focus/equipment
+* current resource state
+* overcharge
+* weakness exploitation
+
+⸻
+
+15. Cost modifier table
+
+Range modifier
+
+Range	Cost Change
+self/touch	-1 class or no change
+melee/weapon range	no change
+short range	+0
+medium range	+1
+long range	+2
+extreme/sightline	+3
+remote/unknown location	+4 or special
+
+Duration modifier
+
+Duration	Cost Change
+instant	+0
+one beat / very brief	+0
+short scene	+1
+full scene	+2
+hours	+3
+day	+4
+permanent	special, usually not normal ability cost
+
+Target count modifier
+
+Targets	Cost Change
+self only	-1 or +0
+one target	+0
+small group	+1
+large group	+2
+crowd/battlefield	+3
+army/city	+4 or special
+
+Precision modifier
+
+Precision	Cost Change
+crude/uncontrolled	-1 but higher risk
+normal	+0
+precise	+1
+surgical/no collateral	+2
+perfect selective effect	+3 or special
+
+Speed modifier
+
+Activation Speed	Cost Change
+ritual/slow	-1 to -2
+normal action	+0
+quick action	+1
+instant/reaction	+2
+automatic interrupt	+3 or passive/cooldown needed
+
+Resistance modifier
+
+Target Resistance	Cost Change
+vulnerable	-1
+normal	+0
+resistant	+1
+highly resistant	+2
+immune	cannot work unless bypass/counter
+absorbs/reflects	dangerous or invalid unless countered
+
+⸻
+
+16. Ability rank cost modifier
+
+Higher rank improves efficiency.
+
+Ability Rank	Cost Modifier
+Candidate	cannot use reliably; cost unknown/high
+1 Unstable	+2 cost class or backlash risk
+2 Basic	+1 cost class
+3 Reliable	+0
+4 Practiced	-0 to -1
+5 Refined	-1
+6 Advanced	-1 to -2
+7 Expert	-2
+8 Master	-2 to -3
+9 Legendary	-3 for familiar uses, but higher-scale variants cost more
+10 Mythic	efficiency high, but mythic effects still huge
+11+	special scaling
+
+Important:
+
+Rank lowers cost for known uses.
+
+It does not make world-scale variants free.
+
+A Rank 9 Fireball may cast ordinary fireballs cheaply.
+
+A city-burning inferno still costs heavily.
+
+⸻
+
+17. Domain/stat support cost modifier
+
+Relevant domain and stat support can reduce cost or failure.
+
+Use:
+
+* INT for magic/control
+* ATK for forceful physical powers
+* DEF for barriers/body hardening
+* SPD for movement powers
+* LCK for unstable/fate powers
+* relevant domain rank
+* specialization/build identity
+
+Support levels:
+
+Support Quality	Effect
+poor support	+1 to +3 cost/failure
+adequate support	no change
+strong support	-1 cost or failure
+excellent support	-2 cost or failure
+perfect specialization	-2 to -3, but not below minimum
+
+Example:
+
+A Mana Brawler using Mana Punch:
+
+* strong ATK/INT/domain support
+* cost lower and reliability higher
+
+A pure scholar trying Dragon Breath with no dragon trait:
+
+* invalid or high failure
+
+⸻
+
+18. Minimum cost rule
+
+Cost reductions cannot reduce meaningful abilities to zero unless the ability is explicitly passive/free.
+
+Minimum costs:
+
+Ability Type	Minimum Cost
+minor utility	can be 0–1
+basic combat ability	at least tiny/light
+standard combat ability	at least light/moderate
+strong combat ability	at least moderate
+advanced ability	at least heavy unless ritualized
+legendary ability	severe/extreme/story cost
+mythic ability	extreme/overcharge/special cost
+
+Example:
+
+A master swordsman’s Mana Slash may become cheap.
+
+But if it still fires damaging mana, it should usually cost at least some MP/EP unless the campaign defines it as fully internalized.
+
+⸻
+
+19. Ability cost calculator workflow
+
+When an ability is used:
+
+1. Identify ability.
+2. Check if ability exists, candidate, stable, or unknown.
+3. Identify intended effect.
+4. Determine effect tier.
+5. Determine base cost class.
+6. Add range modifier.
+7. Add duration modifier.
+8. Add target count modifier.
+9. Add precision modifier.
+10. Add speed modifier.
+11. Add resistance modifier.
+12. Apply ability rank modifier.
+13. Apply domain/stat support modifier.
+14. Apply focus/equipment modifier.
+15. Apply environment modifier.
+16. Apply current resource state.
+17. Determine final cost type and amount.
+18. Check if player can pay.
+19. If cannot pay, reject, weaken, or overcharge.
+20. Record cost evidence if ability cost was unknown.
+21. Commit resource cost through BodyReducer.
+22. Resolve effect through appropriate owner system.
+23. Record ability evidence.
+24. Mark dirty targets.
+25. Audit result.
+
+This workflow is mandatory for important abilities.
+
+Minor flavor abilities can use simplified handling.
+
+⸻
+
+20. Example cost calculation — Mana Slash
+
+Ability:
+
+Mana Slash
+
+Type:
+
+Hybrid sword/mana active ability
+
+Rank:
+
+Basic Rank 2
+
+Effect:
+
+Short crescent of mana from blade
+
+Effect tier:
+
+3 standard combat
+
+Base cost:
+
+Class 3 moderate
+
+Modifiers:
+
+* range: short, +0
+* duration: instant, +0
+* target: one target, +0
+* precision: normal, +0
+* speed: normal action, +0
+* resistance: normal, +0
+* rank 2 Basic: +1
+* good sword/mana support: -1
+
+Final:
+
+Cost Class 3 moderate
+
+Resource split:
+
+MP 6–10%
+EP 3–6%
+
+If player has 500 MP and 400 EP:
+
+MP cost: 30–50
+EP cost: 12–24
+
+At higher rank, normal Mana Slash may become:
+
+MP 3–5%
+EP 1–3%
+
+But wide Mana Slash hitting five enemies is a stronger variant and costs more.
+
+⸻
+
+21. Example cost calculation — Shadow Step
+
+Ability:
+
+Shadow Step
+
+Type:
+
+Movement/teleport ability
+
+Rank:
+
+Reliable Rank 3
+
+Effect:
+
+Instant short reposition through shadow
+
+Effect tier:
+
+4 strong utility/combat movement
+
+Base cost:
+
+Class 4 heavy
+
+Modifiers:
+
+* range: short, +0
+* duration: instant, +0
+* target: self, -1
+* precision: precise, +1
+* speed: instant/reaction, +2 if used reactively
+* environment: shadows present, -1
+* rank 3: +0
+* domain support good: -1
+
+Normal planned use:
+
+Final cost class:
+
+3 moderate
+
+Reactive dodge use:
+
+Final cost class:
+
+5 severe
+
+Resource:
+
+MP primary, EP secondary
+
+Normal:
+
+MP 6–10%
+EP 2–5%
+
+Reactive emergency:
+
+MP 21–35%
+EP 6–10%
+
+Failure modes:
+
+* partial displacement
+* stumble
+* MP backlash
+* appear in bad position
+* cannot activate in bright/no-shadow area unless evolved
+
+⸻
+
+22. Example cost calculation — Fireball
+
+Ability:
+
+Fireball
+
+Type:
+
+Spell / area attack
+
+Rank:
+
+Reliable Rank 3
+
+Effect:
+
+Explosive fire AoE
+
+Effect tier:
+
+4 strong combat
+
+Base cost:
+
+Class 4 heavy
+
+Modifiers:
+
+* range: medium, +1
+* duration: instant, +0
+* target: small group/AoE, +1
+* precision: crude or normal, +0
+* speed: normal action, +0
+* resistance: normal, +0
+* rank 3: +0
+* Fire Magic Domain strong: -1
+
+Final:
+
+Cost class 5 severe or 4 heavy depending domain
+
+Resource:
+
+MP 11–35%
+
+Collateral risk:
+
+* fire spread
+* allies caught
+* smoke
+* property damage
+
+A precise fireball that avoids allies adds precision cost.
+
+A huge battlefield fireball adds target/area cost.
+
+⸻
+
+23. Example cost calculation — Healing Touch
+
+Ability:
+
+Healing Touch
+
+Type:
+
+Healing spell
+
+Rank:
+
+Basic Rank 2
+
+Effect:
+
+Heal minor/moderate wounds by touch
+
+Effect tier:
+
+3 standard utility/healing
+
+Base cost:
+
+Class 3 moderate
+
+Modifiers:
+
+* range: touch, -1
+* target: one target, +0
+* precision: high biological precision, +1
+* injury severity: moderate, +0
+* rank 2: +1
+* Healing Domain trained: -1
+
+Final:
+
+Class 3 moderate
+
+Resource:
+
+MP 6–10%
+
+Limits:
+
+* cannot regrow limb unless higher tier
+* cannot cure poison unless healing includes purification
+* cannot heal undead/construct normally unless compatible
+* severe wounds require higher cost, time, or materials
+
+⸻
+
+24. Example cost calculation — Dragon Breath
+
+Ability:
+
+Dragon Breath
+
+Type:
+
+Racial active ability
+
+Source:
+
+Dragonkin / dragon body
+
+Rank:
+
+Candidate or Unstable at first
+
+Effect tier:
+
+Depends on maturity.
+
+Low-level spark:
+
+Tier 1–2
+
+Real cone breath:
+
+Tier 4–6
+
+Ancient dragon breath:
+
+Tier 8+
+
+For a Level 10 dragonkin candidate:
+
+* effect tier 2
+* base cost class 2
+* unstable rank +2
+* body/race support -1
+
+Final:
+
+Class 3 moderate
+
+Resource:
+
+MP 5–10%
+EP 5–10%
+possible throat/lung fatigue
+
+Failure:
+
+* smoke cough
+* weak spark
+* throat pain
+* uncontrolled fire
+* no stable breath yet
+
+Do not grant full dragon breath automatically.
+
+⸻
+
+25. Example cost calculation — Regeneration passive
+
+Ability:
+
+Regeneration
+
+Type:
+
+Passive
+
+Rank:
+
+Depends on source
+
+Passive cost model:
+
+Regeneration does not need activation every time, but must have limits.
+
+Possible costs/limits:
+
+* consumes MP over time
+* consumes EP/metabolism
+* requires blood/food/mass
+* blocked by fire/holy/silver/acid
+* slower during combat
+* cannot restore instantly
+* does not regrow major parts until high rank
+* fails when core/anchor destroyed
+* causes hunger/fatigue
+
+Rank examples:
+
+Rank 1:
+
+* closes minor scratches slowly
+
+Rank 3:
+
+* heals minor wounds during rest
+
+Rank 5:
+
+* heals moderate wounds over time
+
+Rank 7:
+
+* can regenerate serious injuries outside direct counter damage
+
+Rank 9:
+
+* restores lost limbs with cost/time/source
+
+Rank 10:
+
+* mythic regeneration, still has special counter
+
+Regeneration must not become “cannot be harmed.”
+
+⸻
+
+26. Active skill template
+
+Every active skill should use this template.
+
+Name:
+Category: Active Skill / Spell / Technique / Racial Ability / Item Ability
+Status: Candidate / Stable / Rank
+Source:
+Activation:
+Primary Stat:
+Secondary Stats:
+Relevant Domains:
+Effect:
+Effect Tier:
+Range:
+Duration:
+Targets:
+Cost Type:
+Base Cost:
+Final Cost:
+Cooldown:
+Maintenance:
+Scaling:
+Limits:
+Failure Modes:
+Backlash:
+Counters:
+Required Equipment/Body:
+Evidence:
+Card Eligibility:
+Last Updated:
+
+Example:
+
+Name: Mana Slash
+Category: Hybrid sword/mana technique
+Status: Stable Rank 2 Basic
+Source: repeated mana-channeling practice
+Activation: channel mana through blade and slash
+Primary Stat: ATK
+Secondary Stat: INT
+Relevant Domains: Sword, Mana Control
+Effect: short crescent of mana from blade
+Effect Tier: 3
+Range: short
+Duration: instant
+Targets: one line/target
+Cost Type: MP + EP
+Base Cost: moderate
+Final Cost: MP 6–10%, EP 3–6%
+Cooldown: none, but repeated use drains resources
+Maintenance: none
+Scaling: ATK, INT, Sword Domain, Mana Control, rank
+Limits: weaker while exhausted; can be blocked by anti-magic
+Failure Modes: mana fizzles, weak slash, backlash into arm
+Backlash: MP burn, arm strain
+Counters: magic resistance, barriers, dodging
+Required Equipment/Body: blade or compatible focus
+Evidence: repeated partial and successful uses
+Card Eligibility: yes if important
+
+⸻
+
+27. Passive template
+
+Every passive should use this template.
+
+Name:
+Category: Passive / Racial Trait / Blessing / Curse / Talent
+Status:
+Source:
+Trigger:
+Always-On or Conditional:
+Effect:
+Scope:
+Strength:
+Cost/Upkeep:
+Limits:
+Counters:
+Suppression Conditions:
+Stacking Rules:
+Growth Path:
+Failure/Exception Cases:
+Related Stats:
+Related Domains:
+Evidence:
+Card Eligibility:
+Last Updated:
+
+Example:
+
+Name: Dragonkin Scales
+Category: Racial Passive
+Status: Confirmed
+Source: dragonkin body
+Trigger: physical attacks against scaled body
+Always-On or Conditional: always-on unless scales bypassed/damaged
+Effect: reduces some slashing/piercing damage
+Scope: exposed scaled body parts
+Strength: light to moderate natural armor
+Cost/Upkeep: none
+Limits: weak at joints, eyes, unscaled areas; does not stop magic automatically
+Counters: anti-dragon weapons, blunt force, armor-piercing attacks
+Suppression: scale damage, transformation loss, curse
+Stacking: stacks carefully with armor, not full double immunity
+Growth Path: improves with level/racial evolution
+
+⸻
+
+28. Talent template
+
+Talents are style advantages, not direct powers.
+
+Name:
+Category: Talent
+Source:
+Affected Actions:
+Primary Stat:
+Relevant Domains:
+Benefit:
+Limits:
+Cost:
+Growth Path:
+Failure Cases:
+Related Abilities:
+Build Identity Link:
+Evidence:
+Card Eligibility:
+
+Example:
+
+Name: Brawler’s Instinct
+Category: Talent
+Source: real-world fighting memory and repeated close combat
+Affected Actions: unarmed strikes, improvised defense, reading body movement
+Primary Stat: ATK/SPD
+Relevant Domains: Brawling, Martial Arts
+Benefit: improves improvised close combat and counters
+Limits: less useful against armor, monsters without human anatomy, ranged enemies
+Cost: none directly, but actions still cost EP
+Growth Path: improves through sparring and real fights
+
+Talents should not replace abilities.
+
+They improve interpretation and growth.
+
+⸻
+
+29. Trait template
+
+Traits are body, race, curse, origin, or system properties.
+
+Name:
+Category: Trait
+Source:
+Body/Origin Link:
+Effect:
+Validation Rules Changed:
+Resource Rules Changed:
+Injury Rules Changed:
+Weaknesses:
+Limits:
+Growth/Evolution:
+Suppression:
+Card Eligibility:
+
+Example:
+
+Name: Slime Body
+Category: Racial/Body Trait
+Source: slime physiology
+Effect: fluid body resists some piercing and can reshape under limits
+Validation Rules Changed: normal organ wounds do not apply unless core/formed organs exist
+Resource Rules Changed: EP may represent cohesion
+Injury Rules Changed: mass loss, drying, contamination, core damage
+Weaknesses: fire, drying, containment, purification if setting supports
+Limits: normal equipment incompatible without adaptation
+Growth: may evolve with absorption and body training
+
+⸻
+
+30. Specialization template
+
+Specializations define build direction.
+
+Name:
+Category: Specialization
+Source:
+Requirements:
+Primary Stats:
+Primary Domains:
+Favored Ability Types:
+Growth Bias:
+Benefits:
+Limits:
+Weaknesses:
+Associated Passives:
+Associated Abilities:
+Card/Sheet Summary:
+
+Example:
+
+Name: Mana Brawler
+Category: Specialization
+Requirements: repeated unarmed combat plus mana-control evidence
+Primary Stats: ATK, INT, EP, MP
+Primary Domains: Brawling, Mana Control
+Favored Ability Types: mana punches, reinforcement, close-range bursts
+Growth Bias: ATK, INT, Brawling, Mana Control
+Benefits: hybrid physical/magic combat
+Limits: resource hungry, short range
+Weaknesses: anti-magic, kiting, exhaustion
+
+Specialization should emerge from repeated play or manual setup.
+
+⸻
+
+31. Ability scaling dimensions
+
+Abilities can scale through several dimensions.
+
+Scaling dimensions:
+
+* damage
+* healing
+* defense
+* range
+* duration
+* target count
+* precision
+* activation speed
+* cost efficiency
+* reliability
+* resistance penetration
+* secondary effects
+* cooldown reduction
+* maintenance stability
+* environment flexibility
+* combo compatibility
+* evolution branches
+
+An ability does not need to scale in every dimension.
+
+Example:
+
+Mana Slash may scale by:
+
+* damage
+* range
+* cost efficiency
+* width
+* armor penetration
+* elemental variant
+
+Healing Touch may scale by:
+
+* injury severity healed
+* poison/curse removal
+* range
+* target count
+* cost efficiency
+
+Shadow Step may scale by:
+
+* distance
+* cooldown
+* reaction speed
+* stealth
+* carrying another person
+* crossing barriers
+
+⸻
+
+32. Scaling by rank
+
+General rank scaling:
+
+Rank	Scaling Meaning
+1	unstable, weak, costly
+2	basic usable effect
+3	reliable standard effect
+4	better control/cost
+5	known limits, refined
+6	stronger effect or variant
+7	expert use under pressure
+8	signature-level flexibility
+9	legendary scale/variant
+10	mythic scale with major cost
+11+	divine/cosmic special rules
+
+AIDRPG should not simply multiply damage every rank.
+
+Rank should improve:
+
+* stability
+* cost
+* control
+* available variants
+* usable contexts
+* counters overcome
+
+This makes abilities more interesting than just bigger numbers.
+
+⸻
+
+33. Ability damage scaling
+
+For damaging abilities, use combat severity rules.
+
+Ability damage should depend on:
+
+* effect tier
+* ability rank
+* relevant stat
+* relevant domain
+* target defense/resistance
+* cost paid
+* range/area
+* narration
+* enemy tier
+* weakness/counter
+
+Suggested ability damage expectation:
+
+Ability Effect Tier	Comparable Damage
+1	scratch/minor utility
+2	minor damage
+3	moderate damage to fair target
+4	serious damage to fair target
+5	severe damage to fair target or moderate AoE
+6	boss-threat damage or strong AoE
+7	legendary damage
+8	mythic battlefield damage
+9	city/region-scale
+10	cosmic/divine scale
+
+“Fair target” means similar level/tier.
+
+Using Tier 3 ability against Tier 8 dragon should do little unless weakness/leverage applies.
+
+⸻
+
+34. Ability healing scaling
+
+Healing must be controlled.
+
+Healing tiers:
+
+Healing Tier	Can Heal
+1	pain, scratches, fatigue easing
+2	minor wounds
+3	moderate wounds
+4	serious wounds with cost/time
+5	severe wounds, stabilization
+6	limb/organ recovery with major cost/conditions
+7	death-boundary rescue if immediate
+8	resurrection-like effect with major story cost
+9	mass healing/curse reversal
+10	divine/cosmic restoration
+
+Healing must respect body type.
+
+Normal healing may not work on:
+
+* undead
+* constructs
+* spirits
+* slimes
+
+unless ability supports that body.
+
+Healing should not erase consequences for free.
+
+Severe injuries may need:
+
+* time
+* materials
+* healer skill
+* safe environment
+* repeated treatment
+* scars/lasting effects
+* high MP cost
+
+⸻
+
+35. Defensive ability scaling
+
+Defensive abilities include:
+
+* barriers
+* wards
+* armor spells
+* body hardening
+* evasion boosts
+* resistance buffs
+* counterspell
+* shield aura
+* anti-poison field
+
+Defense must define:
+
+* damage types covered
+* duration
+* max force
+* cost
+* failure point
+* target count
+* whether it blocks conditions
+* whether it blocks physical/magic/spirit effects
+
+Example:
+
+Mana Barrier Rank 2:
+
+* blocks minor/moderate physical or magic hit
+* costs MP
+* can break under heavy attack
+* does not stop poison gas unless designed
+
+Rank 8:
+
+* can block severe boss attacks briefly
+* costs heavy MP
+* may crack under mythic force
+
+No generic “barrier blocks everything forever.”
+
+⸻
+
+36. Mobility ability scaling
+
+Mobility abilities include:
+
+* dash
+* leap
+* flight
+* teleport
+* shadow step
+* water walk
+* wall run
+* phase shift
+
+Scaling dimensions:
+
+* distance
+* speed
+* precision
+* carrying capacity
+* cooldown
+* terrain compatibility
+* reaction use
+* barrier crossing
+* stealth
+
+Mobility risks:
+
+* collision
+* misplacement
+* exhaustion
+* MP drain
+* appearing in danger
+* leaving allies behind
+* failing in anti-magic
+* losing carried items
+
+Teleport-style abilities need stricter limits.
+
+Remote teleport requires:
+
+* known destination
+* anchor
+* line of sight
+* map/lore
+* high rank
+* high cost
+* risk
+
+⸻
+
+37. Summoning ability scaling
+
+Summoning abilities must define:
+
+* summon type
+* number
+* duration
+* control
+* loyalty
+* autonomy
+* upkeep
+* dismissal
+* death/destruction
+* XP restrictions
+* relation to player
+* body type
+* card eligibility if persistent
+
+Summon costs:
+
+* MP to summon
+* MP/EP/concentration upkeep
+* material or contract cost
+* cooldown
+* risk of losing control
+
+Summon anti-farm:
+
+* killing own summons gives no normal XP
+* summoned allies should not multiply rewards unfairly
+* persistent named summons may become companions/cards
+* temporary summons do not need generated cards
+
+Summoning should not create infinite armies without domain-scale systems.
+
+⸻
+
+38. Transformation ability scaling
+
+Transformation abilities include:
+
+* beast form
+* dragon form
+* slime armor
+* shadow body
+* giant form
+* elemental body
+* berserk form
+* divine avatar
+* monster evolution
+
+Transformation must define:
+
+* form
+* stat changes
+* body changes
+* equipment interaction
+* duration
+* activation cost
+* upkeep
+* failure/corruption
+* injury transfer
+* social consequences
+* reversion condition
+* locked/unstable state
+
+Transformation should not be a free full heal unless explicitly designed.
+
+If body changes, BodyReducer and InventoryReducer must update relevant state.
+
+Example:
+
+Dragon Form:
+
+* increases ATK/DEF/HP
+* may prevent normal armor
+* increases size
+* costs MP/EP
+* may attract fear
+* cannot fit indoors
+* vulnerable to anti-dragon effects
+
+⸻
+
+39. Copy/mimic ability scaling hook
+
+Chunk 26 covers copy/absorption in detail.
+
+Chunk 25 rule:
+
+Copy abilities should usually produce:
+
+* observation evidence
+* candidate ability
+* unstable imitation
+* temporary echo
+* partial technique
+* weaker variant
+* corrupted version
+* requirement for training
+
+Not:
+
+* instant full mastery
+* instant free passive
+* full enemy stat package
+
+Copy cost factors:
+
+* complexity of copied ability
+* source tier
+* player compatibility
+* observation quality
+* body requirements
+* domain support
+* rank of copy ability
+* risk/backlash
+
+A copied fire spell may become a Fire Spark candidate, not full Hellstorm.
+
+⸻
+
+40. Cooldown rules
+
+Some abilities need cooldowns.
+
+Cooldown types:
+
+* scene cooldown
+* turn/beat cooldown
+* short rest cooldown
+* long rest cooldown
+* daily cooldown
+* story milestone cooldown
+* charge-based cooldown
+* environmental recharge
+* material recharge
+* emotional/condition recharge
+
+Cooldowns are useful for:
+
+* teleport
+* ultimate attacks
+* regeneration bursts
+* resurrection
+* summons
+* shapeshifts
+* high-damage bursts
+* defensive invulnerability
+* fate/luck manipulation
+
+Cooldown should be tracked in state.
+
+Context should mention cooldown only when relevant.
+
+Example:
+
+Shadow Step:
+
+* no cooldown for planned use at high rank
+* reaction use has short cooldown or heavy cost
+
+Dragon Breath:
+
+* scene cooldown or throat fatigue at low rank
+
+Divine Resurrection:
+
+* story cooldown, major cost, divine debt
+
+⸻
+
+41. Maintenance and concentration
+
+Some abilities require ongoing maintenance.
+
+Examples:
+
+* barrier
+* flight
+* invisibility
+* summon control
+* transformation
+* levitation
+* detection spell
+* mind link
+* flame cloak
+
+Maintenance costs:
+
+* MP per scene/beat
+* EP per scene/beat
+* concentration
+* reduced ability to act
+* vulnerability to disruption
+* item/focus requirement
+
+Concentration can break from:
+
+* injury
+* severe damage
+* surprise
+* fear
+* silence
+* stun
+* low MP
+* multi-tasking
+* mental attack
+
+Maintained abilities should not last forever without tracking.
+
+⸻
+
+42. Ability failure modes
+
+Ability failures should be specific.
+
+Failure categories:
+
+No activation
+
+Nothing happens.
+
+Weak activation
+
+Effect appears but is too weak.
+
+Misfire
+
+Effect hits wrong place or behaves badly.
+
+Backlash
+
+User suffers resource loss, injury, condition, or instability.
+
+Overload
+
+Effect is too strong or uncontrolled.
+
+Partial success
+
+Effect works partly but not fully.
+
+Delayed success
+
+Effect starts but takes longer.
+
+Corruption
+
+Ability creates taint, mutation, curse, or mental effect.
+
+Reversal
+
+Effect rebounds or enemy absorbs/reflects it.
+
+Collateral damage
+
+Effect works but harms environment/ally/item.
+
+Failure should depend on:
+
+* rank
+* cost paid
+* resource state
+* pressure
+* enemy resistance
+* environment
+* body compatibility
+* ability complexity
+
+⸻
+
+43. Failure severity table
+
+Failure Severity	Consequence
+harmless failure	no effect, small resource cost
+light failure	weak effect, small cost
+moderate failure	resource loss, bad position, minor backlash
+serious failure	injury/condition, major resource loss
+severe failure	major injury, broken item, corruption, collapse
+catastrophic failure	death-boundary, transformation, curse, summon loss, major story consequence
+
+Candidate abilities fail more often.
+
+High-rank abilities fail less often, but failures may be severe when overcharged or used against counters.
+
+⸻
+
+44. Backlash types
+
+Backlash examples:
+
+* MP burn
+* EP collapse
+* HP damage
+* arm strain
+* mana sickness
+* nosebleed
+* burned hand
+* cracked core
+* soul chill
+* corruption mark
+* temporary blindness
+* stunned
+* exhausted
+* ability sealed temporarily
+* item focus cracked
+* summon turns unstable
+* transformation stuck
+* memory loss
+* divine debt
+* demonic taint
+
+Backlash must fit ability type.
+
+Fire spell backlash may burn.
+
+Shadow spell backlash may chill, disorient, or corrupt.
+
+Blood magic backlash may cause bleeding or anemia.
+
+Slime ability backlash may destabilize cohesion.
+
+Construct ability backlash may overheat core.
+
+⸻
+
+45. Ability counters
+
+Every significant ability should have counters.
+
+Counter types:
+
+* resistance
+* immunity
+* opposite element
+* armor/barrier
+* anti-magic
+* silence
+* holy/dark counter
+* material counter
+* terrain counter
+* range limitation
+* line-of-sight denial
+* focus disruption
+* concentration break
+* resource drain
+* true name/oath
+* body incompatibility
+* environmental lack
+* cooldown
+* fatigue
+* social/legal consequence
+
+Examples:
+
+Mana Slash counters:
+
+* magic barriers
+* anti-magic zones
+* dodging
+* parry by stronger mana blade
+* user exhaustion
+
+Shadow Step counters:
+
+* bright light
+* shadow-binding wards
+* anti-teleport fields
+* unknown destination risk
+
+Regeneration counters:
+
+* fire
+* holy
+* acid
+* silver
+* starvation
+* core destruction
+* sealing
+
+Counters keep abilities from becoming universal solutions.
+
+⸻
+
+46. Ability environment modifiers
+
+Environment can strengthen or weaken abilities.
+
+Examples:
+
+Fire magic:
+
+* stronger in dry fuel-rich area
+* weaker in heavy rain or underwater
+* dangerous in wooden buildings
+
+Ice magic:
+
+* stronger in cold
+* weaker in heat
+* can create terrain hazards
+
+Shadow magic:
+
+* stronger in darkness
+* weaker in bright holy light
+
+Nature magic:
+
+* stronger in forest
+* weaker in dead wasteland
+
+Lightning magic:
+
+* affected by metal/water
+* danger to allies
+
+Sound magic:
+
+* blocked by silence/vacuum
+* amplified in caverns
+
+Slime abilities:
+
+* stronger with moisture/mass
+* weaker in dry heat/salt/fire
+
+AIDRPG should use environment to shape ability cost and effect.
+
+⸻
+
+47. Ability equipment and focus requirements
+
+Some abilities require equipment.
+
+Examples:
+
+* Mana Slash needs blade or focus
+* Archery skill needs bow/ammunition
+* Staff casting improved by staff
+* Blood ritual needs blood/knife/circle
+* Alchemy needs tools/materials
+* Shield Barrier needs shield
+* Sniper Shot needs ranged weapon
+* Slime Armor may require slime body/symbiote
+* Dragon Breath requires dragon body trait
+
+If required equipment is missing, ability may:
+
+* fail
+* weaken
+* cost more
+* change form
+* damage body
+* require alternative focus
+
+InventoryReducer must check access.
+
+Example:
+
+Player tries Mana Slash while sword is with Mira.
+
+Expected:
+
+* reject blade-based Mana Slash
+* maybe allow weaker hand-cast variant only if ability supports it
+
+⸻
+
+48. Ability and body requirements
+
+Some abilities require body traits.
+
+Examples:
+
+Dragon Breath:
+
+* requires draconic body, breath organ, or magical substitute
+
+Wing Flight:
+
+* requires wings or magic flight
+
+Venom Bite:
+
+* requires venom glands/fangs
+
+Slime Split:
+
+* requires slime/fluid body
+
+Construct Overclock:
+
+* requires construct core
+
+Blood Magic:
+
+* requires blood or substitute
+
+Ghost Possession:
+
+* requires spirit/incorporeal trait
+
+If body requirement is missing, ability is invalid unless:
+
+* item grants it
+* transformation grants it
+* spell emulates it
+* mutation created it
+* story milestone supports it
+
+This prevents humans from casually using body-specific powers by naming them.
+
+⸻
+
+49. Ability and resource state
+
+Low resources affect ability use.
+
+Low MP
+
+* spell weakens
+* failure chance rises
+* cost may be impossible
+* overcharge possible
+* backlash risk rises
+
+Low EP
+
+* physical techniques weaken
+* movement skills fail
+* dodges/slashes become risky
+* overexertion possible
+
+Low HP
+
+* blood/body abilities dangerous
+* concentration harder
+* death-boundary risk
+
+Fatigue
+
+* cost increases
+* precision drops
+* ability rank effectively lowered for physical actions
+
+Injury
+
+* ability using injured body part impaired
+* spell gestures/focus may fail
+* breath weapon affected by throat/lung injury
+
+Ability use should always check current state.
+
+⸻
+
+50. Ability overcharge
+
+Overcharge means using an ability beyond safe limits.
+
+Overcharge can happen when:
+
+* insufficient MP/EP
+* player intentionally pushes harder
+* ability effect tier exceeds current rank
+* target is resistant
+* player tries huge area/range
+* emotional crisis
+* divine/demonic force intervenes
+* artifact amplifies ability
+
+Overcharge may produce:
+
+* stronger effect
+* partial success
+* major cost
+* backlash
+* condition
+* injury
+* corruption
+* temporary ability lock
+* equipment damage
+* unconsciousness
+* death-boundary
+
+Overcharge should be dramatic but dangerous.
+
+It should not become the default free solution.
+
+⸻
+
+51. Ability variants
+
+Stable abilities may develop variants.
+
+Example:
+
+Mana Slash variants:
+
+* Short Mana Slash
+* Wide Mana Slash
+* Piercing Mana Slash
+* Fire Mana Slash
+* Defensive Mana Arc
+* Silent Mana Cut
+
+Variant rules:
+
+* variant starts as candidate or sub-rank
+* variant may use parent ability rank partially
+* variant has its own cost/effect/limits
+* variant may be folded into parent card if minor
+* major variant may get separate card only if important and stable
+
+Do not create new cards for every tiny variant.
+
+Use ability card update unless variant becomes major.
+
+⸻
+
+52. Ability evolution
+
+Ability evolution is major development.
+
+Evolution triggers:
+
+* rank threshold
+* story milestone
+* enemy absorption
+* teacher training
+* artifact bond
+* race evolution
+* domain rank
+* repeated use under pressure
+* breakthrough failure
+* quest reward
+* divine/demonic pact
+* specialization change
+
+Evolution should change:
+
+* name or title
+* effect
+* cost
+* scaling
+* limits
+* card content
+* Context summary
+* ability rank or branch
+
+Example:
+
+Mana Slash evolves into Crescent Sever.
+
+Requirements:
+
+* Mana Slash high rank
+* Sword Domain high
+* Mana Control high
+* story breakthrough
+* enough MP/EP scaling
+
+Evolution should not happen randomly from one dramatic sentence unless story supports it.
+
+⸻
+
+53. Ability loss, sealing, and corruption
+
+Abilities can become unavailable or changed.
+
+Reasons:
+
+* curse
+* injury
+* broken focus
+* oath violation
+* anti-magic seal
+* memory loss
+* divine punishment
+* corruption
+* race transformation
+* stolen power
+* resource burnout
+* contract breach
+* story choice
+
+Ability state can be:
+
+* active
+* unavailable
+* sealed
+* corrupted
+* unstable
+* weakened
+* suppressed
+* transformed
+* lost
+* restored
+
+Context should warn if the AI tries to use a sealed ability.
+
+Cards should update if important.
+
+⸻
+
+54. Ability aliases and duplicate prevention
+
+Abilities often get renamed by AI.
+
+Examples:
+
+* Mana Slash
+* Mana Edge
+* Blue Crescent
+* Crescent Blade
+* Mana Cut
+
+These may be:
+
+* same ability alias
+* variant
+* separate ability
+* failed renaming
+* AI drift
+
+Duplicate prevention should compare:
+
+* effect
+* activation
+* cost
+* source
+* target type
+* domain
+* evidence
+* card identity
+* aliases
+
+If same ability:
+
+* add alias
+* update existing ability
+* do not create duplicate card
+
+If variant:
+
+* link to parent
+
+If distinct:
+
+* create separate candidate/stable ability
+
+If unclear:
+
+* pending review/audit
+
+⸻
+
+55. Ability naming rules
+
+Ability names must pass hygiene.
+
+Reject names that are:
+
+* full sentences
+* generic actions
+* vague nouns
+* debug strings
+* commands
+* raw parser fragments
+* too broad
+* too long
+* copied from Context text
+* card labels
+* generic words
+
+Bad ability names:
+
+* Attack
+* Power
+* Magic
+* Skill
+* Ability
+* Slash
+* The Thing
+* Try to hit him
+* You feel stronger
+* Fire
+* Shadow
+* AIDRPG Ability
+
+Good names:
+
+* Mana Slash
+* Shadow Step
+* Dragon Breath
+* Slime Armor
+* Wolfkin Scent
+* Blood Spear
+* Quick Learner
+* Iron Body
+* Spirit Sight
+
+Generic names may appear as categories, not ability records.
+
+⸻
+
+56. Ability card eligibility
+
+Generated ability cards should be created only when ability is:
+
+* stable
+* important
+* specific
+* recurring
+* named safely
+* useful for AI Dungeon to remember
+* not already covered well enough by protected Abilities card
+* not a weak candidate
+* not a generic skill
+* not a trivial passive
+* not temporary
+* not duplicate
+
+Eligible:
+
+* Mana Slash stable signature skill
+* Slime Armor stable body technique
+* Dragon Breath stable racial power
+* Shadow Step recurring mobility ability
+* Quick Learner important passive
+* Undead Body important body trait
+
+Not eligible:
+
+* Fire Spark candidate
+* failed flying attempt
+* “Punch”
+* temporary potion buff
+* one-time divine flare
+* generic “Sword Attack”
+
+⸻
+
+57. Ability card template
+
+Generated ability card:
+
+Ability: Mana Slash
+Type:
+Hybrid sword/mana technique.
+Status:
+Stable Rank 2 Basic.
+Effect:
+Releases a short crescent of mana from a blade to cut a nearby target.
+Cost:
+Usually costs moderate MP and light EP. Current estimate: MP 6–10%, EP 3–6%.
+Limits:
+Requires a blade or compatible focus. Weaker when exhausted. Can be blocked by magic resistance, barriers, dodging, or anti-magic.
+Development:
+Cost and range are still being refined through use.
+Canon note:
+This card mirrors AbilityReducer state and does not create new ability truth.
+
+Keep ability cards concise.
+
+Update them when cost, rank, limits, variants, or availability change.
+
+⸻
+
+58. Protected Abilities card behavior
+
+The protected Abilities card should summarize:
+
+* stable abilities
+* candidates
+* passives
+* talents
+* specializations
+* sealed/unavailable abilities
+* major limits
+
+Example:
+
+AIDRPG Abilities
+Stable:
+Mana Slash — Rank 2 Basic, costs moderate MP and light EP, requires blade.
+Candidates:
+Shadow Step — unstable movement candidate, needs shadows and more evidence.
+Passives:
+Quick Learner — improves learning from meaningful practice; anti-farm still applies.
+Dragonkin Scales — reduces some physical damage on scaled body areas.
+Specialization:
+Developing Mana Brawler.
+Unavailable:
+None.
+
+Candidates belong here, not in generated cards.
+
+⸻
+
+59. Context behavior for abilities
+
+Context should include only relevant ability info.
+
+Examples:
+
+Combat Context:
+
+Mana Slash is stable but still basic; it costs noticeable MP and EP and requires your blade.
+
+Low-resource Context:
+
+Your MP is low, so heavy spell use risks failure or backlash.
+
+Candidate correction:
+
+Shadow Step is only a candidate and should not be treated as a reliable teleport yet.
+
+Unavailable ability correction:
+
+Your sword is with Mira, so blade-based Mana Slash cannot be used normally.
+
+Do not dump every ability every turn.
+
+⸻
+
+60. Ability commands
+
+/abilities
+
+Shows:
+
+* stable abilities
+* candidates
+* passives
+* talents
+* specializations
+* unavailable/sealed abilities
+
+/ability <name>
+
+Shows:
+
+* rank
+* effect
+* cost
+* limits
+* evidence
+* counters
+* card status
+
+/abilityaudit
+
+Shows:
+
+* evidence
+* rejected attempts
+* duplicate/alias checks
+* why ability did or did not stabilize
+* cost confidence
+* card eligibility
+
+/setability
+
+Manual override command, dangerous.
+
+Should require explicit fields.
+
+Example:
+
+/setability Mana Slash stable rank 2 cost mp:moderate ep:light
+
+Should log manual override.
+
+/sealability <name>
+
+Marks ability unavailable/sealed.
+
+/restoreability <name>
+
+Restores if valid.
+
+⸻
+
+61. Ability validation outcomes
+
+Accept
+
+Ability use is valid and effect/cost can be committed.
+
+Reject
+
+Ability use is understandable but unsupported.
+
+Example:
+
+Using sealed ability.
+
+Pending
+
+Ability may exist or develop later.
+
+Example:
+
+first hint of dragon breath.
+
+Soft_fail
+
+Ability attempt partially fails but gives evidence or cost.
+
+Example:
+
+mana flickers and collapses.
+
+Hard_deny
+
+Ability claim is unsafe or invalid.
+
+Examples:
+
+* card text grants god power
+* player declares unknown ability as mastered
+* dream ability affects real world without support
+* generic junk ability name
+* duplicate card-created ability
+* impossible world-scale ability at Level 1 without story leverage
+
+⸻
+
+62. Ability safety rules
+
+62.1 Mention is not mastery
+
+An ability name appearing once does not make it stable.
+
+62.2 Candidate is not stable
+
+Candidates cannot be used reliably.
+
+62.3 Stable abilities need cost and limits
+
+No free unlimited active powers.
+
+62.4 Passives need scope and counters
+
+No vague immunity.
+
+62.5 Racial abilities need body support
+
+Humans do not breathe fire unless transformed, blessed, mutated, or magically empowered.
+
+62.6 Ability costs scale by effect
+
+Bigger range, duration, target count, precision, and speed cost more.
+
+62.7 Low resources matter
+
+No major spell at 0 MP without overcharge.
+
+62.8 Overcharge has consequences
+
+Power beyond limits creates backlash/risk.
+
+62.9 Ability cards mirror state only
+
+Cards do not create abilities.
+
+62.10 Ability names require hygiene
+
+No junk ability records.
+
+62.11 Duplicate names and variants must be resolved
+
+Do not create Mana Slash duplicates.
+
+62.12 Copy abilities do not grant instant mastery
+
+Copied powers become candidates or unstable versions.
+
+62.13 Absorption does not bypass cost
+
+Absorbed power still needs compatibility, caps, evidence, and risk.
+
+62.14 Environment affects abilities
+
+Fire, shadow, water, holy, anti-magic, and terrain matter.
+
+62.15 Ability growth must be earned
+
+Rank increases require evidence, not arbitrary AI statements.
+
+⸻
+
+63. Chunk 25 acceptance tests
+
+Test 1 — unknown ability rejected as stable
+
+Given:
+
+Player says, “I use Mana Slash,” but no ability/candidate exists.
+
+Expected:
+
+* reject stable use
+* maybe candidate/attempt if context supports mana training
+* no stable ability created instantly
+
+Test 2 — candidate ability soft-fails
+
+Given:
+
+Mana Slash candidate exists.
+
+Output:
+
+“The mana gathers, then collapses.”
+
+Expected:
+
+* soft_fail
+* evidence recorded
+* MP/EP cost possible
+* no stable ability yet
+
+Test 3 — ability stabilizes after evidence
+
+Given:
+
+Mana Slash has repeated validated partial and successful uses.
+
+Expected:
+
+* AbilityReducer stabilizes it
+* cost estimate recorded
+* protected Abilities card dirty
+* generated ability card eligible if important
+
+Test 4 — ability cost paid once
+
+Given:
+
+Mana Slash use costs MP and EP.
+
+Same output processes twice.
+
+Expected:
+
+* MP/EP cost applied once
+* duplicate skip recorded
+
+Test 5 — low MP blocks major spell
+
+Given:
+
+MP is 0.
+
+Input/output claims successful Fireball.
+
+Expected:
+
+* reject, weaken, or overcharge with HP/backlash
+* no free full Fireball
+
+Test 6 — passive not immunity
+
+Given:
+
+Player has Fire Resistance.
+
+Enemy uses dragon fire.
+
+Expected:
+
+* damage reduced if resistance applies
+* not automatically immune unless trait says immunity
+
+Test 7 — racial ability body requirement
+
+Given:
+
+Human player tries Dragon Breath with no dragon trait.
+
+Expected:
+
+* hard deny or unsupported candidate unless story source exists
+
+Given:
+
+Dragonkin tries weak breath.
+
+Expected:
+
+* candidate/unstable attempt possible
+
+Test 8 — equipment requirement
+
+Given:
+
+Mana Slash requires blade.
+
+Sword is with Mira.
+
+Expected:
+
+* blade-based use rejected
+* possible alternate variant only if known
+
+Test 9 — ability card not created for candidate
+
+Given:
+
+Shadow Step is candidate only.
+
+Expected:
+
+* appears in protected Abilities card as candidate
+* no generated ability card
+
+Test 10 — ability card updates cost
+
+Given:
+
+Mana Slash cost becomes known as MP 8%, EP 4%.
+
+Expected:
+
+* existing ability record updates
+* existing card updates
+* no duplicate card
+
+Test 11 — copied ability becomes candidate
+
+Given:
+
+Player observes enemy use Shadow Step and has mimic talent.
+
+Expected:
+
+* Shadow Step candidate or observation evidence
+* no instant stable teleport
+
+Test 12 — overcharge has consequence
+
+Given:
+
+Player overcharges Fireball beyond MP limit.
+
+Expected:
+
+* stronger or partial effect possible
+* backlash/injury/resource debt possible
+* audit records overcharge
+
+Test 13 — cooldown prevents spam
+
+Given:
+
+Dragon Breath has scene cooldown.
+
+Player tries again immediately.
+
+Expected:
+
+* reject, weaken, or throat/backlash cost
+* cooldown warning
+
+Test 14 — concentration break
+
+Given:
+
+Player maintains barrier and takes severe hit.
+
+Expected:
+
+* concentration check
+* barrier may weaken/break
+* maintenance cost considered
+
+Test 15 — environment modifies ability
+
+Given:
+
+Fireball cast underwater.
+
+Expected:
+
+* cost increases, effect weakens, or fails unless ability supports it
+
+Test 16 — ability duplicate alias
+
+Given:
+
+Mana Slash exists.
+
+AI calls it Blue Crescent with same effect.
+
+Expected:
+
+* alias or variant check
+* no duplicate ability unless distinct evidence
+
+Test 17 — passive trigger deduped
+
+Given:
+
+Regeneration triggers from same injury output twice.
+
+Expected:
+
+* healing/resource effect applied once
+
+Test 18 — healing incompatible body
+
+Given:
+
+Healing Touch used on construct.
+
+Expected:
+
+* reject/reduce unless healing supports constructs
+* repair or core recharge may be needed
+
+Test 19 — massive ability at low level rejected
+
+Given:
+
+Level 5 player uses World-Cutting Slash with no support.
+
+Expected:
+
+* hard deny or fantasy/failed attempt
+* no world-scale effect
+
+Test 20 — high-rank ability still has limits
+
+Given:
+
+Rank 9 Fireball used in wooden town.
+
+Expected:
+
+* powerful effect possible
+* collateral fire risk remains
+* not consequence-free
+
+⸻
+
+64. Final Chunk 25 doctrine
+
+Abilities are earned, validated capabilities.
+
+AIDRPG supports freeform creativity by allowing hints, candidates, unstable manifestations, partial success, failure evidence, breakthroughs, and evolution.
+
+But it does not treat every idea as a stable power.
+
+Active abilities need costs.
+
+Passives need scope.
+
+Talents guide actions.
+
+Traits alter body and validation.
+
+Specializations guide growth.
+
+Costs depend on effect tier, range, duration, target count, precision, speed, resistance, rank, domain, stat support, equipment, environment, and current resources.
+
+MP, EP, HP, time, cooldown, concentration, materials, risk, and story cost are all valid costs.
+
+Low resources matter.
+
+Overcharge is possible but dangerous.
+
+Copying does not grant mastery.
+
+Absorption does not bypass validation.
+
+Healing does not erase all consequences.
+
+Regeneration is not immortality.
+
+Dragon Breath is not free because the player is dragonkin.
+
+Shadow Step is not reliable because it was mentioned once.
+
+Mana Slash should update over time as cost, limits, rank, and variants become known.
+
+Generated ability cards belong only to stable important abilities.
+
+The protected Abilities card tracks candidates and summaries.
+
+Context should remind the AI of relevant ability limits without flooding it.
+
+The goal is to make abilities feel flexible, anime-friendly, and exciting while keeping them bounded, explainable, scalable, and safe from freeform power inflation.
+

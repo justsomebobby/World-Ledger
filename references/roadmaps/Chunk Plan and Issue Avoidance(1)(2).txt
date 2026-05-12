@@ -1,0 +1,1073 @@
+This is the locked interpretation going forward:
+
+* examples you gave are problem demonstrations
+* the roadmap names only generic systems
+* the final engine must stay AI Dungeon-first
+* every chunk is one message
+* no chunk gets a letter suffix
+* no chunk assumes “replace the whole Library”
+
+Build rules
+
+Workflow rule
+
+Every chunk will be:
+
+* one message
+* one bounded implementation step
+* additive patching or targeted function replacement only
+
+AI Dungeon rule
+
+This roadmap is built around:
+
+* Library holding almost all logic
+* Input handling intent and commands
+* Context injecting immediate current truth
+* Output parsing, validating, and saving consequences
+
+Abstraction rule
+
+The framework will implement:
+
+* general systems
+    not
+* literal hardcoded example content
+
+So we build:
+
+* persistent condition framework
+    not “vampire system”
+* specialization/matchup framework
+    not “monster hunter vs duelist logic”
+* unusual-style/contextual-advantage framework
+    not “boxing confusion bonus”
+* outlier trait framework
+    not “gluttony module”
+
+⸻
+
+Corrected exact battle plan
+
+Chunk 1 — Stable tab shell and Library section markers
+
+Goal: Create the permanent AI Dungeon-safe shell.
+
+Touches: Library, Input, Context, Output
+
+Builds:
+
+* thin Input wrapper
+* thin Context wrapper
+* thin Output wrapper
+* globalThis.AIDRPG
+* permanent labeled sections in Library for future modules
+
+Why first: This creates the fixed patch target so we never need whole-library rewrites later.
+
+Done when: The scenario runs cleanly and the script shell is ready for incremental additions.
+
+⸻
+
+Chunk 2 — CoreState bootstrap
+
+Goal: Create the canonical state.aidrpg initializer.
+
+Touches: Library
+
+Builds:
+
+* CoreState.init()
+* versioning
+* migration stub
+* top-level state containers:
+    * meta
+    * player
+    * build
+    * abilities
+    * items
+    * actors
+    * world
+    * time
+    * reputation
+    * quests
+    * pending
+    * cards
+    * cache
+    * logs
+
+Done when: State initializes safely every turn without missing-object failures.
+
+⸻
+
+Chunk 3 — TurnEngine and duplicate-protection layer
+
+Goal: Control per-hook lifecycle safely.
+
+Touches: Library
+
+Builds:
+
+* hook begin/end bookkeeping
+* turn counter
+* current hook tracking
+* retry / duplicate output protection
+* scratch clearing
+
+Done when: Repeated outputs do not double-apply changes.
+
+⸻
+
+Chunk 4 — Shared utilities and dirty-flag infrastructure
+
+Goal: Install the reusable helpers everything else depends on.
+
+Touches: Library
+
+Builds:
+
+* clamp/normalize helpers
+* id helpers
+* safe object helpers
+* dirty-flag helpers
+* cache invalidation helpers
+* lightweight log helpers
+
+Done when: Later systems can update only what changed.
+
+⸻
+
+Chunk 5 — Admin/debug command core
+
+Goal: Give you visibility while building.
+
+Touches: Library, Input
+
+Builds:
+
+* /sheet
+* /inventory
+* /time
+* /questlog
+* /debug on
+* /debug off
+
+Done when: You can inspect the script safely during development.
+
+⸻
+
+Chunk 6 — PlayerSystem v1
+
+Goal: Make the player a real mechanical object.
+
+Touches: Library, Context
+
+Builds:
+
+* base stats
+* derived stats scaffold
+* body state scaffold
+* appearance scaffold
+* active/permanent condition containers
+* compact player summary
+
+Done when: The player exists as a persistent canonical record.
+
+⸻
+
+Chunk 7 — BuildIdentitySystem v1
+
+Goal: Create broad playstyle identity without hard classes.
+
+Touches: Library, Context
+
+Builds:
+
+* origin tags
+* combat tags
+* method tags
+* resource tags
+* defense tags
+* specialization tags
+* temperament tags
+* style tags
+* archetype summary
+
+Done when: The player can be recognized as a build without being locked into one.
+
+⸻
+
+Chunk 8 — IntentParser v1
+
+Goal: Make Input understand broad player intent.
+
+Touches: Library, Input
+
+Builds:
+
+* intent candidate creation
+* confidence scoring
+* action family detection:
+    * attack
+    * defend
+    * move
+    * travel
+    * inspect
+    * talk
+    * barter
+    * loot
+    * equip
+    * unequip
+    * rest
+    * train
+    * use ability
+    * consume item
+    * interact with object/structure
+
+Done when: Natural player input becomes structured candidate intent.
+
+⸻
+
+Chunk 9 — ProgressionSystem v1
+
+Goal: Create base level progression.
+
+Touches: Library, Output
+
+Builds:
+
+* level XP
+* XP-to-next
+* total XP
+* threshold handling
+* anti-farm scaffolding
+
+Important: This is only the raw growth axis, not mastery.
+
+Done when: The player can gain level XP safely.
+
+⸻
+
+Chunk 10 — InventorySystem v1
+
+Goal: Create real possession and equipment structure.
+
+Touches: Library, Input, Context
+
+Builds:
+
+* item records
+* ownership buckets
+* equipment slots
+* currency structure
+* visible carry summary
+
+Done when: Inventory exists as actual possession, not flavor text.
+
+⸻
+
+Chunk 11 — Item normalization and item-state mutation
+
+Goal: Turn vague story items into stable item records.
+
+Touches: Library, Output
+
+Builds:
+
+* normalization from vague item references
+* story-granted item capture
+* player pickup capture
+* gifting/loot handling
+* consumption handling
+* item damage/alteration hooks
+
+Done when: Vague items become coherent persistent items automatically.
+
+⸻
+
+Chunk 12 — SceneStateSystem v1
+
+Goal: Create immediate local truth for the current scene.
+
+Touches: Library, Context, Output
+
+Builds:
+
+* current scene refs
+* local entity ids
+* local actor ids
+* local hazards
+* local exits/options
+* scene cache scaffold
+
+Done when: The engine knows what the current room/building/local area actually is.
+
+⸻
+
+Chunk 13 — WorldEntitySystem v1
+
+Goal: Make the larger world persistent.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* location records
+* entity/building records
+* faction records
+* route records
+* immutable identity vs mutable state structure
+
+Done when: Important world objects can persist beyond the current scene.
+
+⸻
+
+Chunk 14 — TimeTravelSystem v1
+
+Goal: Stop timeline drift and travel nonsense.
+
+Touches: Library, Input, Output, Context
+
+Builds:
+
+* current day/hour/minute
+* elapsed time tracking
+* route duration memory
+* pending time advance
+* contradiction flags
+
+Done when: Travel/rest/actions can advance time coherently.
+
+⸻
+
+Chunk 15 — ContextPacketSystem v1
+
+Goal: Make Context useful without flooding the budget.
+
+Touches: Library, Context
+
+Builds:
+
+* tiny mode
+* normal mode
+* wide mode
+* scene packet
+* player packet
+* time packet
+* actor packet
+* quest packet
+* packet priority order
+
+Done when: Current truth is injected compactly and safely for AI Dungeon.
+
+⸻
+
+Chunk 16 — AbilitySystem v1
+
+Goal: Create the generic ability framework.
+
+Touches: Library, Input, Output, Context
+
+Builds:
+
+* skill records
+* talent records
+* passive records
+* keys
+* origin context
+* intended function
+* progression state
+* stable-meaning flags
+
+Done when: New abilities can exist as structured records instead of loose prose memory.
+
+⸻
+
+Chunk 17 — Ability discovery and meaning-preservation layer
+
+Goal: Prevent name-flattening and preserve intended meaning.
+
+Touches: Library, Output
+
+Builds:
+
+* ability discovery candidates
+* ability revision candidates
+* origin-based meaning preservation
+* observed-use tracking
+* emergent application tracking
+
+Done when: The framework preserves what an ability was actually built to do.
+
+⸻
+
+Chunk 18 — Persistent trait and condition framework
+
+Goal: Add general always-on and long-term state changes.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* persistent condition records
+* trait evolution records
+* resistance containers
+* adaptation containers
+* environmental sensitivity containers
+* condition-driven growth hooks
+
+Important: This is a generic framework, not a hardcoded list of example conditions.
+
+Done when: Long-term alterations can exist and evolve without manual editing.
+
+⸻
+
+Chunk 19 — Consequence parser v1
+
+Goal: Make Output read broad story consequences into structured candidates.
+
+Touches: Library, Output
+
+Builds:
+
+* consequence candidate extraction
+* player consequence category
+* item consequence category
+* world consequence category
+* actor consequence category
+* time consequence category
+* reputation/quest consequence category
+
+Done when: AI output produces structured candidate consequences instead of direct blind canon.
+
+⸻
+
+Chunk 20 — Validation layer v1
+
+Goal: Stop ambiguous narration from corrupting canon.
+
+Touches: Library, Output
+
+Builds:
+
+* plausibility validation
+* continuity validation
+* scale validation
+* specificity validation
+* tentative-save handling
+* hard-save handling
+* fail-soft behavior
+
+Done when: The system can choose what to save, soften, defer, or ignore.
+
+⸻
+
+Chunk 21 — Specialization and matchup framework
+
+Goal: Make comparative power believable beyond raw level.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* specialization relevance
+* matchup relevance
+* situational edge handling
+* novelty/unfamiliar-style advantage handling
+* environment/preparation modifiers
+* pressure/danger comparison
+
+Important: This is a generic matchup system, not a hardcoded table of your example archetypes.
+
+Done when: Fights can be favorable or unfavorable for reasons beyond level.
+
+⸻
+
+Chunk 22 — Actor profile generation system
+
+Goal: Make important people and creatures mechanically meaningful.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* role-based profile generation
+* rank-based profile generation
+* level-band assignment
+* build-tag generation
+* likely ability/equipment assignment
+* persistence threshold for important actors
+
+Done when: Important actors stop being mechanically empty titles.
+
+⸻
+
+Chunk 23 — ReputationSystem + QuestLogSystem
+
+Goal: Add social and objective persistence.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* faction/location/actor reputation tracking
+* rumor/title tracking
+* quest acceptance/progress/completion structure
+* active quest summary
+* archived quest summary
+
+Done when: The system remembers what the player is known for and what they are currently doing.
+
+⸻
+
+Chunk 24 — CardSyncSystem v1
+
+Goal: Mirror important canonical truth into Story Cards.
+
+Touches: Library, Output
+
+Builds:
+
+* dirty card queue
+* card index
+* typed card families
+* important-entity-only sync logic
+* card text builders for:
+    * locations
+    * buildings
+    * actors
+    * abilities
+    * routes
+    * factions
+    * reputation
+    * quest log
+
+Done when: Story Cards become useful long-term mirrors without being the source of immediate truth.
+
+⸻
+
+Chunk 25 — Selective major-actor memory layer
+
+Goal: Add the final advanced persistence layer for important recurring actors only.
+
+Touches: Library, Output, Context
+
+Builds:
+
+* selective internal memory records for major actors
+* goals
+* grudges
+* relationship stance
+* long-term attitude notes
+* major-actor activation rules
+
+Important: This is selective major-actor persistence, not universal simulation of everyone.
+
+Done when: Important recurring actors can carry meaningful memory over time without bloating the world.
+
+⸻
+
+Practical milestone map
+
+By Chunk 5
+
+The shell is stable and debuggable.
+
+By Chunk 10
+
+The player, level axis, intent parsing, and inventory are real.
+
+By Chunk 15
+
+The scene/world/time/context core is working.
+
+By Chunk 18
+
+Abilities and persistent traits become real and open-ended.
+
+By Chunk 22
+
+Combat outcomes and important actors become mechanically believable.
+
+By Chunk 25
+
+The first full framework version exists.
+
+⸻
+
+Locked delivery rules going forward
+
+Rule 1
+
+One chunk = one message.
+
+Rule 2
+
+No chunk letters.
+If a roadmap change is needed later, we renumber cleanly.
+
+Rule 3
+
+No whole-Library rewrites.
+Chunks will be:
+
+* additive inserts,
+* or targeted function replacements only.
+
+Rule 4
+
+The roadmap stays AI Dungeon-first above all else:
+
+* thin hook tabs
+* Library-centered logic
+* compact Context packets
+* canonical truth in state.aidrpg
+* Story Cards as mirrors, not sole truth
+
+The hard blockers are not mysterious. They come from a small set of platform and design pressures that push creators toward shortcuts:
+
+* AI Dungeon scripting only gives you Library / Input / Context / Output on supported scenarios, and each hook runs in an isolated sandbox with a 16 MB memory limit and 2-second timeout.  
+* Story Cards are trigger-based, only enter context when their triggers appear, and if a trigger happens in the AI’s current output, that card does not help until the next output. Also, the AI only sees the Entry text, not the card name, and it does not “know Story Cards exist.”  
+* Plot Essentials is always considered, but the official guidance is to keep it dense and concise and only include what matters right now, because context is limited.  
+* Changes to state.memory made in onOutput do not affect the AI until the next player action, which makes “immediate correction” harder than it first appears.  
+* The public scripts themselves were built around different priorities: Auto-Cards focused on “object permanence” through automatic Story Card writing and compatibility, while Inner Self focused on NPC minds, agentic thought maintenance, and universal compatibility, not hard mechanics.  
+
+Below is the real safety-net list: the reasons people stopped short, and the exact problems we should expect.
+
+⸻
+
+1. The platform strongly rewards “good enough memory tricks” over full simulation
+
+A lot of creators stop at:
+
+* auto-generating Story Cards,
+* injecting a small context packet,
+* or storing a few numbers in state
+
+because that already gives a noticeable improvement without building a full engine.
+
+Why they stopped there:
+
+* It is far cheaper in hook time and complexity.
+* It works on more scenarios and for more users.
+* It avoids fighting context limits every turn.  
+
+What this means for us:
+
+* The jump from “helpful memory script” to “persistent RPG simulation layer” is not incremental. It is a big complexity leap.
+
+⸻
+
+2. Story Cards are great for long memory, but bad for immediate scene truth
+
+This is one of the biggest reasons systems feel almost-right but not actually consistent.
+
+Because Story Cards only trigger when their triggers appear, and an output-triggered card does not affect the same output, a script cannot rely on cards alone to immediately preserve:
+
+* building damage,
+* room condition,
+* current visible gear,
+* today’s exact time,
+* or a newly formed ability meaning.  
+
+So many scripts stop at “better long-term memory” instead of building a separate current-scene state layer.
+
+Complication for us:
+
+* If we get lazy and trust cards too much, the world will still feel delayed and inconsistent.
+
+⸻
+
+3. Freeform parsing is easy to start and hard to make reliable
+
+This is the TAS-style problem in one sentence.
+
+It is easy to say:
+
+* detect damage from prose,
+* detect a new skill from repeated wording,
+* detect a gained item from story text,
+* detect building damage from narration
+
+But broad prose heuristics run into three constant problems:
+
+A. Ambiguity
+
+The same wording can mean:
+
+* actual success,
+* attempted action,
+* metaphor,
+* rumor,
+* hypothetical,
+* incomplete consequence
+
+B. Over-triggering
+
+A parser starts “seeing” things that did not really happen.
+
+C. Under-triggering
+
+Players phrase things creatively, and the system misses obvious real events.
+
+That is why earlier systems often either:
+
+* stayed too shallow,
+* or became brittle and noisy.
+
+Complication for us:
+
+* We need a proposal → validation → save pipeline, not direct prose-to-canon.
+
+⸻
+
+4. The more freeform the system is, the harder balancing becomes
+
+Your design explicitly wants:
+
+* level 1–1600,
+* level not equal to mastery,
+* specialization,
+* outlier builds,
+* vampirism,
+* absorption,
+* mutation,
+* passives that evolve,
+* weird styles,
+* anti-mage builds,
+* monster-hunter vs duelist matchup logic
+
+That is exactly what makes the system interesting.
+It is also exactly what makes it hard.
+
+Why others stopped earlier:
+
+* A small stat system is easy.
+* A freeform stat system with nonlinear growth, specialization, matchup logic, and outlier exceptions is much harder to keep coherent.
+
+Complication for us:
+
+* We can’t just build “level + skills.”
+* We need rules for when the system says:
+    * this is normal progression,
+    * this is an outlier,
+    * this is a temporary buff,
+    * this is a permanent body change,
+    * this exceeds normal scaling.
+
+If we do not define those boundaries, the system will become incoherent long before level 300, let alone 1600.
+
+⸻
+
+5. NPC generation becomes expensive fast
+
+It sounds easy to say:
+
+* “generate believable stats and builds for all meaningful characters”
+
+The actual problem is deciding:
+
+* who counts as meaningful,
+* when to generate them,
+* when to persist them,
+* when to revise them,
+* and how much detail is worth storing.
+
+Inner Self solved this by focusing on important NPC minds, not every person. Auto-Cards likewise emphasizes selective card generation and summaries rather than universal exhaustive simulation.  
+
+Why others stopped:
+
+* Generating stable profiles for every named actor quickly becomes too heavy and too noisy.
+* If you persist everyone, the world bloats.
+* If you persist almost no one, titles stop meaning anything.
+
+Complication for us:
+
+* We need strong thresholds:
+    * background extra
+    * locally relevant actor
+    * persistent actor
+    * major actor
+
+Without that, performance and coherence both degrade.
+
+⸻
+
+6. Time coherence is deceptively hard
+
+Most scripts do not really solve time. They gesture at it.
+
+Why:
+
+* The AI naturally uses vague phrases like “later,” “soon,” “that morning,” “tomorrow.”
+* Travel, sleep, quest schedules, combat duration, and event recall all interact.
+* AI Dungeon gives you hooks, but not a built-in world clock. You have to make one in state.  
+
+Why people stop short:
+
+* Time coherence requires persistent clock state, event timestamps, route memory, and contradiction detection.
+* That is a lot of logic for something players only notice when it breaks.
+
+Complication for us:
+
+* If we do not make time a first-class system, everything else gets quietly undermined.
+
+⸻
+
+7. Inventory is harder than “add item name to a list”
+
+A believable inventory system has to answer:
+
+* Did the player really acquire it?
+* Was it held, worn, packed, stored, or dropped?
+* Is it stackable?
+* Is it currency?
+* Did it change condition?
+* Was it consumed?
+* Is it still visibly equipped?
+
+Why others stopped:
+
+* A noun list is cheap.
+* A real possession model is much more expensive.
+
+Complication for us:
+
+* Inventory is one of the biggest false-finish points. A lot of systems look done because they can list items, but they still cannot maintain coherent equipment, condition, or story-bestowed changes.
+
+⸻
+
+8. “Meaning preservation” is much harder than “name preservation”
+
+This is the ability problem you cared about most.
+
+Auto-generated or emergent systems are naturally tempted to reduce things to:
+
+* the ability name,
+* a category guess,
+* and one generic effect
+
+That is easier to summarize and easier to trigger later.
+
+Why others stopped there:
+
+* It is much simpler than preserving:
+    * origin context,
+    * intended function,
+    * observed use,
+    * constraints,
+    * discovered applications,
+    * and current mastery stage
+
+Complication for us:
+
+* If we do not explicitly store why an ability exists and how it has been used, the engine will drift toward generic fantasy interpretations.
+
+⸻
+
+9. Immediate world mutation and long-term world memory are different problems
+
+This is another hidden trap.
+
+A system can be good at:
+
+* generating buildings,
+* creating location cards,
+* or expanding lore
+
+without being good at:
+
+* preserving a broken wall,
+* keeping a flooded cellar flooded,
+* remembering that the owner lost an eye,
+* or keeping soot damage across revisits
+
+Auto-Cards was aimed at object permanence and plot-relevant card automation, which is useful, but that goal is not the same as a full mutable world-state simulation.  
+
+Why others stopped:
+
+* Worldbuilding and world mutation feel related, but they are not solved by the same logic.
+
+Complication for us:
+
+* We need immutable identity + mutable state everywhere it matters.
+
+⸻
+
+10. The AI is not a deterministic game engine
+
+Even with perfect scripting, the model still narrates in a probabilistic way.
+
+Why this matters:
+
+* It may phrase the same kind of event very differently.
+* It may understate or overstate outcomes.
+* It may narrate around missing context creatively rather than correctly.
+* It may imply consequences without making them explicit.
+
+Why earlier systems stopped at “pretty good”:
+
+* Once you go freeform, you are always mediating between structured state and fuzzy narration.
+
+Complication for us:
+
+* We can never fully “solve” this with parsing alone.
+* We need:
+    * compact truth packets,
+    * consequence validation,
+    * tentative states,
+    * and failure-safe behavior.
+
+⸻
+
+11. Compatibility goals force simplification
+
+Both Inner Self and Auto-Cards explicitly pitch themselves as broadly compatible/general-purpose systems. Inner Self emphasizes universal compatibility and zero immersion breaks; Auto-Cards emphasizes plug-and-play use, general-purpose usefulness, and suitability for both free and premium users.  
+
+That matters because a script built for:
+
+* many genres,
+* many playstyles,
+* free and premium contexts,
+* and easy installation
+
+will usually avoid:
+
+* very strict simulation assumptions,
+* very heavy world models,
+* or very aggressive validation systems.
+
+Why others stopped:
+
+* Broad compatibility and deep simulation are often in tension.
+
+Complication for us:
+
+* Every time we make the engine more exact, we risk making it less universally plug-and-play.
+
+⸻
+
+12. The final 20% is where almost all the work is
+
+This is the real answer to “why nobody finished this.”
+
+A script can get:
+
+* 60% of the feel
+* with 20% of the work
+
+You can make:
+
+* auto stats,
+* auto cards,
+* some memory,
+* some inventory,
+* some skills
+
+and it already feels impressive.
+
+But the last 20% you want requires solving:
+
+* edge cases,
+* body changes,
+* long-term persistence,
+* card sync thresholds,
+* outlier builds,
+* contradictory narration,
+* impossible fights,
+* delayed trigger timing,
+* and small-context degradation
+
+That is where most projects stall.
+
+⸻
+
+The practical issue list we should watch for
+
+These are the specific issues likely to hit us.
+
+High-risk issues
+
+* Over-triggering world mutations from ambiguous prose
+* Genericizing new abilities because origin/use context is not saved strongly enough
+* Inventory drift between equipped/held/stored/consumed states
+* NPC bloat from persisting too many people
+* Time contradictions accumulating silently
+* Card sync over-updating and wasting context/runtime
+* Outlier builds breaking level expectations
+* Context packets growing too large and crowding out story quality
+* Retried outputs double-applying state changes
+* Immediate scene truth lagging behind because cards update too late
+
+Medium-risk issues
+
+* Reputation becoming too noisy to matter
+* Quest logs drifting from actual plot
+* Too many passive triggers causing accidental growth
+* Build tags becoming vague sludge instead of useful classification
+* Freeform parser confidence thresholds being too loose or too strict
+
+Low-risk but annoying issues
+
+* Item naming ugliness
+* Too much debug clutter
+* Unhelpful archetype summaries
+* Cards becoming over-written prose blobs instead of useful structured mirrors
+
+⸻
+
+The actual safety-net rules we should adopt before building
+
+Rule 1
+
+No raw prose becomes canon without validation.
+
+Rule 2
+
+No major world mutation from one weak clue alone.
+
+Rule 3
+
+Player-state changes beat narrative convenience.
+
+Rule 4
+
+Current scene truth must come from state/context, not card timing alone.
+
+Rule 5
+
+Every subsystem must degrade gracefully under small context.
+
+Rule 6
+
+Important actors get persistent profiles; extras do not.
+
+Rule 7
+
+Abilities are defined by origin + use + observed effects, not title alone.
+
+Rule 8
+
+Outlier builds are allowed, but must be marked as exceptions, not silently treated as normal scaling.
+
+Rule 9
+
+Time advancement must always be explicit somewhere in the state.
+
+Rule 10
+
+If uncertain, fail soft instead of inventing certainty.
+
+⸻
+
+My honest verdict
+
+The people before you probably did not fail because the idea was impossible.
+
+They mostly stopped because:
+
+* AI Dungeon’s scripting environment rewards compact, broadly compatible tricks over deep simulation,  
+* Story Cards and memory timing make immediate persistence harder than it looks,  
+* and the truly hard part is not building the first version, but building the version that survives hundreds of edge cases.
+
+That means the project is possible, but only if we keep the build disciplined and treat these failure modes as first-class design constraints from the start.

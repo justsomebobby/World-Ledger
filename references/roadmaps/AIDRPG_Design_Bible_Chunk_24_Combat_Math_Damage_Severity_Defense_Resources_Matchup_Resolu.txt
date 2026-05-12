@@ -1,0 +1,2853 @@
+AIDRPG Design Bible — Chunk 24: Combat Math, Damage Severity, Defense, Resources, Matchup Resolution, and Freeform Combat Validation
+
+1. Purpose of this chunk
+
+Chunk 24 defines how AIDRPG handles combat consequences.
+
+Chunk 19 defined player level scale.
+
+Chunk 20 defined race/species and body logic.
+
+Chunk 21 defined stats and resources.
+
+Chunk 22 defined XP and growth.
+
+Chunk 23 defined enemy tiers and threat scaling.
+
+Chunk 24 answers:
+
+How does combat actually resolve?
+
+How does ATK compare to DEF?
+
+How does SPD affect dodging?
+
+How does armor reduce damage?
+
+How much HP damage should a hit cause?
+
+When does damage become an injury?
+
+How do MP and EP costs apply during combat?
+
+How does AIDRPG handle freeform fighting instead of rigid turn-based attacks?
+
+How does the system handle overpowered AI narration like “you instantly kill the dragon”?
+
+How does the system handle underpowered AI narration like “a rat instantly kills the Level 500 player”?
+
+How do group fights, bosses, summons, companions, and unusual bodies work?
+
+The central rule is:
+
+Combat math should guide validation and consequence severity, not replace the story.
+
+AIDRPG should not become a rigid dice system unless the user later chooses that mode.
+
+Instead, combat math provides a grounded framework for freeform AI Dungeon narration.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon combat is freeform.
+
+The player may write:
+
+“I punch him in the jaw.”
+
+“I raise my shield.”
+
+“I try to dodge between the slimes.”
+
+“I throw sand in his eyes.”
+
+“I use Mana Slash.”
+
+“I tackle the goblin leader.”
+
+“I aim for the dragon’s wounded wing.”
+
+“I grab the slime core if I can see it.”
+
+“I don’t fight; I back away slowly.”
+
+“I try to talk the bandits down.”
+
+AI Dungeon may respond with:
+
+* clean success
+* partial success
+* failure
+* injury
+* exaggerated victory
+* exaggerated defeat
+* impossible action
+* new enemy traits
+* environmental changes
+* ally actions
+* enemy actions
+* ambiguous consequences
+
+AIDRPG should read the response and decide what is mechanically true.
+
+It should not decide everything before the AI responds unless the player uses a command or the script is configured for stricter simulation.
+
+Combat should feel like narrative RPG play with consistent consequences.
+
+⸻
+
+3. Combat ownership boundaries
+
+CombatResolver owns
+
+* combat event proposals
+* matchup labels
+* attack/defense interpretation
+* damage severity proposals
+* action cost proposals
+* combat state summaries
+* enemy defeat/rout proposals
+* group casualty proposals
+* boss phase proposals
+* combat audit trace
+
+CombatResolver does not directly own HP, items, XP, quests, or cards.
+
+BodyReducer owns
+
+* HP changes
+* MP changes
+* EP changes
+* injuries
+* conditions
+* fatigue
+* unconsciousness/death-boundary state
+* recovery after combat
+
+InventoryReducer owns
+
+* weapon use
+* armor use
+* shield use
+* item damage
+* item access
+* ammunition
+* consumables
+
+AbilityReducer owns
+
+* ability activation
+* ability cost
+* ability success evidence
+* ability failure evidence
+* ability rank changes
+* passive triggers
+
+ScaleReducer owns
+
+* group counts
+* casualties
+* routed enemies
+* captured enemies
+* large-scale combat state
+
+ActorReducer / PartyReducer owns
+
+* actor presence
+* companion participation
+* ally injuries
+* enemy identity
+* major actor status
+
+ProgressionReducer owns
+
+* XP rewards
+* stat XP
+* domain XP
+* anti-farm handling
+
+QuestReducer / ReputationReducer own
+
+* quest progress from combat
+* public reputation effects
+* titles
+* legal consequences
+
+Combat proposes.
+
+Owner reducers commit.
+
+⸻
+
+4. Combat is event-based, not turn-locked
+
+AIDRPG should not require every combat to follow strict turns.
+
+Instead, combat is made of events.
+
+Combat event examples:
+
+* attack attempt
+* defense attempt
+* dodge attempt
+* spell cast
+* ability use
+* grapple
+* shove
+* retreat
+* counterattack
+* injury
+* condition
+* enemy defeat
+* group casualty
+* ally intervention
+* morale break
+* boss phase change
+* environmental hazard
+* overexertion
+* surrender
+* capture
+
+A single AI output may contain several combat events.
+
+Example:
+
+“The goblin lunges, but you twist aside and cut across its arm.”
+
+Possible events:
+
+* enemy attack
+* player dodge
+* player counterattack
+* enemy injury
+* enemy HP damage
+* EP cost
+
+Each event must be validated and deduped separately.
+
+⸻
+
+5. Combat source rules
+
+Combat consequences can come from:
+
+* AI output
+* player command/manual override
+* validated script event
+* migration only if preserving prior combat state
+
+Combat consequences should not come from:
+
+* Story Card text
+* Context text
+* command output
+* debug text
+* fake examples
+* dreams unless dream combat has real consequences
+* quotes
+* rumors
+* hypotheticals
+* plans only
+* player input alone unless manual/command mode
+
+Player input usually creates an attempt.
+
+AI output usually confirms or denies consequence.
+
+Example:
+
+Player input:
+
+“I stab the wolf.”
+
+This is an attack attempt.
+
+It does not automatically damage the wolf unless the script mode supports pre-AI simulation or the AI output confirms it.
+
+AI output:
+
+“Your blade sinks into the wolf’s shoulder.”
+
+This can create HP damage and injury.
+
+⸻
+
+6. Combat state record
+
+Active combat should have a combat state record.
+
+Recommended fields:
+
+Combat ID:
+Scene ID:
+Combat state:
+Current location:
+Player side:
+Enemy side:
+Active enemies:
+Enemy groups:
+Bosses:
+Allies present:
+Companions present:
+Summons present:
+Current matchup:
+Known hazards:
+Current objective:
+Escape routes:
+Round/beat count if used:
+Last major event:
+Unresolved attacks:
+Morale states:
+Victory condition:
+Defeat condition:
+Retreat condition:
+
+Combat states:
+
+* pending
+* active
+* paused
+* interrupted
+* retreating
+* resolved
+* escaped
+* surrendered
+* captured
+* defeated
+* archived
+
+Combat should end when:
+
+* enemies defeated
+* enemies flee
+* player flees
+* surrender/capture occurs
+* negotiation interrupts combat
+* scene changes away
+* threat becomes inactive
+* boss enters non-combat phase
+
+Combat should not remain active forever from one old fight.
+
+⸻
+
+7. Matchup label system
+
+Combat should begin with a matchup label.
+
+Labels:
+
+* harmless
+* trivial
+* easy
+* manageable
+* fair
+* dangerous
+* severe
+* overwhelming
+* impossible without leverage
+* unknown threat
+* non-combat threat
+
+Matchup is based on:
+
+* player effective level
+* enemy effective level/tier
+* player stats
+* enemy stats
+* player resources
+* enemy resources
+* equipment
+* abilities
+* race/body compatibility
+* party support
+* group size
+* boss status
+* terrain
+* hazards
+* preparation
+* objective
+* enemy weaknesses
+* player weaknesses
+* current injuries/fatigue
+
+Matchup guides validation.
+
+It does not force the outcome.
+
+⸻
+
+8. Effective combat score
+
+AIDRPG can use effective scores internally.
+
+Suggested formula:
+
+Effective Action Score =
+Relevant Stat
++ Domain Bonus
++ Ability Rank Bonus
++ Equipment Bonus
++ Race/Body Modifier
++ Context Modifier
+- Injury/Fatigue/Burden Penalty
+
+Examples:
+
+Sword attack:
+
+ATK + Sword Domain + sword bonus + ability bonus - injury penalty
+
+Dodge:
+
+SPD + Evasion/Athletics Domain + terrain modifier - burden/fatigue penalty
+
+Shield block:
+
+DEF + Shield Domain + shield bonus - EP/fatigue penalty
+
+Spell attack:
+
+INT + Magic Domain + ability rank + focus item - low MP penalty
+
+Grapple:
+
+ATK + DEF partial + Brawling Domain + size modifier - injury penalty
+
+Social intimidation in combat:
+
+ATK or INT + Reputation + Social/Intimidation Domain + enemy morale context
+
+The score is used to judge plausibility and severity.
+
+It should not be displayed unless debug mode asks.
+
+⸻
+
+9. Attack versus defense comparison
+
+For direct damaging actions, compare attacker offensive score to defender defensive score.
+
+Attack Ratio = Attacker Offensive Score / Defender Defensive Score
+
+Use this table:
+
+Attack Ratio	Expected Result
+below 0.25	nearly ineffective unless weakness/leverage
+0.25–0.5	glancing/minor effect, hard to damage
+0.5–0.75	low damage, needs good narration or repeated effort
+0.75–1.25	contested, normal damage possible
+1.25–1.75	solid damage likely
+1.75–2.5	heavy damage likely
+2.5–4.0	severe damage possible
+4.0+	overwhelming unless special resistance
+
+This ratio helps decide:
+
+* whether AI damage is plausible
+* whether HP damage should be small or large
+* whether injury is possible
+* whether a boss should resist
+* whether a low-level enemy should be trivial
+
+Example:
+
+Player sword attack score 120.
+
+Enemy defense score 240.
+
+Ratio:
+
+120 / 240 = 0.5
+
+Result:
+
+The player may scratch, stagger, or minor-wound the enemy, but clean heavy damage is suspicious unless targeting weakness.
+
+⸻
+
+10. Dodge and evasion comparison
+
+For dodging, compare defender evasion score to attacker accuracy/pressure score.
+
+Attacker pressure score may use:
+
+* ATK
+* SPD
+* weapon domain
+* ability rank
+* enemy size/area effect
+* surprise
+* terrain
+
+Defender evasion score uses:
+
+* SPD
+* Evasion/Athletics/Acrobatics domain
+* terrain
+* burden
+* EP
+* injury
+
+Evasion Ratio = Defender Evasion Score / Attacker Pressure Score
+
+Evasion Ratio	Expected Result
+below 0.25	dodge nearly impossible
+0.25–0.5	dodge unlikely, partial mitigation possible
+0.5–0.75	hard dodge, injury likely if failed
+0.75–1.25	contested
+1.25–1.75	dodge likely
+1.75–2.5	clean dodge likely
+2.5+	attacker unlikely to hit unless AoE/surprise/counter
+
+Important:
+
+AoE, traps, swarms, and unavoidable effects reduce normal dodge value.
+
+A high-SPD rogue can dodge a sword better than a room-filling explosion.
+
+⸻
+
+11. Block and guard comparison
+
+Blocking uses:
+
+* DEF
+* Shield/Weapon/Guard Domain
+* equipment quality
+* stance
+* EP
+* injury
+* attack type
+
+Block Ratio = Defender Block Score / Attacker Offensive Score
+
+Block Ratio	Expected Result
+below 0.25	block fails badly
+0.25–0.5	block reduces little; injury/equipment damage likely
+0.5–0.75	partial block
+0.75–1.25	contested block
+1.25–1.75	solid block
+1.75–2.5	strong block, minor cost
+2.5+	attack stopped unless special property
+
+Blocking can still cost EP.
+
+A successful block may damage shield/weapon.
+
+A failed block may reduce damage but still cause injury.
+
+Blocking magic with a mundane shield may fail unless shield/material/ability supports it.
+
+⸻
+
+12. Damage severity categories
+
+AIDRPG should classify damage before exact HP.
+
+Damage categories:
+
+* none
+* scratch
+* minor
+* moderate
+* serious
+* severe
+* critical
+* lethal/death-boundary
+* overwhelming/special
+
+Damage category is determined by:
+
+* attack ratio
+* weapon/spell type
+* target body
+* armor
+* resistances
+* vulnerabilities
+* location
+* narration severity
+* player/enemy level
+* current HP
+* boss rules
+* conditions
+
+The category then converts to HP percentage.
+
+⸻
+
+13. HP damage percentage table
+
+Default HP damage as percentage of target max HP:
+
+Damage Severity	HP Damage
+none	0%
+scratch	1–2%
+minor	3–7%
+moderate	8–15%
+serious	16–30%
+severe	31–50%
+critical	51–80%
+lethal/death-boundary	81–100%
+overwhelming	special, usually only with validation
+
+Use this as guidance, not exact rigid dice.
+
+Example:
+
+A wolf bite to a Level 5 human may be moderate or serious.
+
+A wolf bite to a Level 100 armored tank may be scratch or none.
+
+A god spear through the chest may be lethal even at high level if it bypasses defenses and is validated.
+
+⸻
+
+14. Flat damage option
+
+If a stricter mode needs flat damage, use:
+
+Damage = Base Severity % of Max HP
+
+Example:
+
+Target HP 1000.
+
+Moderate damage:
+
+8–15% = 80–150 HP
+
+Serious damage:
+
+16–30% = 160–300 HP
+
+This scales naturally across levels.
+
+For most AI Dungeon play, severity-based HP percentage is easier and more stable than fixed weapon numbers.
+
+⸻
+
+15. Weapon damage categories
+
+Weapons should influence severity.
+
+Improvised light weapon
+
+Examples:
+
+* stick
+* bottle
+* small rock
+
+Usually scratch/minor unless high ATK or vulnerable target.
+
+Light weapon
+
+Examples:
+
+* dagger
+* short knife
+* small club
+
+Minor/moderate, serious on vital hit or stealth.
+
+Standard weapon
+
+Examples:
+
+* sword
+* spear
+* axe
+* mace
+* bow
+
+Moderate/serious against comparable foes.
+
+Heavy weapon
+
+Examples:
+
+* greatsword
+* warhammer
+* greataxe
+* lance
+
+Serious/severe if it lands, higher EP cost.
+
+Fine/masterwork weapon
+
+Improves effective attack and reliability.
+
+Magic weapon
+
+May bypass resistance, add element, or count as special.
+
+Artifact weapon
+
+May shift tier, bypass defenses, or create special effects, but should have conditions/costs.
+
+Weapon quality modifies attack score and possible severity.
+
+It should not override all context.
+
+⸻
+
+16. Armor and defense
+
+Armor reduces damage severity or effective attack.
+
+Armor types:
+
+* cloth
+* leather
+* reinforced leather
+* chain
+* scale
+* plate
+* monster hide
+* magical armor
+* natural armor
+* divine armor
+* shield/barrier
+
+Armor effects:
+
+* reduce damage severity
+* reduce injury chance
+* protect body parts
+* increase EP cost
+* reduce SPD
+* fail against certain damage types
+* degrade from hits
+* be bypassed by precision, magic, poison, or weak points
+
+Suggested armor severity reduction:
+
+Armor Quality / Relevance	Severity Reduction
+irrelevant armor	0
+light relevant armor	reduce by 0–1 step
+medium relevant armor	reduce by 1 step
+heavy relevant armor	reduce by 1–2 steps
+excellent/magical armor	reduce by 2+ steps
+perfect counter armor	may block or greatly reduce
+
+Example:
+
+A knife slash against plate armor may be scratch/none.
+
+A warhammer against plate may still cause blunt trauma.
+
+Acid may damage armor directly.
+
+Lightning may bypass metal armor or worsen effect depending setting.
+
+⸻
+
+17. Resistances and vulnerabilities in damage
+
+Resistance modifies damage severity.
+
+Resistance Level	Severity Modifier
+Vulnerable	increase 1–3 steps
+Normal	no change
+Resistant	reduce 1 step
+Highly resistant	reduce 2–3 steps
+Immune	no damage unless bypassed
+Absorbs	damage becomes healing/charge
+Reflects	redirects effect
+Conditional	depends on context
+
+Examples:
+
+Fire against ice creature:
+
+* vulnerability, increase severity
+
+Sword against ghost:
+
+* immune/resistant unless weapon is magical/spirit-compatible
+
+Piercing against slime:
+
+* reduced unless core hit
+
+Blunt against skeleton:
+
+* increased or normal
+
+Poison against construct:
+
+* immune unless corrosive/magical
+
+Resistance should be based on confirmed or strongly supported traits.
+
+Do not invent weaknesses freely.
+
+⸻
+
+18. Injury threshold rules
+
+HP damage and narration can create injuries.
+
+Injury should be considered when:
+
+* damage is moderate or higher
+* hit targets specific body part
+* attack type supports injury
+* HP drops below threshold
+* critical hit/strong narration
+* body type supports injury
+* armor fails or is bypassed
+* repeated damage accumulates
+
+Suggested injury chance by severity:
+
+Damage Severity	Injury Result
+scratch	no injury, cosmetic mark
+minor	minor injury possible
+moderate	minor or moderate injury likely
+serious	moderate injury likely, severe possible
+severe	severe injury likely
+critical	severe/critical injury
+lethal	death-boundary or catastrophic injury
+
+Injury must fit body type.
+
+A slime gets cohesion/core damage.
+
+A skeleton gets cracked bones.
+
+A construct gets structural damage.
+
+A spirit gets essence disruption.
+
+⸻
+
+19. Injury location
+
+If narration gives a location, use it.
+
+Examples:
+
+* arm
+* leg
+* shoulder
+* ribs
+* chest
+* head
+* eye
+* hand
+* wing
+* tail
+* core
+* power crystal
+* spirit anchor
+
+If no location is given, infer only if safe.
+
+Do not invent crippling injuries from vague damage.
+
+Example:
+
+“The wolf bites you.”
+
+Possible:
+
+* generic bite wound
+* limb bite if scene says it lunged at arm/leg
+
+Not automatic:
+
+* severed artery
+* broken spine
+* infected wound
+
+Unless narration supports it.
+
+⸻
+
+20. Conditions from combat
+
+Combat may create conditions.
+
+Common conditions:
+
+* bleeding
+* stunned
+* dazed
+* poisoned
+* burning
+* frozen
+* shocked
+* restrained
+* blinded
+* deafened
+* prone
+* frightened
+* exhausted
+* cursed
+* infected
+* corrupted
+* silenced
+* staggered
+* grappled
+* pinned
+* disarmed
+* armor damaged
+* weapon damaged
+
+Condition requirements:
+
+* source supports condition
+* body supports condition
+* resistance checked
+* operation ledger dedupes
+* duration/severity tracked
+* recovery/removal path exists
+
+Example:
+
+Spider bite:
+
+* poison condition possible
+
+Wolf bite:
+
+* bleeding possible if organic
+
+Slime engulf:
+
+* restrained/suffocating/acid possible
+
+Ghost touch:
+
+* chilled/fear/drained possible
+
+Construct beam:
+
+* burning/shocked/stunned possible
+
+⸻
+
+21. Critical hits
+
+Critical hits should not be random by default unless a random mode exists.
+
+In freeform AIDRPG, critical effects happen when story supports:
+
+* exposed weak point
+* surprise attack
+* high LCK
+* enemy vulnerability
+* strong attack ratio
+* precise technique
+* ability crit
+* enemy careless
+* player preparation
+* dramatic moment
+
+Critical hit effects may:
+
+* increase damage severity
+* add injury
+* bypass armor
+* trigger condition
+* stagger enemy
+* break equipment
+* discover weakness
+* shift morale
+
+Critical hits should not instantly kill bosses unless defeat condition and scale support it.
+
+⸻
+
+22. Grazes and partial hits
+
+Not every hit is full damage.
+
+Partial hit examples:
+
+* blade scratches armor
+* arrow grazes shoulder
+* fire singes cloak
+* claw tears sleeve
+* spell clips enemy
+* shield absorbs most force
+* slime only brushes boot
+
+Partial hits are important for freeform narrative.
+
+They allow AI output to matter without overcommitting.
+
+AIDRPG should use:
+
+* scratch
+* minor damage
+* item damage
+* condition warning
+* morale shift
+* ability evidence
+* no major HP loss
+
+when full damage is not plausible.
+
+⸻
+
+23. EP cost in combat
+
+Physical combat should cost EP.
+
+EP costs depend on:
+
+* action intensity
+* weapon weight
+* armor burden
+* movement
+* injury
+* fatigue
+* race/body
+* environment
+* ability use
+* duration of exchange
+
+Suggested EP cost by action:
+
+Action	EP Cost
+quick step / small movement	1–2% max EP
+normal attack	2–4%
+heavy attack	5–10%
+full combo/flurry	8–15%
+dodge	2–6%
+desperate dodge	6–12%
+block	2–8% depending force
+grapple	5–15%
+sprint/chase burst	8–20%
+forced overexertion	HP/injury cost possible
+prolonged combat exchange	5–20% per scene beat
+
+At high levels, percentages keep costs meaningful.
+
+A Level 1000 warrior has huge EP, but mythic actions cost large amounts.
+
+⸻
+
+24. MP cost in combat
+
+Magic, supernatural abilities, barriers, summons, and energy attacks cost MP unless specifically passive/free.
+
+Suggested MP cost by action:
+
+Magic Action	MP Cost
+cantrip/tiny effect	1–2% max MP
+basic spell	3–5%
+moderate combat spell	6–10%
+strong spell	11–20%
+severe spell / wide AoE	21–35%
+extreme spell	36–50%
+overcharge/mythic spell	50%+ plus risk
+
+Cost modifiers:
+
+* ability rank may reduce cost
+* domain rank may reduce waste
+* focus item may reduce cost
+* casting under pressure may increase cost
+* enemy resistance may require more power
+* large target count increases cost
+* duration increases cost
+* range increases cost
+* low MP increases failure/backlash risk
+
+⸻
+
+25. Hybrid MP/EP costs
+
+Many abilities use both MP and EP.
+
+Examples:
+
+* Mana Slash
+* elemental weapon strike
+* spiritual martial art
+* dragon breath
+* teleport dodge
+* shadow step
+* magic-enhanced sprint
+* barrier block
+
+Hybrid cost example:
+
+Mana Slash Rank 2:
+MP 6–10% max MP
+EP 3–6% max EP
+
+As ability ranks up:
+
+* cost may drop
+* damage/control may rise
+* failure risk drops
+* range/duration may improve
+
+Hybrid builds must manage both resources.
+
+⸻
+
+26. HP cost abilities
+
+Some abilities cost HP or body integrity.
+
+Examples:
+
+* blood magic
+* berserk overexertion
+* forbidden spell
+* undead sacrifice
+* slime mass sacrifice
+* construct core overload
+* demonic contract backlash
+* divine martyr ability
+
+HP-cost abilities require strong validation.
+
+They should clearly show:
+
+* cost
+* risk
+* benefit
+* recovery path
+* death-boundary risk
+
+Example:
+
+Blood Spear:
+
+* costs 10% HP
+* costs MP
+* causes bleeding risk
+* powerful piercing effect
+* cannot be spammed safely
+
+HP costs should never be hidden.
+
+⸻
+
+27. Overexertion in combat
+
+When resources are too low, player may overexert.
+
+Overexertion examples:
+
+* swing at 0 EP
+* cast at 0 MP
+* block fatal hit with broken arm
+* sprint while exhausted
+* force transformation while wounded
+* maintain barrier past limit
+
+Possible costs:
+
+* HP damage
+* injury worsening
+* new condition
+* unconsciousness
+* ability backlash
+* temporary stat penalty
+* equipment damage
+* resource debt
+* race/body instability
+* corruption
+
+Overexertion may allow heroic action but should not be free.
+
+Example:
+
+A Level 50 brawler at 0 EP throws one final punch.
+
+Possible accepted outcome:
+
+* punch lands weakly or partially
+* HP cost
+* collapses after
+* arm injury worsens
+
+Not acceptable:
+
+* full-power unlimited combo at no cost.
+
+⸻
+
+28. Combat action intensity
+
+AIDRPG should classify action intensity.
+
+Light
+
+Examples:
+
+* jab
+* quick cut
+* small dodge
+* careful step
+
+Low EP/MP cost.
+
+Normal
+
+Examples:
+
+* standard attack
+* normal dodge
+* shield block
+* basic spell
+
+Moderate cost.
+
+Heavy
+
+Examples:
+
+* power swing
+* full sprint
+* strong spell
+* forceful grapple
+
+High cost.
+
+Desperate
+
+Examples:
+
+* last stand
+* overcharge
+* reckless lunge
+* cast while empty
+
+Very high cost and risk.
+
+Mythic
+
+Examples:
+
+* world-cutting slash
+* divine barrier
+* battlefield-scale spell
+
+Requires high level, ability, resource, and story support.
+
+Intensity helps scale costs and consequences.
+
+⸻
+
+29. Enemy attacks against player
+
+Enemy attacks should use the same logic.
+
+When AI says enemy hits player, validate:
+
+* enemy offensive score
+* player defense/evasion
+* player armor
+* player resources
+* player body type
+* enemy damage type
+* enemy tier
+* narration severity
+* player current state
+* operation duplicate
+
+Example:
+
+A Tier 2 goblin stabs Level 100 armored player.
+
+Likely:
+
+* scratch/minor or blocked
+* maybe no HP if armor
+* no severe injury unless poison/weak point/surprise
+
+Example:
+
+A Tier 8 dragon breathes fire at Level 100 player.
+
+Likely:
+
+* severe/critical unless cover/resistance/barrier
+* escape or partial protection possible
+* full no-damage requires strong leverage
+
+⸻
+
+30. Player attacks against enemy
+
+When AI says player hits enemy, validate:
+
+* player attack score
+* enemy defense
+* enemy body type
+* enemy resistances
+* enemy weak points
+* weapon/ability type
+* enemy tier
+* boss rules
+* group rules
+* narration severity
+* duplicate operation
+
+Example:
+
+Level 5 player slashes adult dragon.
+
+Likely:
+
+* no damage/scratch unless weak point/artifact
+* maybe dragon notices
+* no dragon death
+
+Example:
+
+Level 300 player with dragon-slaying spear hits wounded dragon’s exposed heart.
+
+Likely:
+
+* serious/severe/critical
+* boss phase or defeat possible
+* if defeat condition met, victory possible
+
+⸻
+
+31. Combat with unusual bodies
+
+Combat must respect body types.
+
+Slime
+
+Normal cuts may:
+
+* split mass
+* cause minor cohesion damage
+* fail to injure if no core hit
+
+Fire/drying/purification may:
+
+* cause severe damage
+* create condition
+* reduce mass/cohesion
+
+Core hit, if confirmed:
+
+* severe/critical
+
+Skeleton
+
+Piercing may be weak.
+
+Blunt may be strong.
+
+No bleeding.
+
+Holy effects may be strong.
+
+Construct
+
+Poison mostly ineffective.
+
+Blunt/armor-piercing/core damage important.
+
+Repair needed after structural damage.
+
+Spirit
+
+Mundane attacks fail unless spirit is manifested or weapon is special.
+
+Holy/spirit/ritual attacks matter.
+
+Fairy
+
+Tiny body means low HP.
+
+Dodging/flight/stealth important.
+
+Physical hits may be severe if they land.
+
+Giant
+
+High HP/DEF.
+
+Hard to move or knock back.
+
+Large target.
+
+Cramped spaces reduce advantage.
+
+Body logic should override generic human injury logic.
+
+⸻
+
+32. Boss damage limits
+
+Bosses should not be erased by one unsupported hit.
+
+Boss damage should respect:
+
+* tier gap
+* boss resources
+* armor/resistance
+* phases
+* defeat condition
+* story leverage
+* weak points
+* player resource cost
+* ability rank
+* narration support
+
+If an AI output says:
+
+“You stab the ancient dragon and it dies instantly.”
+
+Validation should check:
+
+* Is player level/tier high enough?
+* Is weapon appropriate?
+* Was weak point exposed?
+* Was dragon already near death?
+* Was anti-dragon leverage present?
+* Is this dream/flavor/exaggeration?
+* Does boss have remaining phase?
+
+If unsupported:
+
+* soften to wound/stagger/anger
+* reject death
+* record damage if plausible
+* Context correction if needed
+
+Bosses can die quickly only when setup supports it.
+
+Example:
+
+A lich’s body can be destroyed by a strong attack, but final death may require phylactery.
+
+⸻
+
+33. Minion damage limits
+
+Minions should not be too durable.
+
+If player massively outscales minions:
+
+* attacks may defeat multiple
+* morale may break
+* HP tracking can be abstracted
+* group count updates matter
+* XP may be low
+
+Example:
+
+Level 500 player attacks Tier 2 goblins.
+
+Likely:
+
+* many defeated or routed
+* no meaningful XP
+* collateral/social consequences may matter
+
+But if objective is “capture alive” or “protect civilians,” minions can still create challenge.
+
+⸻
+
+34. Group damage and casualties
+
+Group combat should update counts.
+
+Possible outcomes:
+
+* one defeated
+* several wounded
+* several killed
+* group scattered
+* group routed
+* leader killed
+* morale broken
+* no casualties but formation disrupted
+* group advances
+
+Casualty validation depends on:
+
+* player attack scale
+* area effect
+* enemy density
+* enemy tier
+* player level
+* weapon/ability type
+* environment
+* group morale
+* boss/minion protection
+
+Example:
+
+“Your fireball engulfs the front rank of goblins.”
+
+Possible:
+
+* 3–8 goblins killed/wounded depending group size, fireball rank, tier
+* not necessarily all 30 unless spell scale supports it
+
+Group casualty event must be deduped.
+
+⸻
+
+35. AoE damage
+
+Area effects use different scaling.
+
+AoE factors:
+
+* area size
+* intensity
+* target density
+* enemy resistance
+* cover
+* friendly fire
+* terrain
+* resource cost
+* ability rank
+* casting time
+
+AoE should cost more MP/EP.
+
+AoE is strong against:
+
+* swarms
+* groups
+* weak minions
+* clustered enemies
+
+AoE is weaker against:
+
+* single high-DEF boss
+* spread enemies
+* resistant enemies
+* enemies behind cover
+* friendly-fire-risk scenes
+
+AoE should not automatically distinguish enemies from allies unless ability supports precision.
+
+⸻
+
+36. Grappling and restraint
+
+Grappling uses:
+
+* ATK
+* DEF
+* SPD
+* size
+* body type
+* Brawling/Wrestling Domain
+* limbs/tentacles
+* slippery body
+* equipment
+* injury
+* EP
+
+Grapple comparison:
+
+Grapple Score = ATK + DEF partial + Grapple Domain + Size Modifier
+
+Size matters.
+
+A tiny fairy grappling a giant normally fails unless magic/leverage.
+
+A slime may grapple through engulfing instead of limbs.
+
+A ghost may be ungrappleable unless manifested or bound.
+
+Grapple results:
+
+* restrained
+* pinned
+* shoved
+* thrown
+* disarmed
+* partially held
+* escaped
+* counter-grappled
+
+Grappling costs EP each beat.
+
+⸻
+
+37. Disarming and equipment attacks
+
+Players may target weapons, shields, armor, or items.
+
+Disarm depends on:
+
+* SPD
+* ATK
+* weapon domain
+* enemy grip/DEF
+* surprise
+* size
+* item type
+* technique
+* relative strength
+* injury
+
+Equipment damage depends on:
+
+* attack type
+* item condition
+* material
+* enchantment
+* hit severity
+* weapon hardness
+* ability effect
+
+Examples:
+
+* acid slime damages boots/armor
+* warhammer dents shield
+* sword may fail against iron golem
+* fire burns wooden shield
+* magic weapon can cut cursed chain
+
+InventoryReducer owns item condition changes.
+
+Combat proposes them.
+
+⸻
+
+38. Called shots and weak points
+
+Called shots are attacks targeting specific weak points.
+
+Examples:
+
+* eye
+* throat
+* exposed joint
+* core
+* wing
+* tendon
+* magic crystal
+* phylactery
+* open wound
+* broken armor seam
+
+Called shots are harder but can increase severity.
+
+Requirements:
+
+* target visible/known
+* player can reach it
+* relevant accuracy/SPD/domain
+* enemy not fully guarding it
+* attack type appropriate
+* weak point confirmed or plausibly inferred
+
+If called shot fails:
+
+* miss
+* glancing hit
+* counterattack risk
+* wasted EP/MP
+* worse position
+
+Do not allow called shots to invent weak points.
+
+Example:
+
+A slime core must be confirmed or strongly suspected before targeting it as fact.
+
+⸻
+
+39. Stealth attacks and ambushes
+
+Ambush attacks can increase damage and condition chance.
+
+Ambush depends on:
+
+* Stealth Domain
+* SPD
+* terrain
+* enemy senses
+* light/noise
+* enemy alertness
+* equipment burden
+* party noise
+* preparation
+
+Benefits of successful ambush:
+
+* first strike
+* increased damage
+* armor bypass
+* morale shock
+* surprise condition
+* enemy unable to dodge/block fully
+
+Ambush does not automatically kill bosses.
+
+Bosses may have:
+
+* danger sense
+* guards
+* wards
+* thick armor
+* regeneration
+* multiple phases
+
+Assassination of major targets requires strong setup.
+
+⸻
+
+40. Counterattacks
+
+Counterattacks occur when:
+
+* defender reads attack
+* attacker overextends
+* defender has high SPD/domain
+* attack fails badly
+* enemy is skilled
+* boss has counter trait
+* player uses reckless action
+
+Counterattack may cause:
+
+* HP damage
+* injury
+* disarm
+* knockdown
+* resource loss
+* condition
+* positional disadvantage
+
+Counterattacks should be likely against skilled enemies if the player repeatedly uses predictable attacks.
+
+This helps prevent spam.
+
+⸻
+
+41. Combat morale and surrender
+
+Combat does not always end in death.
+
+Possible resolutions:
+
+* enemy flees
+* enemy surrenders
+* enemy is captured
+* player retreats
+* negotiation begins
+* enemy routs
+* boss withdraws
+* enemy feigns surrender
+* combat pauses due to larger threat
+
+Morale depends on:
+
+* enemy intelligence
+* group losses
+* leader status
+* fear
+* loyalty
+* fanaticism
+* undead/mindless state
+* player reputation
+* intimidation
+* overwhelming power
+* escape route
+
+AIDRPG should avoid requiring every fight to end with total slaughter.
+
+⸻
+
+42. Nonlethal combat
+
+Players may choose nonlethal action.
+
+Nonlethal options:
+
+* shove
+* grapple
+* disarm
+* knock out
+* pin
+* bind
+* intimidate
+* exhaust
+* trip
+* stun
+* disable weapon
+* restrain with magic
+
+Nonlethal validation depends on:
+
+* target body type
+* relative power
+* ability precision
+* weapon choice
+* enemy fragility
+* player control
+* situation
+
+Nonlethal is harder when:
+
+* using lethal weapons
+* enemy is fragile
+* player overpowers target massively
+* target has unusual body
+* chaotic AoE
+* combat is frantic
+
+Example:
+
+A Level 500 player punching a Tier 1 human “nonlethally” requires control; otherwise accidental severe injury is possible.
+
+⸻
+
+43. Retreat and escape
+
+Retreat is a valid combat result.
+
+Escape depends on:
+
+* SPD
+* EP
+* terrain
+* route/exits
+* enemy speed
+* enemy ranged attacks
+* enemy intelligence
+* party speed
+* carrying burden
+* injuries
+* weather
+* stealth
+* distraction
+* mounts/vehicles
+
+Retreat outcomes:
+
+* clean escape
+* partial escape with injury
+* split party
+* dropped item
+* enemy pursues
+* delayed escape
+* escape into worse hazard
+* captured
+
+AIDRPG should support “survived by escaping” XP if threat was meaningful.
+
+Escape should not be treated as failure unless objective required victory.
+
+⸻
+
+44. Defense without attacking
+
+Players may defend, observe, or stall.
+
+Defensive actions can:
+
+* reduce damage
+* recover tiny EP through controlled breathing if safe
+* identify enemy pattern
+* protect ally
+* buy time
+* force enemy to reveal ability
+* improve next action
+* reduce morale loss
+
+Examples:
+
+“I keep my shield up and watch his footwork.”
+
+Potential effects:
+
+* block/guard
+* INT/Combat Domain observation
+* enemy pattern clue
+* EP cost
+* lower damage risk
+
+Defensive play should be rewarded when meaningful.
+
+⸻
+
+45. Combat observation and analysis
+
+Players may analyze enemies during combat.
+
+Relevant stats:
+
+* INT
+* SPD if reading movement
+* domain knowledge
+* senses
+* prior evidence
+* time available
+* danger level
+
+Possible results:
+
+* identify weakness
+* identify ability pattern
+* estimate tier
+* reveal fake opening
+* discover armor gap
+* learn enemy is baiting
+* confirm immunity/resistance
+* update threat estimate
+* create Investigation/Monster Lore XP
+
+Analysis should not reveal everything instantly unless player has overwhelming relevant knowledge or ability.
+
+⸻
+
+46. Combat and abilities
+
+Ability use in combat must check:
+
+* ability known or candidate
+* activation condition
+* resource cost
+* ability rank
+* target
+* range
+* duration
+* enemy resistance
+* scene pressure
+* body/equipment requirements
+* cooldown/maintenance
+* failure risk
+
+Candidate abilities may fail or partially manifest.
+
+Stable abilities are more reliable.
+
+Using an ability can create:
+
+* damage
+* defense
+* movement
+* condition
+* buff
+* debuff
+* summon
+* terrain change
+* clue
+* cost discovery
+* rank evidence
+* backlash
+
+AbilityReducer owns ability truth.
+
+CombatResolver only proposes combat effects.
+
+⸻
+
+47. Combat and passives
+
+Passives may trigger during combat.
+
+Examples:
+
+* scales reduce damage
+* danger sense warns of ambush
+* regeneration heals over time
+* fire resistance reduces burn
+* Quick Learner improves evidence gain
+* undead body ignores poison
+* slime body resists piercing
+* berserker rage activates under low HP
+
+Passive trigger rules:
+
+* passive must exist
+* trigger condition must be met
+* cost/upkeep checked if any
+* cooldown checked if any
+* effect scoped properly
+* not duplicate-triggered from same event
+
+Passives must have limits.
+
+Fire resistance is not fire immunity unless defined.
+
+Regeneration may fail under fire/holy/acid/sealing depending trait.
+
+⸻
+
+48. Combat and companions
+
+Companions can act only if present and able.
+
+Check:
+
+* companion presence
+* companion state
+* companion injuries
+* companion morale
+* companion role
+* relationship
+* current orders
+* distance
+* enemy pressure
+* ability/equipment
+
+Companion actions can:
+
+* attack
+* defend
+* heal
+* distract
+* rescue
+* flee
+* be injured
+* be captured
+* refuse
+* act independently
+
+Do not let absent companions block attacks or deal damage.
+
+If AI says absent companion acts, reject or flag location contradiction.
+
+⸻
+
+49. Combat and summons
+
+Summons are similar to companions but more temporary.
+
+Summon combat requires:
+
+* summon exists
+* summon duration active
+* summon control maintained
+* MP/EP upkeep if any
+* command/instinct logic
+* enemy ability to target summon
+* summon body type
+* summon loyalty/stability
+
+Summons should not create infinite XP.
+
+Defeating self-created summons should not farm rewards.
+
+Summon casualties and actions should be deduped.
+
+⸻
+
+50. Combat and environment
+
+Environment matters heavily.
+
+Environmental combat modifiers:
+
+* darkness
+* fog
+* rain
+* snow
+* mud
+* ice
+* narrow tunnel
+* high ground
+* cover
+* fire
+* smoke
+* water
+* cliffs
+* traps
+* crowd
+* collapsing building
+* magical field
+* holy ground
+* cursed ground
+* anti-magic zone
+
+Environment can:
+
+* affect SPD
+* affect ranged attacks
+* affect fire/ice/lightning
+* affect stealth
+* create hazards
+* give leverage
+* block movement
+* split groups
+* prevent large creature movement
+* expose weaknesses
+
+Example:
+
+A dragon cannot use full flight in a cramped cave.
+
+A slime may thrive in wet sewer but suffer in desert sun.
+
+A fire spell is dangerous in a dry wooden inn.
+
+⸻
+
+51. Combat and collateral damage
+
+High-level combat should include collateral risk.
+
+Collateral examples:
+
+* building damage
+* civilians harmed
+* ally caught in AoE
+* fire spreads
+* bridge collapses
+* item destroyed
+* evidence damaged
+* reputation loss
+* legal consequences
+* domain damage
+* route blocked
+* weather/magic instability
+
+A Level 1000 player can annihilate enemies, but may destroy the city if careless.
+
+This keeps high-level combat meaningful.
+
+Collateral should be validated and routed to owner systems.
+
+⸻
+
+52. Combat and death boundary
+
+Death must be careful.
+
+Player death or unconsciousness should require strong evidence.
+
+Death-boundary factors:
+
+* HP at or below 0
+* lethal injury
+* body type
+* death mode settings
+* source validity
+* enemy tier
+* player protections
+* passives
+* LCK/fate abilities
+* story context
+* safety settings
+
+Recommended default:
+
+AIDRPG should use a death-boundary state before irreversible death unless lethal mode is enabled.
+
+Examples:
+
+* unconscious
+* dying
+* inert
+* dispersed
+* core cracked
+* soul slipping
+* shutdown
+* banished
+* captured
+* near death
+
+Permanent death should require:
+
+* validated lethal event
+* no protective passive/setting
+* no body-specific survival rule
+* death mode allows it
+* audit records it
+
+Enemy death also needs validation, especially bosses and unusual bodies.
+
+⸻
+
+53. Combat result categories
+
+Combat events should resolve into categories:
+
+No effect
+
+Action fails or cannot affect target.
+
+Minor effect
+
+Small damage, pressure, or information.
+
+Partial success
+
+Some goal achieved with cost or limitation.
+
+Success
+
+Intended result works.
+
+Strong success
+
+Better-than-normal result due to stats/leverage.
+
+Critical success
+
+Major result, usually with setup/weakness/high ratio.
+
+Failure
+
+Action fails.
+
+Soft failure
+
+Action partially fails but teaches or changes something.
+
+Severe failure
+
+Action fails with injury/cost.
+
+Impossible / hard-denied
+
+Action cannot happen under current canon.
+
+Use these categories in debug.
+
+⸻
+
+54. Combat validation examples
+
+Example 1 — Level 4 player punches demon lord
+
+Input/output says player kills demon lord with punch.
+
+Expected:
+
+* hard reject or soften victory
+* maybe player hurts hand or demon laughs
+* no demon death
+* possible danger escalation
+* debug: impossible without leverage
+
+Example 2 — Level 100 player bitten by ordinary rat
+
+Output says rat instantly kills player.
+
+Expected:
+
+* reject/soften
+* maybe scratch
+* disease only if established
+* no instant death
+
+Example 3 — Level 10 brawler fights trained guard
+
+Expected:
+
+* dangerous/fair depending stats
+* punches can hurt
+* guard can counter
+* EP costs matter
+* injuries possible
+
+Example 4 — Level 50 warrior blocks ogre club
+
+Expected:
+
+* possible partial/solid block if shield/DEF good
+* heavy EP cost
+* shield damage possible
+* knockback possible
+
+Example 5 — Level 100 mage casts fireball at wolf pack
+
+Expected:
+
+* strong AoE if MP sufficient
+* wolf pack may scatter/burn
+* collateral fire risk
+* XP depends on challenge
+
+Example 6 — mundane sword against ghost
+
+Expected:
+
+* no/low effect unless ghost manifested or sword enchanted
+* clue to need holy/spirit method
+
+Example 7 — acid slime hits armor
+
+Expected:
+
+* armor condition damage possible
+* HP damage if acid reaches body
+* EP may be spent escaping sticky acid
+
+Example 8 — player at 0 EP dodges dragon breath
+
+Expected:
+
+* dodge unlikely
+* possible overexertion
+* cover/barrier needed
+* severe consequence if no leverage
+
+⸻
+
+55. Damage calculation workflow
+
+When damage is proposed, follow this workflow:
+
+1. Classify source.
+2. Identify attacker.
+3. Identify target.
+4. Identify attack type.
+5. Identify target body type.
+6. Check if attacker/target are present.
+7. Check weapon/ability/item access.
+8. Calculate or estimate offensive score.
+9. Calculate or estimate defensive/evasion/block score.
+10. Apply tier/matchup context.
+11. Apply armor/resistance/vulnerability.
+12. Apply environment.
+13. Apply resource state.
+14. Apply narration severity.
+15. Determine damage category.
+16. Convert to HP damage range.
+17. Determine injury/condition possibility.
+18. Check death-boundary rules.
+19. Check operation ledger.
+20. Commit through BodyReducer or enemy/Scale owner.
+21. Mark dirty targets.
+22. Audit result.
+
+This workflow prevents random damage from slipping into state.
+
+⸻
+
+56. Combat XP handoff
+
+Combat itself does not directly grant XP.
+
+After combat event validation, CombatResolver may propose:
+
+* Level XP
+* stat XP
+* domain XP
+* ability evidence
+* quest progress
+* reputation change
+* loot availability
+
+ProgressionReducer decides XP.
+
+QuestReducer decides quest progress.
+
+ReputationReducer decides public effects.
+
+InventoryReducer decides loot once acquired.
+
+This avoids double rewards.
+
+⸻
+
+57. Loot after combat
+
+Loot should not automatically enter inventory.
+
+Combat may create available loot.
+
+Example:
+
+“The goblin drops a rusty dagger.”
+
+This creates:
+
+* scene item / available loot
+
+Not automatically:
+
+* inventory item
+
+Player must take it, or output must confirm acquisition.
+
+Exceptions:
+
+* AI explicitly says player picks it up
+* command adds it
+* automatic loot setting enabled
+
+Loot must respect:
+
+* item condition
+* enemy equipment
+* ownership/custody
+* legality
+* carrying capacity if used
+* duplicate prevention
+
+⸻
+
+58. Combat and story cards
+
+Combat should rarely create cards.
+
+Do not create cards for:
+
+* every fight
+* every wound
+* every random enemy
+* every defeated goblin
+* every temporary combat state
+
+Cards may update/create for:
+
+* recurring named enemy
+* major boss
+* important companion injury
+* important item damage
+* quest progress
+* major place damage
+* persistent route hazard
+* ability stabilization
+* reputation/title change
+* domain/base damage
+
+Combat facts mostly belong in state and Context, not cards.
+
+⸻
+
+59. Combat Context behavior
+
+Context should include combat-relevant facts when combat is active.
+
+Good combat Context:
+
+You are fighting four remaining goblin ambushers on Blackwood Road. Your EP is low, your shield is cracked, and Mara is present but wounded. The goblins are shaken after losing nine of thirteen fighters.
+
+Good boss Context:
+
+Frostmaw is a named spirit wolf. Mundane blades have only grazed it, and blue fire gathers in its jaws. Holy or spirit-compatible attacks may matter more than normal steel.
+
+Bad combat Context:
+
+Dumping every stat, every item, every old quest, and every known enemy card.
+
+Combat Context should be immediate and compact.
+
+⸻
+
+60. Combat commands
+
+/combat
+
+Shows:
+
+* active combat state
+* enemies
+* group counts
+* matchup
+* known hazards
+* player warnings
+* ally presence
+* last combat event
+
+/scale
+
+Shows:
+
+* group total
+* killed
+* wounded
+* fled
+* captured
+* active remaining
+* morale
+
+/status
+
+Shows:
+
+* HP/MP/EP
+* injuries
+* conditions
+* fatigue
+* death-boundary warnings
+
+/debuglast
+
+Shows:
+
+* combat proposals
+* attack/defense validation
+* damage severity
+* rejected impossible actions
+* accepted HP/MP/EP changes
+* injuries/conditions
+* duplicate skips
+
+/threat
+
+Optional:
+
+* current enemy tier estimate
+* confidence
+* known traits
+* matchup
+
+⸻
+
+61. Combat safety rules
+
+61.1 Player input is attempt, not automatic success
+
+“I stab the dragon” does not mean dragon is damaged unless output or simulation confirms it.
+
+61.2 AI output is validated, not blindly trusted
+
+AI can exaggerate; validator checks scale.
+
+61.3 Damage must fit body type
+
+No bleeding skeletons unless setting supports it.
+
+61.4 Resources matter
+
+EP/MP costs should apply to demanding actions.
+
+61.5 Overexertion has consequences
+
+No full-power action at 0 resources for free.
+
+61.6 Bosses need defeat validation
+
+No unsupported instant boss kills.
+
+61.7 Minions should not be overprotected
+
+Weak enemies can be defeated quickly if outscaled.
+
+61.8 Groups need counts
+
+Do not lose track of remaining enemies.
+
+61.9 Absent allies cannot act
+
+Companion presence must be checked.
+
+61.10 Combat rewards go through ProgressionReducer
+
+Combat does not directly award XP.
+
+61.11 Loot is not inventory until acquired
+
+Dropped items are not automatically owned.
+
+61.12 Cards do not create combat truth
+
+Enemy cards and ability cards mirror state.
+
+61.13 Duplicate output cannot apply damage twice
+
+OperationLedger dedupes HP damage, resource cost, injuries, casualties, and rewards.
+
+61.14 Social/legal combat consequences need witnesses or evidence
+
+Killing a guard privately is different from killing one publicly.
+
+61.15 Death should use death-boundary safeguards
+
+Permanent death requires strong validation and settings support.
+
+⸻
+
+62. Combat acceptance tests
+
+Test 1 — player attack is attempt
+
+Given:
+
+Player says, “I stab the wolf.”
+
+Expected:
+
+* attack attempt recorded
+* no HP damage unless output/simulation confirms hit
+
+Test 2 — confirmed hit applies damage once
+
+Given:
+
+AI says, “Your sword cuts the wolf’s shoulder.”
+
+Expected:
+
+* wolf HP damage
+* possible injury
+* EP cost
+* duplicate output does not apply twice
+
+Test 3 — Tier mismatch blocks impossible kill
+
+Given:
+
+Level 5 player punches ancient dragon.
+
+AI says dragon dies.
+
+Expected:
+
+* dragon death rejected/softened
+* maybe no damage or minor effect
+* debug reason: impossible without leverage
+
+Test 4 — high-level player resists trivial enemy
+
+Given:
+
+Level 500 player is scratched by ordinary goblin knife.
+
+Expected:
+
+* no severe damage unless special weapon/poison/weakness
+* likely none/scratch/minor
+
+Test 5 — low EP affects action
+
+Given:
+
+Player EP 0.
+
+Input/output says player performs long sprint combo.
+
+Expected:
+
+* reject full action or apply overexertion
+* HP/injury/fatigue risk
+* debug shows EP blocker
+
+Test 6 — low MP affects spell
+
+Given:
+
+Player MP 0.
+
+Input/output says player casts major spell.
+
+Expected:
+
+* spell fails, weakens, or overcharges with cost
+* no free full spell
+
+Test 7 — armor reduces severity
+
+Given:
+
+Player in plate armor is slashed by dagger.
+
+Expected:
+
+* damage severity reduced
+* possible no HP, armor scratch
+* no deep chest wound unless bypassed
+
+Test 8 — warhammer versus plate
+
+Given:
+
+Enemy warhammer hits plate-armored player.
+
+Expected:
+
+* armor helps but blunt trauma possible
+* EP/knockback/injury possible
+
+Test 9 — poison against construct
+
+Given:
+
+Construct enemy hit by normal poison.
+
+Expected:
+
+* poison rejected
+* no biological poison condition
+
+Test 10 — slime stabbed
+
+Given:
+
+Slime enemy stabbed with dagger.
+
+Expected:
+
+* piercing reduced unless core/weakness hit
+* mass/cohesion damage possible
+* no normal bleeding
+
+Test 11 — ghost hit by mundane sword
+
+Given:
+
+Player swings normal sword at ghost.
+
+Expected:
+
+* no or reduced effect
+* spirit-compatible method needed
+
+Test 12 — group casualties tracked
+
+Given:
+
+Thirteen goblins attack; fireball kills five.
+
+Expected:
+
+* total 13
+* killed 5
+* active remaining 8 unless routed
+* duplicate safe
+
+Test 13 — boss regeneration
+
+Given:
+
+Player cuts troll.
+
+Expected:
+
+* damage applied if plausible
+* regeneration considered
+* troll not dead unless regeneration countered
+
+Test 14 — called shot requires target
+
+Given:
+
+Player targets slime core.
+
+State:
+
+No core observed.
+
+Expected:
+
+* target uncertain/pending
+* no confirmed core hit unless output establishes it
+
+Test 15 — nonlethal strike on weak target
+
+Given:
+
+Level 300 player punches civilian “nonlethally.”
+
+Expected:
+
+* requires control
+* accidental severe injury possible if careless
+* no automatic safe knockout unless skill/control supports
+
+Test 16 — retreat is valid
+
+Given:
+
+Player flees from dragon.
+
+Expected:
+
+* escape attempt using SPD/EP/terrain
+* possible survival XP if validated
+* no requirement to defeat dragon
+
+Test 17 — companion absent
+
+Given:
+
+Mara is absent.
+
+AI says Mara blocks attack.
+
+Expected:
+
+* reject/flag
+* no damage prevention from absent companion
+
+Test 18 — loot dropped is not inventory
+
+Given:
+
+Goblin drops dagger.
+
+Expected:
+
+* available scene item
+* not inventory until acquired
+
+Test 19 — overleveled XP blocked
+
+Given:
+
+Level 200 player defeats Tier 1 rat.
+
+Expected:
+
+* no meaningful combat XP
+* damage/effort likely trivial
+
+Test 20 — combat Context updates
+
+Given:
+
+Player is fighting goblin group with low EP.
+
+Expected:
+
+* Context includes active enemies, remaining count, low EP warning, relevant allies/hazards
+
+⸻
+
+63. Final Chunk 24 doctrine
+
+Combat in AIDRPG is freeform, but not consequence-free.
+
+Player input creates attempts.
+
+AI output proposes consequences.
+
+CanonValidator decides what is real.
+
+Combat math guides plausibility.
+
+ATK, DEF, SPD, INT, LCK, domains, abilities, equipment, race, injuries, resources, terrain, and enemy tier all matter.
+
+Damage should be classified by severity before HP is changed.
+
+Armor, resistance, vulnerability, body type, and boss rules modify damage.
+
+EP limits physical action.
+
+MP limits magic.
+
+HP costs and overexertion are possible but dangerous.
+
+Injuries and conditions must fit the body.
+
+Groups need counts.
+
+Bosses need defeat conditions.
+
+Companions must be present to help.
+
+Loot must be acquired before entering inventory.
+
+XP must route through ProgressionReducer.
+
+Story Cards do not create combat truth.
+
+Duplicate outputs cannot apply damage twice.
+
+The goal is not to turn AI Dungeon into rigid turn-based combat.
+
+The goal is to make freeform combat believable, scalable, inspectable, and safe from impossible victories, absurd defeats, duplicate damage, and ignored resources.
+

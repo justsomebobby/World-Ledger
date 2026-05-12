@@ -1,0 +1,3139 @@
+AIDRPG Design Bible — Chunk 20: Race, Species, Body Type, Origin Scaling, and Non-Human Stat Logic
+
+1. Purpose of this chunk
+
+Chunk 20 defines how AIDRPG handles race, species, ancestry, body type, biology, and origin-based scaling.
+
+Chunk 19 defined the base Level 1–1000 scaling matrix using a mostly human-like character as the default.
+
+Chunk 20 answers:
+
+How does a human differ from an elf, dwarf, dragonkin, beastkin, fairy, giant, slime, undead, spirit, demon, angel, construct, vampire, or monster race?
+
+How does AIDRPG infer racial traits from a Story Card?
+
+How does it use common sense without making up too much?
+
+How does species affect stats, HP, MP, EP, injury, recovery, poison, disease, fatigue, equipment, abilities, weaknesses, growth, and social reaction?
+
+How does the system prevent race/species from becoming infinite free power?
+
+How does the system safely handle custom races?
+
+The central rule is:
+
+Race/species modifies the level matrix, but does not replace it.
+
+A Level 1 dragonkin is stronger than a Level 1 human in some ways, but is not automatically a god.
+
+A Level 1 fairy may be faster or more magical than a human, but may be physically fragile.
+
+A Level 1 undead may ignore poison, but may be vulnerable to holy power, fire, sunlight, or turning.
+
+Race creates strengths, weaknesses, body rules, and story consequences.
+
+It should not create free unlimited power.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon frequently creates characters with unusual races, species, bodies, or origins.
+
+Examples:
+
+* human
+* elf
+* dwarf
+* beastkin
+* catgirl
+* wolfkin
+* dragonkin
+* demon
+* angel
+* vampire
+* undead
+* slime
+* spirit
+* ghost
+* fairy
+* giant
+* goblin
+* orc
+* oni
+* automaton
+* golem
+* homunculus
+* chimera
+* half-dragon
+* reincarnated human
+* cursed human
+* summoned hero
+* monster evolution body
+* divine avatar
+* cosmic entity fragment
+
+AIDRPG must support these without needing a hand-written rule for every possible race.
+
+The system should use:
+
+* explicit Story Card facts
+* player sheet race/species field
+* scenario setup
+* confirmed narration
+* common fantasy logic
+* body type inference
+* ability/passive records
+* weaknesses and limits
+* validation evidence
+
+But it must avoid:
+
+* giving unlimited bonuses from vague race names
+* inventing dozens of traits without support
+* assuming every dragonkin has full dragon powers
+* assuming every demon is immune to all damage
+* assuming every undead is invincible
+* assuming every slime is immune to all physical harm
+* assuming every fairy can fly at infinite speed
+* assuming every race works the same in every setting
+* overwriting Story Card canon with generic assumptions
+
+The rule is:
+
+Explicit setting facts override generic assumptions.
+
+If the Story Card says “in this world, elves are short-lived iron-blooded desert nomads with no innate magic,” AIDRPG should use that, not generic elf logic.
+
+⸻
+
+3. Race/species ownership
+
+Race/species touches many systems, but each truth still needs an owner.
+
+PlayerReducer owns
+
+* player race/species
+* ancestry
+* origin
+* age
+* appearance
+* primary body category
+* biological classification if known
+* racial identity as part of the player sheet
+
+BodyReducer owns
+
+* body structure
+* HP/MP/EP effects
+* injury rules
+* recovery rules
+* fatigue logic
+* poison/disease/bleeding logic
+* body-state consequences
+* death/unconsciousness boundary changes from species
+
+ProgressionReducer owns
+
+* level scaling
+* stat growth changes
+* XP effects
+* domain XP effects
+* growth caps/modifiers
+
+AbilityReducer owns
+
+* racial abilities
+* innate passives
+* breath weapons
+* senses
+* regeneration
+* flight
+* shapeshifting
+* natural weapons
+* resistances if ability-like
+* racial candidate abilities
+
+InventoryReducer owns
+
+* equipment fit
+* armor compatibility
+* natural weapon/equipment interactions
+* item access problems caused by body shape
+* worn/equipped slots modified by race
+
+ReputationReducer owns
+
+* social reactions to race/species
+* prejudice/fear/respect
+* legal status
+* faction-based species reputation
+* public identity consequences
+
+ActorReducer owns
+
+* race/species of NPC actors if known
+* species-based actor identity
+* relationship consequences involving race
+
+CardSync owns
+
+* race/species information mirrored in Player Sheet
+* generated race/species card only if the race is custom, complex, or important enough
+* updates when confirmed racial facts change
+
+The rule:
+
+Race/species should be read by many systems, but written by the correct owner.
+
+⸻
+
+4. Race/species as a modifier stack
+
+Race/species should not be one flat bonus.
+
+It should be a modifier stack.
+
+A race/species profile may include:
+
+* base stat bias
+* stat growth bias
+* HP scaling modifier
+* MP scaling modifier
+* EP scaling modifier
+* size category
+* movement type
+* senses
+* natural weapons
+* natural armor
+* natural vulnerabilities
+* recovery rules
+* food/rest needs
+* poison/disease rules
+* aging/lifespan
+* equipment compatibility
+* social response
+* innate abilities
+* innate passives
+* special body rules
+* special death rules
+* progression quirks
+* magic affinity
+* domain affinity
+* environmental affinity
+* card/context notes
+
+This allows a race to be powerful in some areas and limited in others.
+
+Example:
+
+Dragonkin:
+
+* higher ATK/DEF/HP
+* possible breath candidate
+* heat resistance
+* intimidating appearance
+* equipment fit problems
+* anti-dragon weapons are dangerous
+* social fear in some regions
+* slower stealth/social blending
+* possible instinct or hunger complications
+
+That is much better than:
+
+“Dragonkin = +100 to everything.”
+
+⸻
+
+5. Base human default
+
+Human is the default baseline.
+
+Unless the scenario says otherwise, human has:
+
+* no extreme stat bonus
+* flexible growth
+* average HP scaling
+* average MP scaling
+* average EP scaling
+* standard injury logic
+* standard poison/disease/bleeding logic
+* standard equipment compatibility
+* standard sleep/food/rest needs
+* normal lifespan
+* high adaptability
+* broad class compatibility
+* low built-in natural weapons
+* no automatic magical resistance
+* no automatic natural armor
+
+Human strength is flexibility.
+
+Humans should not be weak by default.
+
+They should be the reference point.
+
+Human default Level 1 example:
+
+Race/Species: Human
+Level: 1
+ATK: 5
+DEF: 5
+SPD: 5
+INT: 5
+LCK: 5
+HP: 50–80
+MP: 20–60
+EP: 50–90
+Traits: adaptable, no innate extreme modifiers
+
+A human can become anything through class, training, abilities, items, blessings, mutations, or story events.
+
+⸻
+
+6. Race/species data model
+
+A race/species profile should conceptually track:
+
+Race/Species Name:
+Canonical Key:
+Source:
+Confidence:
+Body Category:
+Size Category:
+Base Stat Bias:
+Stat Growth Bias:
+Resource Modifiers:
+Natural Weapons:
+Natural Armor:
+Senses:
+Movement:
+Diet/Rest Needs:
+Recovery Rules:
+Poison/Disease/Bleeding Rules:
+Aging/Lifespan:
+Innate Abilities:
+Innate Passives:
+Weaknesses:
+Equipment Compatibility:
+Social Consequences:
+Known Variants:
+Story Card Links:
+Last Updated:
+
+This does not need to be shown fully to the player unless debugging.
+
+The player-facing version should be shorter.
+
+Example:
+
+Race: Dragonkin
+Body: humanoid with draconic traits
+Strengths: high durability, natural claws, heat resistance
+Weaknesses: anti-dragon weapons, social fear in some regions, equipment fit issues
+Innate candidate: breath weapon
+
+⸻
+
+7. Race/species confidence
+
+Race assumptions should have confidence levels.
+
+Confirmed
+
+Directly stated by player, scenario, Story Card, or validated narration.
+
+Example:
+
+“The player is a dragonkin.”
+
+Strongly implied
+
+Repeated or obvious from description.
+
+Example:
+
+“The player has scales, horns, a tail, and draconic ancestry.”
+
+Common-sense inferred
+
+Race name has familiar fantasy meaning, but details are not fully known.
+
+Example:
+
+“Elf” usually implies long life and agility, but magic affinity depends on setting.
+
+Pending
+
+A possible race trait exists but is not confirmed.
+
+Example:
+
+Dragonkin may have breath weapon, but has not shown it.
+
+Rejected
+
+A proposed trait does not fit current race/story facts.
+
+Example:
+
+AI says the human player has wings, but no mutation/ability/item/story supports it.
+
+Race confidence prevents the system from overbuilding unsupported traits.
+
+⸻
+
+8. Generic race assumptions versus Story Card truth
+
+Story Card or scenario truth overrides generic assumptions.
+
+Example:
+
+Generic assumption:
+
+Elves are graceful, long-lived, magically inclined.
+
+Story Card says:
+
+“In this setting, elves are subterranean, short-lived, physically tough, and cannot use magic.”
+
+AIDRPG should use the Story Card version.
+
+This applies to:
+
+* elves
+* dwarves
+* demons
+* angels
+* vampires
+* undead
+* dragons
+* slimes
+* beastkin
+* spirits
+* any custom race
+
+Common sense fills gaps only when:
+
+* the race is recognizable
+* no Story Card contradicts it
+* the inference is modest
+* the inference is useful for validation
+* uncertainty is preserved
+
+Example:
+
+If race is “wolfkin,” it is reasonable to infer enhanced smell as pending/likely.
+
+It is not reasonable to infer full moon immortality unless supported.
+
+⸻
+
+9. Race/species stat modifier categories
+
+Race/species should use broad modifiers rather than huge raw numbers.
+
+Suggested categories:
+
+Modifier	Meaning
+Very Low	significant weakness
+Low	below human baseline
+Slightly Low	modest weakness
+Baseline	human-like
+Slightly High	modest advantage
+High	strong advantage
+Very High	major racial advantage
+Extreme	only for large, divine, monster, or specialized bodies
+
+This should affect base stats and growth, not always direct flat bonuses.
+
+Example:
+
+A giant may have Very High ATK and DEF, but Low SPD and possibly Low fine manipulation.
+
+A fairy may have High SPD and High MP affinity, but Very Low HP and low physical ATK.
+
+A slime may have unusual DEF against stabbing, but low structure against fire/drying/purification.
+
+⸻
+
+10. Race/species resource modifier categories
+
+Resource scaling can also use categories.
+
+Modifier	Resource Effect
+Very Low	50–70% of human baseline
+Low	70–85%
+Slightly Low	85–95%
+Baseline	100%
+Slightly High	105–115%
+High	115–140%
+Very High	140–180%
+Extreme	180%+ only with major tradeoffs
+
+Resource categories apply to:
+
+* HP
+* MP
+* EP
+
+Example:
+
+Fairy:
+
+* HP Very Low
+* MP High
+* EP Slightly Low or Baseline depending flight/body rules
+
+Giant:
+
+* HP Very High
+* MP Low or Baseline
+* EP High but movement cost also high
+
+Undead:
+
+* HP may be High or strange
+* MP may be Baseline/High depending magic
+* EP may be replaced by animating force or stamina equivalent
+
+⸻
+
+11. Race/species growth modifier categories
+
+Growth should be kept safe.
+
+Suggested growth categories:
+
+Growth Bias	Effect
+Poor	stat/domain grows slower
+Slow	modest penalty
+Normal	human baseline
+Fast	modest bonus
+Exceptional	strong bonus with limits
+Locked	cannot grow normally without special method
+Alternative	grows through unusual source
+
+Examples:
+
+Elf:
+
+* SPD growth Fast
+* INT growth Fast
+* DEF growth Slow maybe, depending setting
+
+Dwarf:
+
+* DEF growth Fast
+* Crafting Domain Fast
+* SPD growth Slow
+
+Slime:
+
+* physical stat growth Alternative through mass/absorption
+* body damage rules Alternative
+
+Construct:
+
+* organic stat training may be Locked or Slow
+* upgrade/crafting growth Alternative
+
+Undead:
+
+* normal recovery may be Alternative
+* holy resistance/vulnerability may affect growth
+
+Growth modifiers should never allow infinite free growth.
+
+They affect rates and routes, not unlimited scaling.
+
+⸻
+
+12. Size categories
+
+Size matters for combat, equipment, stealth, travel, carrying, and injury.
+
+Recommended size categories:
+
+Size	Examples	Effects
+Tiny	fairy, small familiar, rat-sized slime	low HP/ATK, high stealth, equipment issues
+Small	goblin, child-sized race, small beastkin	lower reach, easier stealth, smaller gear
+Human-scale	human, elf, dwarf, common beastkin	default equipment and injury logic
+Large	ogrekin, minotaur, young giant	higher HP/ATK, gear issues, harder stealth
+Huge	giant, large dragonkin, troll body	major strength, major logistics issues
+Colossal	dragon, titan, world beast	not normal player unless special campaign
+Fluid/Formless	slime, ooze, mist body	special injury/equipment/body rules
+Incorporeal	ghost, spirit	special physical interaction rules
+Constructed	golem, automaton	special repair/recovery rules
+
+Size is not pure advantage.
+
+Large bodies are stronger but have:
+
+* stealth problems
+* equipment costs
+* indoor movement limits
+* social fear
+* higher food/resource needs
+* larger target profile
+
+Tiny bodies have:
+
+* fragile HP
+* low carrying
+* equipment issues
+* but strong stealth/mobility advantages
+
+⸻
+
+13. Body category
+
+Body category matters more than race name.
+
+AIDRPG should classify bodies into categories:
+
+Humanoid organic
+
+Examples:
+
+* human
+* elf
+* dwarf
+* beastkin
+* orc
+* demon humanoid
+* angel humanoid
+
+Uses standard injury/equipment logic unless traits modify it.
+
+Beast-bodied
+
+Examples:
+
+* quadruped wolfkin form
+* centaur
+* lamia
+* harpy
+* merfolk
+* spiderfolk
+
+Needs altered equipment/movement/injury slots.
+
+Draconic/reptilian
+
+Examples:
+
+* dragonkin
+* lizardfolk
+* kobold
+* half-dragon
+
+May have scales, claws, tail, heat/cold modifiers.
+
+Fluid/Formless
+
+Examples:
+
+* slime
+* ooze
+* liquid spirit
+
+Special physical damage and equipment rules.
+
+Undead
+
+Examples:
+
+* skeleton
+* zombie
+* lich body
+* vampire if undead in setting
+* wight
+
+Special poison/disease/healing/death rules.
+
+Spirit/Incorporeal
+
+Examples:
+
+* ghost
+* elemental spirit
+* astral body
+
+Special physical interaction rules.
+
+Construct/Artificial
+
+Examples:
+
+* golem
+* automaton
+* doll
+* homunculus
+
+Repair instead of healing, maintenance needs.
+
+Divine/Celestial
+
+Examples:
+
+* angel
+* demigod body
+* avatar
+
+Strong resistances, law/oath weaknesses, divine vulnerabilities.
+
+Demonic/Infernal
+
+Examples:
+
+* demon
+* oni
+* fiend
+
+Resistances and weaknesses tied to holy, contracts, summoning, corruption.
+
+Hybrid/Chimera
+
+Examples:
+
+* half-dragon elf
+* slime-human
+* beast-demon hybrid
+
+Requires combined profile with caps.
+
+⸻
+
+14. Human
+
+Default profile:
+
+Race: Human
+Body: humanoid organic
+Size: human-scale
+ATK: baseline
+DEF: baseline
+SPD: baseline
+INT: baseline
+LCK: baseline
+HP: baseline
+MP: baseline
+EP: baseline
+Growth: flexible
+Equipment: standard
+Recovery: standard
+Weaknesses: standard organic weaknesses
+Strengths: adaptability, broad class compatibility
+
+Humans should be strong through flexibility.
+
+Possible human advantages:
+
+* faster adaptation
+* broad domain learning
+* social acceptance in human societies
+* equipment availability
+* class flexibility
+* no strong racial vulnerabilities
+
+Humans should not be treated as inferior by default.
+
+⸻
+
+15. Elf
+
+Generic default profile, unless setting says otherwise:
+
+Race: Elf
+Body: humanoid organic
+Size: human-scale
+ATK: slightly low to baseline
+DEF: slightly low
+SPD: slightly high to high
+INT: slightly high to high
+LCK: baseline
+HP: slightly low
+MP: slightly high to high
+EP: baseline
+Growth: fast INT/SPD/magic/perception, slower raw bulk
+Equipment: standard, often lighter gear favored
+Recovery: standard or slightly slower physical recovery depending setting
+Weaknesses: lower physical bulk, iron/cold/curse weakness only if setting supports
+Strengths: senses, grace, longevity, magic affinity if setting supports
+
+Do not automatically grant:
+
+* immortality
+* archery mastery
+* full nature magic
+* sleep immunity
+* universal beauty/social advantage
+
+unless supported.
+
+Possible innate passives:
+
+* keen senses
+* night vision
+* graceful movement
+* long-lived memory
+* magic sensitivity
+
+These may be candidates or confirmed traits based on setting.
+
+⸻
+
+16. Dwarf
+
+Generic default profile:
+
+Race: Dwarf
+Body: humanoid organic
+Size: small to human-scale
+ATK: baseline to slightly high
+DEF: high
+SPD: slightly low
+INT: baseline to slightly high
+LCK: baseline
+HP: high
+MP: baseline or slightly low
+EP: high
+Growth: fast DEF/endurance/crafting, slower speed/agility
+Equipment: standard but size-specific
+Recovery: strong physical endurance
+Weaknesses: lower speed/reach, swimming/mobility issues possible
+Strengths: durability, poison resistance if setting supports, crafting/mining affinity
+
+Do not automatically grant:
+
+* master smithing
+* total poison immunity
+* magic resistance
+* underground knowledge of every dungeon
+
+unless supported.
+
+Dwarf should be good at endurance, durability, and craft-style growth.
+
+⸻
+
+17. Beastkin
+
+Beastkin is broad and must depend on animal type.
+
+Generic beastkin profile:
+
+Race: Beastkin
+Body: humanoid organic with animal traits
+Size: varies
+ATK: varies by animal
+DEF: varies
+SPD: often high
+INT: baseline
+LCK: baseline
+HP: baseline to high
+MP: baseline unless magical species
+EP: high
+Growth: physical/sensory domains often fast
+Equipment: usually standard with ear/tail/claw adjustments
+Weaknesses: instincts, social prejudice, species-specific vulnerabilities
+Strengths: senses, movement, natural weapons, animal affinity
+
+Examples:
+
+Catkin
+
+* SPD high
+* LCK slightly high
+* stealth/climbing affinity
+* ATK baseline
+* DEF slightly low/baseline
+* night vision likely
+* water aversion only if setting/narration supports
+
+Wolfkin
+
+* ATK slightly high
+* SPD high
+* EP high
+* scent tracking
+* pack/social instinct
+* hearing/smell advantages
+* silver/moon effects only if setting supports
+
+Bearkin
+
+* ATK high
+* DEF high
+* HP high
+* SPD slightly low
+* EP high
+* intimidation
+* large body/equipment issues possible
+
+Rabbitkin
+
+* SPD very high
+* LCK slightly high
+* hearing high
+* HP/DEF lower
+* jump/mobility traits
+* social prey-instinct if setting supports
+
+Birdkin/Harpy-like
+
+* SPD high
+* flight or glide if wings support
+* HP lower
+* equipment issues
+* wind/ranged mobility advantages
+
+Beastkin must be typed.
+
+AIDRPG should not treat all beastkin the same.
+
+⸻
+
+18. Orc / Oni / Strong humanoid races
+
+Generic strong humanoid profile:
+
+Race: Orc/Oni/Strong Humanoid
+Body: humanoid organic
+Size: human-scale to large
+ATK: high
+DEF: high
+SPD: baseline to slightly low
+INT: baseline unless setting says otherwise
+LCK: baseline
+HP: high
+MP: low to baseline
+EP: high
+Growth: physical domains fast, magic may vary
+Equipment: standard or large-fit
+Weaknesses: social prejudice, large target, possible impulse/temper only if setting supports
+Strengths: strength, endurance, intimidation, natural toughness
+
+Important safeguard:
+
+Do not make orcs or oni unintelligent by default unless the setting says so.
+
+Race should not create unfair assumptions about intelligence or morality.
+
+⸻
+
+19. Giant / Giantkin
+
+Generic profile:
+
+Race: Giant/Giantkin
+Body: large organic humanoid
+Size: large to huge
+ATK: very high
+DEF: high to very high
+SPD: low to baseline
+INT: baseline unless setting says otherwise
+LCK: baseline
+HP: very high
+MP: low to baseline
+EP: high but movement costs high
+Growth: physical power fast, stealth/fine agility slow
+Equipment: expensive/size-specific
+Recovery: strong but food/rest needs high
+Weaknesses: stealth, cramped spaces, large target, high resource needs
+Strengths: raw strength, reach, carrying, intimidation
+
+Giant advantages should come with logistics.
+
+A giant player may struggle with:
+
+* doors
+* inns
+* armor fitting
+* mounts
+* stealth
+* fragile floors
+* social fear
+* food costs
+
+This keeps giant power meaningful but not free.
+
+⸻
+
+20. Fairy / Pixie / Tiny magical races
+
+Generic profile:
+
+Race: Fairy/Pixie
+Body: tiny magical humanoid
+Size: tiny
+ATK: very low physically
+DEF: very low physically
+SPD: high to very high
+INT: high or slightly high
+LCK: high
+HP: very low
+MP: high
+EP: baseline to low depending flight cost
+Growth: magic/stealth/speed fast, raw physical stats slow
+Equipment: tiny specialized gear
+Recovery: may be magic-dependent
+Weaknesses: physical fragility, capture risk, anti-magic, iron if setting supports
+Strengths: flight, stealth, magic, tiny access, illusion/charm if supported
+
+Safeguards:
+
+* flight costs EP unless innate effortless flight is confirmed
+* tiny size limits carrying and weapon damage
+* magic may compensate but costs MP
+* capture/containment is a real risk
+* normal human armor/weapons do not fit
+
+Fairies should feel different, not simply better.
+
+⸻
+
+21. Dragonkin / Half-dragon
+
+Generic profile:
+
+Race: Dragonkin/Half-dragon
+Body: humanoid draconic
+Size: human-scale to large
+ATK: high
+DEF: high
+SPD: baseline to high depending build
+INT: baseline to high depending dragon lore
+LCK: baseline
+HP: high
+MP: baseline to high
+EP: high
+Growth: physical durability and elemental affinity fast
+Equipment: standard with tail/horn/wing/scales adjustments
+Recovery: strong, may be slower if cold-blooded depending setting
+Weaknesses: anti-dragon weapons, social fear, elemental opposites, instinct, size/equipment issues
+Strengths: scales, claws, elemental resistance, breath candidate, intimidation
+
+Important:
+
+Dragonkin does not automatically mean full dragon.
+
+Possible traits:
+
+* scales
+* claws
+* tail
+* horns
+* heat resistance
+* breath weapon candidate
+* draconic senses
+* intimidation aura
+* wing gliding or flight only if wings confirmed
+
+Breath weapon should usually begin as:
+
+* candidate
+* limited
+* costly
+* unstable
+* tied to element
+* scaling with level/MP/EP/race growth
+
+Not automatically a free AoE nuke.
+
+⸻
+
+22. Full dragon player
+
+Full dragon is not the same as dragonkin.
+
+Generic profile:
+
+Race: Dragon
+Body: large/huge draconic
+Size: large to colossal depending age
+ATK: very high to extreme
+DEF: very high
+SPD: varies; flight mobility high if winged
+INT: high
+HP: very high
+MP: high
+EP: high
+Growth: age/power/magic hoard/story-linked
+Equipment: mostly incompatible, natural body matters
+Weaknesses: anti-dragon weapons, dragon hunters, hoard instincts, social/faction danger, size limitations
+Strengths: natural armor, claws, bite, flight, breath, magic, fear aura
+
+Full dragon should usually be an advanced or special campaign race.
+
+A Level 1 young dragon may be stronger than a Level 1 human but still a young dragon.
+
+It may be threatened by:
+
+* dragon hunters
+* older dragons
+* magic nets
+* poison
+* cold/element counters
+* divine weapons
+* cramped spaces
+* social/faction consequences
+
+Full dragon needs special equipment, travel, and social rules.
+
+⸻
+
+23. Demon / Fiend
+
+Generic profile:
+
+Race: Demon/Fiend
+Body: infernal/demonic, often humanoid
+Size: varies
+ATK: baseline to high
+DEF: baseline to high
+SPD: baseline to high
+INT: baseline to high
+LCK: baseline
+HP: high or baseline
+MP: high
+EP: baseline to high
+Growth: magic/corruption/contract/combat affinities
+Equipment: usually standard if humanoid
+Recovery: may recover through darkness, corruption, souls, or normal rest depending setting
+Weaknesses: holy power, binding circles, true names, contracts, exorcism, divine law
+Strengths: infernal magic, resistance, intimidation, contracts, corruption resistance
+
+Safeguards:
+
+* demon does not automatically mean evil
+* demon does not automatically mean immune to fire
+* demon does not automatically mean immortal
+* true name/contract weakness should only apply if setting supports it
+* holy vulnerability should be likely but not universal
+
+Demonic traits should be setting-sensitive.
+
+⸻
+
+24. Angel / Celestial
+
+Generic profile:
+
+Race: Angel/Celestial
+Body: divine/celestial humanoid or spirit
+Size: human-scale to large
+ATK: baseline to high
+DEF: high
+SPD: high
+INT: high
+LCK: baseline to high
+HP: high
+MP: high
+EP: high
+Growth: divine/light/healing/authority affinities
+Equipment: standard or divine-specific
+Recovery: strong if aligned with divine source
+Weaknesses: corruption, oath-breaking, anti-divine weapons, fallen state, cosmic law
+Strengths: light, healing, flight if wings confirmed, purification, divine resistance
+
+Safeguards:
+
+* angel does not automatically mean all-powerful
+* divine powers may be bound by laws/oaths
+* healing should cost MP or divine favor unless passive/regeneration is confirmed
+* wings only grant flight if usable and not symbolic
+
+Angel/celestial race should have authority and vulnerability both.
+
+⸻
+
+25. Undead
+
+Undead require special body rules.
+
+Generic profile:
+
+Race: Undead
+Body: dead/animated organic or skeletal
+Size: original body size
+ATK: varies
+DEF: varies; pain resistance high
+SPD: varies
+INT: varies by undead type
+HP: alternative body integrity
+MP: baseline to high if magical
+EP: alternative animating stamina
+Growth: may require souls, necromancy, death energy, or normal leveling depending setting
+Equipment: standard if humanoid
+Recovery: healing may not work normally
+Weaknesses: holy power, fire, sunlight, turning, purification, body destruction, necromantic disruption
+Strengths: poison resistance, disease resistance, no normal bleeding, pain resistance, no normal fatigue
+
+Undead subtypes matter.
+
+Skeleton
+
+* low flesh vulnerability
+* piercing damage reduced
+* blunt damage dangerous
+* no bleeding
+* poison immune
+* armor possible
+* healing magic may fail unless necromantic
+
+Zombie
+
+* high pain resistance
+* slow
+* vulnerable to fire/holy
+* poor fine control maybe
+* poison/disease irrelevant
+
+Vampire
+
+* high regeneration if fed
+* charm/blood abilities possible
+* sunlight/holy/stake/permission weaknesses depending setting
+* hunger matters
+* social concealment matters
+
+Lich
+
+* high magic
+* phylactery or anchor if setting supports
+* body destruction may not equal final death
+* anti-magic/holy/sealing important
+
+Undead must not get free immortality unless their death rules are explicit.
+
+⸻
+
+26. Spirit / Ghost / Incorporeal
+
+Generic profile:
+
+Race: Spirit/Ghost
+Body: incorporeal or semi-corporeal
+Size: varies
+ATK: low physical unless manifestation
+DEF: unusual; physical attacks may fail
+SPD: high movement if unbound
+INT: baseline to high
+HP: essence/integrity instead of flesh
+MP: high
+EP: alternative spiritual focus
+Growth: spiritual energy, memory, worship, magic, or leveling
+Equipment: usually incompatible unless spiritual
+Recovery: depends on anchor/energy
+Weaknesses: exorcism, binding, holy/purification, spirit weapons, anchors, memory damage
+Strengths: intangibility, possession, invisibility, fear, spiritual senses
+
+Safeguards:
+
+* incorporeal does not mean immune to all consequences
+* spirit may be bound to place/object
+* interacting with physical world may cost MP/EP
+* equipment usually does not work normally
+* social scenes may be limited if unseen/unheard
+
+Spirit race requires alternative body and equipment logic.
+
+⸻
+
+27. Slime / Ooze / Gelatinous body
+
+Slime is one of the most important freeform race categories because players often try anime-style growth with it.
+
+Generic profile:
+
+Race: Slime/Ooze
+Body: fluid/formless
+Size: small to large depending mass
+ATK: low to baseline unless acidic/massive
+DEF: unusual; resists some physical damage
+SPD: low to baseline unless specialized
+INT: varies from animalistic to high
+HP: body mass/integrity
+MP: varies; magical slimes may be high
+EP: movement/cohesion energy
+Growth: absorption, mass, cores, magic, evolution, leveling
+Equipment: mostly incompatible unless transformed/adapted
+Recovery: may regenerate mass if fed/energized
+Weaknesses: fire, ice, salt, drying, purification, containment, core damage depending setting
+Strengths: shapeshifting, compression, physical resistance, absorption, squeezing through gaps
+
+Important slime rules:
+
+* stabbing may be less effective
+* blunt damage may disperse but not kill
+* fire/heat/drying may be dangerous
+* salt/purification may be dangerous if setting supports
+* core may be vital if confirmed
+* equipment needs special adaptation
+* body parts are not normal limbs
+* injury is mass loss, core crack, cohesion damage, contamination, or drying
+
+A slime player may gain unusual abilities, but not for free.
+
+Potential slime abilities:
+
+* engulf
+* dissolve
+* reshape body
+* split
+* absorb material
+* mimic texture
+* armor-form
+* weapon-form
+* acid secretion
+* regeneration
+* core evolution
+
+All should need rank/cost/limits.
+
+⸻
+
+28. Construct / Automaton / Golem
+
+Generic profile:
+
+Race: Construct/Automaton/Golem
+Body: artificial
+Size: varies
+ATK: baseline to high
+DEF: high
+SPD: low to baseline unless agile construct
+INT: varies
+HP: structural integrity
+MP: power core/mana battery if magical
+EP: mechanical stamina/energy
+Growth: upgrades, repairs, enchantments, learning core, installed parts
+Equipment: may be integrated or modified
+Recovery: repair instead of healing
+Weaknesses: rust, EMP/magic disruption, core damage, maintenance, joints, control sigils
+Strengths: poison immunity, disease immunity, pain resistance, durability, no normal fatigue
+
+Construct rules:
+
+* healing potions may not work
+* repair kits/crafting matter
+* poison/disease usually irrelevant
+* parts can break
+* maintenance matters
+* upgrades may replace stat training
+* emotions/free will depend on setting
+
+Constructs are powerful defensively but need repair logic.
+
+⸻
+
+29. Goblin / Small monster races
+
+Generic profile:
+
+Race: Goblin/Small Monster
+Body: small humanoid organic
+Size: small
+ATK: slightly low to baseline
+DEF: low to baseline
+SPD: high
+INT: baseline to high depending setting
+LCK: high or baseline
+HP: low to baseline
+MP: baseline
+EP: baseline to high
+Growth: stealth, traps, scavenging, survival, cunning
+Equipment: small-sized
+Weaknesses: low reach, social prejudice, lower raw durability
+Strengths: stealth, numbers, traps, adaptation, survival
+
+Do not assume goblins are stupid or evil unless setting supports it.
+
+A goblin player may be excellent at stealth, traps, scavenging, and survival.
+
+⸻
+
+30. Orc versus goblin versus human distinction
+
+AIDRPG should not reduce fantasy races to stereotypes.
+
+Mechanical distinctions should be about body and setting facts.
+
+Example:
+
+Human:
+
+* flexible baseline
+
+Goblin:
+
+* smaller, faster, stealthier, less durable, socially disadvantaged in many settings
+
+Orc:
+
+* stronger, tougher, larger, more intimidating, possible social prejudice
+
+But intelligence, morality, culture, and personality should come from story facts, not automatic race rules.
+
+This prevents harmful or simplistic assumptions.
+
+⸻
+
+31. Hybrid races
+
+Hybrid races combine traits.
+
+Examples:
+
+* half-elf
+* half-dragon
+* demon-human
+* angel-demon
+* slime-human
+* wolfkin-vampire
+* fairy-dragon
+* construct-human soulbound body
+
+Hybrid rule:
+
+Do not stack full bonuses from both races.
+
+Use a hybrid blend:
+
+* primary body category
+* secondary ancestry traits
+* one or two major strengths
+* one or two major weaknesses
+* limited innate candidates
+* clear social implications
+* capped resource/stat modifiers
+
+Example:
+
+Half-dragon human:
+
+* humanoid equipment mostly works
+* some scales/claws
+* modest heat resistance
+* breath weapon candidate
+* HP/DEF higher than human
+* not full dragon size, armor, flight, or breath unless confirmed
+
+Example:
+
+Slime-human hybrid:
+
+* human-like social/equipment access may remain
+* partial slime regeneration/reshape candidate
+* vulnerability to drying/fire/containment maybe
+* body instability possible
+* no automatic full shapeshifting until developed
+
+Hybrid should be powerful in flavor, controlled in mechanics.
+
+⸻
+
+32. Race and origin
+
+Origin is not always race.
+
+Examples:
+
+* reincarnated human
+* summoned hero
+* dungeon-born
+* noble-born
+* cursed bloodline
+* divine-touched
+* otherworlder
+* artificial creation
+* monster reincarnation
+* experimental subject
+* system-awakened
+
+Origin can affect:
+
+* knowledge
+* social status
+* starting abilities
+* system access
+* stat growth
+* interface access
+* reputation
+* faction attention
+* divine/cosmic hooks
+
+Example:
+
+Reincarnated human:
+
+* race may be human
+* origin gives otherworld knowledge
+* possible interface/system
+* possible language issues
+* possible cultural mismatch
+* possible unique skill like Quick Learner
+
+Origin should be a separate field.
+
+Do not merge “human” and “isekai hero” into one race.
+
+⸻
+
+33. Race and class interaction
+
+Race and class should interact but not overwrite each other.
+
+Example:
+
+Human Monk:
+
+* human baseline
+* monk class gives balanced physical/spiritual growth
+
+Dragonkin Monk:
+
+* dragonkin body gives durability/strength
+* monk class gives discipline, martial growth, EP control
+* breath ability remains race-linked
+* unarmed style may use claws/tail if confirmed
+
+Fairy Warrior:
+
+* fairy body limits raw HP/weapon size
+* warrior class improves combat
+* may fight through speed, precision, magic, tiny blades, or mobility
+* should not become human-sized tank unless transformation occurs
+
+Slime Mage:
+
+* slime body gives fluid/injury rules
+* mage class gives MP and spells
+* equipment/casting focus may need adaptation
+
+Race modifies the body.
+
+Class modifies training and build direction.
+
+Both matter.
+
+⸻
+
+34. Race and stat calculation order
+
+Final formulas come in Chunk 21, but order should be planned now.
+
+Recommended stat/resource calculation order:
+
+1. Start with level-based base human expectation.
+2. Apply class/build bias.
+3. Apply race/species base modifier.
+4. Apply race/species growth modifier.
+5. Apply stat training gains.
+6. Apply domain/specialization bonuses.
+7. Apply ability/passive bonuses.
+8. Apply equipment modifiers.
+9. Apply condition/injury/fatigue penalties.
+10. Apply temporary buffs/debuffs.
+11. Calculate effective stats/resources.
+
+Race should not apply after every temporary buff in a way that multiplies infinitely.
+
+Race modifiers should be controlled and predictable.
+
+⸻
+
+35. Race and HP
+
+HP represents physical or body integrity.
+
+Race can modify HP through:
+
+* size
+* density
+* natural armor
+* body structure
+* vitality
+* regeneration
+* magical body
+* fragility
+
+Examples:
+
+Human:
+
+* baseline HP
+
+Dwarf:
+
+* high HP from toughness
+
+Fairy:
+
+* very low HP from tiny body
+
+Giant:
+
+* very high HP from mass
+
+Slime:
+
+* HP may represent mass/cohesion/core integrity
+
+Undead:
+
+* HP may represent body integrity, not living health
+
+Construct:
+
+* HP may represent structural integrity
+
+Spirit:
+
+* HP may represent essence stability
+
+AIDRPG must label HP meaning by body type when needed.
+
+⸻
+
+36. Race and MP
+
+MP represents magical energy, spirit force, mana capacity, divine force, infernal power, psychic power, or similar.
+
+Race can modify MP through:
+
+* magical affinity
+* soul structure
+* divine/infernal origin
+* fairy nature
+* draconic blood
+* undead necromancy
+* construct core
+* slime mana core
+* spiritual body
+
+Examples:
+
+Elf:
+
+* slightly high MP if setting supports magic affinity
+
+Fairy:
+
+* high MP
+
+Demon:
+
+* high MP, often corruption/infernal-flavored
+
+Angel:
+
+* high MP, divine/light-flavored
+
+Construct:
+
+* MP may be battery/core capacity
+
+Human:
+
+* baseline, flexible
+
+Important:
+
+High MP does not grant known spells automatically.
+
+AbilityReducer still controls abilities.
+
+⸻
+
+37. Race and EP
+
+EP represents stamina, exertion, endurance, focus, physical energy, or action capacity.
+
+Race can modify EP through:
+
+* muscle endurance
+* body size
+* metabolism
+* stamina
+* flight cost
+* mechanical energy
+* undead animation
+* spirit focus
+* slime cohesion
+
+Examples:
+
+Dwarf:
+
+* high EP
+
+Giant:
+
+* high EP but actions may cost more because body is large
+
+Fairy:
+
+* low physical EP or moderate EP, but flight may consume it
+
+Undead:
+
+* EP may not behave like fatigue; may use animating force
+
+Construct:
+
+* EP may be battery/energy
+
+Slime:
+
+* EP may be cohesion/control
+
+EP meaning may change by species.
+
+The command should still show EP, but debug/body rules may explain what it means.
+
+⸻
+
+38. Race and injury logic
+
+Race affects injury.
+
+Humanoid organic
+
+Standard:
+
+* cuts
+* bruises
+* broken bones
+* bleeding
+* poison
+* fatigue
+* organ damage
+
+Slime
+
+Alternative:
+
+* mass loss
+* core damage
+* cohesion instability
+* drying
+* contamination
+* acid imbalance
+* magical destabilization
+
+Undead
+
+Alternative:
+
+* bone fracture
+* necrotic disruption
+* missing limb
+* holy burn
+* animating force instability
+* no normal bleeding
+
+Construct
+
+Alternative:
+
+* cracked plating
+* broken joint
+* power core damage
+* sensor damage
+* rust
+* loose gears
+* enchantment disruption
+
+Spirit
+
+Alternative:
+
+* essence tear
+* anchor damage
+* banishment pressure
+* memory erosion
+* holy disruption
+
+The injury parser must not apply “bleeding” to a skeleton unless the setting says skeletons bleed.
+
+It should redirect to appropriate damage.
+
+Example:
+
+AI says:
+
+“The skeleton player bleeds heavily.”
+
+Validation:
+
+* reject standard bleeding
+* maybe convert to “necrotic energy leaking” only if context supports
+
+⸻
+
+39. Race and poison/disease
+
+Race affects poison and disease.
+
+Body Type	Poison	Disease
+human/organic	normal vulnerability	
+beastkin	normal or species-specific	
+dwarf	possible resistance if setting supports	
+undead	usually immune to normal poison/disease	
+construct	usually immune to biological poison/disease	
+slime	may be affected by toxins/contamination differently	
+spirit	usually immune to physical poison, vulnerable to spiritual corruption	
+demon	resistant to some toxins, vulnerable to holy/purifying effects	
+angel	resistant to corruption maybe, vulnerable to infernal taint	
+plant race	vulnerable to blight, rot, herbicide, fire	
+vampire	immune to disease often, vulnerable to sunlight/holy/blood starvation	
+
+Important:
+
+Do not apply immunity universally without body support.
+
+A living vampire-like race may still be poisoned.
+
+A magical poison may affect undead or constructs.
+
+A curse-poison may target soul, not blood.
+
+⸻
+
+40. Race and recovery
+
+Recovery differs by body.
+
+Human/organic
+
+* rest
+* food
+* water
+* medicine
+* healing magic
+
+Elf
+
+* same as organic, maybe slower/faster depending setting
+
+Dwarf
+
+* strong endurance, normal healing
+
+Beastkin
+
+* may heal like organic
+* instincts/rest patterns may matter
+
+Dragonkin
+
+* high vitality
+* may recover well from heat/fire environments depending element
+
+Fairy
+
+* may need magic/nature/ambient mana
+* physical injuries serious
+
+Undead
+
+* normal healing may fail
+* necromancy, darkness, souls, coffin/rest, death energy may heal
+
+Construct
+
+* repair, parts, tools, mana core recharge
+* rest may restore EP/MP but not structural damage
+
+Slime
+
+* mass recovery through feeding, water, mana, rest
+* fire/drying injuries need special recovery
+
+Spirit
+
+* anchor, worship, memory, mana, spiritual rest
+* physical medicine irrelevant
+
+Recovery ticks must use body category.
+
+⸻
+
+41. Race and death boundary
+
+Death/unconsciousness differs by species.
+
+Human/organic
+
+* unconscious at severe HP loss
+* death from lethal injury, bleeding, organ failure, etc.
+
+Undead
+
+* body destruction may not equal final death if anchor/phylactery exists
+* holy destruction may be final
+* unconsciousness may become inert state
+
+Construct
+
+* shutdown instead of unconsciousness
+* destroyed core may be death
+* repair may revive if core intact
+
+Slime
+
+* dispersed, dried, core cracked, absorbed, contaminated
+* may survive mass loss if core intact
+
+Spirit
+
+* banished, dissipated, bound, erased, exorcised
+* may reform if anchor remains
+
+Divine/demonic
+
+* physical defeat may banish rather than kill
+* true death may require special conditions
+
+This must be explicit.
+
+AIDRPG should not casually kill an unusual body from ordinary human logic.
+
+⸻
+
+42. Race and equipment compatibility
+
+Race affects equipment.
+
+Equipment compatibility factors:
+
+* size
+* number of limbs
+* wings
+* tail
+* horns
+* body shape
+* fur/scales
+* incorporeal body
+* fluid body
+* mechanical body
+* natural armor
+* claws
+* hooves
+* fins
+* no hands
+* huge/tiny body
+
+Examples:
+
+Fairy:
+
+* human sword unusable as normal weapon
+* needs tiny equipment or magic resizing
+
+Giant:
+
+* human armor too small
+* weapons may be improvised from large objects
+
+Slime:
+
+* normal armor may sink/fail
+* may need core harness, magical membrane, or no armor
+
+Spirit:
+
+* physical equipment may fall through unless spiritual/enchanted
+
+Construct:
+
+* equipment may be integrated
+* repairs/upgrades may replace gear
+
+Dragonkin with wings/tail:
+
+* armor must fit wings/tail
+
+Equipment validation must check race/body compatibility.
+
+⸻
+
+43. Race and natural weapons
+
+Races may have natural weapons.
+
+Examples:
+
+* claws
+* bite
+* horns
+* tail
+* wings
+* stinger
+* hooves
+* tentacles
+* acid body
+* flame breath
+* venom
+* psychic scream
+* holy light
+* shadow claws
+
+Natural weapons should have:
+
+* damage type
+* cost if active
+* limits
+* body requirement
+* injury risk
+* scaling
+* ability/passive link
+* counters
+
+Example:
+
+Dragonkin claws:
+
+* natural melee weapon
+* scales with ATK
+* may bypass need for dagger
+* can be damaged
+* may not be as strong as forged enchanted weapon at high levels
+
+Example:
+
+Venom bite:
+
+* requires bite contact
+* venom supply/cooldown
+* target resistance matters
+* poison rules apply
+
+Natural weapon does not mean automatic success.
+
+⸻
+
+44. Race and senses
+
+Races may have special senses.
+
+Examples:
+
+* night vision
+* darkvision
+* heat sense
+* smell tracking
+* echolocation
+* mana sense
+* spirit sight
+* tremor sense
+* divine sense
+* blood sense
+* danger sense
+
+Senses should affect:
+
+* investigation
+* ambush detection
+* travel
+* stealth
+* combat
+* tracking
+* perception of hidden entities
+
+But senses need limits.
+
+Example:
+
+Wolfkin smell:
+
+* helps track scent
+* rain or strong odors may interfere
+* sealed containers may block
+* spirit targets may have no scent
+
+Example:
+
+Mana sense:
+
+* detects magic
+* may be overwhelmed by magical storms
+* does not identify every spell automatically
+
+Senses should be passives or racial traits with defined scope.
+
+⸻
+
+45. Race and social consequences
+
+Race/species may affect how NPCs respond.
+
+Possible social consequences:
+
+* fear
+* respect
+* prejudice
+* curiosity
+* legal restrictions
+* faction hostility
+* religious attention
+* attraction
+* distrust
+* reverence
+* bounty
+* slavery/hunting risk
+* nobility status
+* monster classification
+
+But social consequences depend on setting.
+
+Example:
+
+Dragonkin in dragon-worshipping empire:
+
+* respected
+
+Dragonkin in dragon-hunter kingdom:
+
+* feared or hunted
+
+Undead in necromancer city:
+
+* normal
+
+Undead in holy city:
+
+* illegal/attacked
+
+Slime in monster-friendly dungeon town:
+
+* accepted
+
+Slime in human village:
+
+* feared or attacked
+
+ReputationReducer owns social consequences.
+
+Race only provides possible modifiers.
+
+⸻
+
+46. Race and disguise/concealment
+
+Some races may hide their traits.
+
+Examples:
+
+* vampire pretending human
+* demon hiding horns
+* angel hiding wings
+* beastkin covering ears/tail
+* dragonkin using cloak
+* slime in humanoid shell
+* undead using illusion
+* construct wearing armor
+
+Concealment depends on:
+
+* appearance
+* clothing/equipment
+* magic
+* behavior
+* senses of observers
+* social context
+* inspection
+* injuries
+* race traits
+
+Race should affect whether disguise is plausible.
+
+A giant cannot easily pass as human.
+
+A vampire might.
+
+A slime humanoid might until injured or touched.
+
+This matters for social scenes and reputation.
+
+⸻
+
+47. Race and age
+
+Age meaning depends on race.
+
+Human:
+
+* child, adult, elder use normal ranges
+
+Elf:
+
+* long-lived; 100 may be young adult depending setting
+
+Dwarf:
+
+* longer-lived often
+
+Dragon:
+
+* age may directly affect power/body size
+
+Undead:
+
+* biological age may be frozen; time since death matters
+
+Construct:
+
+* manufacture age and active years matter
+
+Spirit:
+
+* age may be memory/anchor age
+
+Slime:
+
+* age may be mass/evolution stage
+
+AIDRPG should not treat “100 years old” the same for every race.
+
+Age affects:
+
+* appearance
+* social maturity
+* physical condition
+* growth stage
+* power expectation
+* reputation
+* legal/social status
+
+Story Card facts override generic lifespan.
+
+⸻
+
+48. Race and level at start
+
+Race can alter starting stats, but not starting level unless scenario says so.
+
+Example:
+
+A dragonkin Level 1 may have stronger body than human Level 1.
+
+But still Level 1.
+
+A fairy Level 1 may have high MP but low HP.
+
+Still Level 1.
+
+A full dragon hatchling Level 1 may be physically dangerous to humans but immature among dragons.
+
+Still Level 1.
+
+The system should not automatically set higher level because race sounds powerful.
+
+Level is progression.
+
+Race is body/origin.
+
+⸻
+
+49. Race and level 1000 scaling
+
+At Level 1000, race still matters.
+
+A Level 1000 human sword saint and Level 1000 dragonkin sword saint differ.
+
+Human Level 1000:
+
+* flexible mastery
+* fewer innate body advantages
+* broad adaptability
+
+Dragonkin Level 1000:
+
+* stronger body/natural armor
+* breath/elemental affinity
+* anti-dragon vulnerabilities
+* social/mythic consequences
+
+Fairy Level 1000:
+
+* extreme magic/speed/precision
+* may still be physically smaller/fragile unless evolved
+* stealth and reality-level magic possible
+
+Slime Level 1000:
+
+* massive adaptation/shapeshifting potential
+* unusual body survivability
+* elemental/purification/core vulnerabilities may remain
+
+Undead Level 1000:
+
+* cosmic death/necromancy power
+* holy/sealing/anchor vulnerabilities remain
+
+Race differences should remain meaningful at high levels.
+
+High level should not flatten every character into the same stat blob.
+
+⸻
+
+50. Racial traits as abilities/passives
+
+Some racial features should be stored as passive traits or abilities.
+
+Examples:
+
+* Dragonkin Scales
+* Fairy Flight
+* Wolfkin Scent
+* Slime Body
+* Undead Body
+* Construct Body
+* Vampire Regeneration
+* Angelic Light Affinity
+* Demon Contract Sense
+* Dwarven Stonecunning
+* Elven Night Vision
+
+Each should have:
+
+* scope
+* limits
+* counters
+* confidence
+* source
+* card eligibility if important
+
+Example:
+
+Trait: Wolfkin Scent
+Type: racial passive
+Effect: improves tracking by smell
+Limits: rain, strong odors, sealed targets, scentless spirits
+Status: confirmed if race card supports it
+
+This is better than vague “wolfkin gets tracking bonus.”
+
+⸻
+
+51. Race card behavior
+
+Race/species should usually be summarized in the Player Sheet.
+
+A separate generated race card is only needed if:
+
+* race is custom
+* race is mechanically complex
+* race has unusual body rules
+* race has many confirmed traits
+* race is central to story
+* race has important social consequences
+* race changes/evolves over time
+
+Examples needing race card:
+
+* Slime-Human Hybrid
+* Divine Dragonkin
+* Cursed Undead Saint
+* Living Construct Vessel
+* Evolving Chimera
+* Custom race from scenario lore
+
+Examples not needing separate card:
+
+* ordinary human
+* simple elf
+* simple dwarf
+* simple catkin
+
+unless the setting gives special lore.
+
+⸻
+
+52. Race card template
+
+If created, a race card should look like:
+
+Race/Species: Slime-Human Hybrid
+Body:
+Humanoid body with unstable slime physiology.
+Confirmed strengths:
+Can partially reshape soft tissue.
+Resists some piercing damage.
+Can absorb small amounts of compatible material under controlled conditions.
+Confirmed weaknesses:
+Vulnerable to drying, fire, and core disruption.
+Normal armor may not fit or may interfere with body reshaping.
+Current limits:
+Full shapeshifting is not stable.
+Absorption does not grant instant stats; it creates growth evidence or stat XP only when validated.
+Social notes:
+Most ordinary villagers may react with fear if the slime nature is revealed.
+Canon note:
+This card mirrors confirmed race state only.
+
+This card should update when race/body facts change.
+
+It should not invent new traits.
+
+⸻
+
+53. Race and Story Card triggers
+
+Race cards should use specific triggers.
+
+Safe triggers:
+
+* exact race name
+* player’s custom species name
+* unique bloodline name
+* unique transformation name
+
+Unsafe triggers:
+
+* human
+* elf
+* demon
+* angel
+* slime
+* undead
+* monster
+* race
+* species
+* body
+* player
+
+Why?
+
+A card triggered by “slime” may fire constantly in any slime scene.
+
+If the player’s race is “Aurelic Slimekin,” trigger:
+
+* Aurelic Slimekin
+
+not:
+
+* slime
+
+If a trait is named “Slime-Human Hybrid Body,” trigger that exact phrase if used.
+
+Common words should be avoided as triggers.
+
+⸻
+
+54. Race mutation and evolution
+
+Race/species may change over time.
+
+Examples:
+
+* human becomes vampire
+* human becomes werewolf
+* dragonkin awakens full dragon blood
+* slime evolves into greater slime
+* undead becomes lich
+* construct gains living soul
+* fairy becomes archfey
+* demon becomes purified
+* angel falls
+* beastkin gains monster form
+* player absorbs monster core and mutates
+
+Race change should require:
+
+* strong story evidence
+* ritual/event/ability/item/curse
+* validation
+* body update
+* trait update
+* weakness update
+* resource recalculation
+* equipment check
+* social/reputation consequences
+* card/context update
+
+Race evolution should not happen from vague flavor.
+
+Example:
+
+“You feel like a dragon.”
+
+Not enough.
+
+“The dragon heart fuses into your chest, scales tear across your arms, and your status changes to Half-Dragon.”
+
+Strong evidence.
+
+⸻
+
+55. Race transformation lifecycle
+
+Race transformation should follow a lifecycle.
+
+Candidate transformation
+
+Something suggests possible change.
+
+Example:
+
+dragon blood burns in veins.
+
+Active transformation
+
+Body is changing.
+
+Example:
+
+scales appear, horns grow, fever begins.
+
+Stabilized transformation
+
+New race/species state confirmed.
+
+Example:
+
+status panel says Race: Dragonkin, body changes persist.
+
+Rejected/failed transformation
+
+Attempt fails or fades.
+
+Unstable transformation
+
+Traits appear temporarily or unpredictably.
+
+Evolved race
+
+Original race updates into new stable form.
+
+Cursed/forced race state
+
+Race change has negative or binding consequences.
+
+Transformation should not silently rewrite the player sheet without evidence.
+
+⸻
+
+56. Race and stat absorption systems
+
+Chunk 26 will define absorption in detail, but Chunk 20 needs the race hook.
+
+Some races may grow through unusual sources.
+
+Examples:
+
+Slime:
+
+* absorption/mass/core growth
+
+Vampire:
+
+* blood feeding
+
+Demon:
+
+* contracts/corruption/souls
+
+Angel:
+
+* faith/divine favor
+
+Construct:
+
+* upgrades/parts/core refinement
+
+Dragon:
+
+* age/hoard/elemental essence
+
+Beastkin:
+
+* instinct/beast awakening
+
+Undead:
+
+* death energy/souls/necromancy
+
+These should grant:
+
+* stat XP
+* domain XP
+* ability evidence
+* temporary buffs
+* mutation candidates
+
+Not usually raw permanent stat points.
+
+Absorption/growth must have caps, risks, and validation.
+
+Race may enable unusual growth routes.
+
+It must not bypass anti-farm.
+
+⸻
+
+57. Race and weakness design
+
+Every strong racial advantage should have meaningful limits or weaknesses.
+
+Examples:
+
+Dragonkin
+
+Strength:
+
+* scales, strength, heat resistance
+
+Weakness:
+
+* anti-dragon weapons, cold/element opposite, social fear, equipment issues
+
+Fairy
+
+Strength:
+
+* flight, magic, stealth
+
+Weakness:
+
+* fragile, tiny gear, capture risk, iron/anti-magic if setting supports
+
+Undead
+
+Strength:
+
+* poison/disease immunity, no normal fatigue
+
+Weakness:
+
+* holy, fire, turning, healing restrictions, social danger
+
+Slime
+
+Strength:
+
+* physical resistance, shapeshifting
+
+Weakness:
+
+* fire, drying, containment, core damage, purification
+
+Construct
+
+Strength:
+
+* durability, poison immunity
+
+Weakness:
+
+* repair needs, rust, core damage, anti-magic/EMP
+
+Strong race without weakness becomes balance-breaking.
+
+Weakness does not need to be crippling.
+
+It needs to create meaningful context.
+
+⸻
+
+58. Race and validation examples
+
+Example 1 — dragonkin breath attempt
+
+State:
+
+Player is dragonkin. Breath weapon not confirmed.
+
+Input:
+
+“I breathe fire.”
+
+Expected:
+
+* ability candidate or attempt
+* may soft-fail, weak spark, or partial breath depending level/race
+* no stable breath weapon unless repeated/confirmed
+* MP/EP cost possible
+* fire breath card not created yet
+
+Example 2 — fairy uses human sword
+
+State:
+
+Player is tiny fairy.
+
+Input:
+
+“I pick up the human greatsword and swing it.”
+
+Expected:
+
+* likely reject or soft-fail
+* item too large
+* possible dragging, not wielding
+* magic/strength ability needed
+
+Example 3 — skeleton poisoned
+
+State:
+
+Player is skeleton undead.
+
+Output:
+
+“The spider venom enters your bloodstream.”
+
+Expected:
+
+* normal venom poisoning rejected
+* if magical venom, maybe necrotic corruption instead
+* no ordinary blood-based poison unless body supports it
+
+Example 4 — slime stabbed
+
+State:
+
+Player is slime.
+
+Output:
+
+“The dagger pierces your chest.”
+
+Expected:
+
+* not normal organ stab unless humanoid core/body supports it
+* possible mass split, cohesion damage, core threat if hit confirmed
+* bleeding rejected unless slime has blood-like fluid
+
+Example 5 — construct healed by potion
+
+State:
+
+Player is construct.
+
+Input:
+
+“I drink a healing potion.”
+
+Expected:
+
+* potion may fail or have reduced effect unless compatible
+* could restore mana core if potion is magical and setting supports it
+* repair may be needed instead
+
+Example 6 — vampire in sunlight
+
+State:
+
+Player is vampire. Sunlight weakness confirmed.
+
+Output:
+
+“Dawn breaks over the road.”
+
+Expected:
+
+* sunlight hazard
+* HP/EP/condition risk depending severity
+* travel/rest affected
+* Context warning
+
+Example 7 — beastkin scent tracking
+
+State:
+
+Player is wolfkin with scent trait.
+
+Input:
+
+“I sniff the air for the thief’s trail.”
+
+Expected:
+
+* tracking attempt plausible
+* weather/scene can modify
+* Investigation/Travel may get clue if output supports
+
+Example 8 — race card contradiction
+
+State:
+
+Player is human.
+
+Unmanaged card says:
+
+“Player is a demon dragon god.”
+
+Expected:
+
+* no race change
+* card audit flags unsupported claim
+* manual override required
+
+⸻
+
+59. Race/species command behavior
+
+Commands should support race/species clarity.
+
+/sheet
+
+Shows race/species.
+
+/race
+
+Optional command showing:
+
+* race/species
+* body category
+* confirmed traits
+* suspected traits
+* weaknesses
+* equipment notes
+* recovery notes
+
+/setrace <race>
+
+Manual override to set race.
+
+Should:
+
+* validate name
+* update player race
+* create or link race profile
+* mark body/resource/equipment/context/cards dirty
+* log manual override
+
+/raceaudit
+
+Optional debug command.
+
+Shows:
+
+* race source
+* confidence
+* inferred traits
+* Story Card facts
+* generic assumptions used
+* rejected trait assumptions
+* body-rule conflicts
+
+Example:
+
+Race Audit:
+Race: Dragonkin
+Source: scenario setup
+Confidence: confirmed
+Confirmed traits: scales, tail, heat resistance
+Pending traits: breath weapon
+Rejected assumptions: full flight, full dragon size
+Equipment warning: armor must fit tail/scales
+
+⸻
+
+60. Race/species safety rules
+
+60.1 Story Card truth overrides generic assumptions
+
+Use setting-specific race lore first.
+
+60.2 Race modifies level; it does not replace level
+
+A powerful race at Level 1 is still Level 1.
+
+60.3 No unlimited racial power
+
+Every major advantage needs limits.
+
+60.4 No unsupported trait explosion
+
+Do not invent 10 traits from a race name.
+
+60.5 Body category controls injury logic
+
+Do not apply human bleeding/poison rules to bodies that do not support them.
+
+60.6 Equipment must fit the body
+
+Race can block normal equipment use.
+
+60.7 Social response is setting-scoped
+
+Do not assume universal hatred/reverence.
+
+60.8 Race does not decide morality or intelligence
+
+Unless setting explicitly says so.
+
+60.9 Hybrid races blend traits, not stack full packages
+
+No full double bonuses.
+
+60.10 Race transformation requires strong evidence
+
+No race change from vague flavor.
+
+60.11 Racial abilities start as candidates unless confirmed
+
+Dragonkin breath, fairy glamour, vampire charm, etc., need validation.
+
+60.12 Race cards mirror state
+
+Cards do not create race truth.
+
+60.13 Generic race triggers should be avoided
+
+Use specific custom race names for triggers.
+
+60.14 Absorption-style racial growth must be capped
+
+Race-enabled stat growth still obeys anti-farm and validation.
+
+60.15 Race assumptions should be auditable
+
+The player should be able to see what was assumed and why.
+
+⸻
+
+61. Chunk 20 acceptance tests
+
+Test 1 — human baseline
+
+Given:
+
+Player race is human with no special Story Card.
+
+Expected:
+
+* human baseline stats/resources
+* standard injury/recovery/equipment logic
+* no innate racial abilities
+
+Test 2 — Story Card overrides generic race
+
+Given:
+
+Story Card says elves in this setting cannot use magic.
+
+Player race is elf.
+
+Expected:
+
+* no automatic elf magic affinity
+* elf traits based on Story Card
+
+Test 3 — dragonkin does not auto-create full dragon powers
+
+Given:
+
+Player race dragonkin.
+
+Expected:
+
+* scales/claws/heat resistance possible if supported
+* breath weapon pending/candidate unless confirmed
+* no full dragon flight unless wings/ability confirmed
+
+Test 4 — fairy equipment size
+
+Given:
+
+Tiny fairy tries to wield human greatsword.
+
+Expected:
+
+* reject or soft-fail
+* equipment too large
+
+Test 5 — undead poison immunity
+
+Given:
+
+Skeleton player hit by normal spider venom.
+
+Expected:
+
+* ordinary poison rejected or redirected
+* no blood poisoning
+
+Test 6 — magical poison against undead
+
+Given:
+
+Skeleton player hit by soul venom.
+
+Expected:
+
+* normal poison immunity does not fully apply
+* spiritual/necrotic condition possible
+
+Test 7 — slime injury logic
+
+Given:
+
+Slime player stabbed.
+
+Expected:
+
+* no normal organ wound unless core hit
+* cohesion/mass damage considered
+
+Test 8 — construct healing potion
+
+Given:
+
+Construct drinks normal healing potion.
+
+Expected:
+
+* reduced/no effect unless compatible
+* repair/core recharge may be required
+
+Test 9 — hybrid does not double-stack
+
+Given:
+
+Half-dragon elf.
+
+Expected:
+
+* blended traits
+* not full elf package plus full dragon package
+
+Test 10 — race transformation requires evidence
+
+Given:
+
+Output says “you feel monstrous.”
+
+Expected:
+
+* no race change
+* possible condition/emotion/candidate only
+
+Given:
+
+Status panel confirms Race changed to Vampire after ritual.
+
+Expected:
+
+* race transformation accepted if source valid
+* body/resource/weakness updates
+
+Test 11 — race social consequence scoped
+
+Given:
+
+Undead enters necromancer city.
+
+Expected:
+
+* may be accepted if setting supports
+
+Given:
+
+Undead enters holy city.
+
+Expected:
+
+* social/legal danger possible
+
+Test 12 — race card does not create canon
+
+Given:
+
+Unmanaged card says player is demon.
+
+State says human.
+
+Expected:
+
+* no race change
+* card audit warning
+
+Test 13 — race command logs override
+
+Given:
+
+/setrace Dragonkin
+
+Expected:
+
+* player race changes through manual override
+* body/resource/equipment/context/cards dirty
+* audit logs command
+
+Test 14 — racial ability candidate
+
+Given:
+
+Dragonkin tries breath fire once.
+
+Expected:
+
+* breath candidate/attempt possible
+* no stable ability unless evidence supports
+
+Test 15 — race trigger safety
+
+Given:
+
+Race card for Aurelic Slimekin.
+
+Expected:
+
+* trigger uses “Aurelic Slimekin”
+* does not use broad trigger “slime”
+
+⸻
+
+62. Final Chunk 20 doctrine
+
+Race and species define body logic.
+
+Level defines progression scale.
+
+Class defines training direction.
+
+Origin defines story source.
+
+These are different things.
+
+A human is the baseline.
+
+Non-human races modify the baseline through body, resources, growth, senses, weaknesses, equipment, recovery, and social consequences.
+
+Explicit Story Card facts override generic assumptions.
+
+Common sense may fill gaps only modestly and with uncertainty.
+
+Strong racial advantages require limits.
+
+Unusual bodies require unusual injury and recovery logic.
+
+Undead should not use normal poison rules.
+
+Constructs should not use normal healing rules.
+
+Slimes should not use normal organ-wound rules.
+
+Fairies should not use human equipment normally.
+
+Giants should not ignore size problems.
+
+Dragonkin should not get full dragon power for free.
+
+Hybrid races blend traits instead of stacking full packages.
+
+Racial abilities should be tracked as traits, passives, or candidates with costs and limits.
+
+Race cards should mirror confirmed race state only.
+
+Race assumptions must be auditable.
+
+The goal is to let any AI Dungeon race or species feel meaningfully different without letting race become uncontrolled free power or unsupported canon.
+

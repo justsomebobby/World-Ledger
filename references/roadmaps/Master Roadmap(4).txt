@@ -1,0 +1,3769 @@
+What you want built
+
+You want a single AI Dungeon-native RPG framework that combines the strengths of the scripts we discussed, while fixing their weaknesses.
+
+It needs to work inside AI Dungeon’s actual scripting model, not just be valid JavaScript.
+
+It needs to support a freeform story while also enforcing enough mechanical structure that the world, character progression, inventory, time, and consequences stop falling apart.
+
+The goal is not to make AI Dungeon feel like a rigid menu-based RPG.
+The goal is to make it feel like a freeform RPG with real persistence, real scaling, and real consequence tracking.
+
+⸻
+
+What “freeform” means in your design
+
+You do not want a system where:
+
+* the player must choose from narrow classes
+* the player can only use approved abilities
+* every effect must be phrased in one exact way
+* every world change must be entered with a command
+* every skill or passive has to be manually predefined
+
+You do want a system where:
+
+* the player can write naturally
+* the script can infer intent from many kinds of phrasing
+* the script can detect patterns and recurring concepts
+* the world can evolve from story context
+* skills, talents, passives, locations, buildings, and reputations can form and grow dynamically
+* but once something becomes important, it is stored in a stable, structured way so the story stops forgetting it
+
+So the system must be freeform at the surface and structured underneath.
+
+⸻
+
+What you do not want me to do
+
+You do not want me to:
+
+* hardcode your examples as actual content
+* design around one silly example literally
+* flatten your intent into rigid video-game menu logic
+* write generic JavaScript that ignores AI Dungeon’s real hook behavior
+* produce a “working” script that actually breaks or misbehaves in AI Dungeon
+* build a system that only supports the exact playstyles I happen to think of first
+
+You are not asking for:
+
+* a literal “fire ball groin curse” feature
+* a fixed class list
+* a fixed move list
+* a fixed world
+* a fixed set of factions, regions, or professions
+* a fixed exact balance sheet for every situation
+
+You are asking for a framework capable of handling whole categories of problems like those examples.
+
+⸻
+
+What the system must solve mechanically
+
+1. Real character progression
+
+You want a real level, XP, and growth system.
+
+It should cover a huge power range, roughly 1 to 1600, without collapsing.
+
+It should allow:
+
+* weak beginnings
+* gradual growth
+* specialization
+* mastery
+* mythic/godlike late-game states for those who truly earn them
+
+It should not hand out rapid growth for doing almost nothing.
+Average people in the world should usually remain far below the top end.
+Extreme power should require real effort, training, danger, specialization, and long-term development.
+
+2. Level is not everything
+
+You do not want level alone deciding every outcome.
+
+You want:
+
+* matchup differences
+* specialization differences
+* style differences
+* surprise factor
+* creativity
+* situational advantage
+* target-specific preparation
+
+So a lower-level character may defeat a higher-level opponent in a favorable matchup, while losing to a lower-level opponent in an unfavorable one.
+
+That principle should apply broadly across:
+
+* monsters vs humans
+* duelists vs hunters
+* anti-mage vs brute force
+* beast slayers vs armored knights
+* unusual styles vs familiar styles
+
+3. Skills, talents, and passives as different systems
+
+You want distinct progression families, not one blurred pile.
+
+Broadly:
+
+* skills are active, deliberate abilities
+* talents are active or semi-active techniques and developed applications
+* passives are always-on or conditionally-on traits that grow through relevant use/exposure rather than constant manual activation
+
+You want passives to matter deeply:
+
+* resistances
+* martial styles
+* body adaptations
+* magical tolerances
+* regeneration-style growth
+* anti-magic effects
+* unusual combat evolutions
+
+You want them to:
+
+* level naturally
+* preserve their intended meaning
+* gain new applications over time
+* remain balanced through growth requirements rather than being useless forever or overpowered immediately
+
+4. Abilities must preserve context, not just names
+
+This is one of your biggest priorities.
+
+When a new skill/talent/passive is created or discovered, the system must remember what the player was actually building it to do, not reduce it to the most generic interpretation of its name.
+
+So ability storage must capture:
+
+* training context
+* intent
+* function
+* use pattern
+* limitations
+* target profile
+* associated keys/phrases
+* observed behavior
+* future discovered applications
+
+The system must preserve meaning, not just labels.
+
+⸻
+
+What the system must solve for the world
+
+5. Worldbuilding must persist in useful detail
+
+You want Story Cards and world-state storage to remember more than vague summaries.
+
+For important places, you want details like:
+
+* where it is
+* what side of town it is on
+* what it is made of
+* what it smells like
+* who owns it
+* who uses it
+* how it is laid out
+* what important rooms or sections it has
+* what factions/families/NPCs it is connected to
+
+You do not want those details to replace the worldbuilding already present.
+You want them to refine and reinforce it.
+
+6. Mutable state must persist
+
+You want the world to keep changes.
+
+If something is damaged, altered, burned, looted, collapsed, repaired, abandoned, barricaded, stained, renovated, occupied, emptied, or repurposed, the system must preserve that change.
+
+This should apply not just to one phrasing, but to the broad category of real world-state changes.
+
+The system must detect those changes from freeform story context and update the remembered state accordingly.
+
+7. Cards should interconnect without losing focus
+
+You want entities to be connected:
+
+* buildings tied to towns and districts
+* owners tied to buildings
+* factions tied to NPCs and locations
+* families tied to businesses
+* routes tied to towns
+* reputation tied to places and people
+
+But each card/entity must still remain primarily about itself.
+
+So a tavern card can reference its town, district, owners, nearby landmarks, and clientele, while still being clearly the tavern’s card.
+
+8. Current scene truth must be immediate
+
+You do not want the system to wait around for some delayed memory effect before the AI starts respecting what changed.
+
+The current room/building/location state needs to be immediately available to the story.
+
+So the system must have a way to make immediate current-scene truth available now, while also preserving it long-term.
+
+⸻
+
+What the system must solve for inventory and equipment
+
+9. Inventory must be real, not phantom
+
+You want inventory to behave like actual possession, not a bag of nouns the AI only sometimes remembers.
+
+The system needs to handle:
+
+* player-directed pickup
+* story-granted items
+* purchasing
+* gifting
+* loot
+* storage
+* equipping/unequipping
+* loss
+* breakage
+* consumption
+* alteration
+
+It must do this reliably.
+
+10. Items must have identity and condition
+
+You want vague item mentions to become coherent real items.
+
+So if the story gives the player a sword, the system should preserve meaningful context like:
+
+* material
+* wear
+* quality
+* damage
+* condition
+* style
+* notable descriptors
+
+And when items change:
+
+* break
+* dull
+* tear
+* burn
+* crack
+* rust
+* become bloodied
+* get modified
+
+the system should keep track of that too.
+
+You do not want ugly internal IDs showing up in the visible inventory.
+
+11. Currency needs its own logic
+
+You want structured currency handling:
+
+* stackable
+* usable
+* trackable
+* reliable for purchases, rewards, and costs
+
+Not just “coins are items like anything else” with messy handling.
+
+⸻
+
+What the system must solve for time, travel, and coherence
+
+12. Time needs to stop breaking
+
+You want a stable in-world time system.
+
+It must preserve:
+
+* current time/day
+* elapsed time
+* travel duration
+* event timing
+* sleep/rest timing
+* relative references like “earlier today” or “three days ago”
+
+The system needs to stop the story from casually contradicting the timeline.
+
+13. Distance and travel need memory
+
+You want places to feel actually located in relation to one another.
+
+Travel should preserve remembered durations and route logic so the story does not casually change:
+
+* how far something is
+* how long travel takes
+* whether a trip is realistic under current conditions
+
+⸻
+
+What the system must solve for the world’s inhabitants
+
+14. NPCs and random named people need believable power
+
+You want important or combat-relevant people to get generated with sensible strength, skill, and capability based on who they are.
+
+That includes:
+
+* merchants
+* guards
+* adventurers
+* guildmasters
+* nobles
+* specialists
+* fighters
+* monsters
+* wild animals
+
+You do not want a title like “A-rank adventurer” or “guildmaster” to mean nothing.
+
+The system must infer believable competence from role, rank, faction, region, and context.
+
+15. The world should resist nonsense power outcomes
+
+You want clear cases where:
+
+* a low-level player is hopelessly outclassed
+* impossible fights remain impossible
+* overwhelming figures feel overwhelming
+* weak old enemies become trivial later
+
+That power progression must be visible in narration, not just hidden in numbers.
+
+⸻
+
+What the system must solve for player freedom
+
+16. No narrow playstyle lock-in
+
+You do not want a rigid class system that excludes player creativity.
+
+You want broad, expandable archetyping that supports:
+
+* many styles
+* many hybrids
+* invented styles
+* weird builds
+* niche builds
+* suboptimal builds
+* specialized builds
+* styles that evolve over time
+
+The system should recognize what the player is becoming without forcing them into a prewritten box.
+
+17. Style discovery should be open-ended
+
+You want the player to be able to:
+
+* adopt styles from the world
+* combine styles
+* invent styles
+* evolve old methods into new methods
+* discover unusual applications of abilities or passives
+
+The system should support emergence, not only selection.
+
+⸻
+
+What the system must solve structurally
+
+18. It must be AI Dungeon first
+
+Above all, you want this designed for AI Dungeon’s real environment.
+
+That means:
+
+* correct hook structure
+* correct use of Library/Input/Context/Output
+* no unsupported hook assumptions
+* no fragile behavior that breaks the game flow
+* no fake “looks good on paper” script design
+
+19. It should remix concepts from the other scripts
+
+You do want to speed development up by reusing good ideas.
+
+But you do not want:
+
+* a direct copy mashup
+* incompatible systems crudely glued together
+* inherited flaws carried forward untouched
+
+So the goal is to reuse concepts, patterns, and proven structures, while rebuilding them into one coherent engine.
+
+20. It should stay broad, not over-literal
+
+This is the correction you just made, and I fully understand it now:
+
+When you give me examples, I should translate them into:
+
+* categories
+* constraints
+* design principles
+* generalized requirements
+
+I should not translate them into literal hardcoded script content.
+
+Your examples define the shape of the system’s intelligence, not the actual built-in canon of the script.
+
+⸻
+
+The core philosophy you’re asking for
+
+You want a system where:
+
+* the player can act freely
+* the script can understand broadly
+* the mechanics stay real
+* the world remembers what matters
+* the story respects consequence
+* power progression feels earned
+* the world becomes richer instead of flatter
+* generated structures preserve meaning instead of collapsing to generic defaults
+
+In one line:
+
+You want a freeform AI Dungeon RPG framework with deterministic persistence underneath it.
+
+⸻
+
+The three biggest design rules I should now follow
+
+Rule 1
+
+Examples you give are general problem demonstrations, not literal features to hardcode.
+
+Rule 2
+
+Freeform interpretation should stay broad, but final stored canon must be structured and stable.
+
+Rule 3
+
+Everything I draft from here needs to be evaluated by one question:
+does this preserve freedom while improving consistency?
+
+⸻
+
+What I should produce next
+
+The next thing should not be code yet.
+
+The next thing should be a formal requirements blueprint for the skeleton, organized into:
+
+* core mechanics
+* entity/world memory
+* abilities/passives
+* inventory/equipment
+* NPC generation and scaling
+* time/travel/reputation/quests
+* AI Dungeon hook responsibilities
+* what gets remixed from each existing script
+* what must be rewritten fresh
+
+A few hard platform constraints shape the design: scripts are attached to Scenarios, only Simple Start and Character Creator scenarios can have scripts, the available tabs are Library / Input / Context / Output, and for the non-Library tabs the last line must be modifier(text). Each hook runs in an isolated sandbox with a 16 MB memory limit and 2-second timeout. Also, Plot Essentials is always in context, while Story Cards are long-term memory and are not always in context, so current scene truth cannot rely on Story Cards alone.  
+
+1. Core design rules
+
+Canonical truth order
+
+This engine should always treat truth in this order:
+
+1. state.aidrpg = canonical mechanics and world state
+2. Context packets = immediate AI-facing truth for this turn
+3. Story Cards = long-term memory mirrors and linked entity records
+4. Plot Essentials = always-relevant global truths and compact summaries
+
+This matters because Story Cards are not guaranteed to be present every turn, while Plot Essentials is always considered.  
+
+Design philosophy
+
+The framework should be:
+
+* freeform in expression
+* structured in storage
+* deterministic in canon
+* generative in narration
+* AI Dungeon-safe in execution
+
+What the system must never do
+
+It should never:
+
+* require one exact phrasing for actions or consequences
+* let raw prose alone become final canon
+* depend on Story Cards alone for current room/building state
+* depend on unsupported hook behavior
+* do expensive whole-world scans every turn
+* hardcode user examples as literal built-in content
+
+⸻
+
+2. Top-level modules
+
+The engine should be divided into these modules inside Library.
+
+A. CoreState
+
+Owns initialization, migration, versioning, and dirty flags.
+
+Responsibilities:
+
+* initialize state.aidrpg
+* migrate old saves
+* create empty containers
+* track version, current turn, active hook, dirty entities/cards
+* maintain short logs/debug traces
+
+Owns:
+
+* state.aidrpg.meta
+* schema version
+* per-turn scratch space
+
+Hooks:
+
+* Input, Context, Output
+
+⸻
+
+B. TurnEngine
+
+Owns turn lifecycle and safe per-hook workflow.
+
+Responsibilities:
+
+* start/end hook bookkeeping
+* clear per-turn scratch
+* assign turn ids
+* store hook timing/debug counters
+* prevent duplicate application of the same output consequences
+
+Owns:
+
+* turn counters
+* retry protection markers
+* pending operation queues
+
+Hooks:
+
+* all hooks
+
+This is where we avoid replay/double-apply problems.
+
+⸻
+
+C. IntentParser
+
+Owns freeform interpretation of player input and story output into structured candidates, not final truth.
+
+Responsibilities:
+
+* parse player intent from Input
+* parse AI consequence candidates from Output
+* detect likely action categories
+* detect likely world changes
+* detect likely item changes
+* detect likely ability training
+* detect likely timeline contradictions
+* assign confidence to candidates
+
+Owns:
+
+* candidate events
+* confidence scores
+* parser traces
+
+Hooks:
+
+* Input
+* Output
+
+Important rule:
+This module proposes. It does not finalize canon by itself.
+
+⸻
+
+D. PlayerSystem
+
+Owns the player’s sheet, body state, stats, and persistent identity.
+
+Responsibilities:
+
+* base stats and derived stats
+* XP/level
+* build tags
+* body-state changes
+* visible appearance changes
+* limb loss / regeneration / mutation / vampirism / curse states
+* active statuses
+* visible equipment summary
+
+Owns:
+
+* player
+* bodyState
+* statusState
+* appearanceState
+* buildState
+
+Hooks:
+
+* Input
+* Context
+* Output
+
+This module is also where “the world directly influences the player” lives.
+
+⸻
+
+E. ProgressionSystem
+
+Owns the level curve and XP lanes.
+
+Responsibilities:
+
+* total level XP
+* XP-to-next calculation
+* kill XP
+* survival XP
+* training XP
+* discovery/breakthrough XP
+* specialization XP
+* anti-farm diminishing returns
+* major threshold unlocks
+
+Owns:
+
+* level
+* xp
+* xpToNext
+* xp history
+* XP source weights
+
+Hooks:
+
+* Output primarily
+* Input for declared training
+* Context for brief summaries
+
+This is where your corrected principle lives:
+level means a lot, but it is not absolute mastery.
+
+⸻
+
+F. BuildIdentitySystem
+
+Owns the player’s non-class identity.
+
+Responsibilities:
+
+* maintain tag groups
+* infer archetype summary
+* update combat, method, resource, defense, specialization, temperament tags
+* let styles emerge without forcing hard classes
+* enable weird, hybrid, invented, or outlier builds
+
+Owns:
+
+* origin tags
+* combat tags
+* method tags
+* resource tags
+* defense tags
+* specialization tags
+* temperament tags
+* archetype summary
+
+Hooks:
+
+* Input
+* Output
+* Context
+
+This replaces rigid class systems.
+
+⸻
+
+G. AbilitySystem
+
+Owns all skills, talents, and passives as separate but related entities.
+
+Responsibilities:
+
+* create and update skills
+* create and update talents
+* create and update passives
+* preserve origin context and intended function
+* maintain keys/phrases
+* track current level behavior
+* track discovered applications
+* enforce low-level unreliability and later mastery growth
+
+Owns:
+
+* abilities.skills
+* abilities.talents
+* abilities.passives
+
+Hooks:
+
+* Input
+* Output
+* Context
+
+This is the module that prevents name-flattening.
+Ability meaning must come from context, usage, and origin, not just the title.
+
+⸻
+
+H. PassiveResistanceSystem
+
+Owns always-on or conditionally-on growth traits.
+
+Responsibilities:
+
+* resistances
+* body adaptations
+* martial body habits
+* magical tolerances
+* environmental tolerances
+* cursed/blessed persistent traits
+* sunlight weakness, blood hunger, anti-magic skin, regeneration growth, and similar systems
+
+Owns:
+
+* damage resistances
+* status resistances
+* environmental resistances
+* adaptation passives
+* corruption/condition passives
+
+Hooks:
+
+* Output mainly
+* Input for intentional practice
+* Context for current summaries
+
+This is first-class, not a side feature.
+
+⸻
+
+I. CombatResolutionSystem
+
+Owns validated conflict outcomes.
+
+Responsibilities:
+
+* compare player vs target profiles
+* apply matchup modifiers
+* apply specialization relevance
+* apply surprise/novelty advantage
+* apply environment and preparation modifiers
+* decide probable pressure, danger, and outcome category
+* route XP and passive growth
+
+Owns:
+
+* temporary combat events
+* resolved combat outcomes
+* per-encounter data
+
+Hooks:
+
+* Output
+* Context for comparative narration hints
+
+This does not need to simulate every swing like a traditional RPG.
+It needs to produce stable, believable consequence resolution.
+
+⸻
+
+J. NPCGenerationSystem
+
+Owns generated stats and competency for named or important actors.
+
+Responsibilities:
+
+* generate meaningful actor profiles from role, title, region, faction, and context
+* assign believable level bands
+* assign build tags
+* assign likely abilities/passives/equipment
+* preserve those profiles once important
+
+Owns:
+
+* actor templates
+* resolved actor profiles
+* role/rank mappings
+* faction influence on strength
+
+Hooks:
+
+* Output when new important actors appear
+* Context to expose nearby actor truth
+
+This is how “guildmaster,” “A-rank adventurer,” “merchant,” or “wolf pack leader” become mechanically meaningful.
+
+⸻
+
+K. InventorySystem
+
+Owns possession, equipment, storage, and currency.
+
+Responsibilities:
+
+* detect acquisition, gifting, looting, buying, storing, dropping, losing, consuming
+* normalize vague items into coherent records
+* track item condition and mutation
+* manage equipped slots
+* manage carried vs worn vs packed vs stored
+* handle structured currency
+* clean visible item names while keeping internal stable IDs
+
+Owns:
+
+* item records
+* currency balances
+* equipped slots
+* containers/storage references
+
+Hooks:
+
+* Input
+* Output
+* Context
+
+This must support both:
+
+* player-directed actions
+* story-bestowed changes
+
+⸻
+
+L. WorldEntitySystem
+
+Owns persistent world objects.
+
+Responsibilities:
+
+* create/update locations, districts, buildings, routes, landmarks, factions, notable objects
+* maintain immutable identity vs mutable state
+* apply destruction, repair, occupation, ownership, and atmosphere changes
+* preserve layout/material/ownership/links/current condition
+
+Owns:
+
+* locations
+* entities
+* routes
+* factions
+
+Hooks:
+
+* Output mainly
+* Context heavily
+* Input for explicit world interactions
+
+This is the backbone of world persistence.
+
+⸻
+
+M. SceneStateSystem
+
+Owns immediate local truth for the current scene.
+
+Responsibilities:
+
+* determine where the player is
+* determine current room/building/local area
+* gather nearby entities and hazards
+* build current-scene packet for Context
+* ensure damage and changes are reflected immediately, not delayed by Story Card timing
+
+Owns:
+
+* current scene
+* local visible entities
+* local hazards
+* exits/travel options
+* ambient conditions
+
+Hooks:
+
+* Context primarily
+* Output for updates
+
+This exists because Story Cards are not always in context.  
+
+⸻
+
+N. TimeTravelSystem
+
+Owns time, calendars, elapsed duration, and route memory.
+
+Responsibilities:
+
+* current in-world day/time
+* elapsed time per action
+* rest duration
+* travel duration
+* route memory
+* contradiction detection
+* time summaries for context
+* event timestamping
+
+Owns:
+
+* clock
+* day counter / calendar
+* timeline log
+* known route durations
+* active travel state
+
+Hooks:
+
+* Input
+* Output
+* Context
+
+This is how you stop “earlier today” from meaning “three days ago.”
+
+⸻
+
+O. ReputationSystem
+
+Owns faction, local, public, and personal reputation.
+
+Responsibilities:
+
+* track where reputation changed
+* track why it changed
+* track rumor titles / labels
+* distinguish local vs spreading reputation
+* influence NPC and faction reactions
+
+Owns:
+
+* public rep
+* faction rep
+* location rep
+* individual relationship scores
+* rumor labels
+
+Hooks:
+
+* Output
+* Context
+
+⸻
+
+P. QuestLogSystem
+
+Owns active quest memory.
+
+Responsibilities:
+
+* maintain one clean active-quest log
+* store quest giver, objective, location, reward, current status, and timestamps
+* update when accepted, progressed, completed, failed, or abandoned
+
+Owns:
+
+* active quests
+* archived quests
+
+Hooks:
+
+* Output
+* Context
+
+This should stay centralized to avoid quest-card clutter.
+
+⸻
+
+Q. CardSyncSystem
+
+Owns Story Card mirroring and structured entity-card updates.
+
+Responsibilities:
+
+* generate typed card text from canonical state
+* maintain card keys and card type
+* update cards when important entities change
+* keep linked entities inter-referential without corrupting focus
+* compress long entity histories into current summaries
+
+Owns:
+
+* card index
+* dirty card queue
+* card schemas
+* sync timestamps
+
+Hooks:
+
+* Output primarily
+* Input/Context if needed for reload
+
+This module mirrors truth; it does not create truth by itself.
+
+⸻
+
+R. PlotPacketSystem
+
+Owns what gets injected into Context and possibly reflected into Plot Essentials.
+
+Responsibilities:
+
+* build always-relevant packet
+* build current-scene packet
+* build narrative rules packet
+* build pending-request packet for AI assistance
+* keep packets compact enough for context limits
+
+Owns:
+
+* packet templates
+* packet priorities
+
+Hooks:
+
+* Context
+
+Because Plot Essentials is always in context and Story Cards are not always in context, this module is critical.  
+
+⸻
+
+S. AIInstructionSystem
+
+Owns concise behavior guidance for the model.
+
+Responsibilities:
+
+* comparative power narration rules
+* time coherence reminders
+* environment persistence reminders
+* ability meaning preservation rules
+* equipment visibility reminders
+* output event-block prompting if used
+
+Owns:
+
+* context instruction snippets
+* output formatting hints
+
+Hooks:
+
+* Context
+
+This should stay compact and scenario-safe.
+
+⸻
+
+T. AdminDebugSystem
+
+Owns safe creator tools and debugging.
+
+Responsibilities:
+
+* /sheet
+* /inventory
+* /questlog
+* /time
+* /debug on/off
+* optional /repaircards, /resync, /rebuildentity
+* safe logs and diagnostics for scenario creator
+
+Owns:
+
+* debug flags
+* recent parser logs
+* recent sync logs
+
+Hooks:
+
+* Input primarily
+
+⸻
+
+3. What lives where
+
+In state.aidrpg
+
+This is canonical.
+
+Store here:
+
+* player stats/body/build
+* abilities
+* inventory/items/currency
+* actors/NPC profiles
+* locations/buildings/routes/factions
+* time/timeline
+* quests
+* reputation
+* dirty flags
+* current scene references
+
+In Story Cards
+
+These are persistent mirrors and linked world memory.
+
+Store here:
+
+* typed summaries of important entities
+* long-term world details
+* current state summaries
+* relationships and ownership
+* route summaries
+* notable ability records
+* reputation and quest summaries where useful
+
+In Plot Essentials / Context packet
+
+This is immediate AI-facing truth.
+
+Put here:
+
+* current location and room/building state
+* current visible gear
+* current body-altering conditions
+* current time/day
+* current local hazards
+* current nearby important NPCs
+* current active quest summary
+* crucial comparative power reminders
+
+Do not wait for Story Cards alone to cover these.  
+
+⸻
+
+4. Hook ownership
+
+Input hook
+
+Input should handle:
+
+* commands
+* player intent parsing
+* explicit equip/unequip/store/travel/rest/train actions
+* creation of pendingIntent
+* minor safe pre-resolution
+* admin/debug actions
+
+Input should not finalize:
+
+* major world mutation
+* injury canon
+* item acquisition from AI narration
+* scene consequence truth
+
+Context hook
+
+Context should handle:
+
+* current-scene packet generation
+* always-relevant packet generation
+* concise narrative rules
+* ability/world-memory support packets
+* optional pending prompt packets for the model
+
+This hook is where the AI gets the truth it needs for the next response.
+
+Output hook
+
+Output should handle:
+
+* consequence parsing
+* validation
+* canonical state updates
+* XP routing
+* item changes
+* building/world changes
+* actor generation
+* time advancement
+* reputation changes
+* quest updates
+* card sync queueing
+
+This is the main mutation hook.
+
+⸻
+
+5. Event flow blueprint
+
+Step 1: Input produces intent candidates
+
+The player writes naturally.
+The parser produces structured guesses like:
+
+* likely action family
+* likely target
+* likely weapon/style/ability
+* likely training focus
+* likely travel/rest intent
+
+Step 2: Context injects current truth
+
+The AI gets:
+
+* who the player is now
+* where they are now
+* what the current room/building is like
+* what damage or state changes persist
+* what is equipped
+* what major rules of the world matter now
+
+Step 3: Output produces consequences
+
+The AI narrates.
+
+The system then reads:
+
+* likely injury
+* likely damage/deformation
+* likely item transfer
+* likely environmental change
+* likely ability training
+* likely reputation shift
+* likely time advancement
+
+Step 4: Validation resolves canon
+
+The engine decides:
+
+* what to save
+* what to ignore
+* what to mark tentative
+* what to ask the AI to reinforce next turn
+
+Step 5: Sync and mirror
+
+Canonical state updates first.
+Story Cards and summaries update second.
+
+⸻
+
+6. Typed card families
+
+These are the card types I would officially support.
+
+location
+
+Town, city, forest, district, ruin, dungeon zone
+
+Stores:
+
+* identity
+* current condition
+* links
+* population/use notes
+* notable tensions/threats
+
+building
+
+Inn, bar, guild hall, shop, temple, manor, warehouse
+
+Stores:
+
+* materials
+* layout
+* ownership
+* atmosphere
+* side of town / district
+* notable rooms
+* current damage/occupation state
+
+actor
+
+Named NPCs and major creatures
+
+Stores:
+
+* role/rank
+* build summary
+* relationships
+* current known condition
+* goals/stance if major
+
+ability
+
+Skill, talent, passive
+
+Stores:
+
+* intended function
+* origin/training context
+* current mastery behavior
+* keys
+* observed applications
+* limits and side effects
+
+route
+
+Known travel paths
+
+Stores:
+
+* endpoints
+* normal travel duration
+* terrain
+* danger
+* current route issues
+
+faction
+
+Guild, family, criminal group, noble house, cult, army unit
+
+Stores:
+
+* power band
+* relationships
+* territory
+* current posture
+
+reputation
+
+Either central player rep card or structured summaries by region/faction
+
+quest_log
+
+One central active quest card and maybe archived summary if needed
+
+⸻
+
+7. Level, build, and XP blueprint
+
+Level
+
+Represents:
+
+* raw capacity
+* body/spirit development
+* stat headroom
+* durability
+* general pressure
+
+It does not equal:
+
+* mastery
+* tactical intelligence
+* specialization
+* actual practiced technique
+
+Build
+
+Represents:
+
+* habits
+* specialties
+* methods
+* techniques
+* passives
+* matchup strengths/weaknesses
+
+XP lanes
+
+I would formally include these:
+
+Level XP
+
+From:
+
+* meaningful danger
+* major victories
+* hard survival
+* breakthrough moments
+* discovery
+* kills, in bounded form
+
+Skill/Talent XP
+
+From:
+
+* relevant use
+* intentional training
+* successful application
+* difficult execution
+* new application discovery
+
+Passive XP
+
+From:
+
+* repeated relevant exposure
+* body adaptation
+* survival under strain
+* repeated style-consistent practice
+
+Reputation/World progression
+
+Tracked separately, not as level XP
+
+Kill XP
+
+Yes, include it.
+
+But make it:
+
+* threat-based
+* novelty-weighted
+* anti-farm
+* diminished for repeated easy kills
+* less important than hard-earned specialization if abused
+
+That keeps the video game feel without breaking the balance.
+
+⸻
+
+8. Outlier build support
+
+This system should be open to extreme or unusual growth patterns.
+
+The blueprint should explicitly support:
+
+* absorption builds
+* stat theft
+* corruption builds
+* vampirism
+* mutation
+* body-plan changes
+* curse/blessing evolution
+* species changes
+* lost-limb permanence or adaptation
+* transformed resistances/weaknesses
+
+The player model should therefore include:
+
+* bodyTraits
+* permanentAlterations
+* speciesOrConditionTags
+* exceptionModifiers
+
+So the framework is ready for outlier stories without hardcoding any one example.
+
+⸻
+
+9. AI Dungeon safety rules for implementation
+
+These are non-negotiable build constraints:
+
+Keep hook tabs thin
+
+The docs are explicit that Library is shared code and the other tabs are hook scripts whose last line must be modifier(text). Keep almost all logic in Library.  
+
+Never depend on unsupported stop flow for normal gameplay
+
+The system should not rely on stop to run ordinary RPG logic. Build around normal hook returns.
+
+Respect the 2-second / 16 MB sandbox
+
+Do not scan every card, every actor, every route, and every inventory item on every turn. Use:
+
+* dirty queues
+* local scene focus
+* cached indexes
+* limited candidate sets
+
+The docs explicitly note the 16 MB memory limit and 2-second timeout.  
+
+Remember Output memory timing
+
+Changes to memory-like fields in Output do not affect the AI until the next player action, so current-scene truth must be injected in Context and not assumed to instantly change the already-finished generation.  
+
+⸻
+
+10. MVP phases
+
+Phase 1: Foundation
+
+Build first:
+
+* CoreState
+* TurnEngine
+* IntentParser
+* PlayerSystem
+* ProgressionSystem
+* BuildIdentitySystem
+* InventorySystem
+* SceneStateSystem
+* PlotPacketSystem
+* CardSyncSystem
+
+This gets:
+
+* real stats
+* level/build separation
+* inventory/equipment
+* current scene truth
+* world memory basics
+
+Phase 2: Ability depth
+
+Add:
+
+* AbilitySystem
+* PassiveResistanceSystem
+* stronger training parsing
+* ability cards
+* emergent ability meaning preservation
+
+Phase 3: World persistence
+
+Add:
+
+* WorldEntitySystem
+* TimeTravelSystem
+* ReputationSystem
+* QuestLogSystem
+* Route cards
+* building damage persistence
+* interlinked cards
+
+Phase 4: Combat intelligence
+
+Add:
+
+* CombatResolutionSystem
+* NPCGenerationSystem
+* matchup specialization
+* rank/role baselines
+* comparative narration pressure
+
+Phase 5: Major NPC memory
+
+Add selective Inner Self-style memory:
+
+* important NPC goals
+* grudges
+* dynamic relationship memory
+* faction-minded reactions
+
+⸻
+
+11. The one-sentence blueprint summary
+
+This system should be:
+
+a Library-centered AI Dungeon RPG engine where Input interprets intent, Context injects immediate truth, Output validates consequences, state.aidrpg holds canonical mechanics and world state, and Story Cards mirror long-term interlinked entity memory without being the sole source of current reality.
+
+Context budget policy
+
+Before the schema itself, this is the budget rule I’d lock in.
+
+Tiny mode
+
+Use when available context is very small.
+
+Inject only:
+
+* current place
+* one-line player status
+* visible equipment
+* 1–3 critical scene facts
+* one urgent time/quest fact if needed
+
+Normal mode
+
+Add:
+
+* richer room/building state
+* nearby important NPCs
+* local hazards/exits
+* one short power-scaling reminder when relevant
+
+Wide mode
+
+Add:
+
+* fuller atmosphere
+* more linked entity details
+* more relationship or world-state detail
+* one temporary instruction packet if needed
+
+So the script should not assume “8000” and should not break if the usable context is much smaller.
+
+AIDRPG STATE SCHEMA REFERENCE
+============================
+
+Purpose
+-------
+This file is a reference blueprint for the canonical `state.aidrpg` schema for an AI Dungeon-native RPG framework.
+
+This is not implementation code. It is the storage and architecture reference the actual script should follow.
+
+Core Rules
+----------
+1. `state.aidrpg` is canonical truth.
+2. Context packets are immediate AI-facing truth for the current turn.
+3. Story Cards are long-term mirrors, not the only source of current scene truth.
+4. Plot / memory injection must stay compact and adaptive to small context sizes.
+5. Freeform parsing may propose events, but structured validation decides canon.
+
+Top-Level Shape
+---------------
+
+state.aidrpg = {
+  meta: {},
+  player: {},
+  build: {},
+  abilities: {},
+  items: {},
+  actors: {},
+  world: {},
+  time: {},
+  reputation: {},
+  quests: {},
+  pending: {},
+  cards: {},
+  cache: {},
+  logs: {}
+}
+
+
+1) meta
+-------
+Global script control and safety.
+
+meta: {
+  version: 1,
+  createdAtTurn: 0,
+  currentTurn: 0,
+  currentHook: "",
+  mode: "normal",            // tiny | normal | wide
+  seed: 0,
+  lastAppliedOutputHash: "",
+  debug: false,
+  dirty: {
+    player: false,
+    abilities: [],
+    items: [],
+    actors: [],
+    entities: [],
+    routes: [],
+    reputation: false,
+    quests: false,
+    time: false
+  }
+}
+
+Purpose:
+- schema versioning
+- retry protection
+- dirty queues
+- adaptive context mode
+
+Hook ownership:
+- Input: read/write
+- Context: read/write mode
+- Output: read/write
+
+
+2) player
+---------
+The player’s canonical core.
+
+player: {
+  id: "player",
+  name: "",
+  species: "human",
+  levelState: {
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
+    totalXp: 0,
+    growthClass: "standard"   // standard | accelerated | distorted | cursed
+  },
+  stats: {
+    hp: 100,
+    maxHp: 100,
+    mp: 20,
+    maxMp: 20,
+    ep: 50,
+    maxEp: 50,
+    atk: 5,
+    def: 5,
+    spd: 5,
+    intl: 5,
+    lck: 5
+  },
+  derived: {
+    combatPressure: 0,
+    mobility: 0,
+    threatRating: 0
+  },
+  body: {
+    limbs: {
+      leftArm: "present",
+      rightArm: "present",
+      leftLeg: "present",
+      rightLeg: "present"
+    },
+    injuries: [],
+    scars: [],
+    mutations: [],
+    speciesTraits: [],
+    bodyTags: []
+  },
+  conditions: {
+    active: [],
+    permanent: [],
+    vulnerabilities: [],
+    immunities: []
+  },
+  appearance: {
+    visibleTraits: [],
+    outfitSummary: "",
+    silhouetteTags: []
+  },
+  locationRef: "",
+  sceneRef: ""
+}
+
+Purpose:
+- level matters
+- stats matter
+- missing limbs matter
+- mutations matter
+- sunlight weakness matters
+- outfit and visible form matter
+
+Hook ownership:
+- Input: light reads, some intent-based updates
+- Context: read only
+- Output: major updates
+
+
+3) build
+--------
+The player’s playstyle identity.
+
+build: {
+  originTags: [],
+  combatTags: [],
+  methodTags: [],
+  resourceTags: [],
+  defenseTags: [],
+  specializationTags: [],
+  temperamentTags: [],
+  styleTags: [],
+  archetypeSummary: [],
+  masteryNotes: [],
+  matchupProfile: {
+    strongAgainst: [],
+    weakAgainst: [],
+    unfamiliarAgainst: []
+  }
+}
+
+Purpose:
+- replaces rigid class systems
+- stores what kind of fighter the player is
+- stores what they are good at
+- stores what they are not built for
+- helps narrate growth and matchups
+
+Hook ownership:
+- Input: infer/update from training and action intent
+- Output: confirm and evolve
+- Context: summarize
+
+
+4) abilities
+------------
+All skills, talents, and passives.
+
+abilities: {
+  byId: {
+    /* abilityId: { ... } */
+  },
+  indexes: {
+    byName: {},
+    byKey: {},
+    byType: {
+      skills: [],
+      talents: [],
+      passives: []
+    }
+  },
+  pendingDiscovery: [],
+  pendingRevision: []
+}
+
+Each ability record:
+
+{
+  id: "",
+  name: "",
+  type: "skill",             // skill | talent | passive
+  subtype: "",
+  level: 1,
+  xp: 0,
+  xpToNext: 10,
+  keys: [],
+  origin: {
+    sourceContext: "",
+    trainingIntent: "",
+    initialObservedUse: "",
+    intendedFunction: ""
+  },
+  function: {
+    primaryUse: "",
+    targetProfile: [],
+    effects: [],
+    costs: {},
+    requirements: [],
+    limitations: []
+  },
+  progression: {
+    currentBehavior: "",
+    milestoneEffects: [],
+    discoveredApplications: [],
+    failureModes: []
+  },
+  tags: [],
+  status: {
+    stableMeaning: false,
+    needsClarification: false
+  }
+}
+
+Purpose:
+- fixes the “name is generic, meaning is not” problem
+- ensures abilities are not defined by title alone
+
+Hook ownership:
+- Input: candidate creation, training detection
+- Output: confirmation, growth, revision
+- Context: compact summary of relevant abilities only
+
+
+5) items
+--------
+All real possessions, equipment, and currency.
+
+items: {
+  byId: {
+    /* itemId: { ... } */
+  },
+  ownership: {
+    player: [],
+    storage: {},
+    actors: {}
+  },
+  equipment: {
+    mainHand: null,
+    offHand: null,
+    head: null,
+    body: null,
+    hands: null,
+    legs: null,
+    feet: null,
+    accessory1: null,
+    accessory2: null
+  },
+  currency: {
+    byType: {
+      copper: 0,
+      silver: 0,
+      gold: 0
+    }
+  },
+  pendingNormalization: []
+}
+
+Each item record:
+
+{
+  id: "",
+  displayName: "",
+  baseType: "",
+  descriptors: [],
+  materialTags: [],
+  quality: "",
+  condition: {
+    durability: 100,
+    stateTags: []
+  },
+  slot: "",
+  stackable: false,
+  quantity: 1,
+  stats: {},
+  ownership: {
+    holder: "player",
+    visibility: "packed"      // equipped | carried | packed | stored
+  },
+  notes: {
+    sourceContext: "",
+    observedChanges: []
+  }
+}
+
+Purpose:
+- remembers vague item acquisition as coherent real items
+- tracks clothes damage, weapon breakage, potion use, gifts, and currency
+
+Hook ownership:
+- Input: explicit inventory commands and intent
+- Output: add/remove/change from story consequences
+- Context: visible carry/equipment summary only
+
+
+6) actors
+---------
+Important NPCs, enemies, named creatures, and rank-bearing humans.
+
+actors: {
+  byId: {
+    /* actorId: { ... } */
+  },
+  localIds: [],
+  pendingGeneration: []
+}
+
+Each actor record:
+
+{
+  id: "",
+  name: "",
+  category: "humanoid",       // humanoid | beast | monster | undead | etc.
+  roleTags: [],
+  rankTags: [],
+  factionRefs: [],
+  levelProfile: {
+    resolvedLevel: 1,
+    bandMin: 1,
+    bandMax: 5
+  },
+  stats: {},
+  buildTags: [],
+  abilities: [],
+  equipment: [],
+  relationshipToPlayer: 0,
+  knownState: {
+    alive: true,
+    injured: [],
+    mood: "",
+    locationRef: ""
+  },
+  importance: {
+    persistent: false,
+    major: false
+  }
+}
+
+Purpose:
+- makes titles and roles mechanically meaningful
+- supports stable profiles for important actors
+
+Hook ownership:
+- Output: generate or revise
+- Context: summarize only local relevant actors
+
+
+7) world
+--------
+Locations, buildings, factions, routes, and scene anchors.
+
+world: {
+  currentLocationId: "",
+  currentEntityId: "",
+  locations: {},
+  entities: {},
+  factions: {},
+  routes: {},
+  difficultyBaselines: {},
+  pendingMutations: []
+}
+
+locations: {
+  "parada": {
+    id: "parada",
+    type: "town",
+    identity: {
+      name: "Parada",
+      region: "",
+      districtRefs: [],
+      baselineTier: 1,
+      summary: ""
+    },
+    mutable: {
+      activeThreats: [],
+      economyState: "",
+      recentEvents: []
+    },
+    links: {
+      routeRefs: [],
+      factionRefs: []
+    }
+  }
+}
+
+entities: {
+  "ashglass_bar": {
+    id: "ashglass_bar",
+    type: "building",
+    parentLocation: "parada",
+    identity: {
+      name: "",
+      district: "",
+      sideOfTown: "",
+      materials: [],
+      ownershipRefs: [],
+      purpose: "",
+      atmosphere: [],
+      layout: {
+        floors: 0,
+        roomRefs: [],
+        exits: []
+      }
+    },
+    mutable: {
+      structural: 100,
+      conditionTags: [],
+      currentOccupants: [],
+      recentChanges: []
+    },
+    links: {
+      ownerRefs: [],
+      nearbyRefs: [],
+      factionRefs: []
+    }
+  }
+}
+
+Purpose:
+- buildings keep damage
+- towns remember districts
+- ownership persists
+- materials/layout/occupants persist
+- worldbuilding stops dissolving
+
+Hook ownership:
+- Output: world mutations
+- Context: current-scene extraction
+- Input: direct interaction hints only
+
+
+8) time
+-------
+Stable world time and route memory.
+
+time: {
+  current: {
+    day: 1,
+    hour: 8,
+    minute: 0,
+    season: "",
+    weather: ""
+  },
+  elapsed: {
+    totalHours: 0
+  },
+  timeline: {
+    recentEvents: []
+  },
+  routes: {
+    knownTravelTimes: {}
+  },
+  pendingAdvance: null,
+  contradictionFlags: []
+}
+
+Purpose:
+- stores current time
+- stores elapsed time
+- tracks when things happened
+- preserves route durations
+- flags contradictions
+
+Hook ownership:
+- Input: explicit travel/rest intent
+- Output: actual advancement
+- Context: inject short time truth
+
+
+9) reputation
+-------------
+Structured social memory.
+
+reputation: {
+  global: {
+    notoriety: 0,
+    prestige: 0,
+    fear: 0
+  },
+  byFaction: {},
+  byLocation: {},
+  byActor: {},
+  rumorTitles: [],
+  recentChanges: []
+}
+
+Purpose:
+- local fame and infamy
+- faction trust/distrust
+- specific NPC opinions
+- persistent rumor titles and labels
+
+Hook ownership:
+- Output
+- Context summary when relevant
+
+
+10) quests
+----------
+Centralized quest memory.
+
+quests: {
+  active: [],
+  archived: [],
+  tracking: {
+    primaryQuestId: null
+  }
+}
+
+Each quest record:
+
+{
+  id: "",
+  giverRef: "",
+  title: "",
+  objective: "",
+  locationRefs: [],
+  rewardSummary: "",
+  acceptedAt: {
+    day: 0,
+    hour: 0
+  },
+  status: "active"
+}
+
+Purpose:
+- one clean quest log
+- avoids quest-card clutter
+
+Hook ownership:
+- Output primarily
+- Context summary for active quest only
+
+
+11) pending
+-----------
+Short-lived per-turn or not-yet-finalized state.
+
+pending: {
+  inputIntent: null,
+  outputCandidates: [],
+  unresolvedConsequences: [],
+  pendingPrompts: [],
+  pendingSceneClarifications: [],
+  pendingCardUpdates: []
+}
+
+Purpose:
+- freeform parsing can stay broad without immediately becoming canon
+
+Hook ownership:
+- Input
+- Output
+- cleared by TurnEngine
+
+
+12) cards
+---------
+Story Card sync layer.
+
+cards: {
+  byEntityId: {},
+  byCardId: {},
+  dirtyCardIds: [],
+  schemaVersion: 1,
+  lastSyncTurn: 0
+}
+
+Each card link record:
+
+{
+  cardId: 0,
+  type: "",
+  entityId: "",
+  keys: [],
+  lastSyncedTurn: 0
+}
+
+Purpose:
+- mirrors canonical state into Story Cards
+- cards are durable long-term mirrors, not the source of truth
+
+Hook ownership:
+- Output mainly
+- Context can read index only if needed
+
+
+13) cache
+---------
+Short-lived acceleration layer.
+
+cache: {
+  scenePacket: "",
+  playerPacket: "",
+  actorPacket: "",
+  lastSceneHash: "",
+  parserHints: {},
+  localEntityIds: [],
+  localActorIds: []
+}
+
+Purpose:
+- keeps runtime fast
+- avoids recomputing the whole world every turn
+- invalidated when major scene mutation occurs
+
+Hook ownership:
+- Context mainly
+- Output invalidates
+
+
+14) logs
+--------
+Short rolling debug history.
+
+logs: {
+  recentEvents: [],
+  recentParses: [],
+  recentErrors: []
+}
+
+Purpose:
+- debugging only
+- keep short
+- do not store giant prose archives
+
+
+Small-Context Operating Rules
+-----------------------------
+1. The script must work without large always-on memory blocks.
+2. Context injection must be adaptive:
+   - tiny mode: bare minimum
+   - normal mode: modest
+   - wide mode: richer
+3. Inject only current scene and relevant truth.
+4. Use canonical state and Story Cards for persistence, not giant repeated dumps.
+5. When context is tight, prioritize:
+   a) current scene truth
+   b) player visible condition/equipment
+   c) immediate danger/time truth
+   d) active quest
+   e) richer atmosphere/details
+
+Implementation Notes
+--------------------
+- Keep code and runtime efficient.
+- Avoid full-world rebuilds every turn.
+- Use dirty queues.
+- Use local scene focus.
+- Keep per-turn parsing bounded.
+- Keep Story Card syncing selective.
+
+Summary
+-------
+This schema is ready for:
+- level/build separation
+- skills/talents/passives
+- injuries and mutations
+- world persistence
+- building damage
+- structured inventory
+- currency
+- reputation
+- quests
+- time/travel coherence
+- named NPC competency
+- outlier builds
+
+Next recommended step:
+Create a hook-by-hook implementation contract for:
+- exactly what Input reads/writes
+- exactly what Context injects in tiny/normal/wide mode
+- exactly what Output validates and saves
+
+
+AIDRPG Hook-by-Hook Implementation Contract
+AI Dungeon-specific design reference
+
+Version: Draft 1
+Purpose: Define exactly what each AI Dungeon script hook is responsible for, what it is allowed to read/write, how data moves between hooks, and how the system should behave under small or large context budgets.
+
+====================================================================
+1) PRIMARY GOAL
+====================================================================
+
+This contract exists to keep the project AI Dungeon-native.
+
+The system must:
+- work inside AI Dungeon's Library / Input / Context / Output scripting model
+- avoid unsupported hook behavior
+- keep canonical truth in state.aidrpg
+- use Story Cards as persistent mirrors and references, not as the only source of current truth
+- degrade gracefully for small-context users
+- remain freeform at the surface while structured underneath
+
+The system must not:
+- depend on one exact phrasing for any important action
+- treat raw prose as final canon without validation
+- flood Plot Essentials or context packets with giant blocks of text
+- re-scan the entire world every turn if only the local scene changed
+- let newly created card text be the only thing preserving important facts
+
+====================================================================
+2) HIGH-LEVEL TURN FLOW
+====================================================================
+
+The overall intended turn pipeline is:
+
+1. Input hook
+   - read raw player input
+   - detect commands and natural-language intent
+   - create structured candidate intent
+   - apply only safe pre-resolution changes
+   - store pending state for later hooks
+
+2. Context hook
+   - inspect current canonical state
+   - build a compact current-scene truth packet
+   - build compact always-relevant player/world packet
+   - build optional narrative rule packet
+   - inject only the minimum needed for this turn
+
+3. Output hook
+   - inspect AI output
+   - extract structured or inferred consequence candidates
+   - validate consequence candidates against canonical state
+   - apply canonical updates to player/world/actors/items/abilities/time/reputation/quests
+   - queue and perform Story Card sync for changed important entities
+
+4. Next turn
+   - Context reflects the updated truth immediately from state
+   - Story Cards help with long-term memory and cross-scene reactivation
+
+Truth order:
+1. state.aidrpg
+2. current Context packets
+3. Story Card mirrors
+4. Plot Essentials summaries
+
+====================================================================
+3) SHARED RULES FOR ALL HOOKS
+====================================================================
+
+Every hook must:
+- call CoreState.init() or equivalent before doing work
+- identify the current hook in state.aidrpg.meta.currentHook
+- operate only on canonical state and short-lived pending/cache objects
+- avoid large full-world scans unless explicitly required
+- respect dirty queues and local-scene indexes
+- keep per-hook work small enough for AI Dungeon's runtime limits
+
+Every hook must avoid:
+- writing giant prose logs into state
+- storing full story history in state
+- rebuilding every Story Card every turn
+- making final canon changes without validation
+
+All important writes should set dirty markers.
+
+====================================================================
+4) INPUT HOOK CONTRACT
+====================================================================
+
+Role of Input:
+Interpret what the player is trying to do.
+
+Input is the hook for intent, commands, pre-action setup, and safe state preparation.
+It should not be the final judge of major consequences.
+
+--------------------------------------------------
+4.1 Input may READ
+--------------------------------------------------
+
+Input may read:
+- state.aidrpg.meta
+- state.aidrpg.player
+- state.aidrpg.build
+- state.aidrpg.abilities
+- state.aidrpg.items
+- state.aidrpg.world.currentLocationId / currentEntityId
+- state.aidrpg.time
+- state.aidrpg.quests.active
+- local actor/entity indexes if needed
+
+Input should only read nearby/local world context unless a command explicitly requests a broad lookup.
+
+--------------------------------------------------
+4.2 Input may WRITE
+--------------------------------------------------
+
+Input may write:
+- state.aidrpg.pending.inputIntent
+- state.aidrpg.pending.pendingPrompts
+- state.aidrpg.pending.pendingSceneClarifications
+- safe command responses / debug flags
+- equipment intent changes if explicit and valid
+- explicit travel/rest/training declarations
+- small player-side status changes that are deterministic before narration
+
+Input should not directly finalize:
+- damage taken/dealt
+- item changes gifted by the AI unless explicitly commanded and deterministic
+- building damage
+- actor generation results
+- final quest completion
+- final reputation changes
+
+--------------------------------------------------
+4.3 Input responsibilities
+--------------------------------------------------
+
+A) Command handling
+Input should handle creator/player commands such as:
+- /sheet
+- /inventory
+- /time
+- /questlog
+- /debug on/off
+- /resync (creator/admin only)
+- /rebuildentity (creator/admin only)
+
+B) Intent detection
+Input should classify likely action families such as:
+- attack
+- defend
+- dodge
+- move
+- travel
+- inspect
+- talk
+- barter
+- loot
+- equip
+- unequip
+- rest
+- train
+- practice ability
+- use ability
+- consume item
+- interact with structure/object
+
+C) Intent enrichment
+Input should try to infer, where possible:
+- likely target
+- likely weapon/style
+- likely ability being used or trained
+- likely item referenced
+- likely desired destination
+- likely training focus
+- likely social/reputation context
+
+D) Confidence scoring
+Input should create candidate interpretations with confidence values.
+If multiple strong interpretations exist, Input should keep a shortlist instead of forcing one too early.
+
+E) Safe pre-resolution
+Input may safely do things like:
+- set a requested travel destination
+- set a requested rest duration
+- queue a requested equip/unequip if the item exists
+- queue a requested ability training target
+- queue a requested inspection focus
+
+--------------------------------------------------
+4.4 Input output format (internal)
+--------------------------------------------------
+
+The canonical internal result of Input should be something like:
+
+pending.inputIntent = {
+  primaryType: "attack",
+  targetHint: "bandit captain",
+  weaponHint: "spear",
+  styleHint: "pressure-fighter",
+  abilityHint: null,
+  environmentHint: "inside tavern",
+  confidence: 0.82,
+  alternates: [...],
+  tags: [...]
+}
+
+This object is not necessarily shown to the player.
+It exists for Context and Output follow-through.
+
+--------------------------------------------------
+4.5 Input must NOT do
+--------------------------------------------------
+
+Input must not:
+- assume the player's action succeeded
+- declare a wall broken because the player tried to break it
+- give XP for training before the story supports it
+- apply kill XP or combat XP
+- permanently mutate the world from intent alone
+- overwrite current scene truth from guesswork
+
+====================================================================
+5) CONTEXT HOOK CONTRACT
+====================================================================
+
+Role of Context:
+Tell the AI what is true right now in the smallest useful form.
+
+Context is the hook for immediate local truth, not the full archive.
+This is where the system compensates for Story Cards not always being present in context.
+
+--------------------------------------------------
+5.1 Context may READ
+--------------------------------------------------
+
+Context may read:
+- entire local player state summary
+- current scene/location/building state
+- local actors
+- visible equipment
+- active statuses and major body changes
+- relevant quests
+- current time/day
+- immediate hazards
+- a small number of relevant abilities or passives
+- cache values for the same scene
+- info.maxChars / info.memoryLength if available
+
+--------------------------------------------------
+5.2 Context may WRITE
+--------------------------------------------------
+
+Context may write:
+- state.aidrpg.meta.mode (tiny / normal / wide)
+- state.aidrpg.cache.scenePacket
+- state.aidrpg.cache.playerPacket
+- state.aidrpg.cache.actorPacket
+- other compact caches for reuse
+
+Context should not mutate canonical world/player state except for harmless cache/meta fields.
+
+--------------------------------------------------
+5.3 Context budgeting modes
+--------------------------------------------------
+
+The script must support adaptive injection.
+
+TINY MODE
+Use for very small available context.
+Inject only:
+- current location/entity name
+- one-line player status
+- visible gear summary
+- 1 to 3 most important local facts
+- one urgent time or quest fact if needed
+
+NORMAL MODE
+Inject:
+- current location/entity
+- compact player status
+- visible gear
+- current local actors
+- major local hazards
+- current building/room condition
+- time/day summary
+- one active quest summary if relevant
+
+WIDE MODE
+Inject all of NORMAL plus:
+- richer atmosphere
+- more linked entity detail
+- a short relationship/reputation reminder if relevant
+- an ability-specific reminder if needed
+- a short comparative-power rule if a major mismatch exists
+
+--------------------------------------------------
+5.4 Context packet priorities
+--------------------------------------------------
+
+Priority order for Context should be:
+1. current scene truth
+2. current visible player truth
+3. immediate danger / condition truth
+4. immediate time truth
+5. active quest summary if relevant
+6. nearby major NPC summaries
+7. broader atmosphere or linked-world details
+8. optional AI instruction snippets
+
+If budget is too small, lower-priority packets are dropped first.
+
+--------------------------------------------------
+5.5 Required Context packet families
+--------------------------------------------------
+
+A) Scene packet
+Must summarize:
+- where the player is
+- what kind of place it is
+- current structural/environment condition
+- immediate exits or movement options if relevant
+- immediate hazards if relevant
+- notable current objects or changes
+
+B) Player packet
+Must summarize:
+- current level if relevant
+- overall condition (healthy / injured / maimed / altered / exhausted)
+- visible equipment or carried weapon
+- visible body changes if important
+- notable passive/condition states that matter this turn
+
+C) Time packet
+Should summarize only what matters now:
+- current day / rough time
+- recent relevant elapsed-time fact if needed
+- travel/rest timing if the scene depends on it
+
+D) Quest packet
+Only if relevant to the current scene or decision.
+One-line summary preferred.
+
+E) Actor packet
+Only nearby/relevant actors.
+Must remain compact.
+
+F) Rule packet
+Short behavioral instructions for the model, used sparingly.
+Examples of things the rule packet may remind the AI:
+- maintain comparative power realism
+- preserve persistent environmental damage
+- respect current time/day
+- respect visible equipment and injuries
+- low-level abilities are limited, high-level abilities are refined
+
+--------------------------------------------------
+5.6 Context must NOT do
+--------------------------------------------------
+
+Context must not:
+- dump the whole player sheet every turn
+- dump full inventory every turn
+- dump every active Story Card into context
+- assume the AI needs every world detail all the time
+- rely on Plot Essentials for giant state serialization
+
+====================================================================
+6) OUTPUT HOOK CONTRACT
+====================================================================
+
+Role of Output:
+Interpret what happened and update canon.
+
+Output is the main mutation hook.
+This is where canonical state changes should actually be applied.
+
+--------------------------------------------------
+6.1 Output may READ
+--------------------------------------------------
+
+Output may read:
+- the raw AI output text
+- state.aidrpg.pending.inputIntent
+- player/build/abilities/items
+- current scene/world state
+- local actors
+- current time
+- active quests and local reputation context
+- cached scene data
+
+--------------------------------------------------
+6.2 Output may WRITE
+--------------------------------------------------
+
+Output may write:
+- canonical player changes
+- canonical ability growth/creation/revision
+- canonical item changes
+- canonical world/entity changes
+- canonical actor generation/revision
+- canonical time advancement
+- canonical reputation shifts
+- canonical quest progress
+- dirty queues
+- card sync queues
+- cache invalidation
+- recent logs/debug traces
+
+--------------------------------------------------
+6.3 Output responsibilities
+--------------------------------------------------
+
+A) Consequence extraction
+Output should attempt to extract:
+- structured event blocks if the system uses them
+- freeform consequence candidates if no structured block exists
+- likely injuries, victories, losses, exchanges, and environmental changes
+- likely ability training or ability discovery signals
+- likely item changes
+- likely time advancement
+- likely quest progress
+- likely reputation changes
+
+B) Validation
+Before anything becomes canon, Output must validate candidates against:
+- current known player state
+- current world/scene state
+- actor capability and matchup logic
+- time continuity
+- inventory possibility
+- existing entity identity/state
+
+C) Consequence application
+After validation, Output applies canonical changes.
+
+D) Dirty marking
+When something changes, mark the relevant dirty flags so only the changed records/cards are refreshed.
+
+E) Card sync scheduling
+Output should queue Story Card mirror updates for important changed entities.
+
+F) Cache invalidation
+If scene truth changed, invalidate cached scene packets.
+
+--------------------------------------------------
+6.4 Output result categories
+--------------------------------------------------
+
+Output must be able to distinguish at least these categories:
+
+PLAYER
+- damage / healing
+- status gain/loss
+- mutation / body change
+- equipment change
+- passive/skill/talent growth
+- XP gain
+- level-up
+
+ITEMS
+- gained
+- lost
+- consumed
+- damaged
+- transformed
+- equipped/unequipped
+- currency changed
+
+WORLD
+- structure damaged
+- structure repaired
+- ownership changed
+- occupancy changed
+- route altered
+- district/town state shifted
+
+ACTORS
+- new important actor detected
+- actor injured/killed/fled
+- actor rank/role clarified
+- actor relationship changed
+
+TIME
+- hours advanced
+- day advanced
+- travel completed
+- rest completed
+- contradiction detected
+
+QUESTS
+- accepted
+- updated
+- completed
+- failed
+- abandoned
+
+REPUTATION
+- faction shift
+- location shift
+- personal relationship shift
+- rumor label/title shift
+
+--------------------------------------------------
+6.5 Output must NOT do
+--------------------------------------------------
+
+Output must not:
+- blindly trust every vivid description as fact
+- let one ambiguous sentence permanently rewrite a major location
+- generate giant card rewrites for every tiny event
+- update everything in the world when only one local object changed
+- allow duplicate consequence application on retries
+
+====================================================================
+7) MODULE OWNERSHIP BY HOOK
+====================================================================
+
+CoreState
+- Input: init, schema safety
+- Context: read mode/cache safety
+- Output: migration safety, dirty handling
+
+TurnEngine
+- all hooks: begin/end hook bookkeeping, duplicate protection
+
+IntentParser
+- Input: primary use
+- Output: secondary use for consequence parsing
+
+PlayerSystem
+- Input: read + minor pre-action prep
+- Context: read + summary
+- Output: main mutation
+
+ProgressionSystem
+- Input: declared training targets only
+- Context: summary only when needed
+- Output: main XP and level changes
+
+BuildIdentitySystem
+- Input: infer from intent
+- Context: summarize compactly
+- Output: confirm/evolve build tags
+
+AbilitySystem
+- Input: candidate ability use/training
+- Context: inject relevant ability reminders only
+- Output: create/revise/grow abilities
+
+PassiveResistanceSystem
+- Input: declared practice exposure
+- Context: summarize relevant effects only
+- Output: main passive/resistance changes
+
+CombatResolutionSystem
+- Context: possibly influence narration rules
+- Output: main comparative outcome logic
+
+NPCGenerationSystem
+- Context: summarize already-generated important nearby actors
+- Output: generate/upgrade actor records when importance threshold is met
+
+InventorySystem
+- Input: explicit inventory/equip/store commands
+- Context: visible carry/equipment summary
+- Output: actual add/remove/change resolution
+
+WorldEntitySystem
+- Input: explicit interaction requests only
+- Context: local scene extraction
+- Output: main world mutation logic
+
+SceneStateSystem
+- Context: main packet generation
+- Output: update references / invalidate scene cache
+
+TimeTravelSystem
+- Input: declared rest/travel intent
+- Context: time packet creation
+- Output: actual time advancement and contradiction handling
+
+ReputationSystem
+- Context: inject only if relevant
+- Output: main updates
+
+QuestLogSystem
+- Context: inject current quest summary if relevant
+- Output: main updates
+
+CardSyncSystem
+- Context: index read only if needed
+- Output: schedule and perform sync of dirty important cards
+
+PlotPacketSystem
+- Context only
+
+AIInstructionSystem
+- Context only
+
+AdminDebugSystem
+- Input primarily
+- Output may append debug logs internally if enabled
+
+====================================================================
+8) STORY CARD CONTRACT
+====================================================================
+
+Story Cards are mirrors, not sole truth.
+
+--------------------------------------------------
+8.1 Card creation policy
+--------------------------------------------------
+
+Create or maintain cards for:
+- important locations
+- important buildings
+- important actors
+- important factions
+- important routes
+- meaningful abilities
+- central quest log / reputation summary if useful
+
+Do not create cards for everything.
+
+--------------------------------------------------
+8.2 Card sync policy
+--------------------------------------------------
+
+Sync cards when:
+- an important new entity becomes persistent
+- an important entity's current state changes materially
+- an ability meaning becomes stable enough to record
+- a route/travel baseline becomes meaningful
+- reputation or quest summaries need durable memory
+
+Do not sync on every tiny fluctuation.
+
+--------------------------------------------------
+8.3 Card content policy
+--------------------------------------------------
+
+Every card type should keep a consistent structure.
+
+Minimum conceptual fields:
+- identity
+- current state
+- links
+- last confirmed turn/day
+
+Ability cards must include:
+- origin context
+- intended function
+- current behavior
+- keys
+- discovered applications
+
+Building cards must include:
+- materials
+- ownership
+- layout basics
+- district/side-of-town placement
+- current condition
+
+====================================================================
+9) VALIDATION CONTRACT
+====================================================================
+
+The system must validate candidate changes before saving them.
+
+--------------------------------------------------
+9.1 Validation categories
+--------------------------------------------------
+
+A) Plausibility validation
+Does this consequence fit the known state?
+
+B) Continuity validation
+Does it contradict current time, place, body state, or known possession?
+
+C) Scale validation
+Does it fit comparative power and role/rank logic?
+
+D) Specificity validation
+Is the information concrete enough to save now, or should it stay tentative?
+
+--------------------------------------------------
+9.2 Tentative state policy
+--------------------------------------------------
+
+If a consequence is probable but not certain, the system may:
+- mark it tentative in pending/unresolved state
+- wait for reinforcement next turn
+- save a softer form of the truth
+
+Example:
+Instead of "north wall collapsed completely," it may save "north wall appears badly damaged" until reinforced.
+
+--------------------------------------------------
+9.3 Hard-save policy
+--------------------------------------------------
+
+A change should be hard-saved immediately when:
+- it is explicit and concrete
+- it affects current scene truth in a major way
+- it directly affects player state
+- it directly affects possession/equipment
+- it directly affects time progression
+- it would be harmful to lose before next turn
+
+====================================================================
+10) XP CONTRACT
+====================================================================
+
+The engine should have multiple XP lanes.
+
+A) Level XP
+Sources may include:
+- meaningful combat victories
+- meaningful survival under threat
+- kill XP
+- major discoveries
+- breakthrough moments
+- major quest/world progress
+
+B) Skill/Talent XP
+Sources may include:
+- direct use
+- direct training
+- successful difficult execution
+- creative or unusual application
+
+C) Passive XP
+Sources may include:
+- relevant environmental exposure
+- repeated relevant strain or practice
+- survival-driven adaptation
+
+D) Anti-farm policy
+Repeated easy gains should decay.
+Novel, risky, or specialized gains should remain valuable.
+
+E) Level vs mastery policy
+Level increases raw capacity.
+Skills/talents/passives create the real shape and efficiency of a build.
+A high-level but undeveloped character should be dangerous but under-realized.
+
+====================================================================
+11) BODY-STATE CONTRACT
+====================================================================
+
+The player's body must be persistent and world-reactive.
+
+The system must support long-term or permanent effects such as:
+- losing limbs
+- scars
+- mutations
+- species changes
+- vampirism-like conditions
+- blessings/curses
+- visible body changes
+- sunlight weakness or resistance evolution
+
+These changes should:
+- affect later play
+- affect narration
+- affect build possibilities
+- affect visible appearance packets
+- update automatically without manual card editing
+
+====================================================================
+12) SMALL-CONTEXT SAFETY CONTRACT
+====================================================================
+
+This system must remain playable under tight context.
+
+Rules:
+- inject only what is needed now
+- never serialize the whole state into Context
+- use scene-centric packets
+- keep long-term details in Story Cards/state, not repeated every turn
+- prioritize immediate truth over rich flavor when budget is small
+
+Recommended priority under tight context:
+1. current scene condition
+2. current visible player state
+3. current danger/urgency
+4. current time/day
+5. current quest if relevant
+6. nearby important actor summary
+7. richer world detail
+
+====================================================================
+13) PERFORMANCE CONTRACT
+====================================================================
+
+To stay safe inside AI Dungeon's runtime limits, implementation should:
+- use dirty queues
+- cache scene packets
+- cache local actor/entity ids
+- avoid whole-world rebuilds
+- limit per-turn card sync count
+- keep rolling logs short
+- keep pending candidate sets small
+
+The likely runtime risks are:
+- excessive entity scans
+- giant card sync sweeps
+- large cached prose blocks
+- repeated reparsing of the entire inventory/world
+
+====================================================================
+14) FAILURE-SAFE CONTRACT
+====================================================================
+
+If parsing is uncertain, the system should fail soft.
+
+Soft-fail options:
+- do nothing
+- save tentative low-confidence state
+- defer to next-turn reinforcement
+- preserve only the most generic safe truth
+
+The system should avoid catastrophic outcomes from noise.
+
+Examples of things that must not happen from weak evidence alone:
+- permanent player death
+- permanent world collapse
+- major item deletion
+- huge actor-level rewrites
+- impossible time jumps
+
+====================================================================
+15) MVP IMPLEMENTATION ORDER
+====================================================================
+
+Stage 1
+- CoreState
+- TurnEngine
+- IntentParser
+- PlayerSystem
+- ProgressionSystem
+- BuildIdentitySystem
+- InventorySystem
+- SceneStateSystem
+- PlotPacketSystem
+
+Stage 2
+- AbilitySystem
+- PassiveResistanceSystem
+- Ability cards
+- ability meaning preservation
+
+Stage 3
+- WorldEntitySystem
+- TimeTravelSystem
+- ReputationSystem
+- QuestLogSystem
+- card sync expansion
+
+Stage 4
+- CombatResolutionSystem
+- NPCGenerationSystem
+- matchup scaling and specialization logic
+
+Stage 5
+- selective Inner Self-style major NPC memory
+
+====================================================================
+16) FINAL SUMMARY
+====================================================================
+
+Input decides what the player is probably trying to do.
+Context tells the AI what is true right now.
+Output decides what probably happened and updates canon.
+State holds the truth.
+Cards mirror important truth for long-term memory.
+Context packets stay compact and scene-focused.
+The system remains freeform on the surface but structured underneath.
+
+AIDRPG KEEP-CHANGE-DROP BORROW LEDGER
+=====================================
+
+Purpose
+-------
+This file is the full borrow/remix ledger for the planned AI Dungeon RPG framework.
+
+It answers:
+- what concepts are being kept from RPGUI, TAS, Inner Self, and Auto-Cards
+- what concepts are being changed or reinterpreted
+- what concepts are being dropped entirely
+- what brand-new systems are being added that are not being cleanly borrowed from any one source
+
+This is a design reference, not implementation code.
+
+
+BORROW POLICY
+=============
+
+The project should remix concepts and proven patterns, not blindly combine incompatible codebases.
+
+General rule:
+- reuse architecture, module ideas, and behaviors where they are strong
+- rewrite the actual implementation into one coherent AI Dungeon-native engine
+- keep canonical truth in state.aidrpg
+- treat Story Cards as long-term mirrors, not the only source of current truth
+- keep current-scene truth immediate and context-driven
+- keep mechanics deterministic and world/narration generative where appropriate
+
+The project should not:
+- directly mash all existing scripts together
+- inherit old flaws just because the old scripts were complete
+- let one script's philosophy dominate every subsystem
+- copy user examples literally into built-in functionality
+
+
+1) RPGUI / CURRENT UPLOADED SCRIPT
+==================================
+
+Summary
+-------
+RPGUI's strongest contribution is disciplined state ownership.
+Its weakest contribution is fragile combat/event parsing from emoji-like markers and a brittle hard-death flow.
+
+KEEP
+----
+
+1. Helper/module split
+- Keep the idea that shared helpers live in Library and hook tabs remain light.
+- Utility helpers like clamp-style functions, bar renderers, and clean display helpers are worth preserving in spirit.
+
+2. Persistent state as source of truth
+- Keep the idea that HP, XP, level, death/defeat flags, progression state, and other hard mechanics live in script state.
+- Narrative should reflect mechanics, not replace them.
+
+3. Input/Output role separation
+- Keep the broad structure where Input handles commands and action setup while Output handles consequences and player-facing updates.
+
+4. Consistent player-facing sheet/HUD philosophy
+- Keep the idea that the player should have a stable mechanical readout or summary.
+- It does not have to be the same visual format, but the principle is valuable.
+
+CHANGE
+------
+
+1. Replace emoji-based authority
+- The current system depends on markers like damage/heal/combat symbols as mechanical authority.
+- Change this into structured event parsing plus validation, with freeform fallback support.
+
+2. Replace hard death lock
+- The current sticky death lock and forced game-over handling are too brittle.
+- Change this into a more nuanced defeat/injury/incapacitation system that can represent:
+  - defeat
+  - death
+  - maiming
+  - retreat
+  - capture
+  - unconsciousness
+- Permanent death must not fire from noisy output.
+
+3. Replace Output-heavy simulation
+- RPGUI pushes too much of the game into Output.
+- Change this into a coordinated engine where:
+  - Input handles intent
+  - Context handles current truth
+  - Output validates and applies consequences
+
+4. Keep reset/recovery ideas only as tools
+- Reincarnation/reset concepts may survive as optional admin/recovery tools, not as the core design loop.
+
+DROP
+----
+
+1. Drop combat-by-emoji counting
+- Do not preserve the current core combat parser.
+
+2. Drop hard dependence on fake-HUD stripping
+- Cleanup helpers may remain, but this should not be a primary anti-corruption strategy.
+
+3. Drop the current context-stop behavior
+- The current Context script behavior is not part of the new design.
+
+BOTTOM LINE
+-----------
+Keep RPGUI's state discipline and helper separation.
+Drop its fragile symbol-authority combat model.
+Rebuild its hook responsibilities into a larger AI Dungeon-native architecture.
+
+
+2) TAS
+======
+
+Summary
+-------
+TAS is the strongest source for freeform action interpretation, emergent growth concepts, and editable ability/inventory structures.
+Its biggest flaw is letting broad prose heuristics act too often as final authority.
+
+KEEP
+----
+
+1. Freeform player input philosophy
+- Keep the idea that the player should be able to write naturally.
+- The system should infer intent from many phrasings instead of requiring menu-like commands.
+
+2. Structured data for talents, skills, and inventory
+- Keep the principle that learned abilities and inventory entries are stored as structured records, not vague prose alone.
+
+3. Emergent learning concept
+- Keep the idea that repeated use, repeated practice, and repeated thematic behavior can produce a real learned ability.
+- The engine should notice recurring patterns and elevate them into stable records.
+
+4. Activity families
+- Keep broad action families like:
+  - attack
+  - defend
+  - dodge
+  - scout
+  - rest
+  - consume
+  - train
+  - practice
+- These are useful for routing intent and progression.
+
+5. Build-shaping identity inputs
+- Keep the idea that player identity can be shaped by origin, species, style, race-like traits, world role, and other long-term modifiers.
+
+CHANGE
+------
+
+1. Prose heuristics become proposal engines
+- Change TAS's broad prose parsing so it proposes likely intent/effect rather than deciding final canon by itself.
+- Freeform interpretation stays broad.
+- Canon becomes structured only after validation.
+
+2. Replace fixed race/class framing with tag stacks
+- Change rigid or semi-rigid class/race assumptions into layered tags:
+  - origin
+  - combat
+  - method
+  - resource
+  - defense
+  - specialization
+  - temperament
+  - style
+  - archetype summary
+- This preserves freedom while keeping the build legible.
+
+3. Split progression into multiple lanes
+- Change the progression model into separate lanes:
+  - level XP
+  - skill XP
+  - talent XP
+  - passive XP
+  - reputation/world progression
+- Level should be a major raw-capacity axis, not the sole measure of mastery.
+
+4. Add first-class passives
+- TAS had skills/talents; the new framework must explicitly support passives.
+- This includes:
+  - resistances
+  - body adaptations
+  - martial styles
+  - magical tolerances
+  - regeneration-style growth
+  - anti-magic passives
+  - condition-linked evolution
+
+5. Add outlier-growth support
+- The new framework must handle things TAS did not formalize well:
+  - absorption builds
+  - stat theft
+  - body corruption
+  - vampirism
+  - mutation
+  - body-plan changes
+  - species shifts
+  - nonstandard stat ceilings
+
+6. Make kill XP real but bounded
+- Add kill XP as one valid source of level XP.
+- Balance it with:
+  - threat scaling
+  - novelty weighting
+  - anti-farm decay
+  - competition with training/discovery XP
+- The goal is to preserve some video-game feeling without letting grind dominate the system.
+
+DROP
+----
+
+1. Drop prose-only combat authority
+- The AI's wording alone should not decide exact mechanical truth.
+
+2. Drop weak item-state handling
+- Inventory must become condition-aware, reliable, equipment-aware, and mutation-aware.
+
+3. Drop the assumption that level means practiced competence
+- Level should mean raw capacity and growth, not automatic skill expression.
+
+BOTTOM LINE
+-----------
+Keep TAS's freeform spirit, emergent learning ambition, and structured ability records.
+Replace its prose-only authority with validation-driven canon.
+Expand it with passives, outlier growth, and better inventory/world integration.
+
+
+3) INNER SELF
+=============
+
+Summary
+-------
+Inner Self is the strongest source for segmented memory, entity-specific persistence, and important-NPC internal state.
+It is not the right central model for combat or progression, but it is highly valuable for long-term character/world memory.
+
+KEEP
+----
+
+1. Segmented memory by entity
+- Keep the idea that important NPCs, factions, buildings, and other major entities should not all blur together in one giant memory pool.
+
+2. Major-NPC mind model
+- Keep the idea that important recurring NPCs can preserve:
+  - goals
+  - grudges
+  - attitudes
+  - priorities
+  - secrets
+  - plans
+- This should be selective, not universal.
+
+3. Name/entity activation logic
+- Keep the idea that important entities can become active when relevant rather than remaining equally active all the time.
+
+4. Configuration-minded design
+- Keep the general principle that a script this large should have explicit creator-facing settings and internal organization.
+
+5. Merged world-building mindset
+- Keep the idea that memory, entity persistence, and world-building should be part of the same engine, not isolated add-ons.
+
+CHANGE
+------
+
+1. Use selective NPC minds only
+- Major named actors: yes.
+- Every random peasant, extra, or passing traveler: no.
+- The system must stay performant and AI Dungeon-safe.
+
+2. Keep minds subordinate to canonical world truth
+- An NPC's mind may store beliefs, attitudes, and plans.
+- It must not override hard truth such as:
+  - whether a building is broken
+  - whether the player lost an arm
+  - whether a town burned
+  - whether a route takes two days
+- Canonical world/player state still wins.
+
+3. Integrate NPC minds with reputation/time/world systems
+- NPC memory should be grounded in the same world-state engine, not become disconnected improvisational canon.
+
+DROP
+----
+
+1. Drop Inner Self as the main mechanical engine
+- It should inform memory systems, not replace the stat/combat/progression framework.
+
+2. Drop universal “mind simulation”
+- The system should not waste resources simulating internal worlds for everyone.
+
+BOTTOM LINE
+-----------
+Keep Inner Self for segmented memory, important-NPC persistence, and entity-specific long-term continuity.
+Do not use it as the core combat or stat model.
+
+
+4) AUTO-CARDS
+=============
+
+Summary
+-------
+Auto-Cards is the strongest source for entity detection, automatic card drafting, and long-term memory compression/summarization.
+Its biggest weakness is that title-driven generation can flatten meaning or produce overly generic records.
+
+KEEP
+----
+
+1. Named-entity detection
+- Keep the idea that the script can detect important named things from story context and decide they deserve records.
+
+2. Card generation and later revision
+- Keep the idea that creation and maintenance are separate:
+  - detect candidate
+  - generate initial record
+  - revise/update later as more becomes known
+
+3. Memory compression/summarization
+- Keep the concept that long-running entity histories can be compressed into more stable summaries.
+
+4. Prompt-driven card drafting
+- Keep the idea that the AI can help generate structured summaries from current context.
+
+5. Optional manual nudges
+- Keep room for creator/admin/player nudges to force or repair entity records if needed.
+
+CHANGE
+------
+
+1. Change prose blobs into typed record mirrors
+- Card content should follow typed families such as:
+  - location
+  - building
+  - actor
+  - ability
+  - route
+  - faction
+  - reputation
+  - quest_log
+- Each should preserve identity, current state, links, and timestamps.
+
+2. Change title-only generation into context-plus-purpose generation
+- Especially for abilities, items, and buildings:
+  - the title alone must never define meaning
+  - context, origin, purpose, and observed behavior must all matter
+
+3. Change cooldown-only generation into priority-driven persistence
+- If something materially changes now, canonical state updates now.
+- Card refinement can happen afterward.
+- Important changes should not be delayed just because a timer has not expired.
+
+4. Change world detail generation into interlinked world-state generation
+- Buildings should track:
+  - materials
+  - ownership
+  - district/side-of-town
+  - layout basics
+  - atmosphere
+  - clientele/use
+  - current damage/occupation state
+- Locations should track linked districts/routes/factions.
+- Actors should track role/rank/relationships/current condition.
+
+DROP
+----
+
+1. Drop Story Cards as the only source of current scene truth
+- Current room/building state must be available immediately through Context packets from canonical state.
+
+2. Drop title-driven flattening
+- This is what causes generic reinterpretation of items, abilities, and places.
+
+BOTTOM LINE
+-----------
+Keep Auto-Cards for detection, drafting, updating, and memory compression.
+Transform its output into typed card mirrors backed by canonical state.
+
+
+5) BRAND-NEW SYSTEMS NOT CLEANLY BORROWED FROM ONE SOURCE
+=========================================================
+
+These are not just lifted from one script.
+They are necessary additions for the new framework.
+
+A. Level vs Build separation
+- Level = raw capacity, durability, growth ceiling, stat pressure
+- Build = practiced expression, specialization, habits, and effective use
+- A high-level undeveloped character is dangerous but under-realized
+- A lower-level specialist can still outperform in favorable matchups
+
+B. Multi-lane XP system
+- level XP
+- skill XP
+- talent XP
+- passive XP
+- discovery/breakthrough XP
+- bounded kill XP
+- world/reputation progression separately tracked
+
+C. Passives as a first-class category
+- always-on or conditionally-on growth
+- resistances
+- martial styles
+- body hardening
+- magical tolerances
+- corruption/curses/blessings
+- environmental adaptation
+
+D. Body-state persistence
+- lost limbs
+- scars
+- mutations
+- outfit changes
+- new visible traits
+- species/condition changes
+- sunlight weakness evolution
+- recovery/adaptation over time
+
+E. Stable time and route memory
+- current day/time
+- elapsed time
+- route duration
+- travel consistency
+- contradiction detection
+
+F. Role/rank-based NPC competency generation
+- merchant means something
+- A-rank adventurer means something
+- guildmaster means something
+- named or important actors get stable mechanical profiles
+
+G. World entities with immutable vs mutable state
+- identity (what it is)
+- mutable state (what changed)
+- links (who owns it / where it is / what it connects to)
+
+H. Outlier-build support
+- absorption
+- stat theft
+- corruption
+- vampirism
+- mutation
+- species shifts
+- unusual stat overshoot
+- condition-driven evolution
+
+
+6) FINAL KEEP-CHANGE-DROP SUMMARY
+=================================
+
+KEEP WHOLESALE IN PRINCIPLE
+---------------------------
+- RPGUI's state-first truth discipline
+- RPGUI's helper-library split
+- TAS's freeform player-input philosophy
+- TAS's emergent learning ambition
+- TAS's structured ability/inventory mindset
+- Inner Self's segmented entity memory
+- Inner Self's major-NPC persistence model
+- Auto-Cards' entity detection, drafting, and memory compression
+
+KEEP BUT HEAVILY REINTERPRET
+----------------------------
+- TAS prose parsing -> proposal engine
+- TAS class/race ideas -> layered build tags
+- Auto-Cards generation -> typed structured card mirrors
+- Inner Self NPC brains -> selective major-NPC memory subsystem
+- RPGUI reset/reincarnation concepts -> optional admin/recovery tools
+
+DROP OR REPLACE ENTIRELY
+------------------------
+- RPGUI emoji combat authority
+- RPGUI hard death lock
+- TAS prose-only combat/damage authority
+- TAS weak inventory/item-state handling
+- title-only ability meaning
+- title-only item/world interpretation
+- cards as sole source of current scene truth
+- universal NPC mind simulation
+
+THE RESULT
+----------
+The new framework should become:
+
+- RPGUI's state discipline
+- plus TAS's freeform action-reading and growth ambition
+- plus Inner Self's segmented long-term memory
+- plus Auto-Cards' entity detection and card maintenance
+
+all rebuilt around:
+
+- typed canonical state
+- typed ability meaning
+- typed item state
+- typed world entities
+- multi-lane progression
+- build vs level separation
+- AI Dungeon-safe hooks
+- compact adaptive context packets
+- Story Cards as mirrors rather than sole truth
+
+POST-MERGE CORRECTIONS / LOCKED PREFERENCES
+=========================================
+
+Purpose
+-------
+This section exists to record final corrections and locked preferences that should override or clarify the current master reference where needed.
+
+These notes are considered authoritative additions to the merged planning file.
+
+1) CONTEXT-BUDGET MODE SELECTION
+--------------------------------
+The context-budget mode should be something the player or scenario author can choose at the start.
+
+It should not be treated as purely automatic.
+
+The system may still support adaptive fallback behavior when context becomes too tight, but the intended default should be:
+- the player/creator selects a preferred mode at scenario start
+- the engine respects that preference whenever possible
+- only when necessary should the system temporarily degrade to a smaller packet mode
+
+Recommended modes:
+- tiny
+- normal
+- wide
+
+Recommended behavior:
+- store the preferred mode in canonical state
+- let the scenario creator define a default mode
+- allow the player or creator to change it later with a command if desired
+
+2) CONTEXT-BUDGET FALLBACK RULE
+-------------------------------
+Even if a preferred mode is selected, the script should still protect small-context users.
+
+So the actual rule should be:
+- preferred mode is user/creator-selected
+- effective mode may fall back if available context is too tight
+- fallback should preserve the highest-priority truth first
+
+Priority order remains:
+1. current scene truth
+2. current visible player truth
+3. immediate danger / condition truth
+4. immediate time truth
+5. active quest summary if relevant
+6. nearby major NPC summaries
+7. broader atmosphere or linked-world details
+8. optional AI instruction snippets
+
+3) MERGED-MASTER STATUS
+-----------------------
+After appending this section, the master reference should be considered complete enough for blueprint/foundation work.
+
+That means the planning layer now includes:
+- requirements and design intent
+- module blueprint
+- state schema reference
+- hook-by-hook implementation contract
+- keep/change/drop borrow ledger
+- locked post-merge corrections
+
+4) SOURCE-SCRIPT REUSE WORKFLOW
+-------------------------------
+The keep/change/drop ledger is enough to preserve the design goal and reuse plan at the blueprint level.
+
+That means the source scripts do NOT need to be re-uploaded repeatedly just to preserve intent.
+
+However:
+- if exact implementation behavior from a source script needs to be re-checked later
+- or if we want to lift a specific pattern, prompt, parser idea, or utility structure with precision
+- then having the original script text available again is still useful
+
+Recommended workflow:
+- use the master file as the main planning reference
+- use the borrow ledger as the standing record of what is being reused, changed, or dropped
+- only revisit the original scripts when exact source behavior must be checked
+
+In short:
+- for planning: the master file is enough
+- for exact implementation checks: source access may still be helpful
+
+5) EFFICIENCY RULE GOING FORWARD
+--------------------------------
+To keep the project efficient:
+
+- do NOT restart planning from the raw scripts each time
+- use the merged master file as the authoritative design reference
+- only consult the original scripts when exact wording, exact logic, or exact behavior needs verification
+- treat the borrow ledger as the standing statement of intent for remixing source ideas
+
+6) FINAL STATUS
+---------------
+This correction section should be appended to the current master file so that the planning reference is considered complete for the next stage:
+implementation scaffolding and build-out.
+
+
+END OF FILE
+

@@ -1,0 +1,2984 @@
+AIDRPG Design Bible — Chunk 29: Quest System, Quest Lifecycle, Contracts, Deadlines, Rewards, Objective Validation, and Quest Archive
+
+1. Purpose of this chunk
+
+Chunk 29 defines how AIDRPG handles quests, objectives, contracts, bounties, job requests, task chains, deadlines, quest rewards, failure states, and quest archives.
+
+Earlier chunks defined:
+
+* player scaling
+* stats and resources
+* XP and progression
+* enemy scaling
+* combat
+* abilities
+* absorption
+* crafting
+* economy
+* labor and project costs
+
+Chunk 29 answers:
+
+How does a quest become real?
+
+How does AIDRPG know what the player is trying to do?
+
+How are quest objectives tracked?
+
+How are partial objectives handled?
+
+How are quest rewards validated?
+
+How do contracts differ from quests?
+
+How do deadlines work?
+
+How does the system stop duplicate quest rewards?
+
+How does it prevent fake quest completion?
+
+How does it archive completed, failed, abandoned, or obsolete quests?
+
+How does freeform AI Dungeon narration update quests without scrambling them?
+
+The central rule is:
+
+A quest is a structured promise, goal, problem, obligation, or opportunity that must be tracked through evidence.
+
+Quests should guide gameplay without forcing the story into rigid rails.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon often creates goals naturally.
+
+The player may encounter:
+
+* “Find my missing daughter.”
+* “Kill the wolves near the mill.”
+* “Deliver this letter.”
+* “Investigate the murdered merchant.”
+* “Repair the village wall.”
+* “Gather ten slime cores.”
+* “Escort the caravan.”
+* “Pay back your debt by next week.”
+* “Defeat Frostmaw.”
+* “Explore the ruined tower.”
+* “Craft a cure.”
+* “Build a forge.”
+* “Prove the guard captain is corrupt.”
+* “Recover the stolen ring.”
+* “Keep the workers paid.”
+* “Destroy the demon seal.”
+* “Protect the town until dawn.”
+* “Join the tournament.”
+* “Prepare for the dragon attack.”
+
+AIDRPG must support these.
+
+But it must avoid:
+
+* accepting every vague sentence as a quest
+* duplicating the same quest under different names
+* marking quests complete without proof
+* granting rewards twice
+* losing quest progress
+* inventing quest objectives from Story Cards
+* letting rumors become confirmed objectives
+* confusing contracts, quests, cases, domain projects, and personal goals
+* failing to track deadlines
+* leaving completed quests active forever
+* letting AI Dungeon randomly say “quest complete” when the state does not support it
+
+The system should track quests clearly but compactly.
+
+⸻
+
+3. Quest ownership boundaries
+
+QuestReducer owns
+
+* quest creation
+* quest status
+* quest objectives
+* quest progress
+* quest lifecycle
+* quest giver
+* quest target
+* quest location
+* quest reward promise
+* quest reward eligibility
+* quest completion validation
+* quest failure validation
+* quest abandonment
+* quest archive
+* quest links to actors, places, items, cases, contracts, and domain projects
+
+ContractReducer owns
+
+* formal obligations
+* payment terms
+* deadlines
+* penalties
+* deposits
+* escrow
+* service terms
+* labor agreements
+* bounty terms
+* commissions
+* delivery contracts
+
+InvestigationReducer owns
+
+* cases
+* clues
+* evidence
+* suspects
+* witness knowledge
+* solved-case status
+
+DomainReducer owns
+
+* domain projects
+* base/holding objectives
+* construction progress
+* domain blockers
+* defense projects
+
+EconomyReducer owns
+
+* payment
+* rewards
+* fees
+* bounty payout
+* debt
+* deposits
+* contract penalties
+
+InventoryReducer owns
+
+* quest items
+* item custody
+* item delivery
+* material counts
+* proof items
+* reward items
+
+ProgressionReducer owns
+
+* XP rewards
+* stat/domain XP
+* anti-farm reward scaling
+* duplicate reward prevention
+
+ReputationReducer owns
+
+* public effects
+* titles
+* trust
+* faction standing
+* rumor spread
+
+QuestReducer tracks the quest.
+
+Other reducers commit their own state changes.
+
+⸻
+
+4. Quest types
+
+AIDRPG should classify quests.
+
+Personal goal
+
+A player-created goal.
+
+Example:
+
+“I want to become a master swordsman.”
+
+Usually no formal reward unless the story creates one.
+
+Request quest
+
+An NPC asks the player for help.
+
+Example:
+
+“Please find my missing son.”
+
+Contract quest
+
+A formal agreement with payment, deadline, and terms.
+
+Example:
+
+“Escort the caravan to Greyford for 50 gold.”
+
+Bounty
+
+A reward for capturing, killing, proving, or recovering something.
+
+Example:
+
+“Bring proof that Frostmaw is dead.”
+
+Investigation case
+
+A mystery requiring clues and evidence.
+
+Example:
+
+“Find who murdered the merchant.”
+
+Tracked mainly by InvestigationReducer but may have quest wrapper.
+
+Delivery quest
+
+Move item/message/person to destination.
+
+Example:
+
+“Deliver this sealed letter to Captain Mora.”
+
+Collection quest
+
+Gather specified materials/items.
+
+Example:
+
+“Bring 10 slime cores.”
+
+Kill/defeat quest
+
+Defeat, rout, capture, or neutralize target.
+
+Example:
+
+“Clear the wolves from the mill.”
+
+Escort/protection quest
+
+Keep person/group/object safe.
+
+Example:
+
+“Escort the caravan.”
+
+Crafting quest
+
+Make, repair, upgrade, or obtain an item.
+
+Example:
+
+“Craft a cure for the plague.”
+
+Domain quest
+
+Improve, defend, repair, or manage a base/holding.
+
+Example:
+
+“Repair the north wall before winter.”
+
+Exploration quest
+
+Find, map, scout, or enter a location.
+
+Example:
+
+“Explore the ruined tower.”
+
+Social quest
+
+Persuade, negotiate, prove, expose, reconcile, or gain trust.
+
+Example:
+
+“Convince the council to fund the defenses.”
+
+Survival quest
+
+Survive a condition or deadline.
+
+Example:
+
+“Hold the gate until dawn.”
+
+Training quest
+
+Reach a skill, domain, level, or ability milestone.
+
+Example:
+
+“Stabilize Mana Slash.”
+
+Main quest / arc quest
+
+Major story objective.
+
+Example:
+
+“Stop the demon seal from breaking.”
+
+Quest type affects objectives and validation.
+
+⸻
+
+5. Quest record template
+
+Each quest should have a structured record.
+
+Quest ID:
+Title:
+Type:
+Status:
+Priority:
+Source:
+Quest Giver:
+Recipient:
+Target Actor:
+Target Item:
+Target Place:
+Related Faction:
+Related Case:
+Related Contract:
+Related Domain Project:
+Start Time:
+Deadline:
+Objectives:
+Optional Objectives:
+Known Rewards:
+Promised Rewards:
+Penalties:
+Progress Notes:
+Completion Conditions:
+Failure Conditions:
+Proof Required:
+Current Blockers:
+Last Validated Progress:
+Reward Status:
+Archive Status:
+Card Eligibility:
+Last Updated:
+
+Player-facing quest summaries should be shorter.
+
+Example:
+
+Quest: Clear the Mill Wolves
+Status: Active
+Giver: Old Bren
+Goal: Stop the wolves threatening the mill.
+Progress: 2 of 5 wolves defeated; alpha still alive.
+Reward: 15 gold promised.
+Deadline: before next market day.
+
+⸻
+
+6. Quest status states
+
+Quests should use clear statuses.
+
+Status	Meaning
+Rumored	heard about it, not accepted or confirmed
+Offered	NPC/faction offered it
+Available	known and can be accepted
+Active	player accepted or is pursuing
+In Progress	progress has been made
+Blocked	cannot progress until blocker solved
+Ready to Turn In	completion done, reward/closure pending
+Completed	quest objective resolved
+Rewarded	reward paid/applied
+Failed	failure condition occurred
+Abandoned	player dropped it
+Expired	deadline passed
+Superseded	replaced by newer quest/state
+Cancelled	giver/conditions removed it
+Archived	no longer active; stored for history
+
+Important:
+
+“Completed” and “Rewarded” are different.
+
+A quest can be completed but not yet paid.
+
+Example:
+
+Player kills the wolves.
+
+Quest is Ready to Turn In.
+
+Reward occurs when Old Bren pays or otherwise confirms reward.
+
+⸻
+
+7. Quest priority
+
+Quest priority helps ContextBuilder.
+
+Suggested priorities:
+
+Priority	Meaning
+background	personal/long-term, rarely injected
+low	optional or minor
+normal	active ordinary quest
+high	current important quest
+urgent	deadline/danger immediate
+main	major story arc
+critical	immediate survival/world-state issue
+
+Context should include:
+
+* critical quests
+* urgent deadlines
+* current location-relevant quests
+* current scene objectives
+* quests with nearby target
+* quests blocked by current action
+* active turn-in opportunities
+
+Do not inject every quest every turn.
+
+⸻
+
+8. Quest creation rules
+
+A quest may be created when:
+
+* NPC explicitly requests action
+* player accepts a task
+* official contract/bounty exists
+* story establishes a clear objective
+* player declares a personal goal
+* system/scenario starts with active quest
+* clue/case creates investigation objective
+* domain project begins
+* deadline/obligation is established
+* tutorial/system objective appears
+
+Quest should not be created from:
+
+* random flavor text
+* rumors without player interest
+* Story Card text alone
+* examples
+* debug output
+* command output
+* dream-only content
+* hypothetical plans
+* vague mood statements
+* every minor errand unless relevant
+
+Example:
+
+“The innkeeper mentions wolves near the mill.”
+
+Create:
+
+* rumor or opportunity, not active quest
+
+“The innkeeper asks you to clear the wolves and promises 15 gold.”
+
+Create:
+
+* offered quest
+
+Player says:
+
+“I accept.”
+
+Status:
+
+* active
+
+⸻
+
+9. Quest acceptance
+
+Acceptance can be explicit or implied.
+
+Explicit acceptance:
+
+* “I accept the job.”
+* “I’ll do it.”
+* signing contract
+* taking quest item
+* receiving advance payment
+* agreeing to terms
+
+Implied acceptance:
+
+* player begins pursuing objective
+* player takes delivery package
+* player leaves with escort target
+* player starts investigating at request
+* player assigns workers to domain project
+
+Do not assume acceptance from merely hearing about something.
+
+Example:
+
+NPC says:
+
+“Someone should kill the rats.”
+
+Player walks away.
+
+No active quest.
+
+Maybe rumored/available.
+
+⸻
+
+10. Quest objectives
+
+Objectives are the trackable steps of a quest.
+
+Objective template:
+
+Objective ID:
+Description:
+Status:
+Required Count:
+Current Count:
+Target:
+Location:
+Proof Required:
+Optional:
+Hidden:
+Deadline:
+Dependencies:
+Completion Evidence:
+Failure Evidence:
+Last Updated:
+
+Objective statuses:
+
+* locked
+* active
+* in progress
+* complete
+* failed
+* skipped
+* optional complete
+* invalidated
+* superseded
+
+Example:
+
+Objective: Defeat the mill wolves
+Status: in progress
+Required Count: 5
+Current Count: 2
+Target: wolves near Old Mill
+Proof Required: Old Bren sees safe mill or wolf pelts/confirmation
+
+⸻
+
+11. Objective types
+
+Common objective types:
+
+* speak to actor
+* travel to place
+* discover location
+* gather item count
+* deliver item
+* obtain proof
+* defeat target
+* capture target
+* protect target
+* survive until time
+* craft item
+* repair item
+* build project
+* investigate clue
+* prove fact
+* persuade actor
+* pay debt
+* hire workers
+* clear hazard
+* activate ritual
+* disable ritual
+* scout area
+* map route
+* rescue actor
+* escort actor
+* return to giver
+
+Each type has different validation.
+
+⸻
+
+12. Count objectives
+
+Collection and kill quests often require counts.
+
+Count objective rules:
+
+* required count must be explicit or inferred carefully
+* current count updates only from validated events
+* duplicate events do not increment twice
+* source identity matters
+* target type matters
+* quality/condition may matter
+* proof may matter
+* partial counts should persist
+
+Example:
+
+Quest requires 10 slime cores.
+
+Player has 4 validated slime cores.
+
+Output repeats “you collect another slime core.”
+
+If duplicate event:
+
+* no second count
+
+If new validated core:
+
+* count becomes 5
+
+If player has 10 but two are cracked and quest requires intact cores:
+
+* valid count may be 8
+
+⸻
+
+13. Defeat objectives
+
+Defeat does not always mean kill.
+
+Defeat objective should define acceptable resolution.
+
+Possible resolutions:
+
+* killed
+* captured
+* routed
+* banished
+* sealed
+* negotiated away
+* scared off
+* disarmed
+* neutralized
+* cured
+* exorcised
+* escaped by target but threat removed
+* proven innocent/wrong target
+
+Example:
+
+“Clear the wolves from the mill.”
+
+Acceptable:
+
+* wolves killed
+* wolves driven away
+* alpha tamed/relocated
+* food source restored so wolves leave
+
+Not automatically required:
+
+* kill every wolf
+
+Example:
+
+“Bring me Frostmaw’s head.”
+
+Requires:
+
+* specific kill/proof
+
+Quest wording matters.
+
+⸻
+
+14. Delivery objectives
+
+Delivery requires custody tracking.
+
+Delivery fields:
+
+Item:
+Sender:
+Recipient:
+Current Custody:
+Seal Condition:
+Delivery Location:
+Deadline:
+Tamper Rules:
+Reward:
+Failure Risk:
+
+Delivery validation:
+
+* item must exist
+* player or party must have custody
+* recipient must be correct
+* location must be correct or recipient reachable
+* item must not be lost/destroyed
+* seal/tamper condition checked if relevant
+* delivery output must confirm handoff
+
+Example:
+
+Player carries sealed letter.
+
+If player opens it:
+
+* quest may still continue, but tamper condition changes
+* reward/reputation may be affected
+
+If AI says recipient receives letter while player still has it across map:
+
+* reject unless magic courier/scene supports it
+
+⸻
+
+15. Escort/protection objectives
+
+Escort quests require tracking protected target state.
+
+Fields:
+
+Protected Target:
+Start Location:
+Destination:
+Route:
+Current Location:
+Health/Condition:
+Morale:
+Threats:
+Deadline:
+Allowed Losses:
+Failure Conditions:
+Completion Conditions:
+
+Escort completion requires:
+
+* target reaches destination
+* target alive/safe unless objective says otherwise
+* route or alternate accepted
+* handoff confirmed
+
+Failure examples:
+
+* target dies
+* target captured
+* player abandons target
+* deadline missed
+* target relationship collapses
+* wrong destination
+
+Partial success:
+
+* target injured but alive
+* cargo lost but people safe
+* destination reached late
+* one of several NPCs lost
+
+Quest reward should reflect outcome.
+
+⸻
+
+16. Investigation quest objectives
+
+Investigation objectives require evidence.
+
+Examples:
+
+* find clue
+* interview witness
+* compare testimony
+* prove suspect lied
+* recover evidence
+* identify culprit
+* present proof
+* solve case
+
+Important:
+
+Investigation truth should not be created by high INT alone.
+
+Evidence must exist.
+
+Quest completion requires:
+
+* enough evidence
+* correct conclusion
+* accepted authority/giver response if needed
+* optional arrest/trial resolution if part of quest
+
+If player accuses culprit without proof:
+
+* maybe social event
+* not solved-case completion
+
+InvestigationReducer owns clue/evidence truth.
+
+QuestReducer tracks quest wrapper.
+
+⸻
+
+17. Crafting quest objectives
+
+Crafting quests require item output validation.
+
+Example:
+
+“Craft a cure.”
+
+Objectives may be:
+
+1. Identify illness.
+2. Find recipe.
+3. Gather herbs.
+4. Brew cure.
+5. Test cure.
+6. Deliver/administer cure.
+
+Completion requires:
+
+* cure item exists
+* correct potency
+* delivered to correct target
+* effect works or accepted by quest terms
+
+A failed or weak potion may create partial success, complication, or quest failure.
+
+CraftingReducer and InventoryReducer own item truth.
+
+QuestReducer owns objective status.
+
+⸻
+
+18. Domain quest objectives
+
+Domain quests connect to projects.
+
+Example:
+
+“Repair the North Wall.”
+
+Objectives:
+
+* assess damage
+* gather stone/mortar
+* hire workers
+* assign foreman
+* complete wall repair project
+* inspect/confirm wall
+
+DomainReducer owns wall repair progress.
+
+LaborReducer owns workers.
+
+EconomyReducer owns wages/material purchases.
+
+QuestReducer tracks objective completion.
+
+No instant completion.
+
+⸻
+
+19. Contract quests
+
+Contracts are formalized quests with terms.
+
+A contract includes:
+
+Contract ID:
+Parties:
+Work/Obligation:
+Payment:
+Deposit:
+Deadline:
+Proof Required:
+Penalty:
+Collateral:
+Failure Terms:
+Completion Terms:
+Cancellation Terms:
+Status:
+Related Quest:
+
+Contract status:
+
+* proposed
+* negotiated
+* active
+* partially fulfilled
+* fulfilled
+* paid
+* breached
+* cancelled
+* expired
+* disputed
+* archived
+
+A quest can have a related contract.
+
+Example:
+
+Escort caravan quest has contract:
+
+* payment 50 gold
+* 10 gold deposit
+* remaining paid on arrival
+* penalty if goods lost through negligence
+
+Quest tracks goal.
+
+Contract tracks terms.
+
+⸻
+
+20. Contract acceptance
+
+Contract acceptance should require stronger evidence than informal quests.
+
+Valid acceptance:
+
+* signature
+* verbal agreement witnessed
+* taking deposit
+* receiving contract item
+* explicit “I accept”
+* magically binding oath
+* starting work after agreeing terms
+
+If terms are unclear, contract may be proposed but not active.
+
+Example:
+
+Merchant says:
+
+“I could pay someone 50 gold to escort this caravan.”
+
+This is offer, not active contract.
+
+Player says:
+
+“I accept and take the 10 gold deposit.”
+
+Contract active.
+
+Economy commits deposit.
+
+Quest active.
+
+⸻
+
+21. Deposits and advances
+
+Some quests/contracts pay upfront.
+
+Advance payment rules:
+
+* money/item is transferred immediately if validated
+* contract obligation is created
+* failure may require repayment
+* advance cannot be claimed twice
+* deposit may be escrow or retained
+* reputation/legal consequences if player runs away
+
+Example:
+
+Player receives 10 gold advance.
+
+If quest fails:
+
+* may owe refund
+* may lose reputation
+* may face debt/contract breach
+
+EconomyReducer owns payment.
+
+ContractReducer owns obligation.
+
+⸻
+
+22. Reward types
+
+Quest rewards can include:
+
+* money
+* items
+* materials
+* equipment
+* property
+* title
+* reputation
+* faction standing
+* XP
+* domain asset
+* worker support
+* information
+* clue
+* route access
+* shop access
+* discount
+* training
+* ability evidence
+* spell
+* recipe
+* contract
+* companion trust
+* debt forgiveness
+* legal pardon
+* blessing
+* curse removal
+
+Reward must be validated.
+
+A promised reward is not the same as paid reward.
+
+⸻
+
+23. Reward promise versus reward payment
+
+A quest may have promised rewards.
+
+Example:
+
+Old Bren promises 15 gold.
+
+Quest record:
+
+Promised Reward: 15 gold
+Reward Status: promised
+
+After completion and turn-in:
+
+Reward Status: paid
+Currency +15 gold
+
+If giver refuses:
+
+Reward Status: disputed
+
+If giver dies before payment:
+
+Reward Status: unpaid/lost/claimable from estate maybe
+
+This avoids giving rewards before they happen.
+
+⸻
+
+24. Reward validation
+
+Reward can be paid only when:
+
+* quest completion is validated
+* giver/source exists or reward container exists
+* player is eligible
+* reward is available
+* no duplicate payment
+* payment source can pay
+* contract terms support payment
+* inventory/currency transfer is valid
+
+Reward should be rejected if:
+
+* quest not complete
+* wrong target
+* no proof
+* fake proof
+* giver absent/dead without alternate payout
+* already rewarded
+* reward only rumored
+* Story Card says reward but state does not
+* AI output contradicts contract terms without support
+
+⸻
+
+25. Partial rewards
+
+Partial success may yield partial rewards.
+
+Examples:
+
+Escort quest:
+
+* all cargo delivered: full reward
+* people safe but cargo lost: partial reward
+* arrived late: reduced reward
+* target injured: penalty
+
+Collection quest:
+
+* 7 of 10 herbs delivered: partial pay or no completion depending terms
+
+Bounty:
+
+* target dead but proof damaged: reduced/disputed reward
+
+Investigation:
+
+* culprit identified but escaped: partial reward, case not fully closed
+
+Domain repair:
+
+* wall stabilized but not fully repaired: partial funding
+
+Partial rewards should be contract/quest-specific.
+
+⸻
+
+26. Quest failure
+
+Quests can fail.
+
+Failure conditions:
+
+* deadline missed
+* protected target dies
+* quest item destroyed/lost
+* wrong target killed
+* giver dies/cancels
+* player betrays contract
+* enemy escapes permanently
+* required proof destroyed
+* domain project collapses
+* case evidence lost
+* faction relation makes quest impossible
+* player abandons long enough
+* world state changes
+* objective becomes impossible
+
+Failure should be validated.
+
+Do not fail quest from vague “things look bad.”
+
+Failure can create:
+
+* reputation loss
+* debt
+* penalty
+* new quest
+* combat
+* legal trouble
+* grief
+* reduced reward
+* alternate branch
+
+Failure should not always mean game over.
+
+⸻
+
+27. Quest abandonment
+
+Player may abandon quests.
+
+Abandonment can be:
+
+* explicit
+* implied by leaving for too long
+* abandoning target
+* refusing contract
+* destroying quest item
+* joining opposing faction
+
+Abandonment effects depend on quest.
+
+Minor personal goal:
+
+* no penalty
+
+Formal contract:
+
+* breach penalty
+
+Escort:
+
+* target risk/reputation loss
+
+Domain project:
+
+* sunk costs/materials lost
+
+Investigation:
+
+* case remains unsolved
+
+Abandoned quests should move to archive or inactive list unless still relevant.
+
+⸻
+
+28. Quest expiration and deadlines
+
+Deadlines are crucial.
+
+Deadline types:
+
+* exact time
+* before dawn
+* by market day
+* within three days
+* before enemy arrives
+* before ritual completes
+* seasonal
+* contract date
+* project deadline
+* soft urgency
+* countdown
+
+Deadline record:
+
+Deadline Type:
+Due Time:
+Warning Thresholds:
+Failure Result:
+Partial Result:
+Extensions Possible:
+Time Source:
+
+Deadlines must use the Time system.
+
+AIDRPG should not track deadlines if no Time system exists, but this design assumes Time will exist.
+
+⸻
+
+29. Deadline warning thresholds
+
+Context should warn when deadlines are relevant.
+
+Suggested thresholds:
+
+* deadline soon
+* deadline today
+* deadline in hours
+* deadline imminent
+* missed deadline
+
+Example Context:
+
+The caravan contract deadline is tonight; if you do not reach Greyford by then, payment may be reduced or disputed.
+
+Do not inject every future deadline constantly.
+
+Prioritize current and urgent deadlines.
+
+⸻
+
+30. Deadline failure examples
+
+Escort deadline missed
+
+Result:
+
+* reduced pay
+* recipient angry
+* contract disputed
+
+Ritual deadline missed
+
+Result:
+
+* demon seal weakens
+* new boss/quest branch
+
+Debt deadline missed
+
+Result:
+
+* interest/penalty
+* reputation loss
+* collection attempt
+
+Construction deadline missed
+
+Result:
+
+* weather damage
+* enemy attack risk
+* higher costs
+* morale loss
+
+Failure should connect to actual consequences.
+
+⸻
+
+31. Quest blockers
+
+Blockers are things preventing progress.
+
+Blocker types:
+
+* missing item
+* missing proof
+* unknown location
+* locked route
+* enemy too strong
+* deadline pressure
+* missing recipe
+* missing materials
+* unavailable NPC
+* social trust too low
+* faction hostility
+* legal restriction
+* weather
+* injured companion
+* no money
+* missing workers
+* puzzle unsolved
+* case evidence insufficient
+
+Blocker record:
+
+Blocker:
+Blocks Objective:
+How to Resolve:
+Known/Unknown:
+Severity:
+Last Updated:
+
+Example:
+
+Quest:
+
+Craft cure.
+
+Blocker:
+
+Unknown herb location.
+
+Possible resolution:
+
+ask healer, investigate forest, buy from alchemist.
+
+Blockers help guide freeform play.
+
+⸻
+
+32. Quest branching
+
+Quests can branch.
+
+Branch examples:
+
+* kill wolves
+* drive wolves away
+* discover wolves are starving
+* tame alpha
+* expose miller attracting wolves
+* negotiate with druid
+* fail and village loses mill
+
+Branching should be tracked without duplicating quest.
+
+Use objectives/notes/branch field.
+
+Example:
+
+Branch: Nonlethal resolution
+New objective: Find why wolves are attacking the mill.
+
+Do not create entirely separate duplicate quests unless story truly splits.
+
+⸻
+
+33. Hidden objectives
+
+Some objectives may be hidden.
+
+Examples:
+
+* protect evidence integrity
+* avoid killing sacred animal
+* discover true culprit
+* keep seal intact
+* maintain trust
+* prevent witness death
+* avoid alerting guards
+
+Hidden objectives should not be shown as confirmed unless discovered.
+
+They may affect rewards/outcome.
+
+AIDRPG should be careful not to spoil hidden objectives through commands unless debug mode explicitly shows hidden state.
+
+Player-facing /quests should normally hide them or show “unknown complications.”
+
+⸻
+
+34. Optional objectives
+
+Optional objectives improve reward/outcome.
+
+Examples:
+
+* rescue all hostages
+* return stolen goods intact
+* complete before dawn
+* avoid killing
+* gather extra evidence
+* protect cargo
+* capture target alive
+* discover secret room
+* preserve ancient relic
+* keep workers safe
+
+Optional objective status:
+
+* available
+* completed
+* failed
+* unknown
+
+Optional objectives can affect:
+
+* money
+* reputation
+* XP
+* titles
+* relationships
+* quest branch
+* future access
+
+⸻
+
+35. Quest proof
+
+Some quests require proof.
+
+Proof types:
+
+* item
+* body part
+* token
+* witness testimony
+* signed note
+* magical mark
+* captured target
+* corpse
+* location cleared
+* delivered item receipt
+* evidence packet
+* public result
+* system notification
+* contract seal
+* foreman report
+
+Proof must be valid.
+
+Example:
+
+Bounty for Frostmaw requires Frostmaw’s fang.
+
+Random wolf fang is not enough.
+
+If proof is faked:
+
+* deception path
+* risk of discovery
+* legal/reputation consequences
+
+InventoryReducer owns proof items.
+
+InvestigationReducer owns evidence truth.
+
+⸻
+
+36. Quest items
+
+Quest items require strong custody tracking.
+
+Quest item fields:
+
+Item ID:
+Quest Link:
+Owner:
+Custody:
+Access:
+Condition:
+Seal/Tamper Status:
+Delivery Target:
+Proof Role:
+Can Be Sold:
+Can Be Consumed:
+Failure If Lost:
+
+Quest items should not be accidentally sold, consumed, or overwritten unless player explicitly does so or story validates it.
+
+Examples:
+
+* sealed letter
+* missing ring
+* sacred relic
+* wolf fang proof
+* plague sample
+* contract token
+* dungeon key
+* ritual crystal
+
+Quest item loss can fail or branch quests.
+
+⸻
+
+37. Quest-related NPCs
+
+Quest actors should be linked.
+
+Actor roles:
+
+* giver
+* target
+* suspect
+* witness
+* victim
+* escort target
+* protected actor
+* rival
+* contractor
+* employer
+* recipient
+* helper
+* betrayer
+* authority
+* reward payer
+
+Quest should not store full actor details.
+
+It should link to ActorReducer records.
+
+Example:
+
+Quest:
+
+Missing Child
+
+Actor links:
+
+* giver: Mara’s mother
+* target: Mara
+* suspect: old hunter
+* witness: stable boy
+
+Actor memory owns actor facts.
+
+Quest owns objective relationship.
+
+⸻
+
+38. Quest-related places
+
+Quest places should be linked.
+
+Place roles:
+
+* start
+* destination
+* search area
+* danger area
+* delivery point
+* turn-in location
+* hidden location
+* domain site
+* dungeon
+* crime scene
+* route
+
+Quest should link to PlaceMemory.
+
+Example:
+
+Quest:
+
+Explore ruined tower.
+
+Places:
+
+* Greyford
+* Blackwood Road
+* Ruined Tower
+* sealed basement, hidden after discovery
+
+Place memory owns place facts.
+
+Quest owns goal relationship.
+
+⸻
+
+39. Quest-related factions
+
+Factions may affect quests.
+
+Faction roles:
+
+* issuer
+* enemy
+* ally
+* authority
+* rival claimant
+* secret sponsor
+* affected population
+* payer
+* criminal network
+* religious order
+
+Quest outcomes can change faction reputation.
+
+Example:
+
+Banishing demon improves church reputation but worsens demon cult hostility.
+
+Faction changes require public knowledge, witnesses, or faction awareness.
+
+ReputationReducer owns standing.
+
+QuestReducer proposes it.
+
+⸻
+
+40. Quest and combat connection
+
+Combat can progress quests when linked.
+
+Examples:
+
+* defeat target
+* survive attack
+* protect NPC
+* capture enemy
+* clear route
+* retrieve item after combat
+* discover clue from enemy
+* force enemy retreat
+
+Combat alone should not update unrelated quests.
+
+Example:
+
+Killing random wolf does not complete Frostmaw quest.
+
+Killing wolves near Old Mill may progress “Clear Mill Wolves.”
+
+CombatResolver proposes quest progress.
+
+QuestReducer validates objective link.
+
+⸻
+
+41. Quest and inventory connection
+
+Inventory events can progress quests.
+
+Examples:
+
+* pick up missing ring
+* collect 10 herbs
+* deliver letter
+* receive proof item
+* lose quest item
+* craft cure item
+* consume key item accidentally
+* sell quest item
+
+InventoryReducer owns item state.
+
+QuestReducer reads item state for objective progress.
+
+Quest should update when item count/custody changes.
+
+⸻
+
+42. Quest and economy connection
+
+Economy can progress or resolve quests.
+
+Examples:
+
+* pay debt
+* receive reward
+* pay workers
+* buy materials
+* pay ransom
+* fund project
+* collect bounty
+* pay contract penalty
+* make deposit
+* receive advance
+
+EconomyReducer commits currency.
+
+Contract/Quest records update obligation.
+
+Duplicate rewards must be blocked.
+
+⸻
+
+43. Quest and crafting connection
+
+Crafting can progress quests.
+
+Examples:
+
+* craft cure
+* repair bridge tool
+* forge key
+* build shield
+* fix wagon
+* upgrade defense
+* prepare ritual focus
+
+Crafting output must be valid.
+
+Quest should not complete until crafted item meets requirements.
+
+Example:
+
+Quest requires stable antidote.
+
+Player crafts weak tonic.
+
+Result:
+
+* partial progress
+* not complete unless giver accepts weak tonic
+
+⸻
+
+44. Quest and domain connection
+
+Domain projects often have quest wrappers.
+
+Examples:
+
+* build wall before winter
+* repair mine
+* fortify base
+* house refugees
+* restore watermill
+* expand workshop
+* protect harvest
+
+DomainReducer tracks project progress.
+
+QuestReducer tracks objective and rewards.
+
+A domain quest can fail if:
+
+* project deadline missed
+* funds exhausted
+* workers flee
+* attack destroys site
+* materials unavailable
+* political permission revoked
+
+⸻
+
+45. Quest and reputation connection
+
+Quest outcomes can affect reputation.
+
+Positive:
+
+* completed as promised
+* protected civilians
+* delivered early
+* solved case truthfully
+* paid workers
+* spared enemies
+* returned stolen goods
+
+Negative:
+
+* failed contract
+* lied about proof
+* killed wrong target
+* abandoned escort
+* stole reward
+* harmed civilians
+* sold quest item
+* missed deadline
+* betrayed faction
+
+Reputation changes should be scoped:
+
+* local
+* faction
+* public
+* secret
+* rumor
+* personal actor trust
+
+⸻
+
+46. Quest and XP connection
+
+Quest completion may reward XP.
+
+ProgressionReducer owns XP.
+
+QuestReducer proposes:
+
+* objective XP
+* completion XP
+* optional objective XP
+* failure survival XP
+* investigation XP
+* social XP
+* domain XP
+
+XP should depend on:
+
+* difficulty
+* risk
+* player level
+* story importance
+* anti-farm
+* contribution
+* objective completed
+* duplicate checks
+
+Do not grant XP twice for same quest.
+
+Quest completion XP and combat XP may both apply, but must not double-count the same accomplishment excessively.
+
+⸻
+
+47. Quest reward operation keys
+
+Rewards need operation keys.
+
+Examples:
+
+quest.complete.clear_mill_wolves.turn_142
+quest.reward.gold.clear_mill_wolves.old_bren.turn_145
+quest.objective.collect_slime_core_5.turn_88
+quest.fail.caravan_escort.deadline_missed.day_12
+contract.deposit.caravan_escort.turn_33
+contract.final_payment.caravan_escort.turn_96
+
+Separate keys for:
+
+* objective progress
+* quest completion
+* reward payment
+* XP reward
+* item reward
+* reputation change
+* contract deposit
+* contract final payment
+
+This prevents duplication and makes audit clear.
+
+⸻
+
+48. Quest duplication prevention
+
+Duplicate quest detection should compare:
+
+* title
+* quest giver
+* target
+* location
+* objective
+* related item
+* related actor
+* related contract
+* quest type
+* active status
+* canonical key
+
+Example duplicates:
+
+* “Clear the Mill Wolves”
+* “Wolves at the Old Mill”
+* “Old Bren’s Wolf Problem”
+
+These may be the same quest.
+
+If duplicate detected:
+
+* merge aliases
+* update existing quest
+* do not create new quest
+
+If separate:
+
+* track separately
+
+Example:
+
+“Clear wolves from Old Mill” and “Hunt Frostmaw” may be linked but not identical if Frostmaw is alpha.
+
+⸻
+
+49. Quest title naming rules
+
+Quest names should be clear and specific.
+
+Bad quest titles:
+
+* Quest
+* Task
+* Help
+* Wolves
+* Go there
+* Do the thing
+* You must hurry
+* Old text from AI
+* Debug quest
+* Story Card quest
+* “Find out what happens next”
+
+Good quest titles:
+
+* Clear the Mill Wolves
+* Deliver Bren’s Letter
+* Investigate the Merchant’s Murder
+* Repair the North Wall
+* Gather Ten Slime Cores
+* Escort the Greyford Caravan
+* Craft the Fever Cure
+* Recover the Stolen Ring
+* Pay Mara’s Repair Debt
+
+Titles should be concise and stable.
+
+Aliases can preserve alternate names.
+
+⸻
+
+50. Quest card eligibility
+
+Most quests should stay in protected Quest Log.
+
+Generated quest cards should be created only for:
+
+* major ongoing quests
+* main story arcs
+* complex multi-stage quests
+* long-term contracts
+* major domain quests
+* important investigation arcs
+* quests with many linked actors/places
+* quests that AI Dungeon must remember reliably
+
+Do not create generated cards for:
+
+* every minor errand
+* every completed quest
+* every small collection task
+* every temporary objective
+* every rumor
+* every failed minor task
+
+Protected Quest Log should handle most quest state.
+
+⸻
+
+51. Protected Quest Log card
+
+The protected Quest Log should summarize active and important quests.
+
+Example:
+
+AIDRPG Quest Log
+Active:
+Clear the Mill Wolves — Old Bren asked you to stop the wolves threatening the Old Mill. 2 of 5 wolves defeated; alpha still active. Reward promised: 15 gold.
+Craft the Fever Cure — Find correct herbs and brew a stable cure. Current blocker: recipe is partial and moonleaf location is unknown.
+Contracts:
+Greyford Caravan Escort — Active contract. Deposit paid: 10 gold. Final payment: 40 gold on arrival. Deadline: tomorrow sunset.
+Blocked:
+Repair the North Wall — Needs mortar and 8 more workers before progress can continue.
+Ready to Turn In:
+None.
+
+Keep it concise.
+
+Do not include archived minor quests unless requested.
+
+⸻
+
+52. Generated quest card template
+
+For major quest cards:
+
+Quest: Repair the North Wall
+Type:
+Domain construction quest.
+Status:
+Blocked.
+Goal:
+Restore the damaged north wall before winter raids begin.
+Current progress:
+Stone is partly stockpiled, but mortar is missing and workers are short.
+Known requirements:
+Stone, mortar, scaffolding, masons, laborers, and a foreman.
+Deadline:
+Before the first winter raid season.
+Related systems:
+Domain project, labor payroll, material stockpile, local reputation.
+Canon note:
+This card mirrors QuestReducer and DomainReducer state only.
+
+Quest cards should update or archive when status changes.
+
+⸻
+
+53. Quest card trigger safety
+
+Quest card triggers should be specific.
+
+Good triggers:
+
+* Clear the Mill Wolves
+* Old Mill wolves
+* Frostmaw
+* Greyford Caravan Escort
+* North Wall repair
+* Fever Cure
+
+Bad triggers:
+
+* quest
+* wolf
+* wall
+* cure
+* caravan
+* repair
+* contract
+* task
+* help
+
+Use unique phrases.
+
+Avoid generic common words.
+
+⸻
+
+54. Quest archive
+
+The quest archive stores inactive history.
+
+Archive entries should include:
+
+Quest Title:
+Final Status:
+Outcome:
+Reward Status:
+Key Choices:
+Consequences:
+Related Actors:
+Related Places:
+Date/Time Completed or Failed:
+
+Archive statuses:
+
+* completed and rewarded
+* completed but unpaid
+* failed
+* abandoned
+* expired
+* superseded
+* cancelled
+* resolved by other means
+
+Archive should help continuity without bloating Context.
+
+Example:
+
+Archived Quest: Clear the Mill Wolves
+Outcome: Wolves were driven away after the alpha was defeated. Old Bren paid 15 gold. Local mill reopened.
+Consequence: Greyford locals view the player more favorably.
+
+⸻
+
+55. Quest archive use
+
+Archive is used for:
+
+* remembering past accomplishments
+* preventing duplicate quest rewards
+* title/reputation validation
+* actor relationship context
+* world-state continuity
+* future callbacks
+* avoiding re-offering same completed quest
+* tracking unpaid/disputed rewards
+
+Archive should not be injected every turn.
+
+Only relevant archived quests should appear in Context.
+
+Example:
+
+If player returns to Old Mill, archived wolf quest may be relevant.
+
+If player meets Old Bren, prior quest may be relevant.
+
+⸻
+
+56. Quest reactivation
+
+Some archived quests can reactivate.
+
+Examples:
+
+* wolves return
+* unpaid reward disputed
+* solved case reopened
+* old enemy escaped
+* contract breach resurfaces
+* repaired wall damaged again
+* cult returns
+* missing person found alive
+* delivered item was fake
+
+Reactivation should create:
+
+* new quest linked to archive
+* or reopen old quest with status superseded/reactivated
+
+Do not erase old outcome.
+
+Example:
+
+Old quest:
+
+Clear the Mill Wolves — completed.
+
+New quest:
+
+Investigate the Wolves’ Return — linked sequel.
+
+⸻
+
+57. Quest uncertainty
+
+Some quest facts may be uncertain.
+
+Uncertain quest facts:
+
+* rumor source
+* target identity
+* true culprit
+* real reward
+* hidden deadline
+* item authenticity
+* employer honesty
+* objective morality
+* whether target is guilty
+* whether creature is actually threat
+* whether contract terms are fair
+
+Quest records should distinguish:
+
+* confirmed
+* claimed
+* rumored
+* suspected
+* false
+* unknown
+
+Example:
+
+Claimed:
+
+“Bren says wolves killed his sheep.”
+
+Confirmed:
+
+“Player found wolf tracks and sheep remains.”
+
+Suspected:
+
+“Tracks may be unusually large.”
+
+This avoids treating NPC statements as absolute truth.
+
+⸻
+
+58. Quest truth validation
+
+Quest updates need evidence.
+
+Valid evidence:
+
+* direct narration
+* player action confirmed by AI output
+* command/manual override
+* inventory state
+* actor dialogue if treated as claim
+* discovered clue
+* completed combat event
+* completed crafting project
+* completed domain progress
+* contract record
+* economy transaction
+* time/deadline state
+
+Invalid evidence:
+
+* Story Card text alone
+* Context text
+* debug output
+* examples
+* player wish without result
+* rumor as confirmed fact
+* dream-only event
+* duplicate output
+* hallucinated “quest complete”
+* unsupported AI status panel
+
+Example:
+
+AI says:
+
+“Quest complete!”
+
+But objective state shows target escaped and proof missing.
+
+Expected:
+
+* reject or mark disputed/pending
+* no reward
+
+⸻
+
+59. Quest failure versus complication
+
+Not every setback is failure.
+
+Examples:
+
+Setback:
+
+* target escaped but can be tracked
+* item stolen but recoverable
+* witness refuses to talk
+* deadline extended
+* potion failed but recipe improved
+* wall project delayed
+
+Failure:
+
+* target dies when protection objective required survival
+* item destroyed beyond recovery
+* deadline passes with stated failure
+* giver cancels and reward impossible
+* quest target permanently leaves
+* evidence destroyed and case cannot proceed
+* contract breached
+
+Use complication when quest can continue.
+
+Use failure when completion condition becomes impossible or contract defines failure.
+
+⸻
+
+60. Quest moral ambiguity
+
+Some quests may be morally complex.
+
+Examples:
+
+* kill “monster” that is intelligent or innocent
+* recover stolen item that was stolen back from tyrant
+* expose culprit but harm victim’s family
+* protect caravan carrying slaves
+* repair wall for oppressive lord
+* hunt goblins defending home
+* cure plague caused by employer
+
+AIDRPG should not force simple success/failure.
+
+Quest branches can include:
+
+* refuse quest
+* investigate truth
+* side with target
+* renegotiate
+* expose giver
+* complete differently
+* accept lower reward
+* gain/lose reputation with different factions
+
+Moral ambiguity is story state, not system confusion.
+
+⸻
+
+61. Quest and player agency
+
+Quest system should guide, not railroad.
+
+Player can:
+
+* accept
+* refuse
+* ignore
+* abandon
+* negotiate
+* betray
+* solve differently
+* ask for more reward
+* investigate giver
+* change objective
+* complete nonlethally
+* outsource
+* pay others
+* report to authority
+* fail and continue
+
+QuestReducer should track consequences of player choices.
+
+It should not force “intended” route if freeform story validates another route.
+
+⸻
+
+62. Quest outsourcing
+
+Players may delegate quest work.
+
+Examples:
+
+* hire guards to clear wolves
+* pay workers to repair wall
+* send companion to deliver letter
+* ask alchemist to brew cure
+* hire investigator
+* assign foreman
+* summon scout
+
+Outsourcing requires:
+
+* delegate exists
+* delegate is willing/paid/commanded
+* capability appropriate
+* time passes
+* risk to delegate
+* success not guaranteed
+* reward/contribution adjusted
+* quest terms allow it
+
+Player may receive less XP if they did not participate directly.
+
+But quest completion/reputation/payment may still occur.
+
+Contracts may forbid subcontracting.
+
+⸻
+
+63. Quest reward distribution
+
+If party or workers help, rewards may be split.
+
+Reward split depends on:
+
+* contract terms
+* party agreement
+* wages
+* shares
+* ownership
+* contribution
+* betrayal
+* social expectations
+
+Examples:
+
+* mercenaries paid wages, player keeps bounty
+* adventuring party splits reward evenly
+* companion refuses payment
+* guild takes tax
+* foreman and workers paid separately
+
+AIDRPG should not assume player keeps 100% of all rewards if agreement says otherwise.
+
+⸻
+
+64. Quest difficulty estimation
+
+Quest difficulty should be estimated for XP/reward.
+
+Quest difficulty factors:
+
+* enemy tier
+* travel danger
+* social difficulty
+* investigation complexity
+* crafting difficulty
+* domain scale
+* deadline pressure
+* resource requirements
+* legal risk
+* moral complexity
+* faction danger
+* required level
+* required abilities
+* required money
+* uncertainty
+
+Difficulty labels:
+
+* trivial
+* simple
+* low
+* moderate
+* hard
+* dangerous
+* expert
+* legendary
+* mythic
+* world-scale
+
+Quest difficulty is not only combat.
+
+A legal case can be harder than a fight.
+
+A domain project can be harder than a monster.
+
+⸻
+
+65. Quest level recommendation
+
+Optional quest field:
+
+Recommended Scale:
+
+Examples:
+
+* Level 1–5
+* Tier 3 combat
+* Expert investigation
+* Domain project: small village scale
+* Mythic ritual, not combat-facing
+* Unknown
+
+This helps Context warn when player is outmatched.
+
+Example:
+
+Level 10 player takes Tier 8 dragon-slaying quest.
+
+Quest may be active but flagged overwhelming without leverage.
+
+⸻
+
+66. Quest UI commands
+
+/quests
+
+Shows active quest log.
+
+Should group:
+
+* urgent
+* active
+* blocked
+* ready to turn in
+* contracts
+* personal goals
+
+/quest <name>
+
+Shows full quest details.
+
+/accept <quest>
+
+Accepts offered quest if available.
+
+/abandon <quest>
+
+Abandons quest if possible; warns contract penalties.
+
+/turnin <quest>
+
+Attempts quest completion/reward with current proof/state.
+
+/contracts
+
+Shows active contracts.
+
+/contract <name>
+
+Shows contract terms.
+
+/archive
+
+Shows completed/failed quests, optionally filtered.
+
+/questaudit
+
+Shows validation details and rejected/accepted quest updates.
+
+⸻
+
+67. /quests display example
+
+Active Quests
+Urgent:
+Greyford Caravan Escort — Reach Greyford by tomorrow sunset. Cargo intact. Final payment: 40 gold.
+Active:
+Clear the Mill Wolves — 2 of 5 wolves defeated. Alpha still active. Reward promised: 15 gold.
+Craft the Fever Cure — Recipe partial. Need moonleaf and clean water.
+Blocked:
+Repair the North Wall — Missing mortar and 8 workers.
+Ready to Turn In:
+None.
+Contracts:
+Greyford Caravan Escort — deposit paid, deadline tomorrow sunset.
+
+Keep this readable.
+
+⸻
+
+68. /quest <name> display example
+
+Quest: Clear the Mill Wolves
+Type: Defeat / local request
+Status: In Progress
+Giver: Old Bren
+Location: Old Mill
+Goal: Stop the wolves threatening the mill.
+Progress:
+- 2 of 5 wolves defeated.
+- Alpha wolf still active.
+Optional:
+- Avoid burning the mill.
+Reward:
+- 15 gold promised, unpaid.
+Proof:
+- Bren must see the mill is safe or accept wolf proof.
+Blockers:
+- Alpha location unknown.
+
+This is enough for player trust.
+
+⸻
+
+69. Quest audit example
+
+Quest Audit: Clear the Mill Wolves
+Proposed update:
+“Quest complete.”
+Validation:
+Rejected as full completion.
+Reason:
+Only 2 of 5 wolves are confirmed defeated and the alpha is still active.
+Accepted updates:
+- Wolf count remains 2/5.
+- New clue: larger tracks near the creek.
+- Objective added: Track the alpha.
+
+Quest audit is critical for debugging.
+
+⸻
+
+70. Quest Context behavior
+
+Context should include quest info only when useful.
+
+Include:
+
+* current active objective
+* immediate deadline
+* relevant quest item/custody
+* nearby target/place
+* current blocker
+* ready turn-in
+* contract obligation
+* failure risk
+
+Do not include:
+
+* every old quest
+* every archived quest
+* every promised reward
+* every minor background goal
+
+Good Context:
+
+You are currently pursuing Clear the Mill Wolves. Two of five wolves are confirmed defeated, and the alpha is still active near the Old Mill.
+
+Good Context:
+
+The sealed letter for Captain Mora is still in your pack and must remain unopened for full payment.
+
+Good Context:
+
+The caravan contract deadline is tomorrow sunset; arriving late may reduce or void payment.
+
+Bad Context:
+
+Inject all 27 quest records, including completed and abandoned errands.
+
+⸻
+
+71. Quest acceptance tests
+
+Test 1 — rumor does not become active quest
+
+Given:
+
+NPC mentions wolves near the mill.
+
+Expected:
+
+* rumor/opportunity created at most
+* no active quest until request/acceptance
+
+Test 2 — offered quest becomes active after acceptance
+
+Given:
+
+Old Bren asks player to clear wolves for 15 gold.
+
+Player says “I accept.”
+
+Expected:
+
+* quest active
+* promised reward recorded
+* no payment yet
+
+Test 3 — completion and reward are separate
+
+Given:
+
+Player defeats wolves.
+
+Expected:
+
+* quest ready to turn in or completed
+* reward unpaid until Bren pays
+
+Test 4 — reward paid once
+
+Given:
+
+Bren pays 15 gold.
+
+Same output repeats.
+
+Expected:
+
+* gold added once
+* reward status paid
+* duplicate skipped
+
+Test 5 — wrong target does not complete quest
+
+Given:
+
+Quest is to kill Frostmaw.
+
+Player kills ordinary wolf.
+
+Expected:
+
+* no Frostmaw completion
+* maybe unrelated wolf event
+
+Test 6 — count objective tracks correctly
+
+Given:
+
+Quest requires 10 slime cores.
+
+Player collects 4.
+
+Expected:
+
+* count 4/10
+* duplicate collection does not increase count twice
+
+Test 7 — damaged quest items count differently
+
+Given:
+
+Quest requires 10 intact slime cores.
+
+Player has 8 intact and 2 cracked.
+
+Expected:
+
+* valid count 8/10 unless giver accepts cracked cores
+
+Test 8 — delivery requires custody
+
+Given:
+
+Player no longer has sealed letter.
+
+Input says player delivers it.
+
+Expected:
+
+* reject unless letter returned or alternate delivery validated
+
+Test 9 — tampered delivery affects reward
+
+Given:
+
+Player opens sealed letter before delivery.
+
+Expected:
+
+* delivery may still complete
+* reward/reputation/contract affected
+
+Test 10 — escort target death fails quest
+
+Given:
+
+Escort target dies and quest required survival.
+
+Expected:
+
+* quest failed or severe branch
+* reward reduced/void
+* reputation/contract consequences possible
+
+Test 11 — escort injury is partial success, not failure
+
+Given:
+
+Escort target arrives injured but alive.
+
+Expected:
+
+* completion possible
+* partial reward/penalty possible
+
+Test 12 — investigation needs evidence
+
+Given:
+
+Player guesses culprit correctly but has no evidence.
+
+Expected:
+
+* no solved-case completion
+* possible theory noted
+
+Test 13 — crafting quest needs valid item
+
+Given:
+
+Player needs cure but crafts weak tonic.
+
+Expected:
+
+* partial progress or failed attempt
+* quest not complete unless cure works/accepted
+
+Test 14 — domain quest needs project progress
+
+Given:
+
+Player says wall is repaired without materials/workers/time.
+
+Expected:
+
+* reject completion
+* requirements/blockers remain
+
+Test 15 — contract deposit creates obligation
+
+Given:
+
+Player accepts caravan contract and receives 10 gold deposit.
+
+Expected:
+
+* money added once
+* contract active
+* obligation and deadline recorded
+
+Test 16 — missed deadline
+
+Given:
+
+Caravan arrives after deadline.
+
+Expected:
+
+* contract/quest outcome adjusted
+* reward may reduce/dispute
+* not automatic full reward
+
+Test 17 — abandoned contract has penalty
+
+Given:
+
+Player abandons active paid contract.
+
+Expected:
+
+* contract breach
+* debt/reputation/penalty possible
+
+Test 18 — quest duplicate merges
+
+Given:
+
+AI creates “Wolves at Old Mill” after “Clear the Mill Wolves” already exists.
+
+Expected:
+
+* alias/merge
+* no duplicate active quest
+
+Test 19 — hidden objective not spoiled
+
+Given:
+
+Quest has hidden objective “do not kill sacred wolf.”
+
+Player uses /quests.
+
+Expected:
+
+* hidden objective not revealed unless discovered/debug mode
+
+Test 20 — archive prevents repeat reward
+
+Given:
+
+Completed quest is offered again due to AI drift.
+
+Expected:
+
+* archive detects completed state
+* no duplicate quest/reward unless new sequel/reactivation is valid
+
+⸻
+
+72. Quest safeguards
+
+72.1 Quest creation requires a real source
+
+Do not create active quests from random flavor or card text.
+
+72.2 Acceptance matters
+
+Hearing about a task is not accepting it.
+
+72.3 Objectives must be explicit and trackable
+
+Vague goals should become personal goals or notes, not rigid quests.
+
+72.4 Completion requires evidence
+
+Do not accept “quest complete” without objective support.
+
+72.5 Rewards are separate from promises
+
+Promised reward is not paid reward.
+
+72.6 Rewards pay once
+
+OperationLedger blocks duplicates.
+
+72.7 Quest items need custody tracking
+
+Delivery and proof require actual item access.
+
+72.8 Counts must be deduped
+
+Collection/kill/proof counts update once per validated source.
+
+72.9 Contracts track obligations
+
+Deposits, deadlines, penalties, and payment terms matter.
+
+72.10 Deadlines use Time system
+
+No vague missed deadline unless time supports it.
+
+72.11 Failure should be validated
+
+Setbacks are not always failure.
+
+72.12 Quest branches are allowed
+
+Player can solve creatively if story supports it.
+
+72.13 Hidden objectives should not be spoiled
+
+Unless debug/manual mode.
+
+72.14 Quests should not overfill Context
+
+Inject only relevant quest info.
+
+72.15 Archive completed/failed quests
+
+Do not leave old quests active forever.
+
+72.16 Archive prevents duplicate rewards
+
+Past outcomes matter.
+
+72.17 Social consequences need awareness
+
+Reputation changes require witnesses, evidence, or rumor spread.
+
+72.18 Outsourcing is allowed but tracked
+
+Delegates need time, skill, risk, and payment.
+
+72.19 Quest cards mirror state only
+
+Cards do not create quest truth.
+
+72.20 Every quest update should be auditable
+
+The player should understand why progress, completion, failure, or reward happened.
+
+⸻
+
+73. Final Chunk 29 doctrine
+
+Quests are structured goals.
+
+Contracts are structured obligations.
+
+Cases are evidence-driven investigations.
+
+Domain quests are project-linked objectives.
+
+Bounties require proof.
+
+Delivery quests require custody.
+
+Escort quests require protected target state.
+
+Crafting quests require valid crafted outputs.
+
+Collection quests require counted items.
+
+Defeat quests require correct target and acceptable resolution.
+
+Rewards must be promised, earned, and paid separately.
+
+Quest completion requires evidence.
+
+Quest rewards must never duplicate.
+
+Deadlines matter.
+
+Failure must be validated.
+
+Setbacks can become complications instead of failure.
+
+Players can solve quests creatively.
+
+Quests can branch, be abandoned, expire, reactivate, or archive.
+
+Quest logs should guide the player without railroading them.
+
+Story Cards do not create quest truth.
+
+AI Dungeon narration must be validated before it changes quest state.
+
+The goal is a quest system that supports freeform AI Dungeon play while keeping objectives, rewards, contracts, deadlines, proof, and consequences coherent across long campaigns.
+

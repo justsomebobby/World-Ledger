@@ -1,0 +1,1755 @@
+AIDRPG Design Bible — Chunk 2: State Ownership and Data Boundaries
+
+1. Purpose of this chunk
+
+Chunk 1 defined the philosophy:
+
+AI Dungeon tells the story.
+
+AIDRPG watches, validates, remembers, and mirrors.
+
+Chunk 2 defines where truth lives and who is allowed to change it.
+
+This chunk exists because the old versions became unstable when too many systems were allowed to write the same truth. The clean-core reference says the rebuild must avoid broad patch layers, direct parser mutation, repair systems acting as gameplay writers, and CardSync creating canon from prose.  ￼
+
+The goal of this chunk is to make sure every feature has:
+
+* one source of truth
+* one owner
+* one write path
+* clear read boundaries
+* clear dirty targets
+* clear Context behavior
+* clear CardSync behavior
+* clear migration and cleanup limits
+* clear audit responsibility
+
+The main rule is:
+
+Every truth type has one owner. Everyone else may only read it or propose an event.
+
+⸻
+
+2. The source-of-truth rule
+
+The source of truth is always state.aidrpg.
+
+Context is not the source of truth.
+
+Story Cards are not the source of truth.
+
+AI output is not the source of truth.
+
+Player input is not the source of truth.
+
+Old patch data is not the source of truth.
+
+Debug text is not the source of truth.
+
+The clean-core reference states this directly: state.aidrpg is canon, Context is immediate truth injection, and Story Cards are durable mirrors only.  ￼
+
+So the correct relationship is:
+
+State owns truth.
+
+Context explains truth to the AI.
+
+Story Cards mirror stable truth for long-term memory.
+
+Commands display truth to the player.
+
+Audit explains how truth changed.
+
+No other layer should become canon.
+
+⸻
+
+3. Why ownership matters
+
+If ownership is not strict, the same truth gets changed by multiple systems.
+
+That causes bugs like:
+
+* inventory duplicates
+* card duplicates
+* HP changing twice
+* XP awarded twice
+* quests completing from rumors
+* actors created from junk names
+* places created from generic fragments
+* Story Cards overriding state
+* cleanup deleting important truth
+* old patches fighting new reducers
+* abilities stabilizing from failed attempts
+* Context saying something state does not contain
+
+Strict ownership prevents that.
+
+Example:
+
+If the AI says:
+
+“Mara places the rusted iron key in your hand.”
+
+The correct path is:
+
+Output parser proposes inventory.item.gain.
+
+CanonValidator accepts it.
+
+InventoryReducer commits it.
+
+Dirty queues mark inventory and card/context targets dirty.
+
+Context may mention the key next turn.
+
+CardSync may mirror it later if it is important.
+
+The wrong path is:
+
+Output parser adds the key.
+
+Inventory patch adds the key again.
+
+Quest system adds it as a quest item.
+
+CardSync reads prose and creates a key card.
+
+Cleanup later merges or renames it.
+
+That wrong path is exactly what this chunk is designed to prevent.
+
+⸻
+
+4. The state shape target
+
+The clean target state should stay organized under state.aidrpg.
+
+The major top-level buckets should be:
+
+* schemaVersion
+* meta
+* player
+* resources
+* progression
+* statTraining
+* abilities
+* inventory
+* equipment
+* economy
+* crafting
+* actors
+* places
+* time
+* routes
+* quests
+* contracts
+* domain
+* investigation
+* reputation
+* party
+* scale
+* cards
+* context
+* commands
+* diagnostics
+* operationLedger
+* quarantine
+* dirty
+
+The clean-core reference lists the core state shape with the major gameplay buckets plus cards, context, commands, diagnostics, and operationLedger, and says every bucket needs owner reducers, accepted events, dirty targets, audit checks, migration/cleanup behavior, and false-positive tests.  ￼
+
+A later chunk can define the exact object shapes. This chunk defines who owns what.
+
+⸻
+
+5. State bucket categories
+
+The state should be thought of in five categories.
+
+5.1 Canon gameplay buckets
+
+These are the actual game truth.
+
+They include:
+
+* player
+* resources
+* progression
+* statTraining
+* abilities
+* inventory
+* equipment
+* economy
+* crafting
+* actors
+* places
+* time
+* routes
+* quests
+* contracts
+* domain
+* investigation
+* reputation
+* party
+* scale
+
+These buckets represent the player, the world, and the adventure.
+
+5.2 Mirror/control buckets
+
+These help expose or mirror truth.
+
+They include:
+
+* cards
+* context
+* commands
+
+These should not create normal gameplay truth.
+
+5.3 Safety buckets
+
+These prevent duplication, corruption, and runaway behavior.
+
+They include:
+
+* operationLedger
+* quarantine
+* dirty
+* diagnostics
+
+These are not gameplay truth. They are engine safety records.
+
+5.4 Runtime buckets
+
+These track hook execution and current processing.
+
+They include:
+
+* meta
+* current hook
+* current turn
+* pending input intent
+* last output hash
+* debug flags
+* feature flags
+
+These help the engine run safely.
+
+5.5 Archive/history buckets
+
+Some gameplay buckets should include archive sections.
+
+Examples:
+
+* completed quests
+* solved cases
+* fulfilled contracts
+* old rumors
+* old actor memories
+* resolved domain projects
+
+Archives are still state, but they should not be treated as active current truth unless relevant.
+
+⸻
+
+6. The owner map
+
+This is the core ownership table.
+
+Each truth type must have exactly one owner.
+
+PlayerReducer / BodyReducer owns
+
+* player identity
+* player name
+* species/race
+* age
+* appearance
+* body state
+* HP
+* MP
+* EP
+* max HP
+* max MP
+* max EP
+* injuries
+* conditions
+* fatigue state
+* unconsciousness/death boundary
+* permanent body changes
+* temporary body effects
+
+Other systems may propose body events, but only PlayerReducer / BodyReducer commits them.
+
+Examples:
+
+* Combat may propose damage.
+* Ability use may propose MP strain.
+* Time may propose recovery ticks.
+* Conditions may propose fatigue.
+* Manual override may propose correction.
+
+But PlayerReducer / BodyReducer writes the actual player/body state.
+
+ProgressionReducer owns
+
+* level
+* current XP
+* total XP
+* XP-to-next-level
+* stat training XP
+* domain XP
+* broad progression records
+* reward history
+* anti-farm progression checks
+* progression-related caps or thresholds
+
+AbilityReducer may propose ability XP.
+
+Combat may propose combat XP.
+
+Crafting may propose crafting domain XP.
+
+Investigation may propose investigation domain XP.
+
+But ProgressionReducer writes XP and level truth.
+
+The clean-core reference assigns XP, level, stat training, and domain XP to ProgressionReducer.  ￼
+
+AbilityReducer owns
+
+* ability candidates
+* stabilized abilities
+* skills
+* talents
+* passives
+* ability evidence
+* ability lifecycle stage
+* ability costs
+* ability limits
+* ability reliability
+* ability aliases
+* ability progression
+* ability refinement
+* ability merge/split records
+
+ProgressionReducer does not own abilities.
+
+CardSync does not own abilities.
+
+Context does not own abilities.
+
+Old ability scrubbers must not directly rewrite ability truth.
+
+The clean-core reference assigns ability candidates, abilities, skills, talents, and passives to AbilityReducer.  ￼
+
+InventoryReducer / ItemAuthority owns
+
+* inventory items
+* equipment slots
+* item ownership
+* item custody
+* item access
+* item condition
+* item quantity
+* item aliases
+* item descriptors
+* key item flags
+* coin purse / held coins
+* storage references
+* lost/stolen/unavailable item states
+
+Economy may propose purchases and sales.
+
+Crafting may propose material consumption and item creation.
+
+Contracts may propose custody transfers.
+
+Quests may reference key items.
+
+But InventoryReducer / ItemAuthority writes item truth.
+
+The clean-core reference assigns inventory, equipment, item custody, and coins to InventoryReducer / ItemAuthority.  ￼
+
+CraftingReducer owns
+
+* crafting attempts
+* crafting progress
+* recipes
+* recipe knowledge
+* material requirements
+* material consumption proposals
+* work stages
+* repair workflows
+* quality changes from crafting
+* failed crafting outcomes
+* crafting project state
+
+CraftingReducer may not directly create inventory items unless the accepted event is routed through InventoryReducer / ItemAuthority.
+
+CraftingReducer may say:
+
+The craft completed and produced a rough spear.
+
+InventoryReducer must commit the new item.
+
+This keeps item creation in one place.
+
+EconomyReducer owns
+
+* prices
+* purchases
+* sales
+* wages
+* service costs
+* bargaining state
+* debts
+* barter agreements
+* transaction validation
+* market logic
+* repair costs
+* paid services
+
+EconomyReducer should not directly mutate inventory unless routed through proper inventory/currency events.
+
+Example:
+
+A purchase should become:
+
+* economy.transaction.complete
+* coins.spend through InventoryReducer / ItemAuthority
+* item.gain through InventoryReducer / ItemAuthority
+
+The clean-core reference assigns economy, prices, purchases, sales, and wages to EconomyReducer.  ￼
+
+QuestReducer owns
+
+* quest offers
+* accepted quests
+* active quests
+* quest progress
+* quest completion
+* quest failure
+* quest abandonment
+* quest archive
+* quest givers
+* quest objectives
+* quest rewards
+* quest-linked items/actors/places
+* quest deadlines as references
+
+QuestReducer owns quest status.
+
+It may not directly create evidence, reputation, inventory, or cards.
+
+If a quest reward gives an item, it emits an inventory event.
+
+If a quest affects reputation, it emits a reputation event.
+
+If a quest creates a card update, it marks dirty targets for CardSync.
+
+ContractReducer owns
+
+* agreements
+* terms
+* parties
+* payment obligations
+* service obligations
+* item custody obligations
+* repair contracts
+* delivery contracts
+* breach status
+* fulfillment status
+* contract archive
+
+Contracts are different from quests.
+
+A contract is an agreement with terms.
+
+A quest is an adventure objective.
+
+They can link, but they should not be the same record.
+
+LaborReducer / DomainReducer owns
+
+* workers
+* worker groups
+* foremen
+* labor orders
+* project assignments
+* domain projects
+* holdings
+* bases
+* controlled assets
+* domain resources
+* treasury notes
+* construction progress
+* repair progress
+* project blockers
+* project archive
+
+Labor and domain may interact with contracts and economy, but they should not write those systems directly.
+
+Example:
+
+Hiring five carpenters may involve:
+
+* contract agreement
+* economy payment
+* labor worker group
+* domain project assignment
+
+Each owner commits its own truth.
+
+InvestigationReducer owns
+
+* cases
+* leads
+* clues
+* evidence
+* suspects
+* contradictions
+* witness links
+* solved case records
+* case archive
+
+Investigation should not directly create public reputation.
+
+If solved publicly, it may emit a reputation event.
+
+It should not treat rumors as proof.
+
+The clean-core reference assigns investigation cases, clues, and evidence to InvestigationReducer.  ￼
+
+ReputationReducer owns
+
+* local reputation
+* faction reputation
+* public deeds
+* private witness knowledge
+* pending reports
+* rumors
+* titles
+* legal/social status
+* public/private knowledge separation
+
+Reputation does not decide whether an event really happened.
+
+It records what people believe, saw, reported, or say.
+
+A rumor can exist without being true.
+
+The clean-core reference assigns reputation, witness knowledge, and rumors to ReputationReducer.  ￼
+
+ActorReducer owns
+
+* named actors
+* actor identity
+* actor aliases
+* actor roles
+* actor status
+* actor location
+* actor importance
+* actor relationships
+* actor current condition
+* ordinary actor memory
+
+ActorReducer should not create full cards.
+
+It marks actors as card-eligible.
+
+CardSync mirrors card-eligible actors later.
+
+MajorActorMemoryReducer owns
+
+* long-term memory for important recurring actors
+* goals
+* grudges
+* trust/fear/loyalty
+* relationship stance
+* private actor notes
+* recurring interaction summaries
+
+This should be selective.
+
+Not every named actor gets major memory.
+
+The roadmap describes selective major-actor memory as a layer for important recurring actors only, with extras prevented from bloating the engine and actor memory never overriding hard world canon.  ￼
+
+PlaceReducer owns
+
+* places
+* buildings
+* rooms if important
+* place aliases
+* place importance
+* place status
+* local scene records
+* local hazards
+* local exits
+* place memory
+* building memory
+* current scene identity
+
+TimeReducer may handle travel duration.
+
+PlaceReducer handles place truth.
+
+A generic “door” or “room” should not become a durable place unless promoted by importance.
+
+TimeReducer owns
+
+* current day
+* current hour
+* current minute
+* elapsed time
+* time passage
+* rest time
+* travel time
+* route durations
+* pending time advance
+* deadlines
+* recovery ticks
+* time contradiction flags
+* travel timing
+
+The clean-core reference assigns time passage, deadlines, travel duration, and recovery ticks to TimeReducer.  ￼
+
+Route ownership
+
+Routes sit between PlaceReducer and TimeReducer.
+
+Design rule:
+
+PlaceReducer owns route identity and endpoints.
+
+TimeReducer owns travel time, duration memory, time passage, and time effects.
+
+Example:
+
+The forest trail to the old chapel is a route record.
+
+The fact that it takes forty minutes in rain is a TimeReducer/travel-duration fact.
+
+PartyReducer owns
+
+* party members
+* companions
+* followers
+* summons
+* present/absent party state
+* separated party members
+* party join/leave status
+* summon duration/control
+* follower group summaries
+
+ActorReducer may own the actor identity.
+
+PartyReducer owns party relationship and presence.
+
+Example:
+
+Mara as a person belongs to ActorReducer.
+
+Mara traveling with the player belongs to PartyReducer.
+
+ScaleReducer owns
+
+* group combat scale
+* enemy group records
+* ally group records
+* multi-protagonist state
+* large-scale conflict state
+* group casualties
+* remaining/fled/captured/routed counts
+* scale tier
+* battlefield group state
+
+The clean-core reference assigns group, scale, and multi-protagonist state to ScaleReducer.  ￼
+
+CardSync owns
+
+* Story Card mirrors
+* protected card registry
+* generated card registry
+* card identity index
+* card dirty queue
+* card write queue
+* card tombstones
+* card neutralization records
+* card write budget
+* card scan budget
+* card audit records
+
+CardSync owns cards only.
+
+It does not own actors, places, abilities, quests, inventory, or player state.
+
+CardSync may mirror stable state.
+
+CardSync may not create canon from prose.
+
+The clean-core reference says CardSync may create or update protected summaries, promoted actor/place cards, stabilized/card-eligible ability cards, important item cards, and active quest/contract/domain cards, but must never create canon from raw prose, create quarantine/review cards, use broad AIDRPG trigger keys, make cards from generic fragments, read duplicate/quarantine cards as truth, or rely only on hidden metadata.  ￼
+
+ContextBuilder owns
+
+* Context packets
+* packet priority
+* packet budget
+* stale packet invalidation
+* tiny/normal/wide context modes
+* immediate AI-facing truth
+
+ContextBuilder owns what the AI sees.
+
+It does not own the truth itself.
+
+The tester reference says Context must test packet modes, packet ordering, context length limits, no flooding, dirty-priority inclusion, critical facts not omitted, stale facts removed, and newly acquired relevant items appearing when needed.  ￼
+
+CommandSystem / HelpSystem owns
+
+* command parsing
+* command output
+* help text
+* player-facing state summaries
+* controlled command mutations
+* settings commands
+
+Commands should be honest.
+
+If a feature is not restored or is limited, help must say so.
+
+The clean-core reference explicitly warns not to let /help claim a feature works before it is restored.  ￼
+
+AuditSystem owns
+
+* debug output
+* release checks
+* state audit
+* card audit
+* full QA summaries
+* last event trace
+* rejected event reporting
+* duplicate skip reports
+* patch target diagnostics
+
+AuditSystem does not write gameplay truth.
+
+It explains it.
+
+The clean-core reference assigns debug, audit, and release reports to AuditSystem.  ￼
+
+CleanupSystem owns
+
+* controlled garbage collection
+* stale candidate removal
+* junk fragment cleanup
+* old log pruning
+* alias merge passes
+* old dirty row cleanup
+* archive compression
+* polluted card neutralization requests
+
+Cleanup does not invent gameplay truth.
+
+The clean-core reference allows cleanup to remove stale unpromoted actor candidates, remove junk place fragments, merge aliases, clear old dirty rows, prune old logs, archive stale quests/contracts, and compress memory, but says it may not invent new gameplay truth.  ￼
+
+ManualOverride owns
+
+* explicit user corrections
+* controlled state edits
+* protected sheet import if allowed
+* override logs
+* dirty target marking after overrides
+
+ManualOverride should be narrow and explicit.
+
+It should not let any random Story Card or prose overwrite canon.
+
+⸻
+
+7. Read/write boundaries
+
+Every system needs a read/write contract.
+
+7.1 May read
+
+Most systems may read state if needed for validation, context, or display.
+
+Examples:
+
+* Combat may read player stats, injuries, equipment, party, scale, and enemy threat.
+* Inventory may read contracts if an item is held by a smith.
+* Quest may read inventory to see if a key item exists.
+* Context may read almost everything but only to build packets.
+* CardSync may read stable state to mirror cards.
+
+Reading is allowed when useful.
+
+Writing is restricted.
+
+7.2 May write
+
+Only the owner writes.
+
+A system may write:
+
+* its own bucket
+* its own diagnostics
+* dirty flags related to its changes
+* operation ledger entries through the approved operation guard
+* follow-up event proposals
+
+It may not directly write another owner’s bucket.
+
+7.3 May propose
+
+Non-owner systems may propose events.
+
+This is how systems speak to each other.
+
+Example:
+
+AbilityReducer accepts an ability attempt.
+
+It may propose progression.abilityXp.
+
+ProgressionReducer commits the XP.
+
+AbilityReducer does not directly edit XP.
+
+This exact follow-up pattern is described in the clean-core reference: an accepted ability attempt updates the candidate, ProgressionReducer awards ability/domain/stat XP if appropriate, and card dirty logic marks the abilities overview dirty.  ￼
+
+⸻
+
+8. Follow-up event law
+
+Systems should interact through follow-up events, not direct mutation.
+
+Example: buying bread.
+
+The AI says:
+
+“The baker takes your 2 copper and hands you the loaf.”
+
+The proposed event may begin as:
+
+* economy.transaction.complete
+
+Then the accepted transaction emits:
+
+* inventory.coins.spend
+* inventory.item.gain
+
+EconomyReducer validates the transaction.
+
+InventoryReducer commits coin loss and bread gain.
+
+OperationLedger prevents duplicate application.
+
+Context may show the bread if relevant.
+
+CardSync probably does not generate a bread card because it is mundane.
+
+This keeps the economy and inventory systems synchronized without either owning too much.
+
+⸻
+
+9. Dirty target boundaries
+
+Dirty targets are how state changes tell Context and CardSync what needs refreshing.
+
+A dirty target is not gameplay truth.
+
+It is an update signal.
+
+Examples:
+
+* Player HP changes → dirty player context, dirty Player Sheet card
+* Inventory item gained → dirty inventory context, dirty Inventory Overview card
+* Ability stabilizes → dirty ability context, dirty Ability Overview card, maybe generated ability card
+* Quest progresses → dirty quest context, dirty Quest Log card
+* Actor promoted → dirty actor context if local, dirty generated actor card if eligible
+* Place changes → dirty scene/place context, dirty generated place card if eligible
+* Time passes → dirty time context, dirty Time card
+* Reputation changes → dirty reputation context, dirty Reputation card
+
+Dirty queues should be deduped, capped, and processed with budgets.
+
+The compiled safeguards say dirty queues and caching should prevent rebuilding the entire world every turn when only one local scene changed.  ￼
+
+⸻
+
+10. Context boundaries
+
+ContextBuilder may read state and produce AI-facing packets.
+
+It may not:
+
+* create inventory items
+* create actors
+* create places
+* award XP
+* apply damage
+* create quests
+* update cards
+* repair state
+* complete travel
+* solve cases
+* commit rumors as truth
+
+Context is read-only.
+
+If Context needs a fact, the fact must already exist in state.
+
+If Context notices state is malformed, it may report diagnostics or request audit, but it must not silently become a repair layer.
+
+⸻
+
+11. CardSync boundaries
+
+CardSync may read stable state and write Story Cards.
+
+CardSync may write:
+
+* protected summary cards
+* generated actor cards
+* generated place cards
+* generated ability cards
+* generated item cards
+* generated quest cards
+* generated contract cards
+* generated domain cards
+* card indexes
+* card tombstones
+* card neutralization records
+* card diagnostics
+
+CardSync may not write:
+
+* player HP
+* inventory items
+* abilities
+* quests
+* actors
+* places
+* time
+* reputation
+* domain state
+* progression
+* investigation
+* party
+* scale
+
+CardSync may never infer canon from prose.
+
+The roadmap also says card identity must be machine-stable rather than title-trusting, and cards should update only for important changed entities through safe, deduped, typed card transactions.  ￼
+
+⸻
+
+12. Parser boundaries
+
+Parsers are not owners.
+
+Parsers may create event proposals.
+
+They may not commit state.
+
+Examples of parser proposals:
+
+* training.practice
+* ability.attempt
+* item.gain
+* actor.mention
+* place.visit
+* time.pass
+* body.damage
+* quest.progress
+* reputation.rumor.add
+
+But parsers must not:
+
+* add items
+* award XP
+* create cards
+* damage HP
+* stabilize abilities
+* create actor cards
+* create place cards
+* complete quests
+* solve cases
+* create public reputation
+* advance time directly
+
+The clean-core reference says parsers create event proposals only and must not add items, award XP, create cards, damage HP, stabilize abilities, or create actor/place cards directly.  ￼
+
+⸻
+
+13. Validator boundaries
+
+CanonValidator decides whether proposed events can become canon.
+
+CanonValidator may:
+
+* read state
+* inspect evidence text
+* classify events as accept, reject, pending, soft_fail, or hard_deny
+* attach rejection reasons
+* attach confidence
+* attach validation notes
+* send accepted events to reducers
+* send rejected events to diagnostics
+
+CanonValidator may not:
+
+* write gameplay state directly
+* create cards
+* award XP
+* repair state
+* mutate inventory
+* alter actors
+* change quests
+* edit Context
+
+The clean-core reference says validation is the only canon gate, and every event must become accept, reject, pending, soft_fail, or hard_deny.  ￼
+
+⸻
+
+14. Reducer boundaries
+
+Reducers are the normal state writers.
+
+A reducer may:
+
+* commit accepted events of its own type
+* check preconditions
+* write its owned state bucket
+* record diagnostics
+* request dirty target updates
+* emit follow-up event proposals
+* record operation ledger keys through the operation guard
+
+A reducer may not:
+
+* commit unvalidated events
+* directly write another reducer’s bucket
+* bypass operation ledger
+* create cards directly
+* trust raw prose
+* read duplicate cards as truth
+* silently repair unrelated state
+
+The compiled safeguards say accepted events must go to the proper reducer and reducers may trigger related changes only through explicit follow-up events; the examples include item gain to InventoryReducer, body damage to BodyReducer, XP gain to ProgressionReducer, ability attempt to AbilityReducer, quest progress to QuestReducer, evidence to InvestigationReducer, reputation gain to ReputationReducer, time passage to TimeReducer, and card write to CardSync.  ￼
+
+⸻
+
+15. OperationLedger boundaries
+
+OperationLedger is not gameplay.
+
+It is the duplication guard.
+
+It owns:
+
+* committed operation keys
+* output hashes
+* duplicate skip records
+* replay detection
+* idempotency records
+* recent operation summaries
+
+It prevents:
+
+* double XP
+* duplicate item gain
+* duplicate damage
+* duplicate quest progress
+* duplicate time passage
+* duplicate card writes
+* duplicate ability evidence
+* duplicate actor/place promotion
+* duplicate contract/domain progress
+
+The compiled safeguards state that every committed event needs a durable key and that replaying the same output must not duplicate XP, item gains, ability evidence, quest progress, damage, card writes, actor/place mentions, or contract/domain progress.  ￼
+
+⸻
+
+16. Quarantine boundaries
+
+Quarantine stores malformed, unsafe, or suspicious data.
+
+Quarantine may contain:
+
+* malformed old actor records
+* broken inventory payloads
+* duplicate quest payloads
+* polluted card snapshots
+* old patch artifacts
+* invalid ability records
+* corrupted state fragments
+* migration failures
+
+Quarantine may not become active gameplay truth.
+
+Quarantine data should not:
+
+* appear in Context as confirmed truth
+* generate cards
+* grant items
+* restore HP
+* award XP
+* complete quests
+* solve cases
+* create public reputation
+
+Quarantine is for preservation and audit, not normal play.
+
+⸻
+
+17. Migration boundaries
+
+Migration is allowed to reshape old saves.
+
+Migration may:
+
+* detect old schema versions
+* create missing buckets
+* move old fields into new buckets
+* normalize old record shapes
+* preserve old valid player progress
+* quarantine malformed sections
+* set defaults
+* stamp the new schema version only after successful migration
+
+Migration may not:
+
+* invent new gameplay truth
+* blindly wipe old state
+* trust old cards as canon without explicit override policy
+* complete quests
+* stabilize abilities
+* award XP
+* delete important old records without quarantine
+* create generated cards as part of schema repair
+
+The compiled engine notes say migration must validate, repair or migrate, persist, and preserve bad payload snapshots instead of blindly overwriting them.  ￼
+
+⸻
+
+18. Cleanup boundaries
+
+Cleanup exists because long adventures accumulate noise.
+
+Cleanup may:
+
+* remove stale unpromoted actor candidates
+* remove junk place fragments
+* merge safe aliases
+* clear old dirty queue rows
+* prune old diagnostics
+* archive stale quests/contracts
+* compress old actor/place memory
+* neutralize polluted cards
+* enforce caps
+
+Cleanup may not:
+
+* create gameplay truth
+* grant items
+* award XP
+* damage HP
+* complete quests
+* solve investigations
+* create public reputation
+* stabilize abilities
+* generate cards from prose
+* restore old patch truth blindly
+
+Cleanup should be incremental and budgeted.
+
+The clean-core reference warns not to let cleanup create new gameplay truth and lists cleanup/migration as a category that needs owner, event types, validator rules, reducer rules, context output, card output, false-positive tests, and replay/idempotency tests if affected by a version.  ￼
+
+⸻
+
+19. ManualOverride boundaries
+
+ManualOverride is the controlled exception to normal flow.
+
+It exists because the user may need to correct state.
+
+ManualOverride may:
+
+* correct player identity
+* correct species/race
+* correct age
+* correct appearance
+* correct HP/MP/EP
+* correct current location
+* correct simple inventory entries
+* update settings
+* mark dirty targets
+* log what changed
+
+ManualOverride should not initially:
+
+* import arbitrary generated card text as canon
+* trust duplicate protected cards
+* rewrite ability systems freely
+* complete quests from prose
+* solve cases
+* create domain projects
+* create major actors
+* mass-edit cards without audit
+* repeatedly apply the same override
+
+Manual override should be explicit, logged, and idempotent.
+
+⸻
+
+20. Command boundaries
+
+Commands may be read-only or mutating.
+
+Read-only commands
+
+Examples:
+
+* /sheet
+* /inventory
+* /equipment
+* /progression
+* /abilityaudit
+* /quests
+* /contracts
+* /domain
+* /actors
+* /places
+* /time
+* /reputation
+* /cardaudit
+* /stateaudit
+* /debuglast
+* /releasecheck
+
+These should display state and diagnostics without changing gameplay truth.
+
+Mutating commands
+
+Examples may include:
+
+* /cleanup
+* /settings
+* manual override commands
+* debug reset commands
+* feature toggles
+
+Mutating commands must be explicit.
+
+They must say what they changed.
+
+They must not pretend to be normal story actions.
+
+They should use operation logs or diagnostics where appropriate.
+
+⸻
+
+21. Archive boundaries
+
+Archives preserve history without cluttering active truth.
+
+Archives may include:
+
+* completed quests
+* failed quests
+* abandoned quests
+* solved cases
+* fulfilled contracts
+* breached contracts
+* resolved rumors
+* old domain projects
+* retired ability candidates
+* old actor summaries
+* old place summaries
+
+Archive records should not be treated as active unless explicitly referenced.
+
+Example:
+
+A completed quest should not still appear as active Context.
+
+But it may matter later for reputation or actor memory.
+
+So archive state is historical truth, not active instruction.
+
+⸻
+
+22. Feature relationship rules
+
+Every feature relationship should follow one of these patterns.
+
+Pattern A — Read-only relationship
+
+One system reads another system’s truth.
+
+Example:
+
+Combat reads injuries and equipment.
+
+It does not write injuries or equipment directly.
+
+Pattern B — Proposal relationship
+
+One system proposes an event for another system.
+
+Example:
+
+Combat proposes body.damage.
+
+BodyReducer commits it.
+
+Pattern C — Follow-up event relationship
+
+One accepted event triggers another proposed event.
+
+Example:
+
+Quest completion proposes reward item.
+
+InventoryReducer commits item gain.
+
+Pattern D — Dirty target relationship
+
+One system changes state and marks another output layer dirty.
+
+Example:
+
+Ability stabilizes.
+
+AbilityReducer marks ability context/card dirty.
+
+Pattern E — Mirror relationship
+
+CardSync mirrors state.
+
+Example:
+
+Important actor becomes card-eligible.
+
+CardSync writes or updates actor card.
+
+CardSync does not own actor truth.
+
+⸻
+
+23. What must never happen
+
+The following patterns are forbidden.
+
+Forbidden pattern 1 — Parser writes canon
+
+Bad:
+
+Output parser sees “key” and adds key to inventory.
+
+Correct:
+
+Output parser proposes item.gain. Validator and InventoryReducer decide.
+
+Forbidden pattern 2 — Context writes canon
+
+Bad:
+
+Context notices player should have a key and adds it.
+
+Correct:
+
+Context only reports existing state.
+
+Forbidden pattern 3 — CardSync writes gameplay state
+
+Bad:
+
+Generated card says Mara is dead, so ActorReducer marks Mara dead.
+
+Correct:
+
+Cards mirror actor state. They do not create actor state.
+
+Forbidden pattern 4 — Cleanup invents truth
+
+Bad:
+
+Cleanup sees messy actor notes and promotes a major actor.
+
+Correct:
+
+Cleanup may compress or quarantine; promotion must come from validated events.
+
+Forbidden pattern 5 — Multiple XP writers
+
+Bad:
+
+Combat system, Ability system, and Progression system all award XP directly.
+
+Correct:
+
+Combat and Ability propose XP events. ProgressionReducer writes XP.
+
+The clean-core reference’s do-not-do list explicitly says not to let multiple systems award XP, not to let multiple systems damage HP, not to let CardSync infer canon from prose, and not to restore broad patch systems as gameplay writers.  ￼
+
+Forbidden pattern 6 — Multiple HP damage writers
+
+Bad:
+
+Combat applies HP loss, poison applies HP loss, output parser applies HP loss, and cleanup repairs it.
+
+Correct:
+
+All harm proposals go through validation and BodyReducer.
+
+Forbidden pattern 7 — Story Cards as authority
+
+Bad:
+
+Duplicate Player Sheet card overwrites state.
+
+Correct:
+
+Protected cards mirror state, and duplicate cards are audited or neutralized.
+
+Forbidden pattern 8 — Broad patch layer
+
+Bad:
+
+FinalGameplayPolishSystem fixes inventory, actors, cards, HP, XP, and quests all at once.
+
+Correct:
+
+Each useful rule is converted into parser, validator, reducer, audit, or test logic.
+
+⸻
+
+24. Boundary examples
+
+Example 1 — Ability attempt gives XP
+
+AI output:
+
+“You try to form Mana Slash. The blade flickers for a moment before collapsing.”
+
+Correct ownership flow:
+
+EventPipeline proposes ability.attempt.
+
+CanonValidator marks soft_fail or partial success.
+
+AbilityReducer updates candidate evidence.
+
+AbilityReducer emits progression.abilityXp or progression.domainXp proposal if appropriate.
+
+ProgressionReducer commits XP.
+
+DirtyQueue marks ability and progression context dirty.
+
+CardSync does nothing unless ability becomes stable/card-eligible.
+
+Incorrect flow:
+
+AbilityReducer directly edits XP.
+
+CardSync creates a Mana Slash card immediately.
+
+ProgressionReducer creates the ability.
+
+Example 2 — Smith takes sword for repair
+
+AI output:
+
+“Mira takes your iron sword and agrees to repair it for 5 silver.”
+
+Correct ownership flow:
+
+EventPipeline proposes contract.create and item.custody.transfer.
+
+CanonValidator checks agreement, payment terms, item ownership, and real narration.
+
+ContractReducer creates repair contract.
+
+InventoryReducer changes sword custody to Mira.
+
+EconomyReducer may create payment obligation or transaction.
+
+DirtyQueue marks inventory and contracts dirty.
+
+CardSync may update Inventory Overview and Domain/Contracts if relevant.
+
+The porting rules in the clean-core reference use a very similar smith repair example and say it should become an event parser, be validated, commit through ContractReducer and InventoryReducer, mark dirty targets, and gain acceptance tests for sword unavailable, returned, or stolen.  ￼
+
+Example 3 — Rumor says player died
+
+AI output:
+
+“A rumor spreads that you died in the woods.”
+
+Correct ownership flow:
+
+EventPipeline may propose reputation.rumor.add.
+
+CanonValidator rejects body.death or body.damage.
+
+ReputationReducer may store rumor if socially relevant.
+
+BodyReducer does nothing.
+
+Context may mention the rumor only if socially relevant.
+
+No death state.
+
+No HP change.
+
+Example 4 — Place mentioned in travel
+
+AI output:
+
+“You hear the old chapel lies beyond the blackwood road.”
+
+Correct ownership flow:
+
+EventPipeline proposes place.mention or route.lead.
+
+CanonValidator marks pending or weak place lead.
+
+PlaceReducer may create low-confidence place candidate.
+
+No current location change.
+
+No generated place card.
+
+Context may mention lead only if relevant.
+
+Example 5 — Actual arrival
+
+AI output:
+
+“After an hour of walking, you arrive at the old chapel.”
+
+Correct ownership flow:
+
+EventPipeline proposes time.pass and travel.arrive.
+
+CanonValidator accepts if context supports travel.
+
+TimeReducer commits time passage.
+
+PlaceReducer updates current location/scene.
+
+DirtyQueue marks scene/time context dirty.
+
+CardSync only mirrors if old chapel is important or later promoted.
+
+⸻
+
+25. Ownership checklist for every future feature
+
+Every future feature chunk must answer these questions.
+
+What state bucket owns this truth?
+
+What reducer owns the bucket?
+
+What events can propose changes?
+
+What validation outcomes are possible?
+
+What reducer commits accepted events?
+
+What other systems may read it?
+
+What other systems may propose events to it?
+
+What follow-up events can it emit?
+
+What dirty targets does it create?
+
+What appears in Context?
+
+What can become card-eligible?
+
+What commands display it?
+
+What cleanup is allowed?
+
+What migration is required?
+
+What audit checks verify it?
+
+What duplicate/idempotency protection applies?
+
+What false-positive tests prove it is safe?
+
+If a feature cannot answer these questions, it is not ready to build.
+
+⸻
+
+26. Chunk 2 acceptance tests
+
+These are design-level acceptance tests that later code must satisfy.
+
+Test 1 — Parser cannot write inventory
+
+Given:
+
+AI output says “Mara hands you the key.”
+
+Expected:
+
+Parser creates item.gain proposal.
+
+Inventory is unchanged until validation and InventoryReducer commit.
+
+Test 2 — Ability cannot write XP directly
+
+Given:
+
+Ability attempt succeeds.
+
+Expected:
+
+AbilityReducer updates ability state.
+
+Progression XP changes only through ProgressionReducer.
+
+Test 3 — CardSync cannot create canon
+
+Given:
+
+A generated item card says “Dragon Crown.”
+
+Expected:
+
+Inventory does not gain Dragon Crown from card text alone.
+
+Test 4 — Context cannot repair state
+
+Given:
+
+Context packet says player has a key, but inventory does not.
+
+Expected:
+
+Context is considered wrong or stale.
+
+Inventory is not changed by Context.
+
+Test 5 — Cleanup cannot invent truth
+
+Given:
+
+Cleanup sees a possible actor candidate named “Mara.”
+
+Expected:
+
+Cleanup may remove, keep, or compress candidate.
+
+Cleanup does not promote Mara to major actor without validated actor events.
+
+Test 6 — Duplicate output does not double-commit
+
+Given:
+
+Same output is processed twice.
+
+Expected:
+
+OperationLedger blocks duplicate XP, item gain, damage, quest progress, time passage, and card write.
+
+Test 7 — Dirty queue does not equal truth
+
+Given:
+
+dirty.inventory contains item ID.
+
+Expected:
+
+That only means inventory outputs need refreshing.
+
+It does not mean the item exists unless inventory state contains it.
+
+Test 8 — Quarantine is not active canon
+
+Given:
+
+Malformed old inventory record is placed in quarantine.
+
+Expected:
+
+The player cannot use that item until it is safely migrated or manually restored.
+
+Test 9 — Quest reward goes through correct owners
+
+Given:
+
+Quest completion awards 10 XP and a silver ring.
+
+Expected:
+
+QuestReducer completes quest.
+
+ProgressionReducer awards XP.
+
+InventoryReducer adds ring.
+
+CardSync only mirrors if dirty/card-eligible.
+
+Test 10 — Actor card mirrors actor state
+
+Given:
+
+Mara becomes important and card-eligible.
+
+Expected:
+
+ActorReducer owns Mara’s truth.
+
+CardSync creates or updates card from that state.
+
+Editing the card does not rewrite Mara unless explicit manual override policy allows it.
+
+⸻
+
+27. Final Chunk 2 doctrine
+
+Chunk 2 doctrine:
+
+Every truth has one home.
+
+Every home has one owner.
+
+Parsers propose.
+
+Validators judge.
+
+Reducers write.
+
+Context reads.
+
+Cards mirror.
+
+Commands display.
+
+Audit explains.
+
+Cleanup trims.
+
+Migration preserves.
+
+Quarantine protects.
+
+OperationLedger dedupes.
+
+No system gets to “helpfully” write someone else’s truth.
+
+This is what keeps AIDRPG from becoming a patch pile again.
+

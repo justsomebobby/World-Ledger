@@ -1,0 +1,2845 @@
+AIDRPG Design Bible — Chunk 30: Investigation, Cases, Clues, Evidence, Rumors, Witness Knowledge, Truth Validation, and Solved-Case Archive
+
+1. Purpose of this chunk
+
+Chunk 30 defines how AIDRPG handles investigation gameplay.
+
+This includes:
+
+* cases
+* mysteries
+* clues
+* evidence
+* witness knowledge
+* rumors
+* claims
+* theories
+* contradictions
+* suspect tracking
+* proof standards
+* solved-case validation
+* false leads
+* investigation quests
+* case archives
+* actor/place/card updates from confirmed facts
+
+Earlier chunks defined:
+
+* stats and resources
+* progression
+* enemies
+* combat
+* abilities
+* absorption
+* crafting
+* economy
+* quests and contracts
+
+Chunk 30 answers:
+
+How does the system know what is true?
+
+How does it separate a rumor from a fact?
+
+How does it handle clues without instantly solving everything?
+
+How does INT help investigation without creating hidden truth from nothing?
+
+How does witness knowledge work?
+
+How does evidence become confirmed?
+
+How does a case become solved?
+
+How does the system prevent AI Dungeon from randomly declaring the wrong culprit?
+
+How does the system update actor/place/story cards only from confirmed facts?
+
+How does it archive solved cases without bloating active context?
+
+The central rule is:
+
+Investigation is evidence-driven truth management.
+
+AIDRPG should never treat suspicion, rumor, theory, hallucinated narration, or player guesses as confirmed truth unless validated by evidence.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon often creates mystery, suspicion, and partial information naturally.
+
+The player may encounter:
+
+* a murdered merchant
+* a missing child
+* a stolen relic
+* a suspicious noble
+* a cursed village
+* a lying witness
+* strange tracks
+* a locked room
+* a missing shipment
+* a corrupted slime outbreak
+* a ghost repeating the same phrase
+* a rumor about a dragon cult
+* a fake bounty
+* a forged contract
+* a poisoning
+* a noble’s secret
+* a hidden tunnel
+* a traitor in the camp
+* an unexplained disease
+* a strange magical residue
+
+AIDRPG must support this kind of play.
+
+But it must prevent:
+
+* high INT instantly solving mysteries
+* rumors becoming facts
+* NPC lies being treated as canon
+* player guesses becoming truth
+* AI Dungeon randomly naming a culprit without support
+* witness statements updating actor cards as confirmed fact
+* duplicate clues
+* clue spam
+* solved cases without proof
+* case rewards triggering twice
+* evidence being created from Story Card text
+* old disproven facts staying active
+* false leads being treated as mistakes rather than intentional uncertainty
+
+Investigation should feel flexible and story-rich, but it needs a strong truth model.
+
+⸻
+
+3. Investigation ownership boundaries
+
+InvestigationReducer owns
+
+* cases
+* clues
+* evidence
+* witness statements
+* rumors
+* theories
+* suspects
+* contradictions
+* proof status
+* case progress
+* solved-case validation
+* solved-case archive
+* false leads
+* confirmed facts from investigation
+* evidence chains
+* clue dedupe
+* case audit
+
+QuestReducer owns
+
+* investigation quest wrapper
+* objectives
+* rewards
+* quest completion
+* quest turn-in
+* deadlines if the case is also a quest
+
+ActorReducer owns
+
+* actor memory
+* suspect status as actor-linked note
+* witness knowledge when confirmed as something the actor knows or claims
+* actor relationships
+* actor injuries/death/custody
+
+PlaceReducer owns
+
+* crime scenes
+* searched places
+* place memory
+* building memory
+* discovered hidden areas
+
+InventoryReducer owns
+
+* physical evidence items
+* custody of evidence
+* proof items
+* samples
+* documents
+* keys
+* stolen items
+* corpse/body part evidence if tracked
+
+ReputationReducer owns
+
+* public trust
+* accusations
+* solved-case fame
+* wrongful accusation damage
+* faction consequences
+* titles
+
+ProgressionReducer owns
+
+* Investigation Domain XP
+* INT XP
+* Level XP from major case progress
+* anti-farm handling
+
+CardSync owns
+
+* generated case cards for major cases
+* protected Case Log card
+* actor/place/card updates from confirmed facts only
+* solved-case archive summaries
+
+InvestigationReducer determines what is known, suspected, or proven.
+
+Other systems commit their own state.
+
+⸻
+
+4. Investigation types
+
+AIDRPG should classify investigation content.
+
+Case
+
+A structured mystery or problem requiring evidence.
+
+Example:
+
+“Who killed the merchant?”
+
+Clue
+
+A meaningful observation, object, statement, trace, or fact that may help resolve a case.
+
+Example:
+
+“Blue wax was found on the victim’s sleeve.”
+
+Evidence
+
+A clue strong enough to support a claim.
+
+Example:
+
+“The blue wax matches the seal used by House Veyr.”
+
+Proof
+
+Evidence strong enough to establish a conclusion for a case, authority, or quest.
+
+Example:
+
+“House Veyr’s servant was seen entering the room, and the dagger with Veyr crest has the victim’s blood.”
+
+Rumor
+
+Unverified information circulating through people.
+
+Example:
+
+“They say the old miller deals with wolves.”
+
+Witness statement
+
+Something an actor says they saw, heard, believe, suspect, or claim.
+
+Example:
+
+“The stable boy says he saw Mara near the alley after sunset.”
+
+Theory
+
+A possible explanation not yet proven.
+
+Example:
+
+“Mara may have had access to the murder weapon.”
+
+Contradiction
+
+Two pieces of information conflict.
+
+Example:
+
+“Mara says she was at the inn, but the innkeeper says she never arrived.”
+
+Lead
+
+A direction for further investigation.
+
+Example:
+
+“Check the blue wax supplier.”
+
+False lead
+
+A clue or claim that seems important but later proves misleading.
+
+Example:
+
+“The bloodied scarf belongs to the victim’s brother, but he used it earlier to stop a nosebleed.”
+
+Confirmed fact
+
+A truth validated strongly enough to update canon memory.
+
+Example:
+
+“The victim died from poison, not the knife wound.”
+
+⸻
+
+5. Truth status model
+
+Every investigation fact should have a truth status.
+
+Truth statuses:
+
+Status	Meaning
+Unknown	no reliable information
+Rumored	people say it, not verified
+Claimed	a specific source says it
+Suspected	plausible but unproven
+Observed	directly seen by player or reliable narration
+Supported	evidence supports it
+Strongly Supported	multiple evidence points support it
+Confirmed	accepted as canon truth
+Disputed	credible conflicting evidence exists
+Contradicted	evidence shows it is likely false
+False	confirmed false
+Forged/Fabricated	evidence or claim was manufactured
+Ambiguous	truth cannot currently be resolved
+Retconned/Invalid	previous record rejected by validation
+
+This is one of the most important safeguards in the whole system.
+
+A statement can be useful without being confirmed.
+
+⸻
+
+6. Source reliability model
+
+Every clue or claim should know where it came from.
+
+Source reliability categories:
+
+Source Type	Reliability
+direct player observation	high, but interpretation can still be wrong
+validated AI narration	high if not contradicted
+physical evidence	high if authentic
+magical evidence	high if spell/source reliable
+witness statement	variable
+expert testimony	variable to high
+rumor	low
+enemy claim	low to variable
+drunk witness	low to variable
+biased actor	variable
+forged document	false once proven
+dream/vision	special, uncertain unless setting validates
+Story Card text	not evidence by itself
+Context text	not evidence by itself
+debug/command output	not evidence unless command intentionally mutates state
+
+Reliability should be tracked separately from truth.
+
+A reliable witness can be wrong.
+
+An unreliable source can accidentally be correct.
+
+⸻
+
+7. Case lifecycle
+
+Cases should follow a lifecycle.
+
+7.1 Unopened
+
+A mystery exists but is not tracked.
+
+7.2 Rumored
+
+The player hears about a possible issue.
+
+7.3 Open
+
+A case is created.
+
+7.4 Active
+
+Player is investigating.
+
+7.5 In Progress
+
+Clues/evidence have been found.
+
+7.6 Blocked
+
+Progress requires missing clue, access, witness, item, authority, or location.
+
+7.7 Theory Formed
+
+A plausible explanation exists but is not proven.
+
+7.8 Evidence Sufficient
+
+Enough evidence may support a solution.
+
+7.9 Ready to Present
+
+The player can present findings to authority/giver/target.
+
+7.10 Solved
+
+The truth is validated internally.
+
+7.11 Resolved
+
+The case result has been acted on publicly or narratively.
+
+7.12 Archived
+
+The case is no longer active.
+
+7.13 Reopened
+
+New evidence challenges the old conclusion.
+
+Status examples:
+
+* Open
+* Active
+* Blocked
+* Ready to Present
+* Solved
+* Resolved
+* Archived
+* Reopened
+* Failed
+* Abandoned
+* Cold
+
+⸻
+
+8. Case record template
+
+Each case should have a structured record.
+
+Case ID:
+Title:
+Type:
+Status:
+Priority:
+Source:
+Related Quest:
+Related Contract:
+Related Actors:
+Related Places:
+Related Items:
+Related Factions:
+Core Question:
+Subquestions:
+Known Timeline:
+Clues:
+Evidence:
+Witness Statements:
+Rumors:
+Suspects:
+Theories:
+Contradictions:
+Leads:
+Proof Requirements:
+Current Best Theory:
+Confirmed Facts:
+Disputed Facts:
+False Leads:
+Blockers:
+Deadline:
+Solution Status:
+Resolution:
+Reward Status:
+Archive Status:
+Last Updated:
+
+Example:
+
+Case: Merchant’s Murder
+Status: Active
+Core Question: Who killed Dalen the merchant?
+Confirmed Facts:
+- Dalen was found dead in his locked room.
+- The knife wound was postmortem.
+Supported Facts:
+- Poison may be the real cause of death.
+Suspects:
+- Mara, claimed by stable boy.
+- Lord Veyr, linked by blue wax.
+Current Leads:
+- Identify poison.
+- Question innkeeper.
+- Find source of blue wax.
+
+⸻
+
+9. Case types
+
+Common case types:
+
+* murder
+* missing person
+* theft
+* fraud
+* poisoning
+* cursed object
+* monster attack
+* sabotage
+* betrayal
+* smuggling
+* forged document
+* false accusation
+* corruption
+* disease source
+* haunting
+* ritual mystery
+* dungeon secret
+* political conspiracy
+* contract dispute
+* economic fraud
+* domain sabotage
+* unknown creature behavior
+* unexplained magical event
+
+Case type affects proof requirements.
+
+A murder case needs different evidence than a missing shipment or cursed well.
+
+⸻
+
+10. Core question and subquestions
+
+Every case should have a core question.
+
+Examples:
+
+* Who killed the merchant?
+* Where is the missing child?
+* What caused the plague?
+* Who sabotaged the wall?
+* Is Frostmaw actually attacking the mill?
+* Where did the stolen ring go?
+* Why are the slimes becoming corrupted?
+* Is the contract forged?
+* Who opened the gate?
+* What is haunting the tower?
+
+Subquestions break the mystery into trackable parts.
+
+Example:
+
+Case: Merchant’s Murder
+
+Core question:
+
+Who killed Dalen?
+
+Subquestions:
+
+What was the true cause of death?
+Who had access to the room?
+Who benefits from his death?
+Where did the blue wax come from?
+Why was the knife wound staged?
+
+Subquestions produce leads and prevent one-clue solutions.
+
+⸻
+
+11. Clue definition
+
+A clue is any meaningful information that may help answer a case question.
+
+Clues can be:
+
+* physical object
+* trace
+* wound
+* footprint
+* smell
+* sound
+* document
+* witness statement
+* magical residue
+* location detail
+* behavior pattern
+* contradiction
+* missing item
+* timing fact
+* item condition
+* body condition
+* rumor
+* map mark
+* ledger entry
+* relationship fact
+* environmental anomaly
+
+A clue is not automatically evidence.
+
+A clue becomes evidence when its relevance is established.
+
+Example:
+
+A blue thread found at a scene is a clue.
+
+It becomes evidence if linked to a suspect’s cloak, uniform, or location.
+
+⸻
+
+12. Clue record template
+
+Clue ID:
+Case Link:
+Short Name:
+Description:
+Type:
+Source:
+Location Found:
+Actor Source:
+Item Link:
+Time Found:
+Truth Status:
+Reliability:
+Related Question:
+Supports:
+Contradicts:
+Needs Follow-Up:
+Evidence Strength:
+Tamper Risk:
+Custody:
+Duplicate Key:
+Last Updated:
+
+Example:
+
+Clue: Blue Wax on Sleeve
+Type: physical trace
+Source: player observation
+Location: victim’s room
+Truth Status: observed
+Reliability: high
+Supports: someone with blue wax seal contacted victim
+Needs Follow-Up: identify wax source
+Evidence Strength: weak until matched
+Custody: sample collected by player
+
+⸻
+
+13. Evidence strength
+
+Evidence should have strength.
+
+Strength	Meaning
+none	not useful yet
+weak	suggests possibility
+moderate	supports a claim
+strong	strongly supports a claim
+decisive	enough to prove if authentic
+corroborating	supports other evidence
+contradictory	undermines a claim
+exculpatory	clears or weakens suspicion
+fabricated	fake evidence
+contaminated	unreliable due to mishandling
+inadmissible	may be true but not accepted by authority
+
+Evidence strength depends on:
+
+* source reliability
+* directness
+* authenticity
+* corroboration
+* chain of custody
+* interpretation
+* whether alternate explanations remain
+
+A bloody dagger can be strong evidence.
+
+But if the wound was postmortem, it may be misleading.
+
+⸻
+
+14. Physical evidence
+
+Physical evidence includes:
+
+* weapon
+* blood
+* poison
+* footprint
+* hair
+* cloth
+* wax seal
+* letter
+* key
+* lock damage
+* broken glass
+* magic residue sample
+* corpse condition
+* track marks
+* fingerprints if setting supports it
+* monster part
+* unusual soil
+* burned mark
+* rope fiber
+* coin with mint mark
+* torn map
+
+Physical evidence needs custody if collected.
+
+InventoryReducer owns the item.
+
+InvestigationReducer owns its meaning.
+
+Example:
+
+Item:
+
+Blue Wax Sample
+
+Inventory owns:
+
+* quantity
+* custody
+* condition
+
+Investigation owns:
+
+* found on victim
+* may match House Veyr seal
+* evidence strength
+
+⸻
+
+15. Chain of custody
+
+Important evidence should track custody.
+
+Fields:
+
+Evidence Item:
+Found By:
+Original Location:
+Collected Turn:
+Current Custody:
+Storage:
+Tamper Status:
+Condition:
+Presented To:
+Accepted By:
+
+Chain of custody matters when:
+
+* legal case
+* bounty proof
+* noble/political case
+* forged evidence risk
+* magical contamination
+* public accusation
+* quest reward requires proof
+
+If evidence is mishandled:
+
+* strength may reduce
+* authority may dispute it
+* culprit may tamper with it
+* accusation may fail
+
+Not every small clue needs detailed custody, but major proof does.
+
+⸻
+
+16. Witness knowledge
+
+Witness knowledge is what an actor knows, claims, saw, heard, believes, hides, or lies about.
+
+Witness knowledge should not automatically become confirmed truth.
+
+Witness statement template:
+
+Statement ID:
+Case Link:
+Witness:
+Statement:
+Statement Type:
+Truth Status:
+Reliability:
+Bias:
+Motive to Lie:
+Fear/Pressure:
+Firsthand or Hearsay:
+Time Claimed:
+Location Claimed:
+Supports:
+Contradicts:
+Follow-Up Needed:
+Last Updated:
+
+Statement types:
+
+* firsthand observation
+* hearsay
+* rumor
+* opinion
+* confession
+* accusation
+* alibi
+* denial
+* threat
+* expert analysis
+* lie
+* mistaken memory
+* coerced statement
+
+Example:
+
+Witness: Stable Boy
+Statement: “I saw Mara near the alley after sunset.”
+Type: firsthand claim
+Truth Status: claimed
+Reliability: uncertain
+Bias: afraid of guards
+Follow-Up Needed: verify time and lighting
+
+Actor memory may store that the stable boy claims this, not that it is confirmed true.
+
+⸻
+
+17. Witness reliability factors
+
+Witness reliability depends on:
+
+* firsthand or hearsay
+* visibility
+* distance
+* time elapsed
+* fear
+* intoxication
+* bias
+* relationship to suspect
+* motive to lie
+* memory quality
+* magical influence
+* injury
+* age/experience
+* expertise
+* pressure/coercion
+* consistency
+* corroboration
+* contradiction by evidence
+
+Reliability can change.
+
+Example:
+
+A witness initially seems reliable.
+
+Later evidence shows they lied about location.
+
+Their reliability drops.
+
+Do not delete old statement; mark it contradicted or false.
+
+⸻
+
+18. Lies and deception
+
+Witnesses may lie.
+
+Possible lie types:
+
+* direct lie
+* omission
+* mistaken identity
+* false alibi
+* exaggeration
+* coerced lie
+* planted rumor
+* misdirection
+* self-protection
+* protecting someone else
+* fear-based silence
+* magical compulsion
+* memory alteration
+* social pressure
+
+Investigation should allow lies without breaking canon.
+
+A lie is still a real statement.
+
+Example:
+
+Confirmed truth:
+
+Mara was not at the alley.
+
+Witness statement remains:
+
+Stable boy claimed Mara was at the alley.
+
+Then mark:
+
+Statement contradicted / likely false.
+
+This preserves continuity.
+
+⸻
+
+19. Rumors
+
+Rumors are unverified public or private claims.
+
+Rumor template:
+
+Rumor ID:
+Content:
+Source:
+Spread Area:
+Related Case:
+Related Actor:
+Related Place:
+Reliability:
+Truth Status:
+Potential Lead:
+Harmful if Spread:
+Last Heard:
+
+Rumor examples:
+
+* “The miller feeds wolves.”
+* “The captain takes bribes.”
+* “The tower screams at night.”
+* “House Veyr uses blue wax.”
+* “A slime plague came from the well.”
+* “The missing child ran away.”
+
+Rumors can be:
+
+* true
+* partly true
+* false
+* planted
+* misunderstood
+* outdated
+* metaphorical
+* supernatural echo
+
+Rumors should usually become leads, not facts.
+
+⸻
+
+20. Rumor spread
+
+Rumors can spread through:
+
+* taverns
+* markets
+* witnesses
+* guards
+* servants
+* bards
+* criminals
+* churches
+* guilds
+* faction agents
+* letters
+* magical messages
+* public notices
+
+Rumor spread affects:
+
+* reputation
+* suspect behavior
+* witness fear
+* prices
+* quest availability
+* faction hostility
+* case difficulty
+
+Example:
+
+If player publicly accuses Lord Veyr too early:
+
+* rumor spreads
+* Veyr may destroy evidence
+* player reputation may suffer
+* witnesses may hide
+
+Investigation connects to ReputationReducer.
+
+⸻
+
+21. Suspects
+
+Suspect records help organize cases.
+
+Suspect template:
+
+Actor:
+Case Link:
+Suspicion Status:
+Motive:
+Means:
+Opportunity:
+Alibi:
+Evidence For:
+Evidence Against:
+Contradictions:
+Risk Level:
+Current Location:
+Questioned:
+Cleared:
+Accused:
+Arrested:
+Last Updated:
+
+Suspicion statuses:
+
+* not a suspect
+* person of interest
+* weak suspect
+* plausible suspect
+* strong suspect
+* primary suspect
+* cleared
+* falsely accused
+* guilty
+* unknown
+
+Do not mark guilty without proof.
+
+A suspect can be cleared by evidence.
+
+A cleared suspect should not be re-suspected unless new evidence appears.
+
+⸻
+
+22. Motive, means, opportunity
+
+Classic investigation can use:
+
+Motive
+
+Why would they do it?
+
+Examples:
+
+* revenge
+* money
+* jealousy
+* fear
+* politics
+* blackmail
+* contract
+* cult order
+* survival
+* magical compulsion
+
+Means
+
+Could they do it?
+
+Examples:
+
+* weapon access
+* poison knowledge
+* magic ability
+* physical strength
+* key
+* accomplice
+* stealth skill
+
+Opportunity
+
+Could they be there when it happened?
+
+Examples:
+
+* alibi
+* travel time
+* access
+* locked room
+* witness timing
+* secret passage
+* shift schedule
+
+Strong cases often need all three, or equivalent magical/story proof.
+
+⸻
+
+23. Timelines
+
+Many cases require timelines.
+
+Timeline entry template:
+
+Time:
+Actor:
+Location:
+Event:
+Source:
+Truth Status:
+Reliability:
+Contradictions:
+
+Example:
+
+Sunset:
+Dalen entered his room.
+Source: innkeeper claim.
+Truth Status: claimed.
+After sunset:
+Stable boy claims Mara was near alley.
+Truth Status: claimed.
+Midnight:
+Body discovered.
+Source: guard report.
+Truth Status: observed/confirmed.
+
+Timelines help detect contradictions.
+
+The Time system should support deadlines and event order.
+
+⸻
+
+24. Contradictions
+
+A contradiction is a conflict between two or more records.
+
+Contradiction template:
+
+Contradiction ID:
+Case Link:
+Record A:
+Record B:
+Conflict:
+Severity:
+Possible Explanations:
+Resolved:
+Resolution:
+Last Updated:
+
+Example:
+
+Conflict:
+Mara claims she was at the inn after sunset.
+Innkeeper claims Mara never entered the inn.
+Possible explanations:
+- Mara lied.
+- Innkeeper lied.
+- Mara used back room.
+- Timing is wrong.
+- Magical disguise.
+
+Contradictions are not automatically proof.
+
+They are leads.
+
+Resolving contradictions should grant investigation progress.
+
+⸻
+
+25. Leads
+
+Leads are next-step investigation directions.
+
+Lead template:
+
+Lead ID:
+Case Link:
+Description:
+Source:
+Related Clue:
+Priority:
+Status:
+Suggested Actions:
+Location:
+Actor:
+Item:
+Deadline:
+
+Lead statuses:
+
+* open
+* pursued
+* exhausted
+* resolved
+* false lead
+* blocked
+* obsolete
+
+Example:
+
+Lead: Identify blue wax source
+Suggested Actions:
+- ask candle maker
+- inspect noble seals
+- search Veyr study
+
+Leads help make investigation playable.
+
+⸻
+
+26. Theories
+
+A theory is an explanation assembled from clues.
+
+Theory template:
+
+Theory ID:
+Case Link:
+Theory Summary:
+Proposed Culprit/Cause:
+Supporting Evidence:
+Contradicting Evidence:
+Unresolved Questions:
+Confidence:
+Player-Created:
+System-Created:
+Ready to Test:
+
+Confidence levels:
+
+* speculative
+* possible
+* plausible
+* strong
+* nearly proven
+* proven
+* disproven
+
+Theories can be player-created.
+
+AIDRPG should allow the player to propose a theory.
+
+But it should validate evidence before marking it as solved.
+
+⸻
+
+27. Deductions
+
+A deduction is an inference drawn from clues.
+
+Deduction types:
+
+* obvious deduction
+* skill/stat-supported deduction
+* expert deduction
+* magical deduction
+* speculative deduction
+* false deduction
+* partial deduction
+
+INT and Investigation Domain help with deductions.
+
+But they should not create facts from nothing.
+
+Example:
+
+Evidence:
+
+* victim’s lips are blue
+* cup smells bitter
+* knife wound has little blood
+
+Possible deduction:
+
+* poison likely killed victim before stabbing
+
+This is supported.
+
+Invalid deduction:
+
+* “Lord Veyr did it because I have high INT.”
+
+High INT may suggest questions, not confirm culprit.
+
+⸻
+
+28. INT and Investigation Domain role
+
+INT helps:
+
+* notice inconsistencies
+* interpret clues
+* remember relevant details
+* understand mechanisms
+* analyze poison
+* compare timelines
+* detect fake documents
+* formulate theories
+* ask better questions
+* connect evidence
+* reduce false assumptions
+
+Investigation Domain helps:
+
+* search efficiently
+* preserve evidence
+* interview witnesses
+* read crime scenes
+* identify contradictions
+* avoid contamination
+* build proof chain
+* know legal proof standards
+* detect deception patterns
+
+Neither creates hidden facts without evidence.
+
+High INT can generate leads.
+
+It cannot magically know the truth unless an ability, spell, or setting allows it.
+
+⸻
+
+29. Investigation actions
+
+Common investigation actions:
+
+* search room
+* inspect body
+* inspect object
+* collect sample
+* preserve evidence
+* question witness
+* compare stories
+* follow tracks
+* research records
+* cast detection spell
+* test poison
+* analyze magic residue
+* reconstruct timeline
+* stake out location
+* tail suspect
+* set trap
+* consult expert
+* present accusation
+* protect witness
+* cross-examine
+* verify alibi
+* check motive
+* check means
+* check opportunity
+
+Each action should produce:
+
+* clue
+* no clue
+* failed search
+* partial clue
+* false lead
+* risk
+* witness reaction
+* time cost
+* resource cost
+* case progress
+* XP if meaningful
+
+⸻
+
+30. Searching a scene
+
+Scene search depends on:
+
+* INT
+* Investigation Domain
+* lighting
+* time available
+* tools
+* danger
+* scene contamination
+* prior search
+* relevant senses
+* ability/passive support
+* witness help
+* whether clue exists
+* hidden difficulty
+
+Possible outcomes:
+
+* clue found
+* clue missed
+* clue partially found
+* clue damaged
+* false clue found
+* hidden compartment found
+* no relevant clue exists
+* time passes
+* enemy interrupts
+* evidence contaminated
+
+Do not spawn infinite clues from repeated searches.
+
+Repeated search without new method decays.
+
+⸻
+
+31. Clue existence
+
+AIDRPG should distinguish between:
+
+* clue exists and is found
+* clue exists but missed
+* clue does not exist
+* clue is hidden behind blocker
+* clue was destroyed
+* clue was moved
+* clue is false/planted
+* clue is irrelevant
+
+AI Dungeon may improvise clues.
+
+The system may accept them if they fit the case and do not contradict protected truth.
+
+But clues should not magically solve everything without a chain.
+
+⸻
+
+32. Evidence collection
+
+Collecting evidence requires:
+
+* evidence exists
+* player has access
+* player takes it or stores sample
+* item/custody created if physical
+* contamination considered
+* operation key dedupes
+* clue linked to case
+
+Examples:
+
+* take blood sample
+* pocket wax scrap
+* copy ledger page
+* sketch symbol
+* preserve poison vial
+* collect slime residue
+* secure dagger
+* photograph if setting supports
+
+If player only observes evidence, it may still be a clue but not an inventory item.
+
+⸻
+
+33. Evidence contamination
+
+Evidence can become weaker if mishandled.
+
+Contamination causes:
+
+* touching blood with bare hands
+* exposing potion to air
+* mixing samples
+* breaking seal
+* letting suspect handle proof
+* storing magical residue poorly
+* fire/water damage
+* corpse decay
+* crowd trampling tracks
+* spell interference
+
+Effects:
+
+* evidence strength reduced
+* authority disputes proof
+* analysis harder
+* false result possible
+* case branch changes
+
+High Investigation Domain can prevent contamination.
+
+⸻
+
+34. Questioning witnesses
+
+Questioning depends on:
+
+* Social Domain
+* INT
+* reputation
+* relationship
+* intimidation
+* trust
+* fear
+* witness knowledge
+* witness honesty
+* witness safety
+* setting/social status
+* evidence presented
+* pressure from enemies
+* language/culture
+* time
+
+Outcomes:
+
+* statement gained
+* witness lies
+* witness refuses
+* witness asks for protection/payment
+* witness reveals clue
+* witness contradicts self
+* witness becomes hostile
+* witness flees
+* witness is threatened later
+* social/reputation consequence
+
+Not every witness knows something useful.
+
+Do not force every NPC to have a clue.
+
+⸻
+
+35. Presenting evidence
+
+The player may present evidence to:
+
+* suspect
+* witness
+* authority
+* quest giver
+* crowd
+* faction leader
+* court
+* companion
+* victim’s family
+* enemy
+
+Presenting evidence can:
+
+* unlock confession
+* create contradiction
+* intimidate
+* persuade
+* trigger fight
+* clear suspect
+* prove case
+* spread rumor
+* cause cover-up
+* worsen danger
+* reveal hidden actor
+* damage reputation if weak
+
+Evidence must be relevant.
+
+Weak evidence may fail or backfire.
+
+Strong evidence may produce breakthrough.
+
+⸻
+
+36. Accusations
+
+Accusing someone is a major action.
+
+Accusation fields:
+
+Accused Actor:
+Case:
+Public or Private:
+Evidence Presented:
+Authority Present:
+Confidence:
+Result:
+Consequences:
+
+Accusation outcomes:
+
+* accepted
+* rejected
+* disputed
+* suspect flees
+* suspect attacks
+* suspect confesses
+* witness supports
+* authority demands proof
+* reputation changes
+* false accusation penalty
+* case branches
+
+AIDRPG should not mark case solved just because player accuses someone.
+
+Accusation needs proof or confession.
+
+Confession may itself need validation if coerced, magical, or suspicious.
+
+⸻
+
+37. Confessions
+
+Confessions can solve cases, but require care.
+
+Confession types:
+
+* voluntary
+* pressured
+* coerced
+* false confession
+* magical compulsion
+* partial confession
+* confession to lesser crime
+* confession by proxy
+* dying confession
+* recorded confession
+
+A confession is strong evidence if reliable.
+
+But false confessions are possible.
+
+Factors:
+
+* motive to confess falsely
+* magical influence
+* fear
+* torture/coercion
+* contradiction by facts
+* corroborating evidence
+* whether confession includes non-public details
+
+Do not rely on confession alone for every case unless setting/story accepts it.
+
+⸻
+
+38. Magical investigation
+
+Magic can help investigation.
+
+Examples:
+
+* detect magic
+* speak with dead
+* truth spell
+* memory reading
+* scrying
+* object reading
+* spirit sight
+* locate object
+* divination
+* aura reading
+* curse detection
+* poison detection
+
+Magic must have:
+
+* ability exists
+* cost
+* limits
+* resistance
+* false positives
+* failure modes
+* legal/social consequences
+* target consent if relevant
+* countermeasures
+
+Truth magic should not be perfect by default.
+
+Possible counters:
+
+* mind shielding
+* anti-divination
+* false memories
+* corpse unwilling
+* spirit confused
+* oath protection
+* divine concealment
+* dream symbolism
+* cursed interference
+
+Magic can provide strong evidence, but not always absolute truth.
+
+⸻
+
+39. Speak with dead / spirit testimony
+
+If the setting allows asking the dead:
+
+Consider:
+
+* corpse condition
+* soul availability
+* memory limits
+* willingness
+* trauma
+* language
+* time since death
+* killer disguise
+* magical interference
+* whether the dead saw the killer
+* whether the dead is truthful
+* cost/ritual
+* legal acceptance
+
+A victim may not know who killed them.
+
+Example:
+
+Victim poisoned from behind.
+
+Spirit may remember taste, fear, a voice, or pain, but not the culprit’s face.
+
+This prevents magic from trivializing every case.
+
+⸻
+
+40. Truth spells
+
+Truth spells should define scope.
+
+Questions:
+
+* Does it detect intentional lies only?
+* Does it detect false beliefs?
+* Can it be resisted?
+* Does silence avoid it?
+* Does half-truth bypass it?
+* Does memory alteration bypass it?
+* Is it legal?
+* Does it require consent?
+* Does it affect fae/demons/undead?
+* Does it produce exact truth or confidence?
+
+A truthful statement can still mislead.
+
+Example:
+
+“I did not kill him.”
+
+Could be true if:
+
+* they hired someone else
+* poison killed him before they stabbed him
+* they think someone else did
+* definition of kill differs magically
+
+Truth spells are useful but not omnipotent.
+
+⸻
+
+41. False leads
+
+False leads are valid gameplay.
+
+False lead types:
+
+* mistaken witness
+* planted evidence
+* coincidental clue
+* outdated rumor
+* red herring
+* framed suspect
+* magical disguise
+* false confession
+* forged document
+* contaminated evidence
+* enemy misdirection
+
+False leads should eventually be resolvable.
+
+When disproven:
+
+* mark as false lead
+* keep record
+* do not delete blindly
+* update suspect/evidence status
+* maybe grant XP for resolving
+
+Example:
+
+The bloodied scarf seems to implicate the brother.
+
+Later proof shows it was from helping the victim earlier.
+
+Update:
+
+* scarf clue remains
+* implication contradicted
+* brother suspicion reduced
+
+⸻
+
+42. Forgery and fabricated evidence
+
+Evidence can be fake.
+
+Fabrication signs:
+
+* inconsistent material
+* wrong ink age
+* incorrect seal
+* impossible timeline
+* witness contradiction
+* magical residue mismatch
+* suspicious convenience
+* tamper marks
+* handwriting mismatch
+* too-perfect placement
+
+Forgery detection uses:
+
+* INT
+* Investigation Domain
+* relevant craft/domain
+* magic detection
+* expert help
+* comparison sample
+
+Fake evidence can become evidence of the framer.
+
+Example:
+
+A forged letter implicating Mara becomes evidence someone tried to frame Mara.
+
+⸻
+
+43. Case proof standards
+
+Different situations require different proof standards.
+
+Context	Proof Needed
+personal certainty	moderate evidence may be enough
+quest giver satisfaction	depends on giver
+bounty payout	proof item/witness/authority
+court/legal	strong chain of evidence
+noble politics	public or undeniable proof
+divine trial	oath, truth magic, ritual proof
+faction accusation	faction-specific evidence
+personal confrontation	enough to pressure suspect
+internal case solved	sufficient validated truth chain
+
+AIDRPG should not require court-level proof for every minor mystery.
+
+But serious consequences require stronger proof.
+
+⸻
+
+44. Solving a case
+
+A case is solved when:
+
+* core question is answered
+* answer is supported by enough evidence
+* major contradictions are resolved or explained
+* false leads are handled
+* culprit/cause/location/item is identified
+* proof standard for case context is met
+* InvestigationReducer marks solution validated
+* operation ledger records solve event
+
+A case may be internally solved before publicly resolved.
+
+Example:
+
+Player knows Lord Veyr did it.
+
+But cannot prove it publicly yet.
+
+Status:
+
+* Solution Status: internally solved / public proof insufficient
+
+This distinction is important.
+
+⸻
+
+45. Case resolution
+
+Resolution is what happens after solving.
+
+Possible resolutions:
+
+* culprit arrested
+* culprit killed
+* culprit escapes
+* victim rescued
+* missing item recovered
+* curse lifted
+* case reported
+* authority accepts proof
+* faction suppresses truth
+* player keeps secret
+* false accused cleared
+* public trial begins
+* reward paid
+* new quest opens
+* case remains unsolved publicly
+
+A solved case is not always resolved.
+
+Quest reward may require resolution/turn-in.
+
+⸻
+
+46. Solved-case archive
+
+Solved cases should move to archive when no longer active.
+
+Archive template:
+
+Case Title:
+Final Status:
+Core Truth:
+Key Evidence:
+Resolution:
+Unresolved Threads:
+False Leads:
+Consequences:
+Related Actors:
+Related Places:
+Related Items:
+Related Quests:
+Reward Status:
+Date/Time:
+Reopen Conditions:
+
+Example:
+
+Archived Case: Merchant’s Murder
+Core Truth: Dalen was poisoned by Lord Veyr’s agent before the staged knife wound.
+Key Evidence: poison residue in cup, blue wax seal, agent confession, inn timeline contradiction.
+Resolution: Veyr’s agent was arrested; Lord Veyr remains politically shielded.
+Unresolved Thread: who ordered the agent directly is not publicly proven.
+
+Archives preserve history without bloating active context.
+
+⸻
+
+47. Reopening cases
+
+A case can reopen if:
+
+* new evidence appears
+* solution contradicted
+* culprit returns
+* false confession revealed
+* body found
+* witness recants
+* magical proof changes
+* archive was incomplete
+* political cover-up exposed
+* new victim appears
+* quest sequel begins
+
+Reopening should not erase the old archive.
+
+Create:
+
+* reopened status
+* linked new case
+* or add reopened branch
+
+Example:
+
+“Merchant’s Murder Reopened: Veyr’s True Patron”
+
+⸻
+
+48. Investigation XP
+
+Investigation can reward progression.
+
+Rewards may include:
+
+* Investigation Domain XP
+* INT XP
+* Social Domain XP
+* Magic Domain XP if spells used
+* Level XP for major breakthroughs
+* quest XP if linked
+* reputation rewards
+
+XP-worthy events:
+
+* finding meaningful clue
+* resolving contradiction
+* identifying false evidence
+* protecting witness
+* proving suspect innocent
+* identifying culprit
+* solving case
+* presenting proof successfully
+* exposing conspiracy
+* preventing wrongful punishment
+
+Anti-farm applies.
+
+Repeatedly asking the same question should not farm XP.
+
+⸻
+
+49. Investigation anti-farm
+
+Investigation anti-farm blocks:
+
+* repeatedly searching same room with no new method
+* repeatedly questioning same witness with same question
+* inventing endless clues
+* harvesting XP from fake rumors
+* repeatedly accusing people randomly
+* using high INT to generate XP without evidence
+* reprocessing same clue
+* duplicate “case solved” output
+* repeated clue collection from same source
+* cycling false leads intentionally
+
+Meaningful new method can bypass decay.
+
+Example:
+
+Search room again with new UV-like magic after finding blood clue.
+
+Valid.
+
+Search room again the same way five times.
+
+Decay/no new XP.
+
+⸻
+
+50. Case and card update rules
+
+Investigation can update actor/place/item cards, but only from confirmed or strongly supported facts.
+
+Do update cards for:
+
+* confirmed actor guilt
+* confirmed actor innocence if important
+* known faction membership
+* confirmed location secret
+* confirmed building hidden room
+* confirmed item origin
+* confirmed curse source
+* solved case result
+* major witness relationship
+* major false accusation outcome
+
+Do not update cards for:
+
+* rumors
+* suspicions
+* untested theories
+* weak clues
+* claims from unreliable witness
+* player guesses
+* case leads
+* temporary suspicion
+* false leads unless relevant
+
+Example:
+
+Rumor:
+
+“Lord Veyr is a murderer.”
+
+Do not update Lord Veyr card as murderer.
+
+Maybe update case record:
+
+Rumor: Lord Veyr may be involved.
+
+Confirmed:
+
+Evidence proves Lord Veyr ordered the murder.
+
+Update actor card if important.
+
+⸻
+
+51. Protected Case Log card
+
+The protected Case Log summarizes active cases.
+
+Example:
+
+AIDRPG Case Log
+Active Cases:
+Merchant’s Murder
+Core Question: Who killed Dalen?
+Confirmed Facts:
+- Dalen died in a locked room.
+- The knife wound was likely staged after death.
+Supported Theory:
+- Poison may be true cause of death.
+Current Leads:
+- Identify poison residue.
+- Question candle maker about blue wax.
+- Verify Mara’s alibi.
+Corrupted Slimes
+Core Question: Why are slimes near the well mutating?
+Confirmed Facts:
+- Slimes near the well show black veins.
+- Normal slimes outside the village are unaffected.
+Current Leads:
+- Test well water.
+- Inspect old shrine beneath the square.
+
+Keep this short.
+
+Do not include every clue unless player asks.
+
+⸻
+
+52. Generated case card eligibility
+
+Generated case cards should be created for:
+
+* major mystery arcs
+* long investigations
+* complex cases with many clues
+* main story conspiracies
+* major unsolved crimes
+* recurring supernatural mysteries
+* domain sabotage cases
+* cases AI Dungeon must remember across many turns
+
+Do not create generated cards for:
+
+* minor one-scene clue
+* simple errands
+* resolved small mystery
+* every rumor
+* every suspect
+* every clue
+* every witness statement
+
+Most case data belongs in protected Case Log and internal state.
+
+⸻
+
+53. Generated case card template
+
+Case: Merchant’s Murder
+Status:
+Active investigation.
+Core question:
+Who killed Dalen the merchant?
+Confirmed facts:
+Dalen was found dead in a locked room. The knife wound appears staged after death.
+Supported theory:
+Poison may be the true cause of death.
+Key clues:
+Blue wax was found on Dalen’s sleeve. A bitter smell was detected in his cup.
+Current leads:
+Identify the poison. Trace the blue wax. Verify Mara’s alibi.
+Canon note:
+Rumors and theories in this case are not confirmed facts unless marked confirmed by InvestigationReducer.
+
+Case cards should be concise and explicitly distinguish confirmed from suspected.
+
+⸻
+
+54. Case card trigger safety
+
+Good triggers:
+
+* Merchant’s Murder
+* Dalen murder case
+* Corrupted Slimes case
+* North Wall sabotage
+* Missing Lira case
+
+Bad triggers:
+
+* murder
+* case
+* clue
+* evidence
+* suspect
+* rumor
+* poison
+* slime
+* investigation
+
+Use specific triggers.
+
+Avoid broad common words that activate constantly.
+
+⸻
+
+55. Investigation Context behavior
+
+Context should include investigation information only when relevant.
+
+Good Context:
+
+You are investigating Dalen’s murder. Confirmed: the knife wound was staged. Suspected: poison may be true cause. Current lead: identify blue wax source.
+
+Good Context:
+
+Mara is only a suspect, not confirmed guilty. Her alibi is disputed but not disproven.
+
+Good Context:
+
+The stable boy claims he saw Mara near the alley, but this statement is unverified and may be unreliable.
+
+Bad Context:
+
+Inject every rumor, every witness statement, every old clue, and every archived case.
+
+Context should prioritize:
+
+* current case
+* active scene clues
+* suspect status
+* confirmed facts
+* current lead
+* warning against treating suspicion as truth
+* relevant proof item/custody
+* unresolved contradiction
+
+⸻
+
+56. Investigation commands
+
+/cases
+
+Shows active cases.
+
+/case <name>
+
+Shows full case summary.
+
+/clues <case>
+
+Lists clues and evidence.
+
+/suspects <case>
+
+Lists suspects with motive/means/opportunity summary.
+
+/theory <case>
+
+Shows current theories and evidence.
+
+/present <case>
+
+Attempts to present proof or solve case.
+
+/rumors
+
+Shows known rumors.
+
+/evidence <item/name>
+
+Shows evidence details and custody.
+
+/casearchive
+
+Shows solved/failed/archived cases.
+
+/caseaudit
+
+Shows validation details for recent investigation updates.
+
+⸻
+
+57. /case display example
+
+Case: Merchant’s Murder
+Status: Active
+Core Question: Who killed Dalen?
+Confirmed Facts:
+- Dalen was found dead in his locked room.
+- The knife wound was likely staged after death.
+Supported Facts:
+- Poison may be the actual cause of death.
+Suspects:
+- Mara: disputed alibi, no strong motive yet.
+- Lord Veyr: possible link through blue wax, motive unknown.
+Key Clues:
+- Blue wax on sleeve.
+- Bitter smell in cup.
+- Stable boy claims Mara was near alley.
+Contradictions:
+- Mara claims she was at the inn; innkeeper has not confirmed this.
+Current Leads:
+- Identify the poison.
+- Trace the blue wax.
+- Verify Mara’s alibi.
+
+⸻
+
+58. /caseaudit example
+
+Case Audit: Merchant’s Murder
+Proposed update:
+“Lord Veyr is the murderer.”
+Validation:
+Rejected as confirmed fact.
+Reason:
+Current evidence only links blue wax to possible noble involvement. No confirmed motive, means, opportunity, confession, or direct proof connects Lord Veyr to the murder.
+Accepted update:
+- Theory added: Lord Veyr may be involved.
+- Lead added: compare blue wax with House Veyr seal.
+
+This audit prevents trust-breaking jumps.
+
+⸻
+
+59. Investigation validation outcomes
+
+Accept
+
+A clue, evidence, or fact is supported and added.
+
+Example:
+
+Player collects blue wax sample from victim’s sleeve.
+
+Reject
+
+Claim is unsupported.
+
+Example:
+
+AI says suspect is guilty without evidence.
+
+Pending
+
+Information may be true but needs verification.
+
+Example:
+
+Rumor says the miller feeds wolves.
+
+Soft_fail
+
+Action gives partial clue or complication.
+
+Example:
+
+Player searches room but contaminates footprint while finding torn cloth.
+
+Hard_deny
+
+Invalid/non-canon.
+
+Examples:
+
+* Story Card creates evidence
+* debug text solves case
+* high INT creates culprit
+* duplicate clue collected twice
+* dream accusation changes real actor card
+* random AI “case solved” contradicts state
+
+⸻
+
+60. Detailed examples
+
+Example 1 — rumor about wolves
+
+AI says:
+
+“People say the miller made a pact with wolves.”
+
+Expected:
+
+* create rumor or lead
+* do not mark miller guilty
+* possible quest/case lead
+
+Status:
+
+Rumored: Miller pact with wolves.
+
+Example 2 — witness accusation
+
+Stable boy says:
+
+“Mara was near the alley.”
+
+Expected:
+
+* witness statement recorded
+* Mara becomes person of interest
+* not confirmed guilty
+* verify timing/visibility
+
+Example 3 — physical clue
+
+Player finds blue wax on victim.
+
+Expected:
+
+* clue observed
+* evidence item if collected
+* lead: identify wax source
+* not automatically House Veyr unless known
+
+Example 4 — supported deduction
+
+Clues:
+
+* bitter cup
+* blue lips
+* low blood from knife wound
+
+Player says:
+
+“Maybe he was poisoned before being stabbed.”
+
+Expected:
+
+* theory supported
+* poison lead added
+* still need poison confirmation
+
+Example 5 — high INT guess
+
+Player has INT 2000 and says:
+
+“I know Lord Veyr did it.”
+
+Expected:
+
+* theory possible
+* no confirmed guilt without evidence
+* maybe generate useful leads
+
+Example 6 — magic truth spell
+
+Player casts truth spell on witness.
+
+Expected:
+
+* check ability/cost/resistance/legal context
+* witness answers may be truthful but limited
+* half-truths/memory issues possible
+* result may strengthen or weaken statement
+
+Example 7 — false evidence
+
+Player finds bloody dagger with Mara’s initials.
+
+Later:
+
+Dagger blood does not match victim.
+
+Expected:
+
+* dagger clue becomes fabricated/misleading
+* Mara suspicion reduced
+* new lead: who planted dagger?
+
+Example 8 — solved internally, unresolved publicly
+
+Evidence proves Lord Veyr ordered murder.
+
+But authority refuses to act.
+
+Expected:
+
+* case internally solved
+* public resolution blocked
+* quest reward/reputation may differ
+* new political quest possible
+
+Example 9 — case reopened
+
+Archived case says wolves caused deaths.
+
+New evidence shows claw marks were staged.
+
+Expected:
+
+* reopen case or create linked sequel
+* preserve old archive outcome
+* mark new contradiction
+
+Example 10 — actor card update
+
+Current state:
+
+Rumor says Captain is corrupt.
+
+Expected:
+
+* do not update Captain card as corrupt
+
+Later:
+
+Ledger, confession, and bribe money prove corruption.
+
+Expected:
+
+* update Captain actor memory/card if important
+* reputation/legal consequences possible
+
+⸻
+
+61. Acceptance tests
+
+Test 1 — rumor not fact
+
+Given:
+
+NPC says “The miller deals with wolves.”
+
+Expected:
+
+* rumor recorded
+* no confirmed fact
+* no actor card update as guilty
+
+Test 2 — witness claim not fact
+
+Given:
+
+Witness says Mara was at crime scene.
+
+Expected:
+
+* witness statement recorded
+* Mara suspect/person of interest possible
+* claim unverified
+
+Test 3 — physical clue accepted
+
+Given:
+
+Player finds blue wax on victim’s sleeve.
+
+Expected:
+
+* clue recorded
+* if collected, evidence item created/custody tracked
+* lead created to identify wax
+
+Test 4 — duplicate clue blocked
+
+Given:
+
+Same blue wax clue output repeats.
+
+Expected:
+
+* no duplicate clue/item
+* existing clue updated only if new detail appears
+
+Test 5 — high INT does not solve case
+
+Given:
+
+Player has very high INT and guesses culprit.
+
+Expected:
+
+* theory may be recorded
+* no solved status without evidence
+
+Test 6 — deduction requires support
+
+Given:
+
+Clues support poison theory.
+
+Player deduces poisoning.
+
+Expected:
+
+* poison theory supported
+* case not solved until poison/cause/culprit proof is stronger
+
+Test 7 — false lead preserved
+
+Given:
+
+Bloody scarf initially implicates brother.
+
+Later evidence clears brother.
+
+Expected:
+
+* scarf clue retained
+* implication marked false/misleading
+* brother suspicion reduced
+
+Test 8 — contradiction creates lead
+
+Given:
+
+Mara’s alibi conflicts with innkeeper claim.
+
+Expected:
+
+* contradiction recorded
+* lead added to verify timing/location
+
+Test 9 — witness lie updates reliability
+
+Given:
+
+Witness statement contradicted by evidence.
+
+Expected:
+
+* statement marked contradicted/false
+* witness reliability adjusted
+* actor memory records claim, not truth
+
+Test 10 — forged document detected
+
+Given:
+
+Player identifies forged contract.
+
+Expected:
+
+* document marked fabricated
+* new clue: someone forged it
+* related suspect/theory updated
+
+Test 11 — magical investigation costs resources
+
+Given:
+
+Player casts Detect Poison.
+
+Expected:
+
+* ability/cost checked
+* result recorded according to spell limits
+* no free perfect truth if spell weak/blocked
+
+Test 12 — truth spell not omniscience
+
+Given:
+
+Truth spell used.
+
+Expected:
+
+* detects intentional lie only if spell scope says so
+* false beliefs/half-truths may remain
+
+Test 13 — evidence custody matters
+
+Given:
+
+Player collects poison vial.
+
+Expected:
+
+* Inventory item/evidence custody tracked
+* if lost, proof availability changes
+
+Test 14 — contaminated evidence weakens proof
+
+Given:
+
+Player mishandles blood sample.
+
+Expected:
+
+* evidence strength reduced or analysis complicated
+
+Test 15 — accusation without proof backfires
+
+Given:
+
+Player publicly accuses noble with weak evidence.
+
+Expected:
+
+* case not solved
+* reputation/legal/social consequence possible
+
+Test 16 — confession needs reliability check
+
+Given:
+
+Suspect confesses under magical coercion.
+
+Expected:
+
+* confession recorded
+* reliability checked
+* corroboration may still be needed
+
+Test 17 — case solved internally
+
+Given:
+
+Evidence chain proves culprit.
+
+Expected:
+
+* case can mark internally solved
+* public resolution may still need presentation/authority
+
+Test 18 — solved-case archived
+
+Given:
+
+Case resolved and no longer active.
+
+Expected:
+
+* archive entry created
+* active Case Log removes or summarizes it
+* relevant history preserved
+
+Test 19 — case reopened by new evidence
+
+Given:
+
+Archived solution contradicted by new validated evidence.
+
+Expected:
+
+* case reopened or sequel case created
+* old archive preserved
+* contradiction recorded
+
+Test 20 — card update only from confirmed fact
+
+Given:
+
+Rumor says actor is traitor.
+
+Expected:
+
+* no actor card update as traitor
+
+Given:
+
+evidence confirms actor is traitor.
+
+Expected:
+
+* actor card/memory update if important
+
+⸻
+
+62. Investigation safeguards
+
+62.1 Rumors are not facts
+
+Rumors create leads, not truth.
+
+62.2 Claims are not facts
+
+Witnesses can lie, misremember, or be wrong.
+
+62.3 Theories are not facts
+
+A theory can guide play without rewriting canon.
+
+62.4 High INT does not create hidden truth
+
+It improves analysis and leads.
+
+62.5 Evidence must have a source
+
+No source, no evidence.
+
+62.6 Physical evidence needs custody if important
+
+Proof items can be lost, stolen, damaged, or contaminated.
+
+62.7 Clues must be deduped
+
+Repeated AI output should not create duplicate clues.
+
+62.8 Evidence strength matters
+
+Weak clues should not prove major accusations.
+
+62.9 Contradictions create leads, not instant answers
+
+Conflict must be resolved.
+
+62.10 False leads are valid state
+
+Do not delete them; mark them.
+
+62.11 Magical investigation has limits
+
+Truth magic, divination, and spirit testimony can fail or be resisted.
+
+62.12 Accusations require proof
+
+Public accusations can backfire.
+
+62.13 Confessions require reliability checks
+
+False or coerced confessions are possible.
+
+62.14 Case solved and case resolved are different
+
+Knowing truth is not the same as public/legal resolution.
+
+62.15 Actor/place cards update only from confirmed facts
+
+Do not pollute long-term memory with suspicion.
+
+62.16 Story Cards do not create evidence
+
+Cards mirror state only.
+
+62.17 Context should not spoil hidden truth
+
+Only inject known facts, claims, and leads.
+
+62.18 Duplicate solved-case rewards are blocked
+
+Quest/progression/economy rewards pay once.
+
+62.19 Archives preserve history
+
+Old case outcomes should not vanish.
+
+62.20 Every case update should be auditable
+
+The player should understand what is known, suspected, disproven, or confirmed.
+
+⸻
+
+63. Final Chunk 30 doctrine
+
+Investigation is truth management.
+
+Cases track mysteries.
+
+Clues are meaningful information.
+
+Evidence is a clue that supports a claim.
+
+Proof is evidence strong enough to establish a conclusion.
+
+Rumors are not facts.
+
+Witness statements are claims.
+
+Theories are not canon truth.
+
+Contradictions are leads.
+
+False leads are valid and should be preserved.
+
+High INT and Investigation Domain help the player notice, connect, and interpret information, but they do not create hidden facts from nothing.
+
+Magic can help investigate, but it has cost, scope, resistance, and failure modes.
+
+A case can be internally solved before it is publicly resolved.
+
+Solved cases should archive cleanly.
+
+Actor, place, item, and story cards should update only from confirmed or strongly supported facts.
+
+Quest rewards, reputation changes, arrests, and public outcomes require appropriate proof and validation.
+
+The goal is to make AI Dungeon mysteries playable without letting the AI scramble truth, turn rumors into canon, duplicate evidence, falsely solve cases, or permanently corrupt memory with unsupported suspicion.
+

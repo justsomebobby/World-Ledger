@@ -1,0 +1,1933 @@
+AIDRPG Design Bible — Chunk 8: Group Combat, Party, Followers, Summons, and Scale
+
+1. Purpose of this chunk
+
+Chunk 7 defined individual combat consequence logic.
+
+Chunk 8 defines what happens when combat or action involves more than one meaningful participant.
+
+This chunk answers:
+
+How does AIDRPG track enemy groups?
+
+How does it avoid turning “some enemies died” into “all enemies died”?
+
+How do party members affect scenes?
+
+What is the difference between party members, companions, followers, and summons?
+
+How does the system prevent hundreds of NPCs or summons from becoming card spam?
+
+How does scale affect plausibility?
+
+How does AIDRPG handle one player versus a mob, party versus squad, army versus monster, or multi-protagonist stories?
+
+The central rule is:
+
+AIDRPG should track group-scale truth in summarized form unless an individual becomes important enough to deserve separate memory.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon often writes group scenes loosely.
+
+Examples:
+
+* “A dozen goblins rush from the trees.”
+* “Several guards fall.”
+* “The rest scatter.”
+* “Your companions hold the line.”
+* “The militia surges forward.”
+* “Three wolves circle you.”
+* “Your summoned ravens tear at their eyes.”
+* “The army clashes with the horde.”
+
+Without group rules, the script can make bad assumptions.
+
+Bad assumptions include:
+
+* “several die” means all died
+* “the rest scatter” means everyone died
+* every goblin becomes an actor card
+* every summoned creature becomes a card
+* every villager becomes a follower
+* absent companions are assumed present
+* one ally’s injury applies to the player
+* one protagonist’s items merge with another’s
+* an army becomes one normal actor
+* a crowd becomes permanent bloat
+
+Chunk 8 exists to prevent that.
+
+⸻
+
+3. Ownership boundaries
+
+Group-scale truth is split across owners.
+
+PartyReducer owns
+
+* party members
+* companions in party state
+* followers
+* follower groups
+* summons
+* summon groups
+* present/absent/separated party state
+* party join/leave
+* party availability
+* party roles
+* active party summary
+
+ActorReducer owns
+
+* named actor identity
+* companion identity
+* important individual NPCs
+* major enemies
+* recurring rivals
+* named summons if persistent/important
+
+ScaleReducer owns
+
+* enemy groups
+* ally groups
+* battlefield groups
+* group totals
+* remaining/killed/fled/captured/routed counts
+* reinforcement state
+* large-scale conflict summaries
+* scale tier
+* multi-protagonist state
+* group combat resolution
+
+PlaceReducer owns
+
+* current scene
+* local hazards
+* local exits
+* battlefield location
+* place-based group positions if needed
+
+ProgressionReducer owns
+
+* XP from group combat or group-scale events
+
+ReputationReducer owns
+
+* public/faction/social consequences of group-scale events
+
+CardSync owns
+
+* cards only after state is stable and important
+
+The rule remains:
+
+Group systems may propose events for each other, but each owner writes its own truth.
+
+⸻
+
+4. Group records
+
+Any meaningful group should be represented as a group record instead of many individual actors unless individuals matter.
+
+A group record should describe:
+
+* group ID
+* display name
+* type
+* side
+* total count, if known
+* remaining count, if known
+* killed count
+* wounded count
+* fled count
+* captured count
+* routed count
+* unknown/unresolved count
+* leader, if known
+* threat tier
+* morale
+* location/scene
+* status
+* resolved or unresolved
+* source/evidence
+* last updated turn
+
+Example group:
+
+A dozen goblins ambush the player.
+
+Group state:
+
+* display name: goblin ambushers
+* type: enemy group
+* total: 12
+* remaining: 12
+* killed: 0
+* wounded: 0
+* fled: 0
+* captured: 0
+* routed: 0
+* threat tier: 2 each, group threat higher
+* status: active
+* resolved: false
+
+If later the output says:
+
+“You cut down three goblins, and two more flee into the trees.”
+
+Then group state becomes:
+
+* total: 12
+* killed: 3
+* fled: 2
+* remaining active: 7
+* resolved: false
+
+The system must not treat the group as defeated.
+
+⸻
+
+5. Known count versus unknown count
+
+Groups may have known or unknown size.
+
+Known-count group
+
+Example:
+
+“Thirteen goblins attack.”
+
+The system knows total = 13.
+
+Casualty math should preserve remaining count.
+
+If 9 die, 4 remain.
+
+This exact case is a required regression expectation from your prior safeguard list: 13 goblins attack, 9 die → 4 remain.
+
+Unknown-count group
+
+Example:
+
+“Several goblins attack.”
+
+The system does not know total.
+
+It should avoid exact math unless later clarified.
+
+Possible representation:
+
+* total: unknown
+* active estimate: several
+* killed: 2 if explicit
+* remaining: unknown
+* status: active unless clearly resolved
+
+If the output says “the rest flee,” the group can resolve as routed/fled.
+
+If the output says “several fall,” it should not assume all died.
+
+⸻
+
+6. Group casualty interpretation table
+
+This table controls how loose narration should be interpreted.
+
+“One falls”
+
+Meaning:
+
+* killed or downed count +1, depending wording
+* group still active unless total was 1 or resolution confirmed
+
+“Two die”
+
+Meaning:
+
+* killed +2
+* remaining decreases by 2 if total known
+
+“Several fall”
+
+Meaning:
+
+* casualties occurred
+* exact count uncertain unless context gives number
+* group likely still active
+* may estimate 2–4 only if the system supports estimated counts
+
+“Many fall”
+
+Meaning:
+
+* significant casualties
+* not all unless explicitly stated
+* morale may drop
+* remaining unknown or reduced
+
+“Half are cut down”
+
+Meaning:
+
+* killed/wounded about half
+* if total known, calculate half
+* if total unknown, record heavy casualties
+
+“Nine die”
+
+Meaning:
+
+* killed +9
+* if total known, remaining = total - killed - fled - captured - routed
+
+“The rest scatter”
+
+Meaning:
+
+* unresolved active enemies become fled/routed
+* not killed
+* group may resolve as routed
+
+“They flee”
+
+Meaning:
+
+* group status becomes fled or retreating
+* not dead
+* may still return later if important
+
+“They surrender”
+
+Meaning:
+
+* remaining active enemies become captured/surrendered
+* not dead
+* custody/social/legal consequences may apply
+
+“All fall”
+
+Meaning:
+
+* all active enemies defeated if source is direct and context supports it
+* if enemy group is overwhelming, boss-like, or vague, validation may soften
+
+“The last one drops”
+
+Meaning:
+
+* group can resolve if previous counts support only one remaining
+
+“You cut through them”
+
+Meaning:
+
+* pressure or casualties
+* not automatic full defeat unless explicit
+
+“The battlefield goes silent”
+
+Meaning:
+
+* possible resolution
+* needs context: dead, fled, hidden, or stunned?
+
+“No goblins remain standing”
+
+Meaning:
+
+* active combatants defeated
+* may be dead, unconscious, fled, or downed depending wording
+
+The key rule:
+
+Downed, fled, routed, captured, and killed are different states.
+
+⸻
+
+7. Group status categories
+
+A group can be:
+
+Active
+
+Still fighting or threatening.
+
+Pressured
+
+Under attack, losing morale, but not resolved.
+
+Wounded / reduced
+
+Some members are wounded or killed.
+
+Routed
+
+Group cohesion breaks. They may flee, scatter, or stop fighting.
+
+Fled
+
+Group left the combat area.
+
+Captured / surrendered
+
+Group is no longer hostile because it surrendered or was restrained.
+
+Hidden / dispersed
+
+Group is not actively visible but may still exist.
+
+Reinforced
+
+New members join.
+
+Resolved
+
+No immediate group threat remains.
+
+Resolved does not always mean dead.
+
+A resolved group may be:
+
+* killed
+* fled
+* captured
+* surrendered
+* dispersed
+* driven off
+* neutralized
+* escaped
+
+This matters for quests, loot, reputation, and future encounters.
+
+⸻
+
+8. Group threat scaling
+
+A group is more dangerous than one member.
+
+Group threat should consider:
+
+* individual threat tier
+* count
+* coordination
+* morale
+* terrain
+* surprise
+* leader
+* ranged weapons
+* magic
+* formation
+* player’s area abilities
+* party support
+* chokepoints
+* escape routes
+
+Example:
+
+One goblin may be Tier 2.
+
+Ten goblins may become a Tier 4 or Tier 5 group threat if coordinated.
+
+A narrow bridge may reduce their group advantage.
+
+An open field may increase it.
+
+A fireball may counter large numbers if the player has the MP and spell rank.
+
+A shield wall may be far more dangerous than scattered enemies.
+
+⸻
+
+9. Group matchup labels
+
+Group combat uses the same general matchup labels from Chunk 7, but with count and coordination included.
+
+Labels:
+
+* player overwhelms group
+* player favored
+* slightly favored
+* even
+* dangerous
+* player disadvantaged
+* heavily outmatched
+* group overwhelms
+* impossible without leverage
+
+Examples:
+
+A level 8 warrior versus three weak goblins:
+
+* player favored or player overwhelms group
+
+A level 2 novice versus thirteen goblins in open ground:
+
+* heavily outmatched
+
+A level 5 fire mage versus a swarm of weak insects with enough MP:
+
+* player favored if area fire applies
+
+A level 5 fire mage with 0 MP versus the same swarm:
+
+* dangerous or disadvantaged
+
+A lone player versus an army:
+
+* impossible without leverage
+
+⸻
+
+10. Area effects and group damage
+
+Some abilities or tactics affect multiple enemies.
+
+Examples:
+
+* fireball
+* shockwave
+* sweeping strike
+* caltrops
+* collapsing bridge
+* poison cloud
+* fear effect
+* command shout
+* trap
+* landslide
+* summoned swarm
+
+Area effects should consider:
+
+* ability rank
+* cost
+* range
+* terrain
+* enemy spacing
+* enemy resistance
+* friendly fire
+* group size
+* overkill risk
+* environmental consequences
+
+An area effect may produce:
+
+* killed count
+* wounded count
+* routed count
+* scattered count
+* morale drop
+* hazard creation
+* resource cost
+* collateral damage
+
+Area effects should not automatically wipe large groups unless the effect is strong enough and the story supports it.
+
+⸻
+
+11. Party members
+
+Party members are characters currently traveling, fighting, or acting with the player.
+
+Party members are not all equal.
+
+Types:
+
+* companion
+* temporary ally
+* hired guard
+* follower
+* summon
+* pet/familiar
+* worker escort
+* squad member
+* multi-protagonist ally
+
+PartyReducer owns whether they are present, absent, separated, captured, dead, dismissed, waiting, summoned, or following.
+
+ActorReducer owns their identity if they are named/important.
+
+Example:
+
+Mara is an actor.
+
+Mara currently traveling with the player is party state.
+
+If Mara leaves to scout ahead:
+
+* ActorReducer still owns Mara’s identity.
+* PartyReducer marks Mara absent/scouting.
+* Context should not assume Mara is standing beside the player.
+
+⸻
+
+12. Companion rules
+
+Companions are persistent named allies with personal continuity.
+
+They should track:
+
+* identity
+* role
+* relationship
+* loyalty/trust/fear
+* current status
+* current location
+* party presence
+* injuries/conditions if relevant
+* major memories
+* personal quest links
+* availability
+* combat role
+
+Companions should not be created from every friendly NPC.
+
+A friendly innkeeper is not automatically a companion.
+
+A quest helper who travels with the player might become a temporary party member.
+
+A recurring ally with personal connection may become a companion.
+
+Companions should have stronger protection against casual deletion, random death, or name confusion than generic actors.
+
+If AI Dungeon casually says “Mara vanishes forever” from weak narration, the system should validate carefully.
+
+⸻
+
+13. Temporary allies
+
+Temporary allies are NPCs who help for a scene, quest, battle, or short duration.
+
+Examples:
+
+* two guards help in a fight
+* a villager guides the player to the shrine
+* a hunter assists against wolves
+* a priest supports a ritual
+* a caravan guard joins for one road
+
+Temporary allies should usually be stored as:
+
+* temporary party entry
+* scene ally
+* ally group
+* actor link if named
+
+They should not always become companions or generated actor cards.
+
+Temporary ally state should expire or resolve when:
+
+* scene ends
+* quest step ends
+* ally leaves
+* ally dies
+* ally is promoted
+* time passes significantly
+
+⸻
+
+14. Followers
+
+Followers are people, creatures, workers, retainers, disciples, troops, or supporters attached to the player but not necessarily equal companions.
+
+Examples:
+
+* five hired guards
+* three apprentices
+* ten villagers following orders
+* a wolf pack loyal to the player
+* guild recruits
+* militia squad
+* worker crew
+* caravan hands
+
+Followers should usually be group records.
+
+Follower records should track:
+
+* count
+* type
+* role
+* loyalty
+* morale
+* current location
+* current order
+* status
+* payment/contract if any
+* leader/foreman if any
+* availability
+* casualties if combat happens
+
+Followers should not become full actor cards individually unless a member becomes named and important.
+
+Example:
+
+“five hired guards” should be one follower group.
+
+“Captain Jora, leader of the hired guards” can be an actor.
+
+⸻
+
+15. Summons
+
+Summons are creatures, spirits, constructs, projections, familiars, magical allies, or called entities created by ability, ritual, item, contract, or story event.
+
+Summons can be:
+
+* temporary
+* persistent
+* named
+* grouped
+* controlled
+* semi-controlled
+* independent
+* bound
+* unstable
+
+Summon records should track:
+
+* summoner
+* summon type
+* count
+* name if any
+* duration
+* control level
+* loyalty
+* current order
+* cost
+* maintenance
+* location
+* status
+* dismissal condition
+* death/banishment condition
+
+Summons should not persist forever unless confirmed.
+
+Summons should not duplicate from repeated output.
+
+Summons should not create one card per minor creature.
+
+Example:
+
+“three shadow wolves” should be a summon group.
+
+“Umbra, your bound shadow wolf” may become a named actor/companion if persistent and important.
+
+⸻
+
+16. Summon lifecycle
+
+Summons should follow a lifecycle.
+
+Attempted
+
+The player tries to summon.
+
+No summon exists yet.
+
+Failed
+
+The attempt fails.
+
+May create ability evidence, MP cost, or backlash.
+
+Manifesting
+
+The summon begins forming but is unstable.
+
+May be interrupted.
+
+Active
+
+The summon exists and can act.
+
+Sustained
+
+The summon remains through cost, concentration, duration, or bond.
+
+Unstable
+
+The summon may disobey, fade, weaken, or backlash.
+
+Dismissed
+
+The summon is intentionally ended.
+
+Destroyed / banished
+
+The summon is defeated or forced away.
+
+Persistent
+
+The summon remains as familiar, companion, bound spirit, construct, or permanent ally.
+
+Persistent summons require strong story support.
+
+⸻
+
+17. Summon control rules
+
+Summons should not always obey perfectly.
+
+Control depends on:
+
+* ability rank
+* summon type
+* cost paid
+* ritual quality
+* relationship
+* intelligence
+* bond
+* enemy interference
+* summoner condition
+* MP/EP availability
+* command clarity
+* story constraints
+
+Control levels:
+
+Full control
+
+Summon obeys direct commands reliably.
+
+Usually requires stable ability, strong bond, or low-level summon.
+
+Guided control
+
+Summon follows general intent but may improvise.
+
+Independent ally
+
+Summon helps but has its own will.
+
+Unstable control
+
+Summon may misbehave, fade, lash out, or ignore orders.
+
+Hostile/rebellious
+
+Summon becomes a threat.
+
+This should require failed/unsafe summoning or story support.
+
+⸻
+
+18. Party contribution in combat
+
+Party members can influence combat, but should not erase challenge automatically.
+
+Party contribution depends on:
+
+* who is present
+* role
+* health
+* loyalty
+* equipment
+* ability
+* morale
+* coordination
+* terrain
+* enemy focus
+* player commands
+* current threat
+* surprise
+* injuries
+
+Party members may:
+
+* attack enemies
+* defend player
+* heal
+* distract
+* hold position
+* protect civilians
+* carry items
+* scout
+* trigger traps
+* be injured
+* be captured
+* flee
+* disagree
+* die if strongly validated
+
+Party help should be reflected in matchup.
+
+Example:
+
+A lone level 3 player versus six bandits may be disadvantaged.
+
+A level 3 player with two capable companions and a chokepoint may be even or favored.
+
+⸻
+
+19. Party presence rules
+
+The system must track who is actually present.
+
+A party member can be:
+
+* present
+* nearby
+* scouting
+* guarding camp
+* waiting elsewhere
+* separated
+* missing
+* captured
+* dead
+* dismissed
+* unavailable
+* summoned
+* expired
+
+Context should only include party members relevant to the current scene.
+
+If a companion is absent, AI Dungeon should not narrate them acting beside the player unless the story brings them back.
+
+Example:
+
+Mara went to scout the north road.
+
+Context should say:
+
+“Mara is scouting ahead and is not currently beside you.”
+
+Not:
+
+“Mara stands next to you.”
+
+⸻
+
+20. Party injury and death rules
+
+Party members can be injured or killed, but validation should be careful.
+
+Named companions need stronger evidence than generic allies.
+
+Weak narration should not casually erase important companions.
+
+Example weak output:
+
+“Mara is probably dead.”
+
+Result:
+
+* pending danger or rumor
+* not confirmed death
+
+Example strong output:
+
+“The spear pierces Mara’s chest. She collapses, blood pooling beneath her, and does not breathe.”
+
+Result:
+
+* death-boundary or death candidate
+* still validated according to importance, setting, and possible healing/protection
+
+Generic follower death can be tracked by count.
+
+Example:
+
+“Two of your hired guards fall.”
+
+Follower group:
+
+* killed +2
+* remaining count decreases
+
+Do not create individual death records unless they are named/important.
+
+⸻
+
+21. Morale
+
+Groups and parties should have morale.
+
+Morale affects:
+
+* whether enemies flee
+* whether followers obey
+* whether workers continue
+* whether allies hold the line
+* whether summons destabilize
+* whether mobs rout
+* whether companions panic or stand firm
+
+Morale states:
+
+* fearless
+* steady
+* pressured
+* shaken
+* broken
+* routed
+
+Morale changes from:
+
+* casualties
+* leader death
+* intimidation
+* magic fear
+* player reputation
+* overwhelming threat
+* victory momentum
+* betrayal
+* terrain disadvantage
+* rallying speech
+* leadership domain
+
+Morale should be especially important for groups.
+
+A group can be defeated by routing, not just killing.
+
+⸻
+
+22. Scale tiers
+
+Scale describes the size and scope of action.
+
+Scale 0 — Personal
+
+One person’s immediate action.
+
+Example:
+
+Player picks lock.
+
+Scale 1 — Duel
+
+One-on-one or very small conflict.
+
+Example:
+
+Player duels a guard.
+
+Scale 2 — Small group
+
+Several participants.
+
+Example:
+
+Player and companion fight three wolves.
+
+Scale 3 — Skirmish
+
+Small squads or packs.
+
+Example:
+
+Ten goblins ambush the party.
+
+Scale 4 — Mob / unit
+
+Crowds, militia groups, large monster packs.
+
+Example:
+
+A village mob surrounds the player.
+
+Scale 5 — Battlefield
+
+Dozens or hundreds in organized conflict.
+
+Example:
+
+Militia and raiders clash.
+
+Scale 6 — Domain conflict
+
+Holdings, armies, settlements, major resources.
+
+Example:
+
+A siege against the player’s keep.
+
+Scale 7 — Regional conflict
+
+Factions, armies, monsters, disasters affecting regions.
+
+Scale 8 — World-scale conflict
+
+Wars, gods, ancient powers, cataclysms.
+
+Scale affects:
+
+* what counts as plausible
+* what records are needed
+* whether individuals are summarized
+* what Context includes
+* whether CardSync mirrors the event
+* whether domain/faction systems are involved
+
+⸻
+
+23. Scale compression
+
+The larger the scale, the more the system should summarize.
+
+Personal scale:
+
+* specific injuries/items/actions matter
+
+Small group scale:
+
+* named participants matter
+* group counts matter
+
+Skirmish scale:
+
+* group states matter more than every individual
+
+Battlefield scale:
+
+* units, morale, objectives, casualties, and commanders matter
+
+Domain scale:
+
+* holdings, supplies, projects, armies, and strategic outcomes matter
+
+World scale:
+
+* only major factions, forces, places, and outcomes should be tracked
+
+Rule:
+
+Do not create individual actor records for every soldier in a battle.
+
+Do not create item records for every dropped spear.
+
+Do not create cards for every unit.
+
+Summarize unless something becomes important.
+
+⸻
+
+24. Multi-protagonist support
+
+Multi-protagonist support means the story may include more than one playable or viewpoint character.
+
+This is different from normal companions.
+
+A protagonist has their own:
+
+* identity
+* stats
+* resources
+* inventory
+* abilities
+* injuries
+* location
+* active scene
+* relationships
+* quests or objectives
+* card/context summary if important
+
+Multi-protagonist rules:
+
+* do not merge inventories
+* do not apply one protagonist’s injury to another
+* do not assume all protagonists share location
+* track active viewpoint
+* Context should focus on current protagonist
+* inactive protagonists should be summarized only when relevant
+* party state can link protagonists when together
+* split-party state must be allowed
+
+ScaleReducer owns multi-protagonist state.
+
+PlayerReducer may own the active player sheet depending on final implementation, but the design must not assume only one body exists if multi-protagonist mode is active.
+
+⸻
+
+25. Multi-protagonist boundaries
+
+Multi-protagonist support should probably be advanced-mode.
+
+Default mode:
+
+* one primary player
+* party members and companions tracked separately
+
+Advanced mode:
+
+* multiple protagonists
+* active protagonist switching
+* separate sheets
+* split scenes
+* separate inventories/resources
+
+The system should not overcomplicate v1 if the story does not need it.
+
+But the architecture should avoid hardcoding assumptions that make multi-protagonist impossible later.
+
+⸻
+
+26. Group and party Context behavior
+
+Context should include group and party facts only when relevant.
+
+Good Context examples:
+
+“The party is fighting seven remaining goblins in the ravine. Three goblins are dead, two fled, and the rest look shaken.”
+
+“Mara is with you and wounded in the shoulder. Harlan is guarding the camp and is not present.”
+
+“You currently command five hired guards. They are loyal but shaken after losing two members.”
+
+“Your three shadow wolves are active but unstable and will fade soon unless sustained.”
+
+Bad Context examples:
+
+Dumping every group counter every turn when no group scene is active.
+
+Listing every follower in a 30-person workforce.
+
+Treating absent companions as present.
+
+Injecting dead enemies as active.
+
+Context should prioritize:
+
+* current active group threats
+* present companions
+* active summons
+* relevant followers
+* unresolved group counts
+* immediate morale/rout/capture states
+
+⸻
+
+27. Group and party Story Card behavior
+
+Cards should be rare and stable.
+
+Do not generate cards for:
+
+* every enemy group
+* every temporary ally
+* every summon
+* every hired worker
+* every goblin
+* every crowd
+* every battle state
+
+Cards may be appropriate for:
+
+* major companion
+* persistent follower organization
+* named summon/familiar
+* major enemy group/faction
+* important party summary
+* major army/unit tied to domain
+* recurring villain group
+* major battlefield/domain conflict
+
+Protected summary cards may include:
+
+* Party & Companions
+* Domain & Contracts
+* Scale & Protagonists, if needed
+
+Generated actor cards may exist for important companions or named summons.
+
+Generated domain/faction cards may summarize major units or holdings.
+
+CardSync mirrors stable state only.
+
+⸻
+
+28. Group combat validation rules
+
+Accept group casualties if
+
+* number is explicit
+* source is direct narration
+* target group is clear
+* damage source is plausible
+* ability/tactic supports scale
+* duplicate operation not already applied
+
+Example:
+
+“Your fireball kills four goblins.”
+
+Accept:
+
+* group killed +4
+* MP cost
+* possible morale drop
+
+Reject or soften casualties if
+
+* number exceeds remaining count
+* attack cannot plausibly affect that many
+* source is rumor/dream/quote
+* group identity unclear
+* duplicate output
+* enemy has known immunity
+* result is impossible without leverage
+
+Example:
+
+“Your dagger swing kills all fifty soldiers.”
+
+If no leverage:
+
+* reject or soften to “one soldier wounded” or “you create brief panic” depending output and validation rules
+
+Accept rout if
+
+* narration says enemies flee/scatter/break
+* morale context supports it
+* casualties or intimidation support it
+* leader defeat supports it
+
+Distinguish rout from kill
+
+If enemies flee, they are not dead.
+
+They may return.
+
+They may spread rumors.
+
+They may abandon loot.
+
+They may regroup.
+
+Accept companion aid if
+
+* companion is present
+* companion has plausible ability/equipment
+* action fits their role
+* output directly includes their action
+
+Reject companion action if
+
+* companion is absent
+* companion is incapacitated
+* companion is dead
+* companion lacks required ability/equipment
+* output contradicts known state
+
+Accept summon action if
+
+* summon exists
+* summon is active
+* duration/control allows action
+* action fits summon type
+* cost/maintenance is handled
+
+Reject summon action if
+
+* summon expired
+* summon never manifested
+* summon is absent
+* summon type cannot perform action
+* control failed
+
+⸻
+
+29. Scale validation examples
+
+Example 1 — Thirteen goblins
+
+Output:
+
+“Thirteen goblins rush from the trees.”
+
+State:
+
+Enemy group created.
+
+* total 13
+* remaining 13
+* active
+
+Later output:
+
+“Nine goblins fall beneath your party’s counterattack.”
+
+State:
+
+* killed +9
+* remaining 4
+* group still active unless routed/resolved
+
+Later output:
+
+“The last four break and run.”
+
+State:
+
+* fled +4
+* remaining active 0
+* resolved as routed/fled, not all killed
+
+Example 2 — Several guards
+
+Output:
+
+“Several guards block the gate.”
+
+State:
+
+* group created with unknown count
+* active estimate: several
+
+Output:
+
+“You cut two down.”
+
+State:
+
+* killed +2
+* remaining unknown
+* group still active unless text confirms otherwise
+
+Example 3 — Companion absent
+
+State:
+
+Mara is scouting ahead.
+
+Output:
+
+“Mara blocks the arrow beside you.”
+
+Validation:
+
+* reject or flag contradiction unless output also establishes Mara returned
+* possible actor.location update only if arrival is clearly confirmed
+
+Example 4 — Summon expired
+
+State:
+
+Shadow wolves expired last turn.
+
+Output:
+
+“The shadow wolves tear into the bandits.”
+
+Validation:
+
+* reject unless new summon event occurs
+* possible hallucinated/stale Context issue
+
+Example 5 — Army battle
+
+Output:
+
+“The militia clashes with the raiders outside the wall.”
+
+State:
+
+* militia group
+* raider group
+* battlefield scale
+* morale/casualty summaries
+
+Do not create 100 actor records.
+
+Track units, leaders, casualties, morale, and domain/faction consequences.
+
+⸻
+
+30. Progression from group and party scenes
+
+Group scenes can reward progression, but carefully.
+
+Progression depends on:
+
+* player contribution
+* party contribution
+* enemy threat
+* risk
+* scale
+* leadership
+* tactics
+* survival
+* cost
+* objective completion
+
+Examples:
+
+If the party defeats a wolf pack and the player meaningfully fought:
+
+* Level XP
+* relevant Stat XP
+* relevant Domain XP
+* possible party/actor memory
+
+If followers defeat enemies while player only watches:
+
+* reduced player XP
+* leadership/domain XP if player commanded them
+* reputation or quest progress if appropriate
+
+If army wins battle because of domain preparation:
+
+* domain/leadership progression
+* reputation/faction effects
+* not necessarily direct ATK XP
+
+If summon kills enemies:
+
+* ability growth for summoning/control
+* Magic Domain XP
+* less direct ATK XP unless player contributed physically
+
+Rule:
+
+XP should match what the player actually did.
+
+⸻
+
+31. Loot from groups
+
+Group loot should be summarized.
+
+Do not add every enemy’s gear automatically.
+
+Examples:
+
+After defeating goblin group:
+
+Possible available loot:
+
+* crude weapons
+* small coin pouch
+* arrows
+* worn leather scraps
+
+But inventory gains require confirmed taking/searching.
+
+Output:
+
+“You search the fallen goblins and gather 6 copper and a crude dagger.”
+
+Accepted:
+
+* coins.gain 6 copper
+* item.gain crude dagger
+
+Do not automatically add:
+
+* thirteen goblin swords
+* thirteen sets of armor
+* thirteen ears
+* every dropped object
+
+Unless the player explicitly collects them and carrying capacity/context supports it.
+
+⸻
+
+32. Party rewards and costs
+
+Party members and followers can also be affected by consequences.
+
+Possible party consequences:
+
+* companion injury
+* companion fatigue
+* follower casualties
+* summon expiry
+* morale loss
+* loyalty gain/loss
+* relationship change
+* companion ability growth
+* follower group experience
+* contract breach
+* wage expectation
+* reputation change
+
+But avoid over-simulating every ally unless important.
+
+Named companions deserve more detail.
+
+Follower groups should use summarized state.
+
+Temporary allies may resolve after the scene.
+
+⸻
+
+33. Leadership and command
+
+Commanding others should use:
+
+* Leadership Domain
+* Social Domain
+* INT
+* LCK for risky morale moments
+* reputation
+* relationship
+* authority
+* payment/contract
+* fear/loyalty
+* current morale
+* clarity of order
+
+Commands may:
+
+* improve coordination
+* prevent rout
+* focus attacks
+* protect civilians
+* trigger follower action
+* create domain/labor progress
+* cause obedience or refusal
+
+Followers should not obey impossible orders just because the player says them.
+
+Example:
+
+“Five frightened villagers charge the dragon.”
+
+Likely result:
+
+* refusal
+* morale collapse
+* maybe one reckless casualty
+* no clean success without extraordinary leverage
+
+⸻
+
+34. Friendly fire and collateral damage
+
+Group and scale scenes should allow collateral consequences.
+
+Examples:
+
+* fireball harms allies
+* collapsing bridge kills enemies and blocks route
+* summoned beast damages property
+* panicked crowd tramples civilians
+* militia victory burns a field
+* area spell destroys loot
+
+Collateral should be validated and not overused.
+
+It matters for:
+
+* reputation
+* domain
+* contracts
+* quests
+* place memory
+* actor memory
+* inventory/loot
+* future hazards
+
+⸻
+
+35. Scale and realism
+
+Scale must prevent absurd outcomes while allowing heroic moments.
+
+AIDRPG should ask:
+
+* Can this action affect this many targets?
+* Does the player have area capability?
+* Is there terrain leverage?
+* Are enemies clustered?
+* Is there a leader or morale break?
+* Is this a symbolic victory, tactical victory, or full destruction?
+* Is the group actually resolved?
+* Are there survivors?
+* Are there witnesses?
+* Is there collateral damage?
+
+Example:
+
+A player cannot normally “stab the army to death.”
+
+But the player might:
+
+* kill the commander
+* break morale
+* collapse the bridge
+* ignite stored oil
+* open the gate for allies
+* rally defenders
+* assassinate a mage controlling the army
+* use legendary area magic
+* survive long enough for reinforcements
+
+This keeps scale scenes playable without making them impossible.
+
+⸻
+
+36. Safety rules
+
+36.1 No group wipe from vague language
+
+“Several fall” does not mean the group is defeated.
+
+36.2 No count loss beyond total
+
+If 13 enemies exist, casualties cannot exceed 13 unless reinforcements or count correction happens.
+
+36.3 No absent companion action
+
+A companion cannot act in the current scene if absent unless the output clearly brings them back.
+
+36.4 No summon persistence without support
+
+Temporary summons expire unless maintained or confirmed permanent.
+
+36.5 No card spam
+
+Groups, followers, and summons are summarized unless important.
+
+36.6 No individual bloat
+
+Do not create actor records for every generic member.
+
+36.7 No party merge
+
+Companion, follower, summon, and protagonist states must stay separate.
+
+36.8 No free army control
+
+Followers and armies require morale, loyalty, payment, authority, command, and context.
+
+36.9 No duplicate casualties
+
+Repeated output does not apply group losses twice.
+
+36.10 No XP for allies doing everything unless player contribution supports it
+
+Reward should match player action.
+
+⸻
+
+37. Commands related to Chunk 8
+
+/party should show
+
+* present party members
+* absent/separated members
+* companions
+* followers
+* summons
+* current status
+* injuries/conditions if relevant
+* loyalty/morale summaries
+* current orders
+* location if absent
+
+/scale should show
+
+* active groups
+* group counts
+* killed/wounded/fled/captured/routed
+* current scale tier
+* unresolved threats
+* active battlefield/domain conflict
+* multi-protagonist state if enabled
+
+/combat should show
+
+* enemy groups
+* remaining active enemies
+* party involvement
+* summon/follower state
+* morale/rout status
+
+/debuglast should show
+
+* group casualty events
+* validation result
+* count math
+* duplicate skips
+* party presence contradictions
+* summon duration checks
+
+⸻
+
+38. Chunk 8 acceptance tests
+
+Test 1 — known group count preserved
+
+Given:
+
+13 goblins attack.
+
+Output:
+
+9 goblins die.
+
+Expected:
+
+* killed = 9
+* remaining active = 4
+* group unresolved unless routed/resolved
+
+Test 2 — “several die” does not wipe group
+
+Given:
+
+Several guards attack.
+
+Output:
+
+Several guards fall.
+
+Expected:
+
+* casualties recorded as vague or estimated
+* group not automatically resolved
+
+Test 3 — fleeing is not death
+
+Given:
+
+Remaining enemies scatter into the woods.
+
+Expected:
+
+* fled/routed count updated
+* not killed
+* group may resolve as fled
+
+Test 4 — absent companion cannot act
+
+Given:
+
+Mara is away scouting.
+
+Output:
+
+Mara blocks an attack beside the player.
+
+Expected:
+
+* reject or flag contradiction unless output confirms Mara returned
+
+Test 5 — temporary summon expires
+
+Given:
+
+Summon duration ended.
+
+Output:
+
+Summon attacks again without new summon event.
+
+Expected:
+
+* reject or require new summon validation
+
+Test 6 — follower group summarized
+
+Given:
+
+Player hires 10 guards.
+
+Expected:
+
+* one follower group
+* not 10 actor cards
+
+Test 7 — named follower can promote
+
+Given:
+
+One guard named Harlan repeatedly leads the group and becomes important.
+
+Expected:
+
+* Harlan may become actor
+* guard group remains summarized
+
+Test 8 — army battle compressed
+
+Given:
+
+Two armies clash.
+
+Expected:
+
+* unit/group summaries
+* morale/casualty/domain effects
+* no individual actor bloat
+
+Test 9 — group casualty duplicate blocked
+
+Given:
+
+Same “three goblins die” output processed twice.
+
+Expected:
+
+* casualties apply once
+* duplicate skip recorded
+
+Test 10 — area effect respects scale
+
+Given:
+
+Low-rank fire spell hits 50 soldiers.
+
+Expected:
+
+* full wipe rejected or softened unless leverage supports it
+
+Test 11 — party XP matches contribution
+
+Given:
+
+Companions defeat enemies while player hides.
+
+Expected:
+
+* reduced direct combat XP
+* possible leadership/survival XP if player contributed strategically
+
+Test 12 — multi-protagonist separation
+
+Given:
+
+Protagonist A is wounded and Protagonist B is elsewhere.
+
+Expected:
+
+* injury applies only to A
+* B’s sheet/inventory unaffected
+
+⸻
+
+39. Final Chunk 8 doctrine
+
+Groups are not piles of individual actors.
+
+Groups are summarized truth.
+
+Known counts must be respected.
+
+Casualties, fleeing, routing, surrendering, and capture are different outcomes.
+
+Party members must be tracked by presence.
+
+Companions are persistent named allies, not every friendly NPC.
+
+Followers are usually groups.
+
+Summons have duration, control, cost, and lifecycle.
+
+Scale changes what is plausible.
+
+Large scenes should be compressed.
+
+Actor cards are for important individuals, not every soldier.
+
+Group cards are rare and only for stable important entities.
+
+Player rewards should match player contribution.
+
+Duplicate outputs cannot duplicate casualties.
+
+The goal is to let AI Dungeon run large, exciting scenes without losing track of who is present, who remains, who fled, who died, and what actually changed.
+

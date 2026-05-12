@@ -1,0 +1,2154 @@
+AIDRPG Design Bible — Chunk 6: Ability, Skill, Talent, Passive, and Specialization Lifecycle
+
+1. Purpose of this chunk
+
+Chunk 4 defined the progression economy.
+
+Chunk 5 defined stats, resources, recovery, and scaling basics.
+
+Chunk 6 defines how capabilities work.
+
+This chunk answers:
+
+What is an ability?
+
+What is an ability candidate?
+
+What is the difference between a skill, talent, passive, trait, and specialization?
+
+How does a new power become real?
+
+How does a failed attempt still matter?
+
+How do ability costs become known?
+
+How do abilities improve over time?
+
+How do abilities stay believable instead of becoming random power bloat?
+
+How does the system stop fake, pretend, quoted, or failed abilities from becoming canon?
+
+The core ownership rule from Chunk 2 still applies:
+
+AbilityReducer owns ability candidates, abilities, skills, talents, passives, ability evidence, ability lifecycle stage, ability costs, ability limits, reliability, aliases, refinement, and merge/split records.
+
+ProgressionReducer owns Level XP, Domain XP, and Stat Training XP that may result from ability use.
+
+CardSync only mirrors stable/card-eligible abilities. It does not create abilities.
+
+⸻
+
+2. Core ability philosophy
+
+Abilities should feel discovered through play.
+
+They should not appear just because a phrase sounded cool.
+
+AIDRPG should let the player experiment, fail, train, refine, and eventually stabilize powers in a way that feels like an RPG but still fits AI Dungeon’s freeform narration.
+
+The system should support:
+
+* ordinary skills
+* martial techniques
+* spells
+* supernatural powers
+* passive traits
+* learned talents
+* racial features
+* mutations
+* divine blessings
+* cursed abilities
+* item-linked abilities
+* temporary powers
+* unstable abilities
+* mastered signature abilities
+
+But all of them must obey canon law:
+
+Text proposes.
+
+Validator judges.
+
+AbilityReducer records.
+
+ProgressionReducer rewards related growth.
+
+Context reports relevant capability.
+
+CardSync mirrors only stable/card-eligible records.
+
+⸻
+
+3. Ability categories
+
+AIDRPG should distinguish several capability categories.
+
+These categories are not all separate systems. They are different record types owned by AbilityReducer or related body/build systems.
+
+3.1 Ability
+
+An ability is the broad parent category.
+
+It means the player has some structured capability beyond ordinary description.
+
+Examples:
+
+* Mana Slash
+* Shadow Step
+* Flame Blade
+* Iron Skin
+* Beast Speech
+* Healing Light
+* Rune Sense
+* Blood Echo
+* Stormcall
+* Silent Footwork
+
+An ability record may later be classified as a skill, talent, passive, or special feature.
+
+3.2 Skill
+
+A skill is an active, intentional technique.
+
+The player chooses to use it.
+
+Examples:
+
+* Mana Slash
+* Fireball
+* Backstab
+* Shield Bash
+* Lockpick
+* Healing Touch
+* Quick Draw
+* Wind Step
+* Arcane Ward
+
+Skills usually have:
+
+* activation method
+* cost
+* effect
+* reliability
+* limits
+* failure modes
+* improvement path
+
+Skills should often cost MP, EP, time, tools, materials, or opportunity.
+
+A skill is not always-on.
+
+3.3 Talent
+
+A talent is a trained style, form, stance, art, method, or aptitude that shapes how the player performs actions.
+
+Examples:
+
+* Wolf Guard Stance
+* Duelist’s Rhythm
+* Silent Footwork
+* Iron Body Training
+* Rune-Smithing Method
+* Beast-Tamer Instinct
+* Flameblade Style
+* Herbalist’s Eye
+
+Talents may be active, semi-active, or style-based.
+
+They usually modify a family of actions rather than producing one discrete effect.
+
+A talent might not have a direct “cast cost,” but it may require stance, focus, training, equipment, or stamina.
+
+3.4 Passive
+
+A passive is an always-on or conditionally-on capability.
+
+Examples:
+
+* Night Vision
+* Fire Resistance
+* Poison Tolerance
+* Undead Endurance
+* Draconic Scales
+* Mana Sensitivity
+* Battle Instinct
+* Fast Recovery
+* Silent Breathing
+
+Passives usually do not require activation.
+
+But passives can still have limits.
+
+Fire Resistance may reduce fire damage, not make the player immune to lava.
+
+Night Vision may help in darkness, not against magical blindness.
+
+Fast Recovery may improve healing, not instantly erase severed limbs.
+
+3.5 Trait
+
+A trait is a persistent character quality, adaptation, flaw, mutation, blessing, curse, scar, or identity-linked fact.
+
+Examples:
+
+* Scarred by Dragonfire
+* Cursed Blood
+* Fae-Touched
+* Hollow-Boned
+* Iron Stomach
+* Mark of the Moon
+* One-Eyed
+* Oathbound
+* Undead Body
+
+Traits can overlap with passives.
+
+The distinction should be:
+
+A trait describes what the character is or has become.
+
+A passive describes what the character can consistently do because of it.
+
+Example:
+
+Trait: Draconic Scales.
+
+Passive: Fire Resistance.
+
+Trait ownership may belong to BodyReducer if it is primarily body state, or AbilityReducer if it functions as a capability. The guide should allow both, but avoid duplicate truth.
+
+3.6 Specialization
+
+A specialization is a long-term focus derived from repeated play.
+
+Examples:
+
+* Duelist
+* Fire Mage
+* Shield Fighter
+* Monster Hunter
+* Investigator
+* Alchemist
+* Beast Tamer
+* Commander
+* Assassin
+* Healer
+* Rune Smith
+
+Specialization should usually be derived from evidence, not directly granted from one line.
+
+A specialization describes the player’s developing style.
+
+It should influence Context, training interpretation, ability plausibility, and reward routing.
+
+It should not lock the player into a class.
+
+⸻
+
+4. Capability category decision table
+
+Use this table when deciding what a new capability is.
+
+If the player intentionally activates it to produce a specific effect, it is probably a skill.
+
+If it shapes how the player fights, moves, crafts, investigates, or trains over many actions, it is probably a talent.
+
+If it is always-on or conditionally-on without direct activation, it is probably a passive.
+
+If it describes a permanent or persistent physical, magical, social, or spiritual quality, it is probably a trait.
+
+If it describes the player’s long-term focus or role, it is probably a specialization.
+
+Examples:
+
+Mana Slash: skill.
+
+Wolf Guard Stance: talent.
+
+Night Vision: passive.
+
+Scarred by Dragonfire: trait.
+
+Monster Hunter: specialization.
+
+Fire Resistance from Draconic Scales: passive linked to trait.
+
+Duelist’s Rhythm: talent, possibly specialization evidence.
+
+Healing Light: skill.
+
+Fast Recovery: passive.
+
+Cursed Blood: trait, possibly passive effects if defined.
+
+⸻
+
+5. Ability lifecycle
+
+Abilities should move through stages.
+
+This prevents one random phrase from becoming a fully reliable power.
+
+Stage 0 — None
+
+The ability does not exist.
+
+There is no candidate and no evidence.
+
+Example:
+
+The player has never attempted Mana Slash.
+
+Stage 1 — Hint
+
+The story suggests a possible future capability, but no real attempt or manifestation has occurred.
+
+Examples:
+
+* “You feel something stir in your blood.”
+* “The old book mentions flame-shaped mana.”
+* “Mara says your stance resembles an old sword art.”
+
+A hint may become pending lore or candidate seed.
+
+It should not become a usable ability.
+
+It should not get a card.
+
+Stage 2 — Candidate
+
+A candidate is a possible developing ability.
+
+It exists because the player made a real attempt, experienced a partial manifestation, received training, or encountered repeated evidence.
+
+Examples:
+
+* Mana flickered once during a sword swing.
+* The player tried to cast Mana Slash and felt a pulse of heat.
+* A teacher identified the beginning of a technique.
+* The player repeatedly moves silently without knowing why.
+
+Candidate records should store:
+
+* tentative name
+* category guess
+* intended effect
+* evidence count
+* source scenes
+* failure notes
+* cost clues
+* domain/stat links
+* confidence
+* aliases
+* current stage
+* last attempt turn
+
+Candidates are not reliable.
+
+Candidates should appear in /abilityaudit.
+
+They may appear in Context only if relevant.
+
+They should not get generated ability cards yet.
+
+Stage 3 — Soft-failed candidate
+
+A soft-failed candidate is a candidate with real attempts but no stable success.
+
+Example:
+
+“You try to form Mana Slash, but nothing happens.”
+
+This can still record:
+
+* attempt count
+* failure mode
+* MP/EP cost
+* domain XP proposal
+* stat XP proposal
+* evidence of what does not work
+
+Soft failure should not erase the candidate unless repeated failures show it is invalid.
+
+Soft failure should not stabilize the ability.
+
+Stage 4 — Unstable manifestation
+
+An unstable manifestation means the ability produced a partial, uncontrolled, weak, or inconsistent effect.
+
+Examples:
+
+* the blade sparks but collapses
+* the player vanishes for one step and reappears dizzy
+* healing light closes a tiny cut but drains too much MP
+* the shield flares once under stress
+* the player hears a beast’s intent but cannot understand words
+
+This stage can create stronger evidence.
+
+It may give more ability growth than total failure.
+
+It still should not be treated as reliable.
+
+Stage 5 — Partial success
+
+Partial success means the ability works in a limited way.
+
+Examples:
+
+* Mana Slash cuts a shallow groove but fails to hold shape
+* Shadow Step moves the player only a few feet
+* Healing Light stops bleeding but does not heal the wound
+* Fire Resistance reduces burns but does not prevent them
+
+Partial success should update:
+
+* effect understanding
+* cost estimate
+* limits
+* reliability
+* evidence
+* possible skill rank
+
+It still may not be fully stabilized.
+
+Stage 6 — Stabilized ability
+
+A stabilized ability is real and usable.
+
+It has enough evidence or direct confirmation to become part of the stable ability list.
+
+Stabilization may come from:
+
+* repeated successful use
+* explicit breakthrough
+* teacher confirmation
+* controlled activation
+* story-granted power
+* ritual completion
+* item bond
+* species awakening
+* major milestone
+
+A stabilized ability should have:
+
+* stable name
+* category
+* effect summary
+* activation method
+* known or estimated cost
+* limits
+* reliability
+* source/origin
+* related domains/stats
+* current rank
+* aliases
+* context priority
+* card eligibility flag if important
+
+Stabilized does not mean mastered.
+
+It means real and usable.
+
+Stage 7 — Refined ability
+
+A refined ability has improved control, efficiency, precision, or application.
+
+Examples:
+
+* Mana Slash costs less MP
+* Shadow Step can curve around an obstacle
+* Healing Light can target poison symptoms
+* Fire Resistance now applies to magical flame partly
+
+Refinement should come from repeated use, training, teachers, breakthroughs, or special circumstances.
+
+Refinement should update costs, limits, effect scope, reliability, or variants.
+
+Stage 8 — Mastered ability
+
+A mastered ability is a signature capability.
+
+It is reliable under pressure and strongly tied to the player’s identity.
+
+Examples:
+
+* Mana Slash becomes a signature combat opener
+* Silent Footwork allows near-effortless stealth in normal conditions
+* Healing Light becomes precise and efficient
+* Iron Body allows major impact resistance
+
+Mastery should still obey:
+
+* resource costs
+* counters
+* conditions
+* scale limits
+* environmental limits
+* story logic
+
+Mastery does not mean infinite free success.
+
+Stage 9 — Evolved ability
+
+An evolved ability changes into a stronger, broader, specialized, or variant form.
+
+Examples:
+
+* Mana Slash evolves into Crescent Mana Slash
+* Shadow Step evolves into Shadow Thread
+* Healing Light evolves into Lifeweave
+* Wolf Guard Stance evolves into Moonfang Guard
+
+Evolution should preserve history and meaning.
+
+It should not randomly rename the ability into something unrelated.
+
+It may create:
+
+* variant ability
+* upgraded form
+* branch path
+* specialization tag
+* new cost profile
+* new limits
+
+Stage 10 — Archived / merged / deprecated
+
+An old ability candidate or old name may be archived.
+
+Examples:
+
+* duplicate candidates merge
+* old tentative name becomes alias
+* failed false candidate expires
+* old form becomes variant
+* temporary power fades
+
+Archive should preserve history without cluttering active Context.
+
+⸻
+
+6. Ability rank scale
+
+Abilities, skills, and talents should have ranks.
+
+Recommended rank scale:
+
+Rank 0 — Unknown
+
+No usable ability.
+
+At most a hint.
+
+Rank 1 — Attempted
+
+The player has tried or shown the first signs.
+
+Very unreliable.
+
+High failure risk.
+
+Costs unclear.
+
+Rank 2 — Developing
+
+Repeated attempts or weak manifestations exist.
+
+Still unreliable.
+
+Can appear in /abilityaudit.
+
+Rarely appears in Context unless relevant.
+
+Rank 3 — Basic
+
+The ability can work in favorable conditions.
+
+Costs are rough estimates.
+
+Failure still possible under pressure.
+
+Rank 4 — Practiced
+
+The ability is usable in normal conditions.
+
+Known limits begin to form.
+
+Cost confidence improves.
+
+Rank 5 — Reliable
+
+The ability is stable and generally dependable within its limits.
+
+Can be used as part of regular gameplay.
+
+May be card-eligible if important.
+
+Rank 6 — Refined
+
+The ability becomes more efficient, precise, or flexible.
+
+Failure risk decreases in normal conditions.
+
+Rank 7 — Advanced
+
+The ability can handle pressure, combination use, or harder targets.
+
+Counters and costs still matter.
+
+Rank 8 — Expert
+
+The ability is a major part of the player’s build.
+
+It can influence difficult scenes but not erase scale or story constraints.
+
+Rank 9 — Master
+
+The ability is signature-level.
+
+It can justify major feats when resources and context support it.
+
+Rank 10 — Legendary
+
+The ability is mythic or campaign-defining.
+
+It should require major story justification.
+
+It still respects counters, costs, conditions, and scale.
+
+⸻
+
+7. What ability rank affects
+
+Ability rank should affect:
+
+* reliability
+* cost efficiency
+* strength of effect
+* precision
+* failure risk
+* Context confidence
+* validator bias
+* progression reward quality
+* possible variants
+* card summary wording
+* combat plausibility
+* crafting/investigation/social plausibility if relevant
+
+Ability rank should not automatically:
+
+* guarantee success
+* remove all costs
+* bypass counters
+* ignore injuries
+* ignore resource state
+* defeat impossible enemies without leverage
+* solve quests automatically
+* create cards by itself
+
+Example:
+
+Rank 5 Mana Slash is reliable against ordinary physical targets when the player has enough MP and a usable weapon.
+
+It does not automatically cut through a divine barrier, an intangible ghost, or a mountain.
+
+⸻
+
+8. Ability evidence
+
+Ability evidence is the record that supports a candidate or ability.
+
+Evidence should include:
+
+* real attempts
+* partial manifestations
+* confirmed successful uses
+* teacher feedback
+* observed costs
+* observed limits
+* failure patterns
+* training scenes
+* related domain/stat growth
+* story origin
+* conditions where it worked
+* conditions where it failed
+
+Evidence should not include:
+
+* pretend actions
+* jokes
+* dreams unless dream powers are explicitly canon
+* rumors
+* quoted instructions
+* card text
+* debug examples
+* impossible unsupported claims
+
+Ability evidence should be weighted.
+
+A clear successful use is stronger than a weak sensation.
+
+A teacher-confirmed technique is stronger than a vague feeling.
+
+Repeated soft failures can still be useful, but should not stabilize the ability by themselves unless they build toward partial manifestation.
+
+⸻
+
+9. Candidate creation rules
+
+A candidate may be created when there is enough real evidence.
+
+Create a candidate from:
+
+* real attempt
+* partial manifestation
+* teacher identifies a technique
+* repeated unusual behavior
+* species/trait awakening
+* item bond reaction
+* ritual beginning
+* confirmed story event suggesting power
+* training directed at a specific capability
+
+Do not create a candidate from:
+
+* pretend use
+* jokes
+* quoted dialogue
+* rumor
+* dream/vision unless dream mechanics are canon
+* one vague phrase with no action
+* player saying “I have X now”
+* card text
+* debug text
+* system explanation
+
+Example accepted candidate:
+
+“You focus mana through the blade. A faint blue edge flickers before collapsing.”
+
+Candidate:
+
+* Mana Slash
+* evidence: unstable mana edge
+* stage: unstable manifestation or developing
+* not stable
+
+Example rejected candidate:
+
+“I pretend my sword fires a Mana Slash.”
+
+Result:
+
+* hard deny
+* no candidate
+
+⸻
+
+10. Candidate stabilization rules
+
+A candidate becomes stable only when enough support exists.
+
+Stabilization can happen through any of these paths.
+
+10.1 Repeated success path
+
+The ability works several times in normal or stressful conditions.
+
+Example:
+
+Mana Slash succeeds in three separate validated scenes.
+
+Result:
+
+* candidate may stabilize
+
+10.2 Breakthrough path
+
+The story explicitly describes a breakthrough.
+
+Example:
+
+“After hours of correction, the mana finally locks into a clean crescent along your blade.”
+
+Result:
+
+* stabilization likely accepted
+
+10.3 Teacher confirmation path
+
+A qualified teacher confirms the ability.
+
+Example:
+
+Captain Jora nods. “That was the first true form of Mana Slash.”
+
+Result:
+
+* strong stabilization evidence
+
+10.4 Ritual or item path
+
+A ritual, artifact, bond, blessing, or transformation grants a defined ability.
+
+Example:
+
+“The rune burns into your palm, and you feel the warding spell settle into your bones.”
+
+Result:
+
+* ability may stabilize if the event is validated
+
+10.5 Species or body awakening path
+
+A species trait or body change creates a passive or ability.
+
+Example:
+
+“Your draconic scales harden, and the fire no longer burns as deeply.”
+
+Result:
+
+* trait/passive may stabilize
+
+10.6 Crisis manifestation path
+
+A power appears clearly under life-threatening stress.
+
+Example:
+
+“As the blade falls, shadows fold around you and you reappear behind the attacker.”
+
+Result:
+
+* strong candidate evidence or immediate stabilization depending on clarity and setting
+
+Stabilization should not happen from:
+
+* one failed attempt
+* “nothing happens”
+* pretend use
+* quoted dialogue
+* rumor
+* dream
+* unsupported player claim
+* generic cool phrase
+* card text
+
+⸻
+
+11. Ability cost model
+
+Most active skills should have costs.
+
+Costs can include:
+
+* MP
+* EP
+* HP backlash
+* time
+* focus/concentration
+* material component
+* weapon requirement
+* tool requirement
+* cooldown
+* environmental requirement
+* condition requirement
+* risk
+* opportunity
+* social or spiritual cost
+
+11.1 MP costs
+
+Use MP for:
+
+* magic
+* psychic powers
+* spiritual techniques
+* focus-heavy abilities
+* rituals
+* spell maintenance
+
+11.2 EP costs
+
+Use EP for:
+
+* martial techniques
+* movement abilities
+* stances
+* dodges
+* physical skills
+* endurance-based powers
+
+11.3 Hybrid costs
+
+Use MP and EP for:
+
+* mana-infused sword techniques
+* body-enhancement magic
+* supernatural movement
+* spellblade techniques
+* ritual combat arts
+
+Example:
+
+Mana Slash may cost MP to shape mana and EP to swing/control the technique under pressure.
+
+11.4 HP costs
+
+Use HP costs rarely.
+
+Appropriate for:
+
+* blood magic
+* overcasting
+* cursed powers
+* severe backlash
+* self-sacrifice abilities
+* dangerous transformations
+
+HP cost should never be casually applied without clear support.
+
+11.5 Material costs
+
+Use for:
+
+* rituals
+* crafting abilities
+* alchemy
+* runes
+* ammunition-like powers
+* consumable talismans
+
+11.6 Time costs
+
+Use for:
+
+* rituals
+* crafting techniques
+* meditation
+* large spells
+* domain abilities
+* investigation methods
+* recovery abilities
+
+⸻
+
+12. Cost discovery
+
+Ability costs should not need to be perfectly known at first.
+
+Early candidates may have uncertain costs.
+
+The ability record can store:
+
+* estimated cost
+* observed cost range
+* cost confidence
+* resource type
+* overuse risk
+* failure cost
+* maintenance cost
+* scaling cost
+* known cost modifiers
+
+Cost confidence should increase through repeated confirmed use.
+
+Example:
+
+First Mana Slash attempt:
+
+* cost unknown
+* MP strain observed
+
+After several uses:
+
+* estimated cost: moderate MP, light EP
+* confidence: medium
+
+After repeated stable use:
+
+* cost: 8 MP + 3 EP
+* confidence: high
+
+The existing ability-cost work already included cost guesses, resource guesses, observed costs, cost confidence, and ability card updates over time.  ￼
+
+⸻
+
+13. Cost scaling
+
+Costs should scale with:
+
+* ability rank
+* effect size
+* target difficulty
+* distance
+* duration
+* precision
+* pressure
+* injury state
+* resource state
+* environmental support
+* enemy resistance
+* overcharging
+* multi-target use
+
+Low rank
+
+Costs are inefficient.
+
+Failure risk is high.
+
+Overuse is dangerous.
+
+Mid rank
+
+Costs become predictable.
+
+Reliability improves.
+
+Normal use is manageable.
+
+High rank
+
+Costs may decrease, or effect per cost may improve.
+
+The ability may handle harder situations.
+
+Overcharged use
+
+Costs increase sharply.
+
+Failure may cause backlash, exhaustion, injury, condition, or instability.
+
+⸻
+
+14. Failure modes
+
+Abilities should have meaningful failure modes.
+
+Common failure modes:
+
+* fizzles
+* weak effect
+* wrong target
+* partial effect
+* backlash
+* resource drain
+* fatigue
+* injury
+* condition
+* alerting enemies
+* damaging equipment
+* creating unstable side effect
+* loss of concentration
+* delayed activation
+* temporary lockout
+
+Failure mode should match the ability.
+
+Examples:
+
+Failed fire spell:
+
+* MP loss
+* smoke
+* burn risk
+* no stable flame
+
+Failed teleport:
+
+* short displacement
+* dizziness
+* EP/MP loss
+* arrival off target
+* possible danger if severe
+
+Failed healing:
+
+* MP loss
+* pain reduced but wound remains
+* bleeding slows but does not stop
+* healer fatigue
+
+Failed stealth talent:
+
+* noise made
+* guard alerted
+* EP cost
+* no invisibility effect
+
+Failure should be fun when possible.
+
+It should create story consequence, not just “nothing.”
+
+⸻
+
+15. Soft failure and learning
+
+A real failed ability attempt can still teach.
+
+Soft failure may produce:
+
+* evidence
+* cost observation
+* failure pattern
+* domain XP
+* stat XP
+* fatigue
+* clue about required condition
+* clue about missing resource
+* teacher correction
+* partial progress
+
+Soft failure should not produce:
+
+* stable ability
+* full success
+* generated ability card
+* major power jump
+* free mastery
+
+Example:
+
+“You try to form Mana Slash, but the mana scatters because your grip slips.”
+
+Possible learning:
+
+* evidence: needs stable grip
+* cost: small MP
+* stat link: ATK/INT
+* domain: Magic/Melee
+* no stable ability
+
+⸻
+
+16. Hard denial rules
+
+Hard denial blocks false abilities.
+
+Hard-deny ability events from:
+
+* pretend actions
+* jokes
+* quotes
+* rumors
+* dreams unless dream magic is canon
+* fake examples
+* debug text
+* player simply declaring mastery
+* “nothing happens” being parsed as success
+* failed attempts being parsed as stable
+* card text being parsed back as ability truth
+* impossible unsupported power jumps
+
+Examples:
+
+“I pretend to cast Dragonfire.”
+
+Result:
+
+* hard deny
+* no candidate
+
+“She says, ‘You use Shadow Step.’”
+
+Result:
+
+* hard deny or reject ability success
+* no ability progress unless actual use occurs
+
+“You fail to summon the wolf spirit.”
+
+Result:
+
+* no summon
+* possible soft-failed attempt if real effort occurred
+* no stable summon ability
+
+⸻
+
+17. Ability limits
+
+Every ability should have limits.
+
+Limits make abilities fun and believable.
+
+Limit categories:
+
+* range
+* duration
+* target type
+* resource cost
+* cooldown
+* concentration
+* environmental need
+* item/weapon requirement
+* line of sight
+* emotional state
+* physical condition
+* domain rank
+* rank threshold
+* enemy resistance
+* scale limit
+* risk/backlash
+* moral/spiritual condition
+
+Example:
+
+Mana Slash limits:
+
+* requires bladed weapon or focused mana edge
+* costs MP and some EP
+* works best at melee/short range
+* weak against anti-magic barriers
+* less reliable when exhausted
+* stronger with Melee/Magic domain growth
+
+Example:
+
+Night Vision limits:
+
+* helps in natural darkness
+* may not pierce magical darkness
+* does not reveal invisible creatures
+* bright flashes may cause pain if species supports it
+
+Limits should be updated through confirmed use.
+
+⸻
+
+18. Ability aliases and naming
+
+Abilities may have aliases.
+
+Example:
+
+* Mana Slash
+* Mana Edge
+* Blue Crescent
+* Crescent Cut
+
+The system should preserve meaning and avoid duplicate records.
+
+Alias merge should require evidence.
+
+Safe merge signs:
+
+* same effect
+* same source
+* same method
+* same actor
+* explicit “also called”
+* repeated consistent use
+
+Unsafe merge examples:
+
+* Fireball and Flame Blade
+* Shadow Step and Shadow Cloak
+* Healing Light and Holy Ward
+* Iron Skin and Stone Form
+
+Do not merge abilities just because names are similar.
+
+Do not rename a stable ability casually because AI output used a prettier phrase.
+
+Tentative names can become aliases if the stable name changes.
+
+⸻
+
+19. Ability variants
+
+A variant is a related form of an existing ability.
+
+Examples:
+
+* Mana Slash → Crescent Mana Slash
+* Fireball → Compressed Fireball
+* Shadow Step → Silent Shadow Step
+* Healing Light → Cleansing Light
+* Shield Bash → Guard Breaker
+
+Variants should be linked to parent ability.
+
+They should not always replace the parent.
+
+Variant creation should require:
+
+* stable parent ability
+* clear new behavior
+* repeated or explicit variation
+* different cost, effect, target, or use case
+
+Variant should not be created from every adjective.
+
+Example:
+
+“blue Mana Slash” does not necessarily create a new variant.
+
+“Mana Slash splits into three crescent arcs at triple MP cost” may create a variant.
+
+⸻
+
+20. Ability evolution
+
+Evolution is a major change in ability identity or power.
+
+It should be rare and meaningful.
+
+Evolution may occur from:
+
+* mastery
+* major story milestone
+* divine blessing
+* mutation
+* artifact bond
+* repeated high-stakes use
+* teacher breakthrough
+* ritual
+* specialization threshold
+
+Evolution should preserve:
+
+* origin
+* old name as alias if relevant
+* parent link
+* learned limits
+* cost history
+* previous rank or conversion notes
+
+Evolution should not erase the ability’s meaning.
+
+Example:
+
+Mana Slash evolving into Crescent Mana Slash makes sense.
+
+Mana Slash randomly becoming Time Stop does not.
+
+⸻
+
+21. Passive rules
+
+Passives are dangerous because they can silently affect everything.
+
+Passives need strict scope.
+
+Every passive should define:
+
+* trigger condition
+* effect
+* limits
+* strength
+* whether it is always-on or conditional
+* whether it costs anything
+* whether it can grow
+* whether it stacks
+* whether it appears in Context
+* whether it is card-eligible
+
+Examples:
+
+Fire Resistance:
+
+* trigger: fire exposure
+* effect: reduce fire harm
+* limit: not immunity, weaker against divine/magical flame unless confirmed
+* growth: may improve through trait progression or story events
+
+Battle Instinct:
+
+* trigger: combat danger
+* effect: improves reaction/recognition of threat
+* limit: does not reveal invisible enemies automatically, does not replace SPD/INT
+
+Mana Sensitivity:
+
+* trigger: nearby magic
+* effect: may detect magical presence
+* limit: vague sense unless trained/refined
+
+Passives should not stack infinitely.
+
+Duplicate passives should merge or update.
+
+⸻
+
+22. Talent rules
+
+Talents shape method.
+
+A talent should define:
+
+* domain
+* style
+* action family affected
+* requirements
+* costs if any
+* strengths
+* weaknesses
+* growth path
+* related stats
+* related abilities
+* Context behavior
+
+Example:
+
+Wolf Guard Stance:
+
+* action family: defensive melee
+* strengths: bracing, countering, holding ground
+* cost: EP while sustained
+* weakness: reduced mobility
+* related stats: DEF, ATK
+* related domain: Melee/Defense
+
+Talents should not automatically create separate active skills unless the story supports it.
+
+A talent can improve how normal actions are judged.
+
+⸻
+
+23. Specialization rules
+
+Specialization describes long-term focus.
+
+Specialization should be derived from repeated evidence.
+
+Inputs:
+
+* stable abilities
+* talents
+* passives
+* domain ranks
+* stat distribution
+* repeated action history
+* equipment preference
+* quest behavior
+* combat behavior
+* social/crafting/investigation behavior
+
+Outputs:
+
+* specialization tags
+* archetype summary
+* build bias
+* Context wording
+* progression routing hints
+
+Examples:
+
+Repeated sword training + high ATK/SPD + dueling talent:
+
+* specialization: duelist
+
+High INT + Magic Domain + several spell skills:
+
+* specialization: mage
+
+Crafting Domain + recipes + item quality improvements:
+
+* specialization: crafter / smith / alchemist depending context
+
+Specialization should not be forced.
+
+The player can be hybrid.
+
+A specialization should not prevent off-build growth.
+
+⸻
+
+24. Build identity relationship
+
+Build identity is not the same as ability ownership.
+
+Build identity reads from:
+
+* stats
+* domains
+* abilities
+* talents
+* passives
+* equipment
+* behavior
+* resources
+* repeated player choices
+
+It produces:
+
+* build tags
+* archetype summary
+* style hints
+
+It should not directly create abilities.
+
+Example:
+
+If build identity says “agile duelist,” that does not grant a duelist skill.
+
+It may make duelist-like training and ability stabilization more plausible.
+
+⸻
+
+25. Ability and progression relationship
+
+Ability events may propose progression events.
+
+Examples:
+
+A real Mana Slash attempt may propose:
+
+* Magic Domain XP
+* Melee Domain XP
+* INT XP
+* ATK XP
+* ability evidence
+
+A successful shield talent use may propose:
+
+* DEF XP
+* Defense Domain XP
+* talent evidence
+
+A passive awakening may propose:
+
+* relevant Domain XP
+* maybe Level XP if major
+
+But AbilityReducer does not directly write progression.
+
+ProgressionReducer commits XP.
+
+This follows the owner rule from Chunk 2.
+
+⸻
+
+26. Ability and resources relationship
+
+Ability use may affect HP, MP, and EP.
+
+Examples:
+
+Mana Slash:
+
+* MP cost
+* small EP cost
+
+Shield Bash:
+
+* EP cost
+
+Blood Magic:
+
+* HP cost
+* MP cost
+
+Healing Light:
+
+* MP cost
+* possible fatigue
+
+Shadow Step:
+
+* MP and/or EP cost
+* dizziness if failed
+
+AbilityReducer should not directly write HP/MP/EP.
+
+It should emit resource change events.
+
+BodyReducer / PlayerReducer commits resources.
+
+This preserves owner boundaries.
+
+⸻
+
+27. Ability and equipment relationship
+
+Some abilities require equipment.
+
+Examples:
+
+Mana Slash may require:
+
+* blade
+* focus weapon
+* mana edge substitute if rank high enough
+
+Shield Bash requires:
+
+* shield or shield-like object
+
+Rune Strike requires:
+
+* inscribed weapon
+* rune focus
+
+Bow technique requires:
+
+* bow
+* arrows or equivalent
+
+If required equipment is unavailable, the ability may:
+
+* fail
+* become risky
+* cost more
+* produce weaker effect
+* require improvised substitute
+
+InventoryReducer owns equipment state.
+
+AbilityReducer reads equipment or receives validation context.
+
+It does not invent equipment.
+
+⸻
+
+28. Ability and Context behavior
+
+Context should include abilities only when useful.
+
+Context may include:
+
+* most relevant stable abilities
+* current unstable ability if actively being trained
+* resource/cost warning
+* key limits
+* passive traits relevant to scene
+* current talent/stance if active
+
+Context should not dump:
+
+* every candidate
+* every failed attempt
+* every passive
+* every old ability note
+* every cost observation
+
+Good Context example:
+
+“You know Mana Slash as a basic but costly sword-mana skill. It usually costs moderate MP and some EP, and is unreliable while exhausted.”
+
+Bad Context example:
+
+“Mana Slash evidence count 7, failed attempt id 12, cost confidence 0.42, aliases [blue edge, mana edge], last use turn 912.”
+
+That belongs in audit/ability commands, not normal Context.
+
+⸻
+
+29. Ability and Story Card behavior
+
+Generated ability cards should only be created for stable/card-eligible abilities.
+
+Do not create generated cards for:
+
+* hints
+* weak candidates
+* failed attempts
+* pretend abilities
+* jokes
+* unstable one-off effects
+* duplicate aliases
+* passive noise
+* generic traits
+
+Ability cards may be appropriate for:
+
+* signature stable skills
+* important passives
+* major talents
+* evolved abilities
+* story-defining powers
+* abilities the AI must remember long-term
+
+Ability cards should update when confirmed facts change:
+
+* cost becomes known
+* limit discovered
+* ability rank increases
+* alias confirmed
+* variant appears
+* passive strengthens
+* ability evolves
+
+CardSync mirrors AbilityReducer state.
+
+CardSync does not create ability canon.
+
+The clean-core CardSync rules allow stabilized/card-eligible ability cards but forbid CardSync from creating canon from raw prose.  ￼
+
+⸻
+
+30. Ability commands
+
+Later command design should support ability inspection.
+
+/abilityaudit should show
+
+* stable abilities
+* candidates
+* evidence counts
+* recent attempts
+* soft failures
+* hard denials
+* costs
+* limits
+* aliases
+* rank/stage
+* card eligibility
+* duplicate/merge warnings
+
+/sheet should show
+
+* most important stable abilities
+* major passives
+* maybe current specialization
+
+/progression should show
+
+* related domain/stat growth
+* ability-related milestones
+
+/debuglast should show
+
+* proposed ability events
+* validation result
+* resource changes
+* progression follow-ups
+* duplicate skips
+
+⸻
+
+31. Ability validation outcomes
+
+Ability events use the same five validation outcomes.
+
+Accept
+
+Use when an ability event is confirmed enough.
+
+Examples:
+
+* real successful use
+* confirmed breakthrough
+* teacher-confirmed learning
+* stabilized ability activation
+* observed cost from clear use
+
+Reject
+
+Use when a proposed ability event is unsupported.
+
+Examples:
+
+* output mentions ability name but no use
+* player intended ability but result did not occur
+* vague “you feel power” with no action
+* ability claim conflicts with state and lacks support
+
+Pending
+
+Use when ability possibility exists but is not active truth.
+
+Examples:
+
+* teacher says player may learn later
+* book describes a spell
+* prophecy mentions dormant power
+* item may grant ability when bonded
+
+Soft_fail
+
+Use when real attempt fails or partially fails.
+
+Examples:
+
+* spell fizzles
+* stance collapses
+* shadow step moves only inches
+* healing light reduces pain but not wound
+
+Hard_deny
+
+Use when ability event is non-canon or unsafe.
+
+Examples:
+
+* pretend
+* joke
+* quote
+* dream treated as real
+* rumor
+* debug/card text
+* impossible unsupported mastery
+* explicit failure parsed as success
+
+⸻
+
+32. Ability safety rules
+
+32.1 No ability from pretend
+
+Pretend use creates no candidate.
+
+32.2 No stable ability from failure alone
+
+Failure may create evidence, not stable success.
+
+32.3 No generated card for candidates
+
+Only stable/card-eligible abilities can get cards.
+
+32.4 No costless active skills by default
+
+Active skills usually require MP, EP, time, tools, materials, risk, or opportunity.
+
+32.5 No infinite passive stacking
+
+Duplicate passives merge or update.
+
+32.6 No random renaming
+
+Stable ability names should not change from one output.
+
+New names become aliases unless clearly evolved.
+
+32.7 No ability rewriting from cards
+
+Card text does not create or edit ability canon.
+
+32.8 No mastery without evidence
+
+High rank requires sustained use, training, milestone, or major story support.
+
+32.9 No ability ignoring resources
+
+Low MP/EP, injuries, conditions, equipment loss, and counters still matter.
+
+32.10 No ability solving everything
+
+Abilities have scope and limits.
+
+⸻
+
+33. Example scenarios
+
+Example 1 — Pretend Mana Slash
+
+Input:
+
+“I pretend to cast Mana Slash.”
+
+Expected:
+
+* ability event hard-denied
+* no candidate
+* no evidence
+* no XP
+* no card
+
+Example 2 — First real attempt
+
+Input:
+
+“I focus mana along my sword and try to release Mana Slash.”
+
+Output:
+
+“A pale edge flickers along the blade, then collapses.”
+
+Expected:
+
+* ability.attempt soft_fail or unstable manifestation
+* Mana Slash candidate may be created
+* cost clue: small/moderate MP
+* possible Magic/Melee Domain XP
+* no stable ability
+* no card
+
+Example 3 — Repeated training
+
+Output:
+
+“After several attempts, the edge holds for a heartbeat before fading.”
+
+Expected:
+
+* candidate evidence increases
+* stage may move toward partial success
+* cost confidence improves
+* no stable ability yet unless threshold met
+
+Example 4 — Breakthrough
+
+Output:
+
+“The mana finally locks into a clean crescent, and your slash carves a bright line through the training post.”
+
+Expected:
+
+* ability.stabilize accepted if prior evidence or scene supports it
+* Mana Slash becomes stable skill
+* cost estimate recorded
+* relevant XP proposals
+* ability context dirty
+* ability card may become eligible if important
+
+Example 5 — Cost discovery
+
+Output:
+
+“You use Mana Slash again, spending a sharp pulse of mana and leaving your arm tired.”
+
+Expected:
+
+* cost observe: MP + EP
+* cost confidence increases
+* no new ability
+* possible ability practice progress
+
+Example 6 — Ability blocked by resource
+
+State:
+
+Player has 0 MP.
+
+Input:
+
+“I use Mana Slash.”
+
+Output:
+
+“The blade refuses to light; your mana is spent.”
+
+Expected:
+
+* ability use rejected or soft-failed
+* no effect
+* possible fatigue/frustration
+* no ability loss
+* no card update except maybe cost/limit if useful
+
+Example 7 — Passive awakening
+
+Output:
+
+“The flames lick across your draconic scales, but the heat barely reaches your skin.”
+
+Expected:
+
+* possible trait/passive evidence
+* Fire Resistance candidate or passive update
+* body/species context considered
+* not full immunity unless repeatedly confirmed
+
+Example 8 — Random phrase should not create ability
+
+Output:
+
+“You move like a shadow through the hall.”
+
+Expected:
+
+* maybe stealth flavor
+* no Shadow Step ability unless actual supernatural movement or repeated technique evidence exists
+
+⸻
+
+34. Chunk 6 acceptance tests
+
+Test 1 — pretend ability hard-denied
+
+Given:
+
+Player pretends to use Dragonfire.
+
+Expected:
+
+* hard deny
+* no candidate
+* no XP
+* no card
+
+Test 2 — failed real attempt soft-fails
+
+Given:
+
+Player truly attempts Mana Slash and it fails.
+
+Expected:
+
+* soft_fail
+* possible candidate evidence
+* no stable ability
+* no generated card
+
+Test 3 — repeated success stabilizes
+
+Given:
+
+Mana Slash succeeds repeatedly or receives clear breakthrough confirmation.
+
+Expected:
+
+* candidate becomes stable skill
+* stable ability appears in ability state
+* Context may include it
+* CardSync may mirror if card-eligible
+
+Test 4 — costs become known over time
+
+Given:
+
+Ability is used several times with resource narration.
+
+Expected:
+
+* cost estimate improves
+* cost confidence increases
+* ability summary updates
+
+Test 5 — ability use respects resources
+
+Given:
+
+Player has insufficient MP/EP.
+
+Expected:
+
+* ability is blocked, weakened, risky, or fails depending context
+* no free full effect
+
+Test 6 — passive has limits
+
+Given:
+
+Player has Fire Resistance.
+
+Expected:
+
+* ordinary fire harm reduced
+* extreme/magical/divine fire still evaluated by context
+* no automatic total immunity unless passive explicitly says so
+
+Test 7 — ability card only after stabilization
+
+Given:
+
+Mana Slash is only a candidate.
+
+Expected:
+
+* no generated ability card
+
+Given:
+
+Mana Slash stabilizes and is important.
+
+Expected:
+
+* ability card may be generated or updated by CardSync
+
+Test 8 — alias merge does not flatten distinct abilities
+
+Given:
+
+Mana Slash and Flame Blade both exist.
+
+Expected:
+
+* not merged unless evidence proves they are same ability
+
+Test 9 — ability evolution preserves history
+
+Given:
+
+Mana Slash evolves into Crescent Mana Slash.
+
+Expected:
+
+* parent link or alias preserved
+* old meaning not lost
+* cost/effect updated through validated evolution
+
+Test 10 — card text does not create ability
+
+Given:
+
+A card mentions “Dragon Crown grants Time Stop.”
+
+Expected:
+
+* no Time Stop ability unless state/events validate it through proper path
+
+Test 11 — specialization is derived
+
+Given:
+
+Player repeatedly uses stealth, daggers, and ambush tactics.
+
+Expected:
+
+* specialization evidence may grow
+* archetype may shift toward rogue/assassin
+* no free skill automatically granted
+
+Test 12 — stable ability still obeys counters
+
+Given:
+
+Player uses Rank 8 Fireball underwater.
+
+Expected:
+
+* ability may fail, weaken, or require special leverage
+* rank does not ignore environment
+
+⸻
+
+35. Final Chunk 6 doctrine
+
+Abilities grow through evidence.
+
+Skills are active techniques.
+
+Talents shape methods.
+
+Passives are always-on or conditional capabilities.
+
+Traits describe persistent qualities.
+
+Specializations describe long-term focus.
+
+Candidates are not stable abilities.
+
+Failure can teach.
+
+Pretending does not teach.
+
+Costs become known through use.
+
+Abilities improve through practice, pressure, teachers, breakthroughs, and story support.
+
+Every ability has limits.
+
+Every active ability has some cost, risk, condition, or opportunity cost unless clearly defined otherwise.
+
+AbilityReducer owns ability truth.
+
+ProgressionReducer owns XP.
+
+BodyReducer owns resources and injuries.
+
+InventoryReducer owns equipment.
+
+CardSync mirrors only stable/card-eligible abilities.
+
+Context reports only what is relevant.
+
+The goal is not to collect random powers.
+
+The goal is to let the player’s capabilities emerge, stabilize, and evolve naturally through the story.
+

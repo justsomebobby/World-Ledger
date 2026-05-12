@@ -1,0 +1,2152 @@
+AIDRPG Design Bible — Chunk 5: Stats, Resources, Recovery, and Scaling Basics
+
+1. Purpose of this chunk
+
+Chunk 4 defined how progression works: Level XP, Total XP, Domain XP, Stat Training XP, and Ability Growth.
+
+Chunk 5 defines what the player’s core numbers actually mean.
+
+This chunk answers:
+
+What do ATK, DEF, SPD, INT, and LCK represent?
+
+How should stats affect gameplay?
+
+What are HP, MP, and EP?
+
+How do resources scale?
+
+How does recovery work?
+
+How do injuries and conditions affect effective strength?
+
+How does level influence stats without replacing them?
+
+How do stats guide AI Dungeon gameplay without forcing rigid outcomes?
+
+This chunk does not define the full combat matrix. Combat gets its own chunk. This chunk defines the character-side foundation combat will later use.
+
+The current design already treats ATK, DEF, SPD, INT, and LCK as the core stats, with HP, MP, and EP as separate resources. It also states that fatigue/exertion should drain EP, mana/focus strain should drain MP, and real wounds should affect HP and injuries.  ￼  ￼
+
+⸻
+
+2. Core philosophy
+
+Stats should guide plausibility.
+
+They should not turn AI Dungeon into a rigid dice game.
+
+AIDRPG should not say:
+
+“Your ATK is 7, therefore this exact result must happen.”
+
+It should say:
+
+“Given your ATK, equipment, injuries, resources, enemy threat, terrain, and story context, this result is plausible, risky, unlikely, or unsupported.”
+
+Stats should help the system decide:
+
+* what actions are believable
+* what consequences are reasonable
+* what kind of XP is earned
+* what kind of fatigue or injury makes sense
+* whether an output should be accepted, softened, rejected, or treated as partial
+* how the AI should be reminded of the player’s current capability
+
+Stats should not fully override story context.
+
+A wounded master swordsman may still struggle.
+
+A weak but clever character may win with traps.
+
+A lucky peasant may survive, but should not repeatedly defeat impossible enemies without leverage.
+
+A high-level character can still be poisoned, exhausted, outnumbered, deceived, or magically countered.
+
+⸻
+
+3. The five core stats
+
+AIDRPG uses five core stats:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+
+These are intentionally broad. They are not meant to simulate every attribute in a tabletop system.
+
+They are meant to give AI Dungeon a stable mechanical language without overwhelming the story.
+
+⸻
+
+4. Stat scale
+
+AIDRPG needs a consistent stat scale so the system understands what values mean.
+
+Recommended default scale:
+
+0 — Nonfunctional
+
+The character cannot meaningfully use this stat.
+
+Examples:
+
+* unconscious
+* paralyzed
+* magically suppressed
+* completely immobilized
+* mindless
+* incapacitated
+
+This is usually temporary or condition-caused.
+
+1–2 — Very weak
+
+The character is far below normal capability.
+
+Examples:
+
+* frail
+* badly injured
+* untrained child
+* sickly
+* heavily impaired
+* exhausted beyond function
+
+Actions using this stat are unreliable and risky.
+
+3–4 — Below average
+
+The character can function, but struggles.
+
+Examples:
+
+* untrained adult
+* wounded novice
+* clumsy fighter
+* poor magical control
+* socially or mentally inexperienced depending on stat
+
+Success is possible, but requires favorable circumstances.
+
+5 — Ordinary baseline
+
+This is the normal adult baseline.
+
+A level 1 ordinary human should usually start around 5 in most stats unless the character concept says otherwise.
+
+6–7 — Trained
+
+The character has some real practice.
+
+Examples:
+
+* militia fighter
+* apprentice mage
+* trained runner
+* basic investigator
+* competent craftsperson
+
+The character can handle ordinary challenges in that lane.
+
+8–10 — Skilled
+
+The character is meaningfully good.
+
+Examples:
+
+* trained soldier
+* competent duelist
+* capable scout
+* serious scholar
+* reliable spellcaster
+* lucky risk-taker with a record of survival
+
+This is where the player starts feeling clearly above ordinary people in that lane.
+
+11–14 — Elite
+
+The character is exceptional by normal standards.
+
+Examples:
+
+* veteran knight
+* expert thief
+* battlefield tactician
+* advanced mage
+* renowned artisan
+* dangerous monster hunter
+
+Ordinary opponents should struggle against this strength unless they have numbers, counters, terrain, or surprise.
+
+15–18 — Heroic
+
+The character is beyond normal limits.
+
+Examples:
+
+* champion warrior
+* master assassin
+* spell expert
+* legendary investigator
+* supernaturally durable body
+* uncanny luck
+
+Heroic stats allow major feats, but not consequence-free success.
+
+19–24 — Superhuman
+
+The stat is clearly beyond ordinary mortal standards.
+
+Examples:
+
+* giant-level strength
+* impossible reflexes
+* supernatural intellect
+* mythic endurance
+* fate-bending luck
+
+This tier should require major story justification, species traits, artifacts, blessings, mutations, long training, or high-level progression.
+
+25+ — Legendary
+
+The stat is mythic.
+
+Examples:
+
+* demigod strength
+* impossible durability
+* lightning-fast movement
+* ancient-mage intellect
+* luck that feels like destiny
+
+This tier should be rare and should not erase counters, costs, weaknesses, scale, or story logic.
+
+⸻
+
+5. Starting stat defaults
+
+The default starting player should begin around ordinary baseline.
+
+Recommended default:
+
+* ATK 5
+* DEF 5
+* SPD 5
+* INT 5
+* LCK 5
+
+But character setup may shift these.
+
+Examples:
+
+A trained soldier might begin with:
+
+* ATK 7
+* DEF 6
+* SPD 5
+* INT 4
+* LCK 5
+
+A scholar-mage might begin with:
+
+* ATK 3
+* DEF 4
+* SPD 4
+* INT 8
+* LCK 5
+
+A nimble rogue might begin with:
+
+* ATK 5
+* DEF 4
+* SPD 8
+* INT 6
+* LCK 6
+
+A hardy laborer might begin with:
+
+* ATK 6
+* DEF 7
+* SPD 4
+* INT 4
+* LCK 5
+
+The important rule:
+
+Starting stats should reflect character identity, but they should not start so high that early progression becomes meaningless.
+
+⸻
+
+6. Effective stats
+
+The visible/base stat is not always the stat used for validation.
+
+AIDRPG should distinguish:
+
+* base stat
+* trained stat increases
+* equipment modifiers
+* injury penalties
+* condition penalties
+* resource penalties
+* temporary buffs
+* temporary debuffs
+* effective stat
+
+The effective stat is what validation uses right now.
+
+Example:
+
+The player has DEF 10.
+
+They are wearing good armor, but they have cracked ribs and 0 EP.
+
+Their effective DEF may be much lower for dodging, bracing, or sustained defense.
+
+Another example:
+
+The player has SPD 6.
+
+They drink a haste potion and are lightly equipped.
+
+Their effective SPD may temporarily act like 9 or 10.
+
+Effective stats let the system keep permanent progression separate from temporary story state.
+
+⸻
+
+7. Stat-specific meaning
+
+7.1 ATK
+
+ATK represents offensive physical force and direct combat pressure.
+
+It includes:
+
+* striking power
+* weapon control
+* offensive momentum
+* breaking through guard
+* damaging enemies
+* forcing opponents back
+* physically overpowering weaker targets
+* using strength-based or weapon-based techniques
+
+ATK should affect:
+
+* melee combat plausibility
+* weapon training
+* ability use for physical techniques
+* breaking objects
+* intimidation when physical threat matters
+* damage potential
+* enemy pressure
+* ATK XP rewards
+
+ATK should not automatically:
+
+* guarantee hits
+* bypass armor
+* win against faster enemies
+* solve magical defenses
+* defeat groups alone
+* replace weapon skill, tactics, or terrain
+
+Example:
+
+High ATK makes it believable that the player can crack a shield, overpower a weak guard, or drive a beast back.
+
+It does not mean the player automatically hits a flying enemy, bypasses a spell barrier, or kills a dragon with one swing.
+
+7.2 DEF
+
+DEF represents resilience, blocking, durability, armor use, and survival under impact.
+
+It includes:
+
+* physical toughness
+* bracing
+* shield use
+* armor handling
+* pain tolerance
+* resisting impact
+* staying standing
+* reducing injury severity
+* converting some harm into fatigue or equipment strain
+
+DEF should affect:
+
+* HP damage reduction
+* injury severity
+* ability to endure hits
+* shield/armor effectiveness
+* survival during harsh travel
+* resistance to physical punishment
+* DEF XP rewards
+
+DEF should not automatically:
+
+* prevent poison
+* stop psychic attacks
+* block all magic
+* dodge fast attacks
+* solve social or tactical problems
+* make the player invincible
+
+The prior design already describes DEF as blocking, durability, armor logic, survival under impact, and resilience, while noting high DEF does not automatically solve speed, magic, or intelligence problems.  ￼
+
+Example:
+
+A high-DEF knight may turn a sword slash into a bruised shoulder.
+
+The same knight may still suffer from poison gas, drowning, mind magic, or exhaustion.
+
+7.3 SPD
+
+SPD represents speed, reflexes, mobility, balance, and quick action.
+
+It includes:
+
+* dodging
+* sprinting
+* footwork
+* initiative
+* chasing
+* escaping
+* acrobatics
+* quick reactions
+* stealth movement when physical quickness matters
+* avoiding traps if reaction-based
+
+SPD should affect:
+
+* dodge plausibility
+* escape chances
+* positioning
+* ambush response
+* chase scenes
+* fast weapon styles
+* avoiding area effects
+* travel pace in short bursts
+* SPD XP rewards
+
+SPD should not automatically:
+
+* defeat durable enemies
+* bypass locked obstacles
+* replace stealth skill entirely
+* avoid attacks while restrained
+* overcome exhaustion
+* beat teleportation or wide-area magic without context
+
+Example:
+
+High SPD makes it believable that the player slips past a spear thrust or reaches the door before the guard.
+
+It does not mean the player outruns a horse across open plains while exhausted.
+
+7.4 INT
+
+INT represents reasoning, learning, focus, tactics, memory, analysis, magical control, crafting thought, and investigation.
+
+It includes:
+
+* tactical judgment
+* spell control
+* study
+* deduction
+* crafting plans
+* investigation
+* strategy
+* language/lore understanding
+* ability cost understanding
+* recognizing patterns
+* learning from failure
+
+INT should affect:
+
+* magic control
+* ability stabilization
+* crafting quality
+* investigation progress
+* clue interpretation
+* planning
+* traps and puzzles
+* tactical combat
+* social reading when reasoning matters
+* INT XP rewards
+
+INT should not automatically:
+
+* grant knowledge the player never learned
+* solve mysteries without evidence
+* stabilize abilities without attempts
+* replace social reputation
+* replace domain expertise entirely
+* bypass magical costs
+
+Example:
+
+High INT makes it believable that the player notices a contradiction in a witness statement.
+
+It does not mean the player automatically knows the culprit without clues.
+
+7.5 LCK
+
+LCK represents fortune, instinctive timing, unlikely openings, rare survival, and chance-favored outcomes.
+
+It is the most dangerous stat because it can become an excuse for anything if not controlled.
+
+LCK should affect:
+
+* lucky openings
+* rare loot chances
+* narrow escapes
+* avoiding worst-case outcomes
+* finding unexpected clues
+* surviving by coincidence
+* improvisational gambits
+* fortune-based abilities
+* LCK XP rewards
+
+LCK should not automatically:
+
+* replace skill
+* replace evidence
+* guarantee success
+* prevent every death
+* create items from nowhere
+* solve mysteries without support
+* defeat impossible enemies repeatedly
+* override all other systems
+
+The prior design already says LCK can create openings but should not replace skill or evidence.  ￼
+
+Recommended LCK rule:
+
+LCK may tilt ambiguous outcomes.
+
+It should not rewrite clear reality.
+
+Example:
+
+High LCK may mean the collapsing beam misses by inches.
+
+It should not mean the player survives being vaporized unless there is strong story leverage.
+
+⸻
+
+8. Stat interaction philosophy
+
+Stats should often work together.
+
+Examples:
+
+A sword duel may use:
+
+* ATK for offensive pressure
+* DEF for blocking and endurance
+* SPD for footwork and reaction
+* INT for reading the opponent
+* LCK for rare openings
+
+A crafting project may use:
+
+* INT for planning
+* ATK for heavy shaping if physical
+* DEF for endurance over long labor
+* LCK for rare material behavior or fortunate result
+
+A stealth escape may use:
+
+* SPD for movement
+* INT for route choice
+* LCK for timing
+* DEF if the player must endure hardship or injury
+
+This prevents one stat from doing everything.
+
+It also helps hybrid builds feel meaningful.
+
+⸻
+
+9. Stat caps and soft expectations
+
+AIDRPG should use soft expectations, not hard caps at first.
+
+Suggested rule:
+
+Level creates an expected stat range, but focused training, species traits, equipment, blessings, mutations, artifacts, or story breakthroughs can exceed it.
+
+Example expected ranges:
+
+* Level 1–3: most stats 3–8
+* Level 4–7: most stats 4–11
+* Level 8–12: main stats 8–15, secondary stats lower
+* Level 13–18: main stats 12–20 possible
+* Level 19+: main stats 18+ possible with justification
+
+This avoids two bad extremes.
+
+Bad extreme 1:
+
+A level 2 player trains once and reaches ATK 20.
+
+Bad extreme 2:
+
+A specialized low-level character cannot be good at anything because level blocks it.
+
+The better rule is:
+
+Stats can exceed level expectations, but doing so requires story support.
+
+⸻
+
+10. HP, MP, and EP
+
+AIDRPG uses three main resources:
+
+* HP
+* MP
+* EP
+
+These are separate and should not be confused.
+
+10.1 HP
+
+HP represents physical harm capacity and bodily survivability.
+
+HP changes from:
+
+* real wounds
+* serious impacts
+* burns
+* bites
+* arrows
+* poison injury
+* falling damage
+* crushing
+* severe bodily harm
+* some magical damage if physical or life-force affecting
+
+HP should not normally change from:
+
+* ordinary fatigue
+* training soreness
+* mana strain
+* fear
+* rumors
+* dreams
+* quoted threats
+* social embarrassment
+* vague “you feel bad” narration
+
+HP connects to:
+
+* injuries
+* unconsciousness
+* death-boundary checks
+* recovery
+* body state
+* combat validation
+
+10.2 MP
+
+MP represents mana, focus, magical power, psychic strain, spiritual energy, or mental technique capacity.
+
+MP changes from:
+
+* spellcasting
+* magical ability use
+* psychic effort
+* focus-heavy techniques
+* rituals
+* magical backlash
+* maintaining magical effects
+* mana drain effects
+
+MP should not normally change from:
+
+* ordinary physical running
+* carrying heavy loads
+* mundane sword swings
+* normal travel
+* ordinary social scenes
+
+MP connects to:
+
+* ability costs
+* magical fatigue
+* failed spell attempts
+* magical conditions
+* recovery through rest/ritual/items
+
+10.3 EP
+
+EP represents stamina, exertion, endurance, physical energy, and fatigue capacity.
+
+EP changes from:
+
+* training
+* sprinting
+* dodging
+* blocking
+* hard travel
+* labor
+* carrying loads
+* physical techniques
+* combat exertion
+* climbing
+* endurance scenes
+* lack of sleep
+* harsh weather exposure
+
+EP should absorb fatigue before HP when appropriate.
+
+EP connects to:
+
+* fatigue
+* physical reliability
+* overexertion risk
+* travel
+* labor
+* combat defense
+* recovery through rest/food/sleep
+
+The prior design explicitly defines EP as stamina, physical energy, fatigue, travel strain, physical techniques, stance work, hard labor, and endurance.  ￼
+
+⸻
+
+11. Starting resources
+
+Recommended default starting resources:
+
+* HP: 100
+* MP: 50
+* EP: 100
+
+This is a clean default for balanced fantasy.
+
+Settings can later change this.
+
+Examples:
+
+Low-magic gritty campaign:
+
+* HP 80
+* MP 20
+* EP 100
+
+High-magic heroic campaign:
+
+* HP 100
+* MP 100
+* EP 100
+
+Physical survival campaign:
+
+* HP 100
+* MP 30
+* EP 120
+
+The default should not assume every character is a powerful mage.
+
+MP should depend on setting, species, class/background, and build identity.
+
+⸻
+
+12. Max resource scaling
+
+Resources should scale through level, stats, species, traits, equipment, conditions, and abilities.
+
+Recommended default formulas:
+
+Max HP
+
+Base 100.
+
+Increases by:
+
+* +5 per level
+* +2 per DEF above 5
+* +1 per ATK above 5 if body/physical build supports it
+* species/body modifiers
+* trait/passive modifiers
+
+Example:
+
+A level 5 character with DEF 8 and ATK 6:
+
+* base HP 100
+* level bonus +20
+* DEF bonus +6
+* ATK bonus +1
+* max HP 127 before traits/equipment
+
+Max MP
+
+Base 50.
+
+Increases by:
+
+* +3 per level
+* +3 per INT above 5
+* magic domain or species modifiers
+* magical trait/passive modifiers
+
+Example:
+
+A level 5 character with INT 9:
+
+* base MP 50
+* level bonus +12
+* INT bonus +12
+* max MP 74 before traits
+
+Max EP
+
+Base 100.
+
+Increases by:
+
+* +5 per level
+* +2 per DEF above 5
+* +2 per SPD above 5
+* endurance/body trait modifiers
+
+Example:
+
+A level 5 character with DEF 7 and SPD 8:
+
+* base EP 100
+* level bonus +20
+* DEF bonus +4
+* SPD bonus +6
+* max EP 130 before traits
+
+These formulas are defaults.
+
+They can be adjusted by campaign mode.
+
+The design principle is more important than exact numbers:
+
+HP scales mostly with level, DEF, body, and durability.
+
+MP scales mostly with level, INT, magic, species, and focus.
+
+EP scales mostly with level, DEF, SPD, endurance, and physical conditioning.
+
+⸻
+
+13. Resource floors and boundaries
+
+13.1 HP at 0
+
+0 HP should not automatically mean permanent death.
+
+It should trigger a death-boundary state.
+
+Possible outcomes:
+
+* unconscious
+* dying
+* defeated
+* captured
+* incapacitated
+* near-death
+* dead if strongly confirmed
+
+Permanent death requires strong validated narration.
+
+Rumors, dreams, quotes, hypotheticals, threats, fear, or “you feel like dying” cannot kill the player.
+
+The prior design already says death or unconsciousness should require clear story confirmation, and that the system should support defeat, death, maiming, retreat, capture, and unconsciousness rather than a brittle hard-death lock.  ￼
+
+13.2 MP at 0
+
+0 MP means magical or focus-based abilities are unreliable or unavailable.
+
+Possible effects:
+
+* spell failure
+* magical backlash risk
+* mental fatigue
+* inability to maintain magical effects
+* overcasting risk
+* condition such as mana exhaustion
+
+0 MP should not normally cause death by itself.
+
+But forced overuse may cause HP damage, injury, or conditions if the story supports severe backlash.
+
+13.3 EP at 0
+
+0 EP means exhaustion.
+
+Possible effects:
+
+* physical actions become unreliable
+* dodging becomes difficult
+* blocking becomes costly
+* travel slows or stops
+* training becomes ineffective
+* overexertion risks HP damage
+* collapse or unconsciousness if severe
+
+0 EP should not be treated as a wound by itself.
+
+But pushing past 0 EP can create injury, HP loss, or collapse.
+
+⸻
+
+14. Resource cost categories
+
+Resource changes should have categories.
+
+14.1 Minor cost
+
+Examples:
+
+* short sprint
+* brief spell
+* light training
+* minor block
+* small search
+
+Typical cost:
+
+* 1–5 EP or MP
+
+14.2 Moderate cost
+
+Examples:
+
+* extended fight
+* meaningful spell
+* hard climb
+* hour of training
+* difficult crafting work
+* focused investigation ritual
+
+Typical cost:
+
+* 5–15 EP or MP
+
+14.3 Major cost
+
+Examples:
+
+* dangerous duel
+* high-power spell
+* forced march
+* all-day labor
+* desperate escape
+* major ritual
+* overcharged ability
+
+Typical cost:
+
+* 15–40 EP or MP
+* possible HP or condition risk
+
+14.4 Critical cost
+
+Examples:
+
+* life-threatening overexertion
+* catastrophic spell backlash
+* extreme survival situation
+* pushing past collapse
+* resisting lethal force
+
+Typical cost:
+
+* severe EP/MP loss
+* HP damage possible
+* condition or injury likely
+
+Costs should scale with:
+
+* action intensity
+* duration
+* ability rank
+* resource efficiency
+* current exhaustion
+* environmental conditions
+* injury state
+* equipment burden
+* threat level
+
+⸻
+
+15. Recovery philosophy
+
+Recovery should be believable and story-sensitive.
+
+Recovery should depend on:
+
+* time
+* rest quality
+* food
+* water
+* sleep
+* shelter
+* medicine
+* magic
+* species traits
+* conditions
+* injuries
+* safety
+* weather
+* ongoing threats
+
+Recovery should not instantly erase major consequences unless the story provides strong support.
+
+A short rest may restore EP.
+
+A full night may restore more EP and MP.
+
+HP may recover slowly unless healed.
+
+Injuries may need treatment, time, or magic.
+
+Conditions may require specific cures.
+
+⸻
+
+16. Recovery rates
+
+Recommended default recovery rules:
+
+Short rest: 10–30 minutes
+
+May restore:
+
+* 10–20 EP
+* 0–5 MP
+* 0 HP unless minor strain
+* reduce light fatigue
+
+Requires:
+
+* relative safety
+* actual rest
+* not in active combat
+
+Full rest: several hours
+
+May restore:
+
+* 40–80 EP
+* 10–30 MP
+* 0–10 HP if wounds are minor and treated
+* reduce fatigue/strain
+
+Requires:
+
+* time
+* relative safety
+* ability to rest
+
+Sleep: overnight
+
+May restore:
+
+* most or all EP
+* significant MP
+* some HP
+* improve minor injuries
+* reduce conditions if naturally recoverable
+
+Depends on:
+
+* sleep quality
+* shelter
+* food/water
+* injury severity
+* disease/poison/curses
+* weather
+
+Medical treatment
+
+May:
+
+* stop bleeding
+* reduce injury severity
+* prevent worsening
+* restore some HP
+* speed recovery
+* remove specific conditions if appropriate
+
+Requires:
+
+* supplies
+* skill
+* time
+* safe context
+
+Magical healing
+
+May restore:
+
+* HP
+* injuries
+* conditions
+* curses if strong enough
+* stamina if ability supports it
+
+Costs:
+
+* MP
+* materials
+* ritual time
+* risk
+* cooldown
+* divine/faction conditions depending on setting
+
+Magical healing should not be free unless the campaign explicitly allows it.
+
+⸻
+
+17. Recovery ticks
+
+Recovery ticks are periodic updates from time passing.
+
+TimeReducer owns timing.
+
+BodyReducer owns the actual recovery changes.
+
+Example:
+
+The player sleeps overnight.
+
+TimeReducer commits time.pass.
+
+Recovery tick is proposed.
+
+BodyReducer restores EP, MP, maybe HP, and updates injuries/conditions.
+
+Recovery ticks should not apply twice from duplicate output.
+
+Recovery should be blocked or reduced if:
+
+* the player is in danger
+* sleep is interrupted
+* poison worsens
+* bleeding is untreated
+* weather is harsh
+* no food/water
+* cursed condition prevents recovery
+* injury requires treatment
+
+The prior design says recovery ticks should be owned by TimeReducer with BodyReducer, should restore HP/MP/EP or reduce fatigue/conditions when appropriate, and should not heal major injuries instantly without support.  ￼
+
+⸻
+
+18. Injuries and effective stats
+
+Injuries should affect effective stats when relevant.
+
+Examples:
+
+Arm injury
+
+May reduce:
+
+* ATK with weapons
+* DEF with shield/blocking
+* crafting quality
+* climbing ability
+
+May not affect:
+
+* INT reasoning
+* some magic
+* LCK directly
+
+Leg injury
+
+May reduce:
+
+* SPD
+* travel pace
+* dodge
+* chase performance
+* stealth movement
+
+May increase:
+
+* EP cost for travel and combat movement
+
+Rib injury
+
+May reduce:
+
+* DEF
+* EP recovery
+* sustained combat
+* climbing
+* deep breathing
+* spell focus if pain disrupts it
+
+Head injury
+
+May reduce:
+
+* INT
+* spell control
+* perception
+* social reasoning
+* combat tactics
+
+Burn injury
+
+May reduce:
+
+* affected limb use
+* HP recovery
+* pain tolerance
+* social appearance if visible
+* crafting if hands are burned
+
+Injuries should not always reduce stats numerically.
+
+Sometimes they should appear as validation penalties.
+
+Example:
+
+A broken arm does not need to lower ATK permanently, but it should make two-handed sword use implausible until healed.
+
+⸻
+
+19. Conditions and effective stats
+
+Conditions are active status effects.
+
+Examples:
+
+* poisoned
+* stunned
+* exhausted
+* bleeding
+* cursed
+* burning
+* frozen
+* hidden
+* invisible
+* empowered
+* shielded
+* frightened
+* restrained
+
+Conditions may affect:
+
+* resources
+* effective stats
+* validation outcomes
+* recovery
+* ability costs
+* context warnings
+* combat plausibility
+
+Examples:
+
+Poisoned:
+
+* HP may tick down
+* DEF/EP recovery may reduce
+* travel may become risky
+
+Restrained:
+
+* SPD heavily reduced
+* dodging may be impossible
+* some abilities blocked
+
+Invisible:
+
+* stealth/social/combat advantages may apply
+* not useful against blind-sense enemies
+
+Empowered:
+
+* temporary ATK/MP/ability boost
+* may cost MP/EP each turn or expire
+
+Conditions should have:
+
+* source
+* severity
+* duration or expiration rule
+* affected stats/resources
+* recovery/removal rule
+* whether visible in Context
+
+⸻
+
+20. Fatigue
+
+Fatigue is not the same as HP damage.
+
+Fatigue should primarily affect EP.
+
+Fatigue can come from:
+
+* hard travel
+* combat exertion
+* training
+* labor
+* lack of sleep
+* heavy armor
+* carrying too much
+* harsh weather
+* hunger/thirst
+* overusing physical techniques
+
+Fatigue may cause:
+
+* EP loss
+* lower effective SPD
+* lower effective DEF for sustained defense
+* slower travel
+* worse training returns
+* higher injury risk
+* poor concentration
+* collapse if extreme
+
+Fatigue should not automatically cause HP loss.
+
+HP loss from fatigue should happen only when overexertion becomes dangerous.
+
+Example:
+
+Running until winded:
+
+* EP loss
+
+Running while already exhausted through freezing rain:
+
+* EP loss
+* possible condition
+* possible HP loss if severe
+
+⸻
+
+21. Resource and stat interaction
+
+Resources should influence effective stats.
+
+Low HP
+
+Effects:
+
+* pain
+* weakness
+* reduced physical performance
+* increased risk of collapse
+* possible reduced ATK/DEF/SPD
+* Context warning
+
+Low MP
+
+Effects:
+
+* spell failure risk
+* increased cost uncertainty
+* lower magical control
+* inability to maintain effects
+* magical backlash risk
+
+Low EP
+
+Effects:
+
+* reduced SPD
+* weaker blocks
+* poor endurance
+* higher injury risk
+* reduced training quality
+* travel slowdown
+* increased collapse risk
+
+The system should use resource thresholds.
+
+Suggested thresholds:
+
+75–100%
+
+Normal.
+
+No major penalty.
+
+50–74%
+
+Slight strain.
+
+Context may mention if relevant.
+
+25–49%
+
+Meaningful strain.
+
+Validation should consider fatigue, wounds, or resource pressure.
+
+1–24%
+
+Critical low.
+
+Actions using that resource become risky.
+
+Context should mention it.
+
+0%
+
+Boundary state.
+
+HP: incapacitation/death boundary.
+
+MP: no safe magical capacity.
+
+EP: exhaustion/collapse boundary.
+
+⸻
+
+22. Burden and equipment effects
+
+Equipment should affect stats and resources.
+
+Examples:
+
+Heavy armor:
+
+* improves physical damage resistance
+* may reduce SPD
+* may increase EP cost
+* may improve DEF
+
+Shield:
+
+* improves blocking/DEF
+* may reduce two-handed offense
+* may take item condition damage
+
+Light gear:
+
+* improves mobility
+* less protection
+* lower EP burden
+
+Heavy pack:
+
+* lowers SPD
+* increases travel EP cost
+* may affect stealth
+* may cause fatigue
+
+Magical focus:
+
+* improves MP efficiency or spell reliability
+* may be required for some abilities
+
+Weapon quality:
+
+* affects ATK plausibility
+* affects ability use if weapon-based
+* may break or degrade
+
+Chunk 9 will define equipment in detail. This chunk establishes that equipment modifies effective stats and resource costs.
+
+⸻
+
+23. Species, traits, and passives
+
+Species, traits, and passives may affect stats and resources.
+
+Examples:
+
+Orc-like body:
+
+* higher ATK/HP potential
+* maybe lower social reception in some regions
+
+Elf-like body:
+
+* higher SPD or INT potential
+* maybe lower HP depending setting
+
+Undead:
+
+* poison resistance
+* altered recovery
+* social/reputation effects
+* different death boundary
+
+Construct:
+
+* no normal fatigue maybe
+* repair instead of healing
+* MP/energy core rules
+
+Fire resistance passive:
+
+* reduces fire condition/damage
+* does not prevent suffocation or impact
+
+Night vision passive:
+
+* improves darkness navigation
+* does not help against magical blindness
+
+These effects should be explicit.
+
+They should not become vague “always win” modifiers.
+
+Chunk 6 will define passives in more detail.
+
+⸻
+
+24. Scaling basics
+
+Scaling means understanding how strong the player is relative to the situation.
+
+Chunk 7 will define combat scaling in detail.
+
+Chunk 5 defines basic character scaling.
+
+AIDRPG should judge player capability using:
+
+* level
+* effective stats
+* HP/MP/EP
+* injuries
+* conditions
+* equipment
+* domain ranks
+* abilities
+* passives
+* party support
+* current scene
+* enemy or challenge threat
+* story leverage
+
+Level alone is not enough.
+
+A level 12 mage with no MP and a broken arm is not at full strength.
+
+A level 4 rogue with perfect ambush setup may outperform expectations.
+
+A low-level character with a legendary artifact may punch above their level, but the artifact must be real canon.
+
+Scaling should produce guidance like:
+
+* routine
+* favorable
+* uncertain
+* risky
+* dangerous
+* heavily outmatched
+* impossible without leverage
+
+These are not final combat labels yet. They are general validation labels.
+
+⸻
+
+25. Plausibility tiers for non-combat actions
+
+Scaling is not only for combat.
+
+AIDRPG should judge all major actions by plausibility.
+
+Routine
+
+The character can reasonably do it.
+
+Example:
+
+A competent climber climbs a short wall in good weather.
+
+Favorable
+
+Likely, but still may cost time or resources.
+
+Example:
+
+A skilled investigator finds signs in a disturbed room.
+
+Uncertain
+
+Could go either way.
+
+Example:
+
+A novice mage attempts a new spell under pressure.
+
+Risky
+
+Possible, but failure or cost is likely.
+
+Example:
+
+An exhausted player tries to sprint across a collapsing bridge.
+
+Dangerous
+
+Attempting it may cause harm.
+
+Example:
+
+A wounded player tries to wrestle a monster.
+
+Unsupported
+
+The story lacks enough evidence.
+
+Example:
+
+The player instantly masters an ancient spell from seeing its name once.
+
+Impossible without leverage
+
+The action requires special setup.
+
+Example:
+
+A normal human tries to lift a castle gate barehanded.
+
+Leverage can include:
+
+* artifact
+* spell
+* ally
+* terrain
+* enemy weakness
+* prior damage
+* ritual
+* preparation
+* domain knowledge
+* clever plan
+* luck
+* sacrifice
+
+This keeps the system flexible rather than purely numeric.
+
+⸻
+
+26. How stats affect validation
+
+Stats should influence validation outcomes.
+
+High stat may
+
+* raise confidence
+* reduce severity
+* make success more plausible
+* allow stronger partial success
+* reduce resource cost
+* increase reward relevance
+* justify better Context guidance
+
+Low stat may
+
+* lower confidence
+* increase risk
+* increase resource cost
+* make clean success unlikely
+* convert success into partial success
+* increase failure consequences
+
+Stats should not
+
+* bypass canon law
+* override explicit failure
+* create success from input alone
+* grant items
+* solve cases without evidence
+* kill enemies without validated output
+* create cards
+
+Example:
+
+High SPD may make dodging an arrow plausible.
+
+But if output says the arrow hits the player in the leg, the system should not reject the hit purely because SPD is high unless there is contradiction or defensive context.
+
+Stats bias interpretation.
+
+They do not rewrite every result.
+
+⸻
+
+27. How stats affect Context
+
+Context should mention stats only when relevant.
+
+Do not dump all stats every turn unless /sheet is requested.
+
+Good Context examples:
+
+* “You are exhausted; physical actions are risky.”
+* “Your injured leg makes running difficult.”
+* “Your magic reserves are low.”
+* “You are a skilled investigator; clues and contradictions are your strength.”
+* “Your shield and high DEF make blocking plausible, but you are low on EP.”
+
+Bad Context examples:
+
+* “ATK 7 DEF 6 SPD 5 INT 8 LCK 4 HP 88/100 MP 43/50 EP 27/100” every turn regardless of scene.
+* Dumping all stat training XP into narrative context.
+* Telling the AI every domain rank when only one matters.
+
+Context should be story-useful, not spreadsheet spam.
+
+⸻
+
+28. How stats affect Story Cards
+
+Stats should mostly appear in protected summary cards, not generated cards.
+
+Possible protected cards:
+
+* Player Sheet
+* Progression Summary
+* Abilities Overview
+
+Stats should not generate separate cards.
+
+Do not create:
+
+* ATK Card
+* DEF Card
+* SPD Card
+* Low EP Card
+* Injured Arm Card as a generic generated card
+
+Important long-term body changes may be summarized in Player Sheet or a protected body/status section.
+
+Stable passives or abilities may get ability cards if card-eligible.
+
+But ordinary stat/resource changes should not create cards.
+
+This avoids card spam.
+
+⸻
+
+29. Stat and resource safety rules
+
+29.1 No stat changes from weak narration
+
+Weak text like “you feel stronger” should not raise ATK.
+
+It may be ignored, pending, or tiny training evidence if context supports it.
+
+29.2 No HP damage from non-physical false sources
+
+No HP damage from:
+
+* rumor
+* dream
+* quoted threat
+* fear
+* metaphor
+* ordinary fatigue
+* minor soreness
+
+29.3 No MP drain from mundane effort
+
+Normal running, lifting, or sword swinging should usually cost EP, not MP.
+
+29.4 No EP drain from pure spell focus unless physical strain exists
+
+A spell may cost MP.
+
+It may cost EP if it also requires physical exertion, stance, or hybrid technique.
+
+29.5 No duplicate resource loss
+
+Repeated output must not apply damage, MP cost, or EP cost twice.
+
+29.6 No instant full recovery without support
+
+A vague “you feel better” should not fully heal major wounds.
+
+29.7 No death from weak evidence
+
+Death requires strong validated story confirmation.
+
+29.8 No stat inflation from duplicate XP
+
+Stat XP and stat increases must use OperationLedger and threshold checks.
+
+⸻
+
+30. Example scenarios
+
+Example 1 — Sword training
+
+Input:
+
+“I train sword forms for an hour.”
+
+Output:
+
+“You drill until your shoulders ache and sweat darkens your shirt.”
+
+Likely events:
+
+* time.pass
+* resource.ep.change
+* progression.statTraining.gain ATK
+* progression.domainXp.gain Melee
+
+Expected result:
+
+* EP decreases
+* small ATK XP
+* small Melee Domain XP
+* no HP loss
+* no instant ATK stat increase unless threshold reached
+
+Example 2 — Mana failure
+
+Input:
+
+“I try to shape Mana Slash.”
+
+Output:
+
+“The light flickers around your blade, then sputters out, leaving your head pounding.”
+
+Likely events:
+
+* ability.attempt
+* resource.mp.change
+* progression.domainXp.gain Magic
+* progression.statTraining.gain INT
+
+Expected result:
+
+* MP decreases
+* possible ability evidence
+* no stable ability
+* no HP loss unless backlash is severe
+
+Example 3 — Exhausted sprint
+
+Input:
+
+“I sprint across the courtyard.”
+
+Output:
+
+“Your legs nearly give out, but you make it to the far archway.”
+
+State:
+
+EP already low.
+
+Likely events:
+
+* resource.ep.change
+* maybe condition.fatigue
+* scene position progress
+
+Expected result:
+
+* EP may hit 0
+* fatigue condition may appear
+* no HP loss unless overexertion is severe
+
+Example 4 — Wolf bite
+
+Output:
+
+“The wolf’s jaws clamp onto your forearm, tearing skin as blood runs down your wrist.”
+
+Likely events:
+
+* body.damage
+* body.injury.add
+
+Expected result:
+
+* HP loss
+* arm injury
+* possible ATK/DEF penalty for arm use
+* no MP change
+* duplicate output blocked
+
+Example 5 — Rumor wound
+
+Output:
+
+“People say the wolf tore your arm off.”
+
+If not actually confirmed:
+
+Likely events:
+
+* reputation.rumor.add
+
+Expected result:
+
+* no injury
+* no HP loss
+* possible rumor record
+
+Example 6 — Full night rest
+
+Output:
+
+“You sleep through the night in the warm inn room.”
+
+Likely events:
+
+* time.pass
+* recovery.tick
+
+Expected result:
+
+* EP recovers strongly
+* MP recovers moderately/strongly
+* minor HP may recover
+* major injuries improve only if appropriate
+* conditions update if natural recovery applies
+
+⸻
+
+31. Commands related to Chunk 5
+
+Later command design should support these views.
+
+/sheet should show
+
+* level
+* HP / max HP
+* MP / max MP
+* EP / max EP
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+* active injuries
+* active conditions
+* fatigue/exhaustion state
+* appearance/body notes
+
+/status should show, if included
+
+* immediate body state
+* injuries
+* conditions
+* resource warnings
+* recovery needs
+* effective penalties
+
+/progression should show
+
+* stat training XP
+* domain ranks
+* recent stat/domain gains
+* level progress
+
+/debuglast should show
+
+* resource changes
+* damage validation
+* stat XP events
+* recovery ticks
+* duplicate skips
+
+⸻
+
+32. Chunk 5 acceptance tests
+
+Test 1 — default baseline
+
+Given:
+
+New ordinary character.
+
+Expected:
+
+* ATK 5
+* DEF 5
+* SPD 5
+* INT 5
+* LCK 5
+* HP 100
+* MP 50
+* EP 100 unless setup changes it
+
+Test 2 — fatigue drains EP, not HP
+
+Given:
+
+Player trains hard for one hour.
+
+Expected:
+
+* EP decreases
+* possible fatigue
+* no HP damage unless severe overexertion is confirmed
+
+Test 3 — mana strain drains MP, not HP
+
+Given:
+
+Player attempts a spell and fails with mental strain.
+
+Expected:
+
+* MP decreases
+* possible magical fatigue
+* no HP damage unless backlash is severe and explicit
+
+Test 4 — real wound affects HP and injury
+
+Given:
+
+Wolf bites player’s arm and blood appears.
+
+Expected:
+
+* HP decreases
+* arm injury added
+* effective ATK/DEF may be penalized for arm use
+
+Test 5 — rumor does not injure
+
+Given:
+
+Rumor says the player lost an arm.
+
+Expected:
+
+* no HP change
+* no injury
+* possible rumor record
+
+Test 6 — 0 HP is boundary, not automatic death
+
+Given:
+
+Player reaches 0 HP.
+
+Expected:
+
+* death-boundary or incapacitation state
+* death only if strongly confirmed
+* recoverable failure preferred when possible
+
+Test 7 — 0 MP blocks magic reliability
+
+Given:
+
+Player has 0 MP and tries a spell.
+
+Expected:
+
+* spell is unreliable or blocked
+* overcasting risk possible
+* no free spell success
+
+Test 8 — 0 EP causes exhaustion
+
+Given:
+
+Player has 0 EP and tries to sprint.
+
+Expected:
+
+* action is risky
+* possible collapse or HP risk if pushed
+* no normal full-speed performance
+
+Test 9 — injury affects effective stat
+
+Given:
+
+Player has broken leg.
+
+Expected:
+
+* SPD-based actions penalized
+* travel/dodge harder
+* base SPD not necessarily permanently lowered
+
+Test 10 — high stat does not auto-win
+
+Given:
+
+Player has high ATK but enemy is flying out of reach.
+
+Expected:
+
+* ATK alone does not guarantee hit
+* need range, ability, terrain, or tactic
+
+Test 11 — high LCK does not replace evidence
+
+Given:
+
+Player investigates with high LCK but no clue exists.
+
+Expected:
+
+* LCK may create chance opening if story supports it
+* no automatic case solution without evidence
+
+Test 12 — duplicate resource loss blocked
+
+Given:
+
+Same damaging output processes twice.
+
+Expected:
+
+* HP loss applies once
+* injury applies once
+* duplicate skip recorded
+
+⸻
+
+33. Final Chunk 5 doctrine
+
+Stats are plausibility tools, not rigid dice.
+
+ATK means offensive pressure.
+
+DEF means resilience and damage mitigation.
+
+SPD means mobility and reaction.
+
+INT means reasoning, control, tactics, and learning.
+
+LCK means rare openings and fortunate outcomes, not reality rewriting.
+
+HP is physical harm capacity.
+
+MP is magical/focus capacity.
+
+EP is stamina and exertion capacity.
+
+Fatigue drains EP before HP.
+
+Mana strain drains MP before HP.
+
+Real wounds affect HP and injuries.
+
+Recovery depends on time, rest, safety, treatment, resources, and story context.
+
+Effective stats matter more than raw stats in the moment.
+
+Level expands what is plausible, but does not replace stats, domains, abilities, equipment, injuries, conditions, resources, party, terrain, or story leverage.
+
+The goal is not to make AI Dungeon mathematical.
+
+The goal is to make its consequences feel consistent, believable, and remembered.
+

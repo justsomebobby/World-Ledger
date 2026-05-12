@@ -1,0 +1,1484 @@
+AI Dungeon Script Safeguards
+Detailed plain text notes on the major safeguards used by:
+- Inner Self
+- Auto-Cards
+- TAS (True Auto Stats)
+
+Purpose of this document
+
+This file explains the important safeguards these scripts use to keep themselves from going off the rails.
+For each safeguard, the goal is to explain three things:
+
+1. What problem the safeguard is trying to prevent
+2. How the script implements it
+3. Why that implementation matters in real play
+
+This is a practical engineering summary, not a line-by-line code dump.
+
+Important note about scope
+
+I focused on safeguards that materially improve stability, correctness, and control, such as:
+- startup validation
+- state repair
+- schema checking
+- range clamping
+- retry detection
+- duplicate suppression
+- context budgeting
+- parser hardening
+- emergency stop behavior
+- message suppression
+- title banning
+- card deduplication
+- hidden text cleanup
+- anti-spam warning logic
+
+I did not count every trivial null check unless it clearly protects the system in an important way.
+
+----------------------------------------------------------------------
+PART 1: INNER SELF
+----------------------------------------------------------------------
+
+High-level role of Inner Self
+
+Inner Self is mainly a mind-management and context-orchestration system for NPCs.
+It keeps separate "brains" for named characters, chooses which brain is currently active, and injects that information into context in a controlled way.
+
+Because it is moving hidden thoughts in and out of story cards and context, it needs many safeguards against:
+- bad runtime conditions
+- malformed card data
+- duplicate brain cards
+- prompt leakage
+- retry duplication
+- context bloat
+- hidden marker corruption
+- bad user edits
+
+The main safeguards are below.
+
+1. Runtime environment validation before any serious work
+
+What problem it prevents:
+If the AI Dungeon runtime is missing required globals, Inner Self could corrupt state, throw errors, or silently behave incorrectly.
+
+How it is implemented:
+Very early in the script, Inner Self checks that all of the critical AI Dungeon globals exist and have the correct basic shape:
+- state must exist and be an object
+- info must exist and be an object
+- storyCards must be an array
+- addStoryCard must be a function
+- history must be an array
+- text must be a string
+
+If any of those checks fail:
+- it logs an unexpected error
+- it forces global text to a non-empty fallback
+- it returns immediately
+
+Why this matters:
+This is a fail-safe startup gate.
+Instead of attempting to operate in a broken environment, it exits early and avoids undefined behavior.
+
+2. Deep-merge state repair instead of blind replacement
+
+What problem it prevents:
+State can be missing fields after upgrades, partial saves, or version changes.
+If the script assumes every field exists, it can crash or act unpredictably.
+
+How it is implemented:
+Inner Self defines a deepMerge helper that recursively fills in only undefined properties.
+It then merges defaults into state.InnerSelf instead of replacing the whole object.
+
+The protected Inner Self state includes:
+- encoding
+- active agent name
+- label counter
+- history hash
+- operation counter
+- Auto-Cards integration flags
+
+Why this matters:
+This is a self-healing state strategy.
+It repairs missing fields while preserving valid old data.
+
+3. Guarded Auto-Cards delegation with try/catch
+
+What problem it prevents:
+Inner Self can integrate with Auto-Cards, but Auto-Cards is a separate script.
+If Auto-Cards throws an error, Inner Self could crash too.
+
+How it is implemented:
+Inner Self first checks whether globalThis.AutoCards is actually a function.
+If Auto-Cards is enabled and the current hook is not context, it calls AutoCards(hook, text) inside try/catch.
+If Auto-Cards throws, Inner Self logs the error and continues.
+
+Why this matters:
+This prevents a dependency failure from becoming a total system failure.
+
+4. History hashing to detect retry and erase-plus-continue loops
+
+What problem it prevents:
+Without retry detection, the script could apply the same hidden thought updates more than once after a retry or erase-and-continue action.
+
+How it is implemented:
+Inner Self computes a simple hash of the last 50 actions in history.
+It stores that hash in state.
+Later, when context is being built, it compares the current history hash to the stored one.
+
+If the history is unchanged:
+- it treats the turn as a retry or equivalent replay
+- it injects the existing brain context
+- it avoids generating a fresh new task cycle
+
+Why this matters:
+This is one of the most important safeguards in the script.
+It prevents duplicate hidden state changes when the visible story is replayed.
+
+5. Safe JSON deserialization with optional repair mode
+
+What problem it prevents:
+Brain card data can be malformed if a player edits it manually or if serialization becomes damaged.
+Blind JSON.parse would fail hard.
+
+How it is implemented:
+Inner Self wraps JSON.parse in try/catch.
+It also offers a repair mode that tries to rebuild a minimal object by extracting quoted content.
+If parsing still fails, it returns an empty object rather than crashing.
+
+Why this matters:
+This makes corrupted brain data survivable.
+The script degrades gracefully instead of breaking.
+
+6. Frozen fallback config object
+
+What problem it prevents:
+If runtime settings are missing, malformed, or partially broken, the script still needs a safe baseline.
+Also, accidental mutation of shared defaults can create hard-to-debug bugs.
+
+How it is implemented:
+Inner Self builds a fallback config object and freezes it with Object.freeze.
+That fallback includes safe defaults for:
+- enabled flag
+- player name
+- point of view
+- percent of context used for brains
+- trigger distance
+- visual indicator
+- thought chance
+- JSON mode
+- debug mode
+- config card pinning
+- Auto-Cards installation flag
+- agent list
+
+Why this matters:
+It guarantees a clean baseline and protects that baseline from accidental mutation.
+
+7. Config setter factory with validation and clamping
+
+What problem it prevents:
+Player-edited config cards can contain nonsense:
+- non-numeric values where numbers are expected
+- out-of-range numbers
+- broken booleans
+- malformed text
+
+How it is implemented:
+Inner Self uses a factory that builds setter functions for config fields.
+These setters:
+- parse booleans using multiple accepted synonyms
+- parse integers from strings
+- clamp numeric values into allowed ranges
+- use fallback values when parsing fails
+- allow a "fallible" mode when appropriate
+
+Examples of bounded values:
+- POV is clamped to 1 through 3
+- percent of recent story used for brains is clamped to 1 through 95
+- trigger distance is clamped to 1 through 250
+- thought chance is clamped to 0 through 100
+
+Why this matters:
+This is a classic anti-chaos config layer.
+It lets users edit the config card freely without making the engine unstable.
+
+8. Agent name sanitization
+
+What problem it prevents:
+Agent names are used as identifiers and triggers.
+If they contain commas, zero-width characters, or messy spacing, Inner Self could create duplicate brains or fail to match names correctly.
+
+How it is implemented:
+The cleanAgent helper:
+- removes commas
+- removes zero-width characters
+- trims leading and trailing whitespace
+- collapses multiple spaces into one
+
+Why this matters:
+This keeps agent identity stable.
+It is especially important because story cards and triggers are text-based.
+
+9. Agent list deduplication and empty removal
+
+What problem it prevents:
+If the player or scenario creator lists the same agent multiple times, or leaves blank lines, trigger priority and card handling become messy.
+
+How it is implemented:
+When parsing the agent list from the config card, Inner Self:
+- splits on commas and newlines
+- cleans each name
+- removes empty entries
+- deduplicates the final list with a Set
+
+Why this matters:
+It produces one clean authoritative list of NPC minds.
+
+10. Invalid story card cleanup during scans
+
+What problem it prevents:
+A malformed storyCards array containing null values, arrays, or non-object items could break scanning logic.
+
+How it is implemented:
+When scanning story cards, Inner Self removes entries that are:
+- null
+- non-objects
+- arrays
+
+Why this matters:
+This is state repair at the world-data level, not just the config level.
+
+11. Duplicate config card removal
+
+What problem it prevents:
+Multiple config cards create split-brain configuration, where the script may read one and the player edits another.
+
+How it is implemented:
+Inner Self scans for cards whose title fuzzily matches the config card title.
+The first matching config card becomes the active one.
+Additional matching cards are removed, preferably through removeStoryCard, with splice as a fallback.
+
+Why this matters:
+There is only one source of truth for configuration.
+
+12. Fuzzy config-card title matching
+
+What problem it prevents:
+Players may accidentally edit or slightly misspell the config card title.
+If the script required an exact title match, it could fail to find its own config card.
+
+How it is implemented:
+Inner Self simplifies titles to lowercase letters only and uses a cheap approximate matching routine that tolerates a small number of mistakes.
+
+Why this matters:
+This makes the config system resilient to harmless title edits and typos.
+
+13. Duplicate brain-card demotion instead of silent acceptance
+
+What problem it prevents:
+If one NPC ends up with two brain cards, the system could read conflicting mind data.
+
+How it is implemented:
+When Inner Self finds agent metadata in a card's keys, it cleans and validates the agent name.
+If another brain card already exists for that agent:
+- it does not treat the duplicate as authoritative
+- it renames the card to "Copy of ..."
+- it clears invalid agent metadata when needed
+
+Why this matters:
+This prevents two brain cards from quietly competing.
+
+14. Automatic creation of missing config card
+
+What problem it prevents:
+If no config card exists yet, the script cannot read settings.
+
+How it is implemented:
+If the scan finds no config card, Inner Self creates one with addStoryCard and then recursively re-runs the config parsing logic.
+
+Why this matters:
+It self-bootstraps instead of waiting for manual repair.
+
+15. Removal of visual indicator prefixes before reapplying them
+
+What problem it prevents:
+If visual indicators were only added and never cleaned, titles would accumulate prefixes or multiple cards would appear "active."
+
+How it is implemented:
+Inner Self defines deindication logic that removes the indicator prefix from titles before assigning the active indicator to the current brain card.
+
+Why this matters:
+Only the currently active agent is visibly marked.
+
+16. Per-agent metadata percent normalization
+
+What problem it prevents:
+An individual brain card may contain an invalid percent value for how much context budget it should use.
+
+How it is implemented:
+When agent metadata is loaded from card.keys, Inner Self:
+- parses the metadata
+- checks whether percent is an integer
+- rounds finite numeric values if needed
+- clamps the final percent to 1 through 95
+- writes the normalized value back to the card
+
+Why this matters:
+Even per-agent overrides cannot explode context usage.
+
+17. Brain parsing fallback from JSON to simple key:value format
+
+What problem it prevents:
+Different versions or user edits may leave the brain card notes in different formats.
+If only one format were accepted, many valid cards would be rejected.
+
+How it is implemented:
+Inner Self first tries to parse the card description as JSON, with repair enabled.
+If that fails to produce meaningful string-valued thoughts, it falls back to a simpler line-based key:value parser.
+
+The simple parser:
+- trims lines
+- skips blank lines
+- looks for the first colon
+- cleans both sides
+- only keeps non-empty key/value pairs
+
+Why this matters:
+This is both backward compatibility and damage control.
+
+18. Previous-action lookup ignores zero-width-only actions
+
+What problem it prevents:
+Hidden marker actions or empty-looking actions could be mistaken for real recent story actions.
+
+How it is implemented:
+The helper that fetches the most recent non-empty action ignores entries that contain only zero-width characters.
+
+Why this matters:
+This improves the quality of trigger and retry logic.
+
+19. Context-limit budgeting before injection
+
+What problem it prevents:
+If Inner Self injects too much mind content, it can crowd out the actual story or overrun the context budget.
+
+How it is implemented:
+At context time, Inner Self computes a limit based on:
+- current text length
+- info.maxChars
+- a small reserve buffer
+- a minimum floor
+
+It also later compares joined brain length to the allowed percentage of story context.
+
+Why this matters:
+This is the main anti-bloat safeguard.
+
+20. stop initialization for sandbox safety
+
+What problem it prevents:
+AI Dungeon's sandbox may not always define stop in the current scope.
+That can create fragile code paths.
+
+How it is implemented:
+Inner Self uses:
+globalThis.stop ??= false
+
+Why this matters:
+It normalizes the environment and avoids accidental reference problems.
+
+21. Reserved-title bans when Auto-Cards integration is enabled
+
+What problem it prevents:
+Auto-Cards could accidentally generate cards with titles that clash with Inner Self internal names.
+
+How it is implemented:
+When Inner Self first enables Auto-Cards integration, it calls the Auto-Cards API to ban titles such as:
+- Inner
+- Self
+- Configure Inner Self
+- Agent
+
+Why this matters:
+This avoids naming collisions between system cards and generated lore cards.
+
+22. Cleanup of Auto-Cards control cards when integration is disabled
+
+What problem it prevents:
+If Auto-Cards is turned off after being active, leftover control cards and support cards can clutter the story card list or confuse future scans.
+
+How it is implemented:
+When Auto-Cards transitions from enabled to disabled, Inner Self scans story cards and removes the Auto-Cards related support cards.
+
+Why this matters:
+It keeps the environment clean after feature deactivation.
+
+23. Immediate early exit when Inner Self is disabled
+
+What problem it prevents:
+A disabled script should not continue modifying state, context, or card indicators.
+
+How it is implemented:
+If config.allow is false:
+- Inner Self clears its encoding
+- ensures text is non-empty
+- returns immediately
+
+Why this matters:
+It creates a true off switch.
+
+24. Immediate cleanup when no agents are configured
+
+What problem it prevents:
+If no agents exist, there is no valid brain to trigger.
+Continuing with brain logic would waste context and create strange artifacts.
+
+How it is implemented:
+If config.agents is empty:
+- it removes all visual indicators
+- clears zero-width encoding state
+- returns
+
+Why this matters:
+This avoids meaningless processing.
+
+25. Debug-mode cleanup of parenthetical task outputs
+
+What problem it prevents:
+Task outputs or model-side control structures can leak into recent story context and pollute future turns.
+
+How it is implemented:
+In debug mode, after setting a boundary marker, Inner Self strips parenthetical task outputs from the recent story section.
+
+Why this matters:
+It reduces feedback loops from hidden control text.
+
+26. Thought-label whitelist during zero-width decoding
+
+What problem it prevents:
+If all decoded zero-width numbers were blindly trusted, stray or stale labels could leak into context and refer to nonexistent thoughts.
+
+How it is implemented:
+Inner Self constructs a whitelist of labels actually present in the current brain.
+When it decodes zero-width label data from context, it only re-emits labels that are in the whitelist.
+
+Why this matters:
+This is a very strong hidden-marker integrity safeguard.
+
+27. Retry path avoids creating new thought tasks
+
+What problem it prevents:
+On replayed history, generating a fresh thought update would duplicate hidden cognition changes.
+
+How it is implemented:
+When the current history hash matches the stored one:
+- Inner Self only injects existing contextualized brain content
+- it does not start a fresh task cycle
+
+Why this matters:
+This is the second major retry safeguard after history hashing itself.
+
+28. Constrained-brain logic to prevent oversized mental context
+
+What problem it prevents:
+A very large brain can dominate context and distort story generation.
+
+How it is implemented:
+Inner Self checks whether the joined brain exceeds the configured allowed share of context.
+If the brain is constrained:
+- it may randomize order
+- it may omit labels
+- it treats the brain differently from a full unconstrained injection
+
+Why this matters:
+This is not just size control.
+It is bias control too, because it prevents the same thoughts from always winning when space is limited.
+
+29. Randomized ordering for constrained brains to reduce long-term bias
+
+What problem it prevents:
+If a constrained brain always uses the same order, middle thoughts are more likely to be ignored forever.
+
+How it is implemented:
+When the brain is too large, Inner Self may shuffle the thought list before injection.
+
+Why this matters:
+This is a subtle but intelligent fairness safeguard.
+
+30. Removal of labels in some constrained cases for weaker models
+
+What problem it prevents:
+On weaker models, labeled deletion or rewrite tasks can become error-prone and destructive.
+
+How it is implemented:
+When a constrained brain is randomized, Inner Self sometimes strips labels before injection.
+
+Why this matters:
+This is a model-robustness safeguard.
+It trades precision for safer behavior.
+
+31. Zero-width normalization and cleanup in context
+
+What problem it prevents:
+Invisible characters can accumulate unpredictably and create broken decoding or ugly boundary issues.
+
+How it is implemented:
+Inner Self normalizes spacing around zero-width characters, decodes known label patterns, and then removes remaining zero-width characters from the final context string.
+
+Why this matters:
+This keeps hidden markers useful without letting them become prompt garbage.
+
+32. Player name fallback for perspective control
+
+What problem it prevents:
+A missing player name can lead to malformed perspective directives.
+
+How it is implemented:
+If the configured player name is empty, Inner Self falls back to a safe placeholder such as "the protagonist."
+
+Why this matters:
+Prompt directives remain valid even with incomplete setup.
+
+Summary of Inner Self's safeguard style
+
+Inner Self protects itself mainly through:
+- strong startup validation
+- self-healing config and state repair
+- card deduplication and cleanup
+- strict parsing and sanitization
+- retry detection
+- hidden-marker integrity checks
+- explicit context budgeting
+- safe integration with Auto-Cards
+
+Its overall strategy is:
+"Assume users will edit cards, assume retries will happen, assume hidden text can get messy, and correct all of that before it becomes a larger problem."
+
+----------------------------------------------------------------------
+PART 2: AUTO-CARDS
+----------------------------------------------------------------------
+
+High-level role of Auto-Cards
+
+Auto-Cards is an automated story-card generation and maintenance system.
+Its job is to detect candidate entities or titles, decide whether they deserve a card, generate or update those cards, manage long-term memory compression, and stay compatible with other scripts.
+
+Because automatic card generation is one of the easiest systems to make unstable, Auto-Cards contains many safety controls.
+
+1. Non-empty text normalization at entry
+
+What problem it prevents:
+If text is missing or empty, later text-processing operations could fail or behave inconsistently.
+
+How it is implemented:
+Auto-Cards normalizes incoming text so that it is always a non-empty string, falling back to a newline when needed.
+
+Why this matters:
+It creates a stable text-processing baseline.
+
+2. Structured state loading with source priority
+
+What problem it prevents:
+Auto-Cards needs to find its own persistent state reliably, even when used inside different script arrangements.
+
+How it is implemented:
+It first checks:
+- state.LSIv2
+- then state.AutoCards
+- otherwise it loads from a singleton data card
+
+Why this matters:
+This reduces ambiguity about where the authoritative state lives.
+
+3. Deserialization guarded by try/catch
+
+What problem it prevents:
+A malformed data card description could break state loading.
+
+How it is implemented:
+Auto-Cards wraps JSON.parse of the data card description in try/catch.
+If parsing fails, it gets null instead of a crash.
+
+Why this matters:
+This is the first layer of corruption tolerance.
+
+4. Full schema validation of deserialized state
+
+What problem it prevents:
+Even valid JSON may have the wrong shape.
+A partially broken state object can be worse than no state at all.
+
+How it is implemented:
+After parsing, Auto-Cards validates that the object contains all of the expected sections and keys, including:
+- config
+- signal
+- generation
+- compression
+- message
+- chronometer
+- database.titles
+- database.memories
+
+If the object fails validation, it is rejected.
+
+Why this matters:
+This prevents malformed saved state from being trusted.
+
+5. Reinitialization to defaults when state is malformed
+
+What problem it prevents:
+If state cannot be trusted, the system needs a clean recovery path.
+
+How it is implemented:
+When the parsed object fails schema validation, Auto-Cards constructs a fresh default state with safe initial values.
+
+Why this matters:
+This is one of the strongest guardrails in the script.
+It is a true self-repair path.
+
+6. Absolute-value normalization for maxChars
+
+What problem it prevents:
+If maxChars is missing or negative, context budgeting can become invalid.
+
+How it is implemented:
+Auto-Cards stores:
+maxChars: Math.abs(info?.maxChars || 3200)
+
+It also refreshes that value later.
+
+Why this matters:
+It guarantees a positive usable context budget.
+
+7. Validated generation cooldown
+
+What problem it prevents:
+Without cooldown control, Auto-Cards could generate cards too frequently and flood the story card list.
+
+How it is implemented:
+The generation section stores a validated cooldown value derived from the configured card creation cooldown.
+The code also uses helper validation functions to keep that value in a sane range.
+
+Why this matters:
+Card generation is rate-limited at the system level.
+
+8. Upper limit on consecutive continue-based generation progress
+
+What problem it prevents:
+Generation workflows that require multiple continues could run away indefinitely.
+
+How it is implemented:
+Auto-Cards stores:
+generation.permitted = 34
+
+That acts as a hard cap on consecutive continues for generation.
+
+Why this matters:
+This is a hard-stop against endless generation chains.
+
+9. Compression-state bookkeeping for incomplete operations
+
+What problem it prevents:
+Long memory compression can be interrupted between turns.
+If the script did not track partial progress, it could lose work or produce inconsistent summaries.
+
+How it is implemented:
+The compression state tracks:
+- completed continue count
+- title key
+- vanity title
+- response estimate
+- last construct index
+- old memory bank
+- new memory bank
+
+Why this matters:
+Compression work is made resumable and controlled rather than fragile.
+
+10. Message suppression system to avoid state.message conflicts
+
+What problem it prevents:
+Scripts that constantly write to state.message can interfere with each other and create UX noise.
+
+How it is implemented:
+Auto-Cards keeps a message object with:
+- previous
+- suppress
+- pending
+- event
+
+It also exposes suppressMessages() through the API.
+
+Why this matters:
+This lets Auto-Cards be noisy when helpful and quiet when necessary.
+
+11. Chronometer fields for retries, interruptions, and postponement
+
+What problem it prevents:
+Turn-based systems need to know whether time truly advanced, whether events were interrupted, and whether operations should be delayed.
+
+How it is implemented:
+The chronometer tracks:
+- previous actionCount
+- whether counters should step
+- amnesia count for interruptions
+- postpone count
+
+Why this matters:
+This is the timekeeping backbone that helps Auto-Cards stay consistent across retries and interrupted flows.
+
+12. Candidate-title state with anti-repeat memory
+
+What problem it prevents:
+Without memory of prior candidate checks, Auto-Cards could keep reconsidering the same titles over and over.
+
+How it is implemented:
+database.titles stores:
+- used
+- banned
+- candidates
+- lastActionParsed
+- lastTextHash
+- pendingBans
+- pendingUnbans
+
+Why this matters:
+This is how Auto-Cards keeps entity detection from becoming repetitive chaos.
+
+13. Near-duplicate memory tracking
+
+What problem it prevents:
+If similar memories are repeatedly fed back into the system, card memory banks and context can fill with redundant material.
+
+How it is implemented:
+Auto-Cards maintains a serialized hashset of recent near-duplicate memories that were purged from context.
+
+Why this matters:
+This is a deduplication safeguard for long-running games.
+
+14. Context cleanup before the main context pass
+
+What problem it prevents:
+Commands, continue prompts, confirmation text, LSIv2 artifacts, and junk memories can pollute context and poison title detection or generation prompts.
+
+How it is implemented:
+When running its pre-context cleanup, Auto-Cards strips:
+- guide text
+- command messages
+- continue prompts
+- confirmation delete requests and responses
+- LSIv2 error messages
+- certain junk memories
+- some Auto-Cards title headers when inactive
+
+Why this matters:
+This is a prompt hygiene safeguard.
+It keeps the system from reacting to its own scaffolding.
+
+15. Consolidation and removal of repeated continue messages
+
+What problem it prevents:
+Multiple continue prompts in context can inflate noise and confuse downstream logic.
+
+How it is implemented:
+Auto-Cards identifies repeated continue-message sequences and replaces them with placeholder patterns or removes them from relevant windows.
+
+Why this matters:
+It stops "continue spam" from becoming input data.
+
+16. PostponeEvents API with strict argument validation
+
+What problem it prevents:
+A postponement mechanism is useful, but only if it cannot be called with garbage values.
+
+How it is implemented:
+postponeEvents(turns):
+- requires a non-negative integer
+- throws an error otherwise
+- writes the postponement count into AC.chronometer.postpone
+- returns affected cooldown values
+
+Why this matters:
+This provides a safe pause mechanism without silently accepting invalid requests.
+
+17. Emergency halt with deadlock protection
+
+What problem it prevents:
+An emergency stop is valuable, but calling it from the wrong scope could deadlock or freeze logic.
+
+How it is implemented:
+emergencyHalt(shouldHalt):
+- checks call scope
+- refuses to run from isolateLSIv2
+- throws a clear error explaining the restriction
+- requires a boolean argument
+- otherwise sets AC.signal.emergencyHalt
+
+Why this matters:
+This is one of the most explicit safeguard implementations in the codebase.
+It prevents the safety mechanism itself from becoming a hazard.
+
+18. SuppressMessages API with strict type checks
+
+What problem it prevents:
+Message suppression should not silently accept invalid inputs.
+
+How it is implemented:
+suppressMessages(shouldSuppress):
+- requires a boolean
+- throws on invalid argument types
+- returns the current pending message array
+
+Why this matters:
+The API stays predictable.
+
+19. Toggle API with controlled accepted values
+
+What problem it prevents:
+Feature toggles can become inconsistent if they accept arbitrary values.
+
+How it is implemented:
+toggle(toggleType):
+- toggles automatically if undefined
+- sets directly if null or boolean
+- throws otherwise
+
+Why this matters:
+The Auto-Cards control API remains strict and debuggable.
+
+20. Reserved-title and banned-title controls
+
+What problem it prevents:
+Auto-generated cards can go bad very quickly if the title detector accepts internal control names or known low-value entities.
+
+How it is implemented:
+Auto-Cards keeps a banned-title list and exposes API functions to:
+- read the bans
+- replace the bans
+- add more bans indirectly through pending updates
+
+It also uses default banned titles from configuration.
+
+Why this matters:
+This is the main brake on bad automatic card generation.
+
+21. Optional banning of names from the opening section
+
+What problem it prevents:
+The opening setup often contains many names and concepts that are not yet worth cards.
+If the script immediately generates cards for them, it can flood the database with premature cards.
+
+How it is implemented:
+Auto-Cards includes a default option to ban titles mentioned in the opening plot component.
+
+Why this matters:
+This dramatically reduces early-game clutter.
+
+22. Ignore-all-caps title-detection option
+
+What problem it prevents:
+All-caps text can often be formatting, UI artifacts, or dramatic emphasis rather than meaningful entity names.
+
+How it is implemented:
+Auto-Cards includes a setting that excludes all-caps tokens from title detection.
+
+Why this matters:
+It is a noise-filtering safeguard.
+
+23. Configurable minimum look-back distance for title eligibility
+
+What problem it prevents:
+If entities become card candidates immediately, Auto-Cards can overreact to one-off mentions.
+
+How it is implemented:
+Auto-Cards stores and validates a minimum turn age for title detection.
+
+Why this matters:
+It makes title detection more conservative and plot-aware.
+
+24. Config validation for high-risk generation parameters
+
+What problem it prevents:
+Bad user config values could make Auto-Cards too aggressive, too verbose, or too memory-heavy.
+
+How it is implemented:
+When parsing the config card, Auto-Cards validates and normalizes values such as:
+- new card cooldown
+- maximum generated entry length
+- default memory limit
+- memory compression ratio
+- minimum look-back distance
+
+Why this matters:
+All of the major "how much" knobs are bounded.
+
+25. Extreme cooldown can effectively disable automatic generation
+
+What problem it prevents:
+Sometimes users need to stop automatic generation without uninstalling the script.
+
+How it is implemented:
+A very large cooldown value is treated as effectively disabling automatic card generation.
+The script even notifies the player about how to re-enable generation.
+
+Why this matters:
+This is a soft-disable safety control.
+
+26. RecheckRetryOrErase signal for replay stability
+
+What problem it prevents:
+Retries and erase operations can make title generation unstable or duplicative.
+
+How it is implemented:
+Auto-Cards maintains a recheckRetryOrErase signal specifically for limited rechecking after retry or erase behavior.
+
+Why this matters:
+It is a dedicated anti-duplication safeguard for replay conditions.
+
+27. lastTextHash and lastActionParsed to reduce duplicate parsing
+
+What problem it prevents:
+The same action text should not be fully reprocessed again and again.
+
+How it is implemented:
+The titles database tracks:
+- the last parsed action index
+- the last text hash
+
+Why this matters:
+This is a cheap but effective anti-repeat optimization and safety measure.
+
+28. Inactive-mode cleanup of auto-card headers in context
+
+What problem it prevents:
+When Auto-Cards is not active, old title headers from auto cards can still bias the prompt.
+
+How it is implemented:
+If Auto-Cards should not proceed, it removes auto-card title headers from contextualized entries.
+
+Why this matters:
+It reduces self-generated contamination.
+
+29. Defensive card collection, validation, repair, and organization in LSIv2 support
+
+What problem it prevents:
+When Auto-Cards handles LSIv2 code cards and support cards, malformed or duplicated script cards could destabilize the scripting environment.
+
+How it is implemented:
+The script comments and code around collectCards indicate that it constructs, validates, repairs, retrieves, and organizes associated LSIv2 cards in one pass.
+
+Why this matters:
+Even its helper scripting interface is designed with repair and validation in mind.
+
+30. Deep merge for imported LSIv2 state
+
+What problem it prevents:
+When merging stored LSIv2-related state, replacing whole objects could destroy valid nested fields.
+
+How it is implemented:
+Auto-Cards uses a deepMerge routine for static objects.
+
+Why this matters:
+This mirrors the self-healing state strategy seen in Inner Self.
+
+31. Ban internal control-card titles
+
+What problem it prevents:
+The script's own control cards should never be mistaken for story entities.
+
+How it is implemented:
+It explicitly bans titles associated with configure and control cards.
+
+Why this matters:
+This prevents the automation layer from auto-indexing itself.
+
+32. Output replacement and upstream error channels
+
+What problem it prevents:
+If isolated script execution or upstream processing produces an error, the system needs a controlled way to surface or substitute text.
+
+How it is implemented:
+The signal structure includes:
+- outputReplacement
+- upstreamError
+
+Why this matters:
+These are controlled recovery channels rather than random ad hoc mutation.
+
+Summary of Auto-Cards' safeguard style
+
+Auto-Cards protects itself mainly through:
+- state schema validation
+- reinitialization on corruption
+- cooldown and look-back controls
+- candidate and duplicate tracking
+- title banning
+- context sanitation
+- strict API argument validation
+- emergency stop and postponement controls
+- message suppression
+- replay-aware signals
+
+Its overall strategy is:
+"Automatic card generation is dangerous unless every stage is rate-limited, filtered, and reversible."
+
+----------------------------------------------------------------------
+PART 3: TAS (TRUE AUTO STATS)
+----------------------------------------------------------------------
+
+High-level role of TAS
+
+TAS is an RPG-style automation layer.
+It reads normal story actions, interprets them as stat-related events, updates player data, and syncs those values through story cards and state.
+
+Its biggest risks are:
+- desync between state and story cards
+- excessive context injection
+- parser false positives
+- repeated warnings
+- broken multiplayer or death handling
+- uncontrolled stat persistence
+
+The main safeguards are below.
+
+1. Explicit initialization of missing state fields
+
+What problem it prevents:
+If the state object is missing expected TAS fields, later hooks could fail or read undefined values.
+
+How it is implemented:
+At startup, TAS checks whether fields are undefined and initializes them one by one.
+Examples include:
+- startScript
+- turnCount
+- inputCount
+- outputCount
+- msgHolder
+- playerList
+- deadPlrs
+- injectStatsToContext
+
+Why this matters:
+This is basic but important self-repair.
+
+2. Master on/off switch for the whole system
+
+What problem it prevents:
+A complex parser-and-stats system needs a reliable kill switch.
+
+How it is implemented:
+TAS has a startScript flag.
+Its hook logic checks that startScript is true before running the main body of Input, Context, or Output behavior.
+The scriptSwitch_TAS function handles user control of that flag.
+
+Why this matters:
+This is the primary fail-safe.
+The system can be truly disabled instead of half-running.
+
+3. Gating by actionCount as well as startScript
+
+What problem it prevents:
+Some hooks can fire in situations where full gameplay processing is not appropriate.
+
+How it is implemented:
+The major Input, Context, and Output paths are gated on both:
+- state.startScript == true
+- info.actionCount >= 0
+
+Why this matters:
+This helps TAS avoid running its main logic in invalid or pre-start conditions.
+
+4. Help and switch commands are handled before core processing
+
+What problem it prevents:
+Control commands should not be mistaken for ordinary gameplay actions.
+
+How it is implemented:
+Input first runs:
+- scriptSwitch_TAS(text)
+- helpCommandInput_TAS(text)
+
+Output also runs help-related output handling.
+
+Why this matters:
+Administrative commands are separated from the RPG parser.
+
+5. Repeated story-card resynchronization before processing
+
+What problem it prevents:
+State and story cards can drift apart if a card was edited manually or if a prior hook changed one side but not the other.
+
+How it is implemented:
+Before major work, TAS repeatedly retrieves the current authoritative data from story cards:
+- retrieveStatsFromSC()
+- retrieveModifiersFromSC()
+- retrieveTalentsFromSC()
+- retrieveSkillsFromSC()
+
+It also creates missing cards in the surrounding workflow.
+
+Why this matters:
+This is one of TAS's main anti-desync safeguards.
+
+6. Repeated write-back to story cards after processing
+
+What problem it prevents:
+If changes only live in memory and are not persisted, they will be lost or become inconsistent across turns.
+
+How it is implemented:
+After output-side bookkeeping, TAS stores current data back into story cards:
+- storeStatsToSC()
+- storeTalentsToSC()
+- storeSkillsToSC()
+- storeModifiersToSC()
+
+Why this matters:
+State and story cards are continuously reconciled.
+
+7. Dedicated settings story card for context injection control
+
+What problem it prevents:
+Injecting too much RPG data into context costs tokens and can crowd out story text.
+
+How it is implemented:
+TAS maintains a "TAS Settings" story card whose entry stores:
+injectStatsToContext = true or false
+
+The script parses that setting with regex and updates state.injectStatsToContext accordingly.
+
+Why this matters:
+This provides a direct user-facing throttle on context pressure.
+
+8. Defaulting injectStatsToContext to a safe boolean
+
+What problem it prevents:
+A missing or malformed settings value should not leave the system in an ambiguous state.
+
+How it is implemented:
+If the regex parser cannot derive a valid value, TAS falls back to a boolean default.
+
+Why this matters:
+The setting remains stable even if the settings card is edited badly.
+
+9. Context sanitization through angle-text removal
+
+What problem it prevents:
+Helper text, control markers, or markup-like content can leak into context and distort model behavior.
+
+How it is implemented:
+In the Context hook, TAS calls removeAngleText(text).
+
+Why this matters:
+This is one of the clearest prompt-hygiene safeguards in TAS.
+
+10. Dead-player tracking separate from momentary output text
+
+What problem it prevents:
+Death state should not depend only on the last visible line of story text.
+
+How it is implemented:
+TAS maintains a deadPlrs list in state.
+It updates that list through updateDeadPlrs() and death-handling logic.
+
+Why this matters:
+Persistent death state is more reliable than text-only interpretation.
+
+11. Revival cleanup from the dead-player list
+
+What problem it prevents:
+A player who has recovered above zero health should not remain marked as dead forever.
+
+How it is implemented:
+updateDeadPlrs() checks each player's HP and removes them from deadPlrs if they are alive again.
+
+Why this matters:
+This is a simple but important consistency safeguard.
+
+12. Health warnings are rate-limited by turn counters
+
+What problem it prevents:
+Low-health warnings can easily spam the player every turn.
+
+How it is implemented:
+warnPlayerHealth(text) checks health thresholds and only emits certain warnings when inputCount modulo a configured interval matches.
+
+Why this matters:
+Warnings remain informative instead of becoming noise.
+
+13. Energy warnings are also rate-limited
+
+What problem it prevents:
+The same spam risk exists for energy depletion.
+
+How it is implemented:
+warnPlayerHealth(text) also checks energy thresholds and only warns at controlled intervals.
+
+Why this matters:
+TAS limits repetitive warning output.
+
+14. Death messages are protected against repeated co-op duplication
+
+What problem it prevents:
+In multiplayer or co-op scenarios, the same death could be announced multiple times.
+
+How it is implemented:
+When a player dies:
+- TAS checks whether they are already in deadPlrs
+- only adds and announces them if they are newly dead
+
+Why this matters:
+This avoids duplicate death notifications.
+
+15. One-player game-over handling is separated from multi-player death handling
+
+What problem it prevents:
+Single-player death should act like game over, while multi-player death may only affect one participant.
+
+How it is implemented:
+warnPlayerHealth(text) branches using a onePlayerFlagger-style check.
+Single-player death triggers a game-over style message.
+Multi-player death adds the player to deadPlrs and uses co-op language.
+
+Why this matters:
+The script avoids collapsing different game modes into one incorrect behavior.
+
+16. Message buffering through msgHolder
+
+What problem it prevents:
+If multiple subsystems write directly to state.message at random times, messages can overwrite each other or arrive in the wrong order.
+
+How it is implemented:
+TAS accumulates status messages in state.msgHolder throughout processing.
+At the end of Output, it assigns:
+state.message = state.msgHolder
+then clears msgHolder.
+
+Why this matters:
+This creates one controlled commit point for user-facing messages.
+
+17. Turn, input, and output counters as behavioral guardrails
+
+What problem it prevents:
+Many time-based decisions, warnings, and logs become unstable if the script cannot tell which phase and which turn it is on.
+
+How it is implemented:
+TAS increments:
+- inputCount in Input
+- outputCount in Output
+- turnCount at turn completion
+
+Why this matters:
+The script can space out warnings and keep logs consistent.
+
+18. Stop-word and bias-word filtering in parsing
+
+What problem it prevents:
+Natural-language action parsing is prone to false positives.
+A naive parser can misread flavor text as stat actions.
+
+How it is implemented:
+TAS maintains large stop-word and related filter lists.
+These are used in its action-detection logic to reduce accidental matches.
+
+Why this matters:
+This is one of the main safeguards against parser drift.
+
+19. Type checks in utility paths
+
+What problem it prevents:
+Unexpected types can create broken calculations or indexing errors.
+
+How it is implemented:
+The script includes targeted type checks, such as verifying whether values are strings or whether increment amounts are numbers before applying them.
+
+Why this matters:
+This adds local safety around high-risk numeric updates.
+
+20. Inventory additions avoid silent duplication mistakes
+
+What problem it prevents:
+Repeated item acquisition logic can either duplicate items incorrectly or fail to stack properly.
+
+How it is implemented:
+When adding items, TAS checks whether the item already exists in the player's inventory and updates quantity accordingly rather than blindly inserting a second item name every time.
+
+Why this matters:
+Inventory state remains coherent.
+
+21. Talent creation avoids duplicate talent or skill names
+
+What problem it prevents:
+A learned concept should not be added twice under different subsystems.
+
+How it is implemented:
+When finalizing talents, TAS checks whether a proposed talent name already exists in the player's talents or skills before adding it.
+
+Why this matters:
+This prevents overlapping progression data.
+
+22. Old-level holders and level-up bookkeeping
+
+What problem it prevents:
+Level-up rewards and notifications can duplicate if the script does not know what the previous level state was.
+
+How it is implemented:
+TAS keeps helper state such as oldLvlHolder and related level bookkeeping structures.
+
+Why this matters:
+Progression events become easier to process once and only once.
+
+23. Detailed stat-change logging into story card descriptions
+
+What problem it prevents:
+Without persistent audit trails, stat drift becomes hard to diagnose.
+
+How it is implemented:
+When stats change, TAS prepends logs to the relevant story card descriptions, including:
+- turn number
+- stat name
+- old and new values
+- modified amounts
+- raw amounts
+- sometimes scaled amounts
+
+Why this matters:
+This is both a debugging safeguard and a recovery aid.
+
+24. Separate retrieval and storage functions per subsystem
+
+What problem it prevents:
+If all stat, modifier, talent, and skill logic were fused together, a bug in one area could corrupt all others.
+
+How it is implemented:
+TAS uses separate functions to retrieve and store:
+- stats
+- modifiers
+- talents
+- skills
+
+Why this matters:
+Subsystem separation is a structural safeguard.
+
+25. Context injection can be skipped when inventory or storage unlock flags conflict
+
+What problem it prevents:
+Certain combinations of context injection and other context-related unlock flags may be too heavy or redundant.
+
+How it is implemented:
+The script checks state.injectStatsToContext together with related inventory/storage context flags before injecting data.
+
+Why this matters:
+This avoids some unnecessary context overload.
+
+Summary of TAS's safeguard style
+
+TAS protects itself mainly through:
+- state initialization
+- a master on/off gate
+- repeated read-back and write-back synchronization
+- prompt cleanup
+- persistent death tracking
+- rate-limited warnings
+- message buffering
+- parser filtering
+- subsystem separation
+- detailed audit logging
+
+Its overall strategy is:
+"Because RPG automation is spread across many hooks and many story cards, keep resyncing, keep logging, and never trust one transient text pass to be the whole truth."
+
+----------------------------------------------------------------------
+PART 4: THE MOST IMPORTANT SAFEGUARDS ACROSS ALL THREE
+----------------------------------------------------------------------
+
+If I had to rank the strongest safeguards overall, they would be these:
+
+1. Replay protection
+Inner Self uses history hashing.
+Auto-Cards uses replay-aware signals such as recheckRetryOrErase and lastTextHash.
+This prevents duplicate hidden state changes after retries.
+
+2. Self-healing state recovery
+Inner Self repairs missing state by deep merging defaults.
+Auto-Cards rejects malformed saved state and rebuilds from defaults.
+TAS initializes missing fields and constantly resyncs from story cards.
+
+3. Hard config bounding
+Inner Self clamps brain-share, trigger distance, and thought chance.
+Auto-Cards validates cooldowns, entry limits, memory limits, and look-back settings.
+This prevents user-edited config cards from making the systems unstable.
+
+4. Duplicate-control logic
+Inner Self removes duplicate config cards and demotes duplicate brain cards.
+Auto-Cards tracks duplicates in memories and title parsing.
+TAS avoids duplicate deaths, duplicate talents, and inventory inconsistencies.
+
+5. Context hygiene
+Inner Self normalizes zero-width markers and strips unwanted task artifacts.
+Auto-Cards aggressively cleans command and control garbage from context.
+TAS removes angle text before final context use.
+
+6. Operational safety valves
+Auto-Cards exposes postponeEvents(), emergencyHalt(), and suppressMessages().
+TAS has a global startScript switch.
+Inner Self has clean early returns when disabled or misconfigured.
+
+7. Buffered or delayed user messaging
+Auto-Cards uses pending message queues and optional suppression.
+TAS uses msgHolder before committing to state.message.
+This reduces message conflicts.
+
+----------------------------------------------------------------------
+PART 5: PRACTICAL TAKEAWAYS FOR YOUR OWN SCRIPT DESIGN
+----------------------------------------------------------------------
+
+If you want to copy the strongest patterns from these scripts, the most valuable ones are:
+
+1. Validate the environment first
+Before doing any real work, confirm that the runtime objects you need are present.
+
+2. Never trust saved state blindly
+Parse it safely, validate its shape, and rebuild defaults if necessary.
+
+3. Clamp every high-risk numeric setting
+Percentages, cooldowns, history windows, and entry limits should always be bounded.
+
+4. Detect retries explicitly
+If your script mutates hidden state, replay detection is mandatory.
+
+5. Clean hidden control text out of context
+If your system writes helper messages, prompts, labels, or markers, strip them before they can feed back into the model.
+
+6. Keep one source of truth per purpose
+Do not allow duplicate config cards or duplicate brain cards to stay authoritative.
+
+7. Use a safe pause or stop system
+A script should be able to pause, suppress messages, or fully disable itself without requiring manual surgery.
+
+8. Treat generated names and titles as dangerous inputs
+Sanitize them, deduplicate them, and ban known-bad ones.
+
+9. Buffer messages before showing them
+Do not let multiple subsystems overwrite state.message at random times.
+
+10. Keep an audit trail
+Persistent logs make it much easier to diagnose stat drift, duplicate generation, and bad parser decisions.
+
+----------------------------------------------------------------------
+PART 6: SOURCE FILES REVIEWED
+----------------------------------------------------------------------
+
+Reviewed source material included these GitHub files:
+
+Inner Self:
+- repository README
+- src/library.js
+
+Auto-Cards:
+- repository README
+- src/library.js
+
+TAS:
+- repository main library script
+
+End of document.

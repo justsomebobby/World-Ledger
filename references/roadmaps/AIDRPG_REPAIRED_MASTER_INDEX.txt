@@ -1,0 +1,46 @@
+# AIDRPG Repaired Master Index
+
+## Original ordered design bible chunks
+
+01. Core Play Philosophy and Canon Law
+02. State Ownership and Data Boundaries
+03. Event Taxonomy and Validation Outcomes
+04. Progression Leveling and XP Economy
+05. Stats Resources Recovery and Scaling Basics
+06. Ability Skill Talent Passive and Specialization Lifecycle
+07. Combat Matrix and Consequence Model
+08. Group Combat Party Followers Summons and Scale
+09. Inventory Equipment Ownership Custody Economy and Transactio
+10. Crafting Materials Recipes Quality Repair and Workflows
+11. Quests Contracts Labor Domain Projects and Objectives
+12. Investigation Clues Evidence Witnesses and Reputation
+13. Actor Memory Place Memory Factions Routes and World Entities
+14. Time Travel Scene State Weather Deadlines and Recovery Ticks
+15. Context Injection Story Cards CardSync and Memory Safeguards
+16. System Safeguards OperationLedger Quarantine Cleanup Migrati
+17. Commands Player Controls Debug Tools Configuration and Testi
+18. Final Integration Build Readiness MVP Scope and Definition o
+19. Level 1 1000 Scaling Matrix Freeform Gameplay Scaling Player
+20. Race Species Body Type Origin Scaling and Non Human Stat Log
+21. Core Stat Formulas Resource Formulas Growth Rates and Build 
+22. XP Curves Level Up Rules Stat Training XP Domain XP Ability 
+23. Creature Tier Matrix Enemy Stat Bands Boss Scaling Group Thr
+24. Combat Math Damage Severity Defense Resources Matchup Resolu
+25. Ability Cost Calculator Skill Passive Talent Templates Scali
+26. Stat Absorption Copy Abilities Devour Growth Adaptation Evol
+27. Crafting Exact Specification Recipe Templates Material Table
+28. Economy Prices Wages Domain Costs Labor Output Project Scali
+29. Quest System Quest Lifecycle Contracts Deadlines Rewards Obj
+30. Investigation Cases Clues Evidence Rumors Witness Knowledge 
+31. Named Actors NPC Importance Actor Memory Relationships Reput
+32. World State Time Travel Place Memory Context Injection Story
+
+## Added repaired planning files
+
+00_README_REPAIRED_PACKAGE.txt
+AIDRPG_REPAIR_SUMMARY_AND_AUTHORITY_ORDER.txt
+AIDRPG_Design_Bible_chunk_33_of_33_Final_Pre_Build_Lockdown_and_Implementation_Contract.txt
+
+## Recommended next document
+
+AIDRPG Developer Spec v1 — exact schema, reducer APIs, parser contracts, formulas, context/card implementation, command behavior, and test gates.

@@ -1,0 +1,1938 @@
+AIDRPG Design Bible — Chunk 4: Progression, Leveling, and XP Economy
+
+1. Purpose of this chunk
+
+Chunk 4 defines how character growth works.
+
+This chunk answers:
+
+* What does “leveling” mean?
+* What gives XP?
+* What types of XP exist?
+* How do Level XP, Domain XP, Stat XP, and Ability Growth interact?
+* How does progression stay realistic?
+* How does progression avoid farming?
+* How does the system reward failure without lying about success?
+* How does progression scale from early game to late game?
+* How does progression guide gameplay without forcing it?
+
+This chunk does not cover the full stat system, combat matrix, or ability lifecycle in detail. Those come later. This chunk defines the growth economy that those systems will use.
+
+The existing feature guide already separates Level XP, Ability XP, Domain XP, and Stat Training XP as distinct lanes, and it says XP/level/stat training/domain XP belong to ProgressionReducer while abilities and candidates belong to AbilityReducer.  ￼
+
+So the purpose here is to turn that into a usable rule model.
+
+⸻
+
+2. Core progression philosophy
+
+Progression should feel earned.
+
+AIDRPG should not grant major growth just because the AI wrote a dramatic line.
+
+Progression should come from:
+
+* meaningful action
+* confirmed consequence
+* risk
+* cost
+* repetition with purpose
+* training over time
+* challenge
+* discovery
+* survival
+* learning
+* story milestones
+
+Progression should not come from:
+
+* vague narration
+* dreams
+* rumors
+* jokes
+* quoted dialogue
+* pretend actions
+* repeated trivial actions
+* duplicate output
+* failed parsing
+* card text
+* debug text
+* unsupported power jumps
+
+The clean-core rules already say parsers may propose progression events, but they must not award XP directly; progression state should be committed by ProgressionReducer.  ￼
+
+The basic philosophy is:
+
+Progression rewards meaningful confirmed gameplay, not text patterns.
+
+⸻
+
+3. The four growth lanes
+
+AIDRPG should use four main growth lanes.
+
+3.1 Level XP
+
+Level XP is broad adventure growth.
+
+It represents the player becoming more generally experienced, capable, and story-significant.
+
+Level XP should come from things like:
+
+* meaningful combat
+* quest progress
+* major discoveries
+* survival under risk
+* completing objectives
+* important social victories
+* dangerous travel
+* domain milestones
+* major ability breakthroughs
+* significant failures survived
+
+Level XP should not replace specific growth.
+
+A character can gain Level XP from surviving a monster attack, but sword skill, survival skill, injury state, and reputation should still be tracked separately.
+
+3.2 Total XP
+
+Total XP is lifetime Level XP earned.
+
+It does not reset when the player levels.
+
+It is mainly useful for:
+
+* audit
+* balancing
+* long-term history
+* progression reports
+* anti-farm analysis
+* debugging
+
+Current XP moves toward the next level.
+
+Total XP records the full history.
+
+The existing guide already treats current XP, XP-to-next, and total XP as separate values.  ￼
+
+3.3 Domain XP
+
+Domain XP tracks competence in broad activity areas.
+
+Example domains:
+
+* melee
+* ranged
+* defense
+* magic
+* stealth
+* survival
+* crafting
+* investigation
+* social
+* leadership
+* labor
+* domain management
+* travel
+* medicine
+* trade
+
+Domain XP says:
+
+The player is becoming experienced in this field.
+
+It should not automatically create a named ability.
+
+Example:
+
+Repeatedly surviving forest travel may increase Survival Domain XP.
+
+It does not automatically create “Forest Mastery” unless the ability system separately validates that as a passive/talent.
+
+3.4 Stat Training XP
+
+Stat Training XP tracks practice toward improving core stats.
+
+Core stat lanes:
+
+* ATK XP
+* DEF XP
+* SPD XP
+* INT XP
+* LCK XP
+
+Stat Training XP should grow from repeated meaningful actions.
+
+Examples:
+
+* ATK XP from striking, weapon drills, strength exertion, offensive combat
+* DEF XP from blocking, enduring, armor training, bracing, survival under impact
+* SPD XP from dodging, sprinting, footwork, acrobatics, chase scenes
+* INT XP from study, magic control, tactics, crafting, investigation, planning
+* LCK XP from rare-chance survival, improvisation, high-risk gambits, fortune events
+
+The clean-core roadmap already defines these same stat lanes and examples.  ￼
+
+3.5 Ability Growth
+
+Ability Growth is related but should be treated carefully.
+
+Ability candidates, evidence, stabilization, refinement, costs, limits, and mastery belong primarily to AbilityReducer.
+
+ProgressionReducer may track broad progression rewards connected to ability use, but AbilityReducer owns ability-specific growth.
+
+So the rule is:
+
+* AbilityReducer owns ability evidence, stages, reliability, cost knowledge, and mastery.
+* ProgressionReducer owns Level XP, Domain XP, and Stat Training XP that may be awarded from ability-related events.
+* Ability use can create both ability growth and progression growth, but through separate owner paths.
+
+Example:
+
+The player tries to form Mana Slash and fails.
+
+Possible results:
+
+* AbilityReducer: records failed real attempt / evidence
+* ProgressionReducer: small Magic Domain XP or INT XP if effort was meaningful
+* BodyReducer: MP or EP strain if narrated
+* No stable ability yet
+
+This prevents “ability XP” from becoming a second uncontrolled XP system.
+
+⸻
+
+4. What level means
+
+Level is broad adventure maturity.
+
+Level should represent:
+
+* experience under pressure
+* general resilience
+* story competence
+* ability to handle greater threats
+* broader scale of adventure
+* improved resource ceilings
+* better baseline plausibility
+
+Level should not represent:
+
+* automatic victory
+* mastery of every skill
+* immunity to danger
+* guaranteed spell success
+* instant social authority
+* automatic stat superiority
+* automatic ability stabilization
+
+A level 10 scholar may still lose a direct fistfight to a level 5 trained brawler.
+
+A level 5 clever rogue may beat a stronger enemy with terrain, stealth, preparation, or luck.
+
+Level is a broad scaling signal, not the whole character.
+
+⸻
+
+5. Recommended level bands
+
+AIDRPG should use level bands to guide tone and plausibility.
+
+Levels 1–3: Novice
+
+The player is fragile and still forming identity.
+
+Expected feel:
+
+* low resources
+* unstable abilities
+* minor threats matter
+* injuries are dangerous
+* training gains are noticeable
+* simple gear matters
+* local quests are meaningful
+
+Typical threats:
+
+* wolves
+* bandits
+* minor monsters
+* street fights
+* local hazards
+* small mysteries
+
+Levels 4–7: Capable
+
+The player has reliable basics.
+
+Expected feel:
+
+* some abilities stabilize
+* stats start to distinguish build
+* ordinary enemies become manageable
+* resource use matters
+* quests can involve larger stakes
+* companions and reputation become more relevant
+
+Typical threats:
+
+* trained soldiers
+* monster packs
+* dangerous ruins
+* faction agents
+* magical hazards
+
+Levels 8–12: Veteran
+
+The player has a clear build identity.
+
+Expected feel:
+
+* specialized tactics matter
+* abilities are more reliable
+* enemy matchup matters more
+* domain ranks become meaningful
+* major quests and faction consequences emerge
+* ordinary threats may be overcome efficiently
+
+Typical threats:
+
+* elite enemies
+* boss creatures
+* cursed sites
+* multi-stage quests
+* political or faction conflicts
+
+Levels 13–18: Heroic
+
+The player can influence larger events.
+
+Expected feel:
+
+* high-impact abilities
+* large-scale conflicts
+* domain/base systems matter more
+* reputation and titles matter
+* failure still possible through counters, exhaustion, injuries, scale, or story leverage
+
+Typical threats:
+
+* powerful monsters
+* faction leaders
+* elite groups
+* magical disasters
+* regional crises
+
+Levels 19+: Legendary
+
+The player is exceptional, but not beyond consequence.
+
+Expected feel:
+
+* large-scale stakes
+* legendary enemies
+* powerful abilities
+* domain/faction/world changes
+* death may still happen if the story clearly supports it
+* counters, costs, conditions, and scale still matter
+
+Typical threats:
+
+* legendary beings
+* armies
+* ancient curses
+* domain wars
+* world-shaping events
+
+The rule is:
+
+Higher level expands what is plausible. It does not delete risk.
+
+⸻
+
+6. Recommended level curve
+
+AIDRPG needs a predictable XP-to-next formula.
+
+The exact numbers can be tuned later, but the design should begin with a simple curve.
+
+Recommended formula:
+
+XP-to-next = 50 + current level × 25 + current level² × 5
+
+Examples:
+
+* Level 1 to 2: 80 XP
+* Level 2 to 3: 120 XP
+* Level 3 to 4: 170 XP
+* Level 4 to 5: 230 XP
+* Level 5 to 6: 300 XP
+* Level 10 to 11: 800 XP
+* Level 15 to 16: 1,550 XP
+* Level 20 to 21: 2,550 XP
+
+Why this curve works:
+
+* early levels arrive fast enough to feel rewarding
+* mid levels require repeated meaningful play
+* late levels require major achievements
+* trivial farming becomes less effective over time
+* the system can still support very long adventures
+
+This is a design default, not a sacred final number.
+
+The important part is that the curve should grow enough that late-game progression requires larger story achievements.
+
+⸻
+
+7. Level-up rewards
+
+Leveling should give broad growth, not erase specific systems.
+
+When the player levels up, the system may grant:
+
+* max HP increase
+* max MP increase
+* max EP increase
+* possibly one broad build tag update
+* possible stat cap/potential increase
+* possible unlock pressure for ability stabilization
+* improved matchup baseline
+* progression milestone record
+
+Leveling should not automatically:
+
+* create new abilities
+* fully heal the player unless specifically configured
+* raise every stat
+* complete quests
+* create cards directly
+* bypass training
+* solve resource problems
+* erase injuries
+
+Recommended default level-up reward:
+
+* max HP +5
+* max MP +3
+* max EP +5
+* one progression milestone
+* optional build identity recalculation
+* no automatic stat point unless stat rules later allow it
+
+For low-magic or high-magic settings, MP scaling can be adjusted.
+
+The important rule is:
+
+Leveling improves capacity and narrative plausibility, while specific competence comes from stats, domains, abilities, equipment, and story context.
+
+⸻
+
+8. XP source categories
+
+Progression events should be classified by source.
+
+8.1 Training XP
+
+Training includes:
+
+* weapon drills
+* magic practice
+* physical conditioning
+* study
+* crafting practice
+* footwork drills
+* meditation
+* survival practice
+* sparring
+* labor practice
+
+Training usually gives:
+
+* Stat Training XP
+* Domain XP
+* possible small Level XP
+* possible Ability evidence if training a real developing ability
+
+Training usually costs:
+
+* time
+* EP
+* MP if magical/focus-based
+* materials if crafting
+* risk if dangerous
+
+Training should not give large Level XP unless there is risk, breakthrough, teacher challenge, or meaningful story context.
+
+8.2 Combat XP
+
+Combat includes:
+
+* attacks
+* defense
+* survival
+* tactical victories
+* enemy defeat
+* escape from danger
+* protecting allies
+* surviving ambush
+* overcoming dangerous odds
+
+Combat may give:
+
+* Level XP
+* Stat Training XP
+* Domain XP
+* Ability Growth
+* reputation
+* quest progress
+* loot
+
+Combat rewards should depend on:
+
+* threat tier
+* risk
+* injury
+* resource cost
+* party help
+* preparation
+* enemy importance
+* victory quality
+* whether the event was confirmed
+
+Combat must not give large XP from unsupported or impossible wins.
+
+8.3 Discovery XP
+
+Discovery includes:
+
+* finding hidden places
+* solving mysteries
+* uncovering clues
+* identifying weaknesses
+* learning lore
+* mapping routes
+* discovering recipes
+* discovering abilities
+* learning enemy patterns
+
+Discovery may give:
+
+* Level XP if important
+* Investigation Domain XP
+* Survival/Travel Domain XP
+* INT XP
+* LCK XP if discovery came from rare fortune or risky improvisation
+* Ability evidence if relevant
+
+Discovery should not grant XP from every random description.
+
+The discovery must matter.
+
+8.4 Quest XP
+
+Quest XP comes from:
+
+* accepting major responsibility
+* progressing objectives
+* completing objectives
+* resolving consequences
+* making meaningful choices
+* surviving quest climax
+
+Quest XP may give:
+
+* Level XP
+* Domain XP tied to quest type
+* Stat XP if actions support it
+* reputation
+* item rewards
+* currency rewards
+* title progress
+
+Quest completion should usually be one of the strongest sources of Level XP.
+
+But quest completion must be validated.
+
+A rumor that the quest was completed should not grant XP.
+
+8.5 Crafting XP
+
+Crafting XP comes from:
+
+* successful crafting
+* partial crafting progress
+* repairing items
+* improving item quality
+* learning recipes
+* solving material problems
+* improvising under constraints
+
+Crafting may give:
+
+* Crafting Domain XP
+* INT XP
+* sometimes ATK/DEF/SPD if physically demanding
+* small Level XP for major creations
+* Ability evidence if magical crafting is involved
+
+Crafting should cost:
+
+* time
+* materials
+* tools/station access
+* EP or MP where appropriate
+
+8.6 Social XP
+
+Social growth comes from:
+
+* negotiation
+* persuasion
+* leadership
+* deception
+* diplomacy
+* public speaking
+* intimidation
+* resolving conflicts
+* gaining witnesses
+* managing reputation
+
+Social events may give:
+
+* Social Domain XP
+* Leadership Domain XP
+* INT XP
+* LCK XP in rare improvisational outcomes
+* Level XP for major social victories
+* reputation changes
+
+Not every conversation gives XP.
+
+The conversation must have stakes or meaningful result.
+
+8.7 Survival and travel XP
+
+Survival/travel growth comes from:
+
+* dangerous travel
+* harsh weather
+* navigation
+* escaping hazards
+* foraging
+* enduring exposure
+* finding routes
+* surviving wilderness
+* avoiding ambushes
+
+May give:
+
+* Survival Domain XP
+* Travel Domain XP
+* DEF XP
+* SPD XP
+* INT XP
+* LCK XP
+* small Level XP if danger was real
+
+Ordinary walking through safe roads should not give meaningful XP.
+
+8.8 Failure XP
+
+Failure can give progression if the attempt was real and meaningful.
+
+Failure XP should be smaller than success XP but still useful.
+
+Examples:
+
+* failed spell attempt gives ability evidence
+* failed attack teaches combat lessons
+* failed investigation produces clue or contradiction
+* failed crafting teaches recipe limits
+* failed negotiation creates social learning
+* failed escape creates survival experience
+
+Failure XP requires:
+
+* real attempt
+* meaningful action
+* cost or risk
+* non-trivial situation
+
+Failure XP should not reward:
+
+* pretend actions
+* jokes
+* repeated spam
+* impossible unsupported attempts
+* dreams
+* quoted actions
+* debug text
+
+This supports fun because failure still matters without lying about success.
+
+⸻
+
+9. XP reward size table
+
+This is the recommended initial reward scale.
+
+9.1 No reward
+
+Use when:
+
+* trivial repetition
+* pure flavor
+* dreams
+* rumors
+* quoted actions
+* pretend actions
+* unsupported claims
+* duplicate output
+* weak narration with no meaningful action
+
+Reward:
+
+* 0 XP
+* possible audit note only
+
+9.2 Tiny reward
+
+Use when:
+
+* minor meaningful effort
+* low-risk practice
+* small clue
+* light observation
+* weak but real attempt
+* basic training scene
+
+Reward:
+
+* 1–3 Stat XP
+* 1–3 Domain XP
+* 0 Level XP usually
+* possible ability evidence if relevant
+
+9.3 Small reward
+
+Use when:
+
+* confirmed useful action
+* safe training with time/EP cost
+* minor combat success
+* partial crafting progress
+* minor investigation progress
+* small social success
+
+Reward:
+
+* 3–8 Stat XP
+* 3–8 Domain XP
+* 1–5 Level XP if meaningful
+* possible ability evidence
+
+9.4 Moderate reward
+
+Use when:
+
+* risky training
+* even-threat combat
+* meaningful quest progress
+* clear clue/evidence gain
+* successful crafting result
+* difficult travel survival
+* useful ability manifestation
+
+Reward:
+
+* 8–20 Stat XP
+* 8–20 Domain XP
+* 5–20 Level XP
+* ability evidence or ability rank progress if relevant
+
+9.5 Major reward
+
+Use when:
+
+* dangerous combat victory
+* quest completion
+* major discovery
+* ability breakthrough
+* important contract/domain milestone
+* solving a case
+* major reputation event
+* surviving high-risk failure
+
+Reward:
+
+* 20–50 Stat/Domain XP where relevant
+* 25–100 Level XP
+* ability stabilization or major evidence if relevant
+* possible title/reputation/item rewards
+
+9.6 Legendary reward
+
+Use rarely.
+
+Use when:
+
+* major boss defeated
+* large-scale crisis resolved
+* legendary ability mastered
+* domain/faction-changing event
+* campaign-defining quest completion
+* impossible odds overcome with proper leverage
+
+Reward:
+
+* 100+ Level XP
+* major Domain XP
+* major Ability Growth
+* title/reputation/domain consequences
+* possible level-up milestone
+
+Legendary rewards should require strong validation.
+
+They should not come from a single unsupported sentence.
+
+⸻
+
+10. XP lane routing table
+
+A single event may route XP into multiple lanes.
+
+Safe sword training
+
+Possible rewards:
+
+* ATK XP
+* DEF XP if blocking/guard training
+* Melee Domain XP
+* tiny or no Level XP
+
+Costs:
+
+* time
+* EP
+* fatigue
+
+Dangerous duel
+
+Possible rewards:
+
+* Level XP
+* ATK XP
+* DEF XP
+* SPD XP
+* Melee Domain XP
+* Ability Growth if using a developing combat ability
+
+Costs:
+
+* HP risk
+* EP cost
+* equipment condition risk
+* injury risk
+
+Failed spell attempt
+
+Possible rewards:
+
+* Ability evidence
+* Magic Domain XP
+* INT XP
+
+Costs:
+
+* MP strain
+* fatigue or condition if severe
+
+No reward if pretend, fake, or quoted.
+
+Crafting a rough spear
+
+Possible rewards:
+
+* Crafting Domain XP
+* INT XP
+* maybe ATK XP if physical shaping matters
+* small Level XP only if useful or difficult
+
+Costs:
+
+* materials
+* time
+* EP
+* tool/station requirement
+
+Solving a case
+
+Possible rewards:
+
+* Level XP
+* Investigation Domain XP
+* INT XP
+* Reputation if public
+* quest progress/completion if linked
+
+Costs:
+
+* time
+* risk
+* social consequences
+
+Surviving a blizzard route
+
+Possible rewards:
+
+* Level XP if dangerous
+* Survival Domain XP
+* Travel Domain XP
+* DEF XP
+* LCK XP if rare survival
+* possible reputation if witnessed
+
+Costs:
+
+* EP
+* conditions
+* injury risk
+* time
+
+⸻
+
+11. Anti-farm rules
+
+Progression must resist farming.
+
+Farming means repeating low-risk actions just to gain numbers.
+
+11.1 Same-action diminishing returns
+
+If the player repeats the same safe training action in the same day/context:
+
+* first meaningful scene: full reward
+* second similar scene: 50–75% reward
+* third similar scene: 25–50% reward
+* more repetitions: 0–25% reward unless new risk, teacher, tool, difficulty, or breakthrough appears
+
+11.2 Risk and cost requirement
+
+Meaningful growth should usually require at least one of:
+
+* time cost
+* EP cost
+* MP cost
+* material cost
+* danger
+* social stakes
+* opportunity cost
+* failure risk
+* teacher/challenge
+* new environment
+* actual consequence
+
+No cost and no risk means little or no reward.
+
+11.3 Trivial enemy reduction
+
+Combat against trivial enemies should give little or no Level XP.
+
+It may still give:
+
+* tiny Stat XP
+* tiny Domain XP
+* no reward if repeated excessively
+
+A level 15 character should not farm goblins for meaningful level progress unless the goblins are part of a larger dangerous scene.
+
+11.4 Duplicate output protection
+
+Same output replayed must not grant XP twice.
+
+This is not just anti-farm. It is safety.
+
+OperationLedger must block duplicate XP, ability evidence, stat training, domain XP, and level-up operations.
+
+The clean-core safeguards explicitly require replayed outputs not to duplicate XP, item gains, ability evidence, quest progress, damage, card writes, actor/place mentions, or contract/domain progress.
+
+11.5 Weak narration cap
+
+Weak narration cannot grant large XP.
+
+Examples:
+
+* “You feel stronger.”
+* “You seem more skilled.”
+* “You remember your training.”
+* “You are probably better now.”
+
+These may create no reward or tiny flavor progress, but not major growth.
+
+11.6 Failed attempt limit
+
+Failed attempts can produce learning, but repeated identical failure should diminish.
+
+Example:
+
+Trying the same spell ten times with no change should not give ten full evidence rewards.
+
+Later attempts need:
+
+* changed method
+* teacher input
+* new insight
+* new condition
+* increased risk
+* meaningful cost
+* partial manifestation
+
+Otherwise reward decays.
+
+⸻
+
+12. Stat Training XP and stat increases
+
+Stat Training XP should be slower and more evidence-based than Level XP.
+
+A stat should not increase from one weak sentence.
+
+Recommended model:
+
+Each core stat has:
+
+* base value
+* trained value
+* temporary modifiers
+* injury/condition penalties
+* equipment modifiers
+* effective value
+* Stat Training XP
+
+Stat increases should require accumulated XP.
+
+Recommended starting stat scale will be fully defined in Chunk 5, but Chunk 4 defines the training cost philosophy.
+
+12.1 Recommended stat increase threshold
+
+Default formula:
+
+Stat XP needed for next stat point = 40 + current stat × 15
+
+Examples:
+
+* raising stat 5 to 6 costs 115 Stat XP
+* raising stat 10 to 11 costs 190 Stat XP
+* raising stat 15 to 16 costs 265 Stat XP
+* raising stat 20 to 21 costs 340 Stat XP
+
+Why this works:
+
+* early improvement is achievable
+* mid-game growth requires repeated meaningful action
+* late-game stats require major training, danger, teachers, breakthroughs, or special circumstances
+
+12.2 Stat increase validation
+
+A stat point should increase only when:
+
+* enough Stat XP exists
+* the XP came from relevant actions
+* the action history supports that stat
+* no injury/condition blocks normal growth
+* duplicate XP did not inflate the lane
+* the stat is not beyond setting-appropriate caps without special justification
+
+Example:
+
+Hours of sword drills may produce ATK XP.
+
+Actually raising ATK requires accumulated ATK XP over time.
+
+12.3 Stat XP overflow
+
+If a stat increases and leftover Stat XP remains, it may carry over.
+
+However, large overflow should be audited.
+
+This prevents a bad parser from granting 9999 ATK XP and raising the stat repeatedly.
+
+12.4 Stat growth and level
+
+Level should not automatically raise every stat.
+
+Instead, level can affect stat potential.
+
+Recommended rule:
+
+* stats can grow through training even without leveling
+* level may set soft expectations or caps
+* exceeding level-expected stats requires focused training, special traits, gear, species, or story justification
+
+This allows unusual builds without letting every level-up flatten the character.
+
+⸻
+
+13. Domain XP and domain ranks
+
+Domain XP tracks broad competence.
+
+Domains should have ranks.
+
+Recommended rank scale:
+
+* Rank 0: Untrained
+* Rank 1: Novice
+* Rank 2: Practiced
+* Rank 3: Competent
+* Rank 4: Skilled
+* Rank 5: Expert
+* Rank 6: Master
+* Rank 7: Legendary
+
+13.1 Domain rank thresholds
+
+Recommended XP thresholds:
+
+* Rank 1: 50 XP
+* Rank 2: 150 XP
+* Rank 3: 350 XP
+* Rank 4: 700 XP
+* Rank 5: 1,200 XP
+* Rank 6: 2,000 XP
+* Rank 7: 3,200 XP
+
+Domain ranks should grow slower than individual event rewards.
+
+They represent long-term experience.
+
+13.2 Domain rank effects
+
+Domain ranks should affect plausibility and interpretation.
+
+They should not guarantee success.
+
+Examples:
+
+Melee Domain:
+
+* improves plausibility of weapon control, combat pressure, reading opponents, and training efficiency
+
+Magic Domain:
+
+* improves plausibility of spell control, mana handling, ability stabilization, and cost interpretation
+
+Crafting Domain:
+
+* improves quality, repair success, recipe improvisation, and material efficiency
+
+Investigation Domain:
+
+* improves clue interpretation, contradiction detection, and evidence confidence
+
+Survival Domain:
+
+* improves travel, weather response, foraging, hazard avoidance, and endurance
+
+Social Domain:
+
+* improves negotiation, persuasion, rumor management, witness handling, and reputation scenes
+
+Leadership Domain:
+
+* improves party coordination, workers, morale, command, and domain/labor scenes
+
+13.3 Domain rank and Context
+
+Relevant Domain rank can appear in Context when it matters.
+
+Example:
+
+In a magical training scene, Context might mention:
+
+The player has Practiced Magic Domain experience but Mana Slash is still unstable.
+
+Do not dump all domains every turn.
+
+⸻
+
+14. Ability Growth and progression relationship
+
+Ability Growth should not be reduced to simple XP only.
+
+Abilities should grow through:
+
+* evidence
+* attempts
+* failures
+* partial success
+* repeated use
+* teacher guidance
+* breakthroughs
+* cost observation
+* limit discovery
+* refinement
+* mastery
+
+AbilityReducer owns those records.
+
+ProgressionReducer may still award:
+
+* Magic Domain XP
+* relevant Stat XP
+* small Level XP for breakthroughs
+* general progression milestones
+
+Example:
+
+A new ability stabilizes.
+
+Possible progression effects:
+
+* AbilityReducer promotes candidate to stable ability
+* ProgressionReducer awards Magic Domain XP
+* ProgressionReducer awards INT XP
+* ProgressionReducer may award Level XP if the breakthrough was major
+* CardSync may later mirror stable ability if card-eligible
+
+The important rule:
+
+Ability stabilization is not simply “reach 100 XP.”
+
+It should require evidence and story confirmation.
+
+Chunk 6 will define the full ability lifecycle.
+
+⸻
+
+15. Progression and failure
+
+Failure should be meaningful but not exploitable.
+
+15.1 Failure can teach
+
+A failed real attempt may give:
+
+* small Stat XP
+* small Domain XP
+* ability evidence
+* clue/progress
+* relationship consequence
+* tactical knowledge
+
+Example:
+
+The player fails to climb a wall but learns the stone is slick and weak on one side.
+
+That may produce:
+
+* small SPD or DEF XP
+* Survival/Travel Domain XP
+* scene clue
+* no successful climb
+
+15.2 Failure must cost something
+
+Meaningful failure should usually involve:
+
+* time
+* EP
+* MP
+* risk
+* injury
+* lost opportunity
+* social consequence
+* material loss
+* alerting enemies
+
+If failure costs nothing, reward should be tiny or zero.
+
+15.3 Hard-denied failure gives no progress
+
+No progression from:
+
+* pretend failure
+* dream failure
+* quoted failure
+* debug examples
+* non-canon text
+* intentionally fake attempts
+
+⸻
+
+16. Progression and story realism
+
+Progression should follow the story’s context.
+
+AIDRPG should ask:
+
+* Was the action real?
+* Was it meaningful?
+* Was there effort?
+* Was there cost?
+* Was there risk?
+* Was there feedback?
+* Did the player learn something?
+* Did something change?
+* Was the output direct narration or weak flavor?
+* Does the current character plausibly grow from this?
+
+Example:
+
+“You train with the sword for five minutes.”
+
+Likely reward:
+
+* tiny ATK XP
+* maybe tiny Melee Domain XP
+* no Level XP
+
+“You spend the afternoon drilling sword forms under Captain Jora’s corrections until your arms tremble.”
+
+Likely reward:
+
+* small/moderate ATK XP
+* small/moderate Melee Domain XP
+* EP loss
+* possible fatigue
+* no or tiny Level XP unless this is a meaningful milestone
+
+“You duel Captain Jora and barely survive his final strike, learning to read his shoulder movement.”
+
+Likely reward:
+
+* moderate ATK/DEF/SPD XP
+* Melee Domain XP
+* Level XP
+* injury/EP cost
+* possible relationship or reputation change
+
+⸻
+
+17. Progression and scaling
+
+Progression must scale across the whole game.
+
+Early game:
+
+* small rewards feel meaningful
+* stat increases happen occasionally
+* abilities are unstable
+* ordinary enemies matter
+
+Mid game:
+
+* domain ranks distinguish build
+* abilities stabilize
+* XP-to-next grows
+* stat growth slows
+* quests and combat give larger rewards
+
+Late game:
+
+* minor actions give little progress
+* major achievements drive leveling
+* mastery requires special conditions
+* world-scale actions matter
+* domain projects and reputation can become major progression sources
+
+The progression system should avoid both extremes:
+
+Bad extreme 1:
+
+The player gains nothing unless they complete huge quests.
+
+Bad extreme 2:
+
+The player levels every few turns from random narration.
+
+The middle path is:
+
+Small actions build lanes gradually. Major validated achievements move level meaningfully.
+
+⸻
+
+18. Progression validation outcomes
+
+Progression events should use the same validation outcomes as every other event.
+
+Accept
+
+Use when the progression source is confirmed and meaningful.
+
+Example:
+
+The player defeats an even-threat bandit after a real fight.
+
+Result:
+
+* combat XP accepted
+* relevant Stat/Domain XP accepted
+
+Reject
+
+Use when the event does not justify progression.
+
+Example:
+
+“The bard says you must have grown stronger.”
+
+Result:
+
+* XP rejected
+* reason: social statement, no confirmed growth action
+
+Pending
+
+Use when progress may come later.
+
+Example:
+
+The player starts a week-long apprenticeship.
+
+Result:
+
+* training plan pending
+* no full reward until time/work is confirmed
+
+Soft_fail
+
+Use when the effort was real but success was partial or failed.
+
+Example:
+
+The spell fizzles after real concentration.
+
+Result:
+
+* ability evidence maybe
+* small Magic Domain XP maybe
+* no stable ability
+
+Hard_deny
+
+Use when the source is non-canon or fake.
+
+Example:
+
+“I pretend to become level 10.”
+
+Result:
+
+* hard deny
+* no XP
+* no level
+
+⸻
+
+19. Progression event examples
+
+Example 1 — Safe training
+
+Input:
+
+“I practice sword forms for an hour.”
+
+Output:
+
+“You drill basic cuts until sweat runs down your back.”
+
+Events:
+
+* intent.train
+* progression.statTraining.gain ATK
+* progression.domainXp.gain Melee
+* resource.ep.change
+* time.pass
+
+Validation:
+
+* accept small ATK XP
+* accept small Melee Domain XP
+* accept EP loss
+* accept time passage if clear
+
+State result:
+
+* no level-up unless thresholds reached
+* no instant stat increase unless ATK XP threshold reached
+* no ability unless ability rules detect relevant candidate
+
+Example 2 — Repeated training spam
+
+Input repeated many times:
+
+“I practice sword forms again.”
+
+Output repeats similar training.
+
+Events:
+
+* progression.statTraining.gain
+* progression.domainXp.gain
+
+Validation:
+
+* accept reduced reward or reject after repetition
+* antiFarm flag recorded
+
+State result:
+
+* diminished XP
+* EP/fatigue may continue
+* no infinite farm
+
+Example 3 — Failed ability attempt
+
+Output:
+
+“You try to form Mana Slash, but the light sputters out.”
+
+Events:
+
+* ability.attempt
+* progression.domainXp.gain Magic maybe
+* progression.statTraining.gain INT maybe
+* resource.mp.change maybe
+
+Validation:
+
+* ability.attempt soft_fail
+* small Magic/INT progression accepted if meaningful
+* no stable ability
+
+Example 4 — Quest completion
+
+Output:
+
+“The mayor thanks you for returning the missing ring and declares the matter settled.”
+
+Events:
+
+* quest.complete
+* progression.xp.gain
+* reputation.public.change maybe
+* inventory.coins.gain or item.gain if reward given
+
+Validation:
+
+* quest.complete accepted if quest objective matches
+* XP accepted
+* reward accepted only if actually granted
+
+State result:
+
+* quest archived
+* XP gained
+* reputation maybe changed
+* no reward invented if not mentioned
+
+Example 5 — Rumored victory
+
+Output:
+
+“People say you defeated the ogre in the hills.”
+
+Events:
+
+* reputation.rumor.add
+* progression.xp.gain maybe falsely detected
+
+Validation:
+
+* rumor accepted as rumor if relevant
+* XP rejected
+* ogre defeat not canon unless already confirmed
+
+State result:
+
+* no Level XP from rumor
+* possible rumor record
+
+Example 6 — Duplicate combat output
+
+Output processed twice:
+
+“You drive your blade through the wolf, and it collapses.”
+
+Events:
+
+* combat victory
+* XP gain
+* possible loot
+* actor/group defeated
+
+Validation:
+
+* first pass accepted
+* second pass duplicate skipped by OperationLedger
+
+State result:
+
+* XP only once
+* wolf defeated once
+* no duplicate loot
+
+⸻
+
+20. Progression command expectations
+
+Later command design should include progression views.
+
+/progression should show
+
+* current level
+* current XP
+* XP-to-next
+* total XP
+* recent XP gains
+* domain ranks
+* domain XP progress
+* stat training progress
+* anti-farm warnings if relevant
+* recent level-up milestones
+
+/xp should show
+
+* recent XP events
+* source
+* amount
+* lane
+* validation result
+* duplicate skips
+* reduced rewards
+* pending rewards
+
+/sheet should show
+
+* level
+* XP / XP-to-next
+* core stats
+* maybe top domain ranks
+* resources
+
+/debuglast should show
+
+* proposed progression events
+* accepted/rejected/pending/soft_fail/hard_deny result
+* reward amount
+* reducer commit
+* operation key
+
+The command system must be honest and should not claim progression features work before they are implemented. The clean-core reference warns that /help and command outputs must accurately reflect implemented mechanics and limitations.  ￼
+
+⸻
+
+21. Progression card behavior
+
+Progression should be mirrored carefully.
+
+Protected cards may include progression summaries.
+
+Possible protected card mirrors:
+
+* Player Sheet
+* Progression Summary
+* Abilities Overview
+* Domain Summary if needed
+
+Generated cards should usually not exist for ordinary XP.
+
+Do not create a Story Card for every stat gain.
+
+Do not create a Story Card for every training scene.
+
+CardSync may update protected summaries when progression state changes.
+
+Ability cards may update when stable ability growth changes.
+
+Domain or specialization summaries may update when build identity changes.
+
+But XP events themselves should usually stay in state/audit, not become cards.
+
+⸻
+
+22. Progression safety rules
+
+The progression system must enforce these safety rules.
+
+22.1 No XP from non-canon text
+
+No XP from:
+
+* dreams
+* rumors
+* quotes
+* pretend actions
+* debug text
+* card text
+* hypothetical scenes
+* jokes
+
+22.2 No direct parser XP
+
+Parsers may propose XP events.
+
+ProgressionReducer commits XP.
+
+22.3 No duplicate XP
+
+OperationLedger blocks repeated output.
+
+22.4 No huge weak XP
+
+Weak narration cannot grant large rewards.
+
+22.5 No free infinite training
+
+Training requires time, effort, cost, risk, teacher, challenge, or diminishing returns.
+
+22.6 No level-only power logic
+
+Level influences plausibility, but stats, abilities, equipment, resources, injuries, domain ranks, party, terrain, and story context still matter.
+
+22.7 No ability stabilization from XP alone
+
+Ability evidence and story confirmation matter.
+
+22.8 No reward without owner routing
+
+Combat, ability, crafting, quest, and investigation systems may propose progression rewards.
+
+ProgressionReducer owns the actual XP.
+
+⸻
+
+23. Open balancing knobs
+
+These are intentional tuning knobs, not uncertain design holes.
+
+They should be configurable later:
+
+* XP-to-next formula multiplier
+* training reward multiplier
+* combat reward multiplier
+* quest reward multiplier
+* domain XP threshold scale
+* stat XP threshold scale
+* anti-farm decay rate
+* level-up HP gain
+* level-up MP gain
+* level-up EP gain
+* maximum level, if any
+* high-magic vs low-magic progression style
+* gritty vs heroic progression style
+
+The guide should define defaults, but the system can later allow settings.
+
+Default style should be:
+
+Moderate heroic fantasy progression.
+
+Not too slow, not instantly explosive.
+
+⸻
+
+24. Chunk 4 acceptance tests
+
+These are design-level tests later code must satisfy.
+
+Test 1 — safe training gives small relevant progress
+
+Given:
+
+The player spends one hour practicing sword forms.
+
+Expected:
+
+* ATK XP increases modestly
+* Melee Domain XP increases modestly
+* EP decreases
+* time passes if confirmed
+* no instant level unless threshold reached
+* no new ability unless ability evidence supports it
+
+Test 2 — repeated safe training diminishes
+
+Given:
+
+The player repeats identical sword training many times in the same context.
+
+Expected:
+
+* XP rewards diminish
+* anti-farm record appears
+* EP/fatigue may still accumulate
+* no infinite farming
+
+Test 3 — failed real ability gives evidence, not success
+
+Given:
+
+The player attempts Mana Slash and fails.
+
+Expected:
+
+* ability attempt soft-fails
+* possible ability evidence
+* possible Magic Domain XP / INT XP
+* possible MP cost
+* no stable ability
+
+Test 4 — pretend ability gives no progress
+
+Given:
+
+The player pretends to cast Mana Slash.
+
+Expected:
+
+* hard deny
+* no ability evidence
+* no XP
+* no card
+
+Test 5 — meaningful combat gives appropriate XP
+
+Given:
+
+The player survives an even-threat fight.
+
+Expected:
+
+* Level XP may increase
+* relevant Stat XP increases
+* relevant Domain XP increases
+* resource/injury consequences may apply
+* duplicate output does not apply twice
+
+Test 6 — trivial combat gives reduced XP
+
+Given:
+
+A high-level player defeats a trivial rat.
+
+Expected:
+
+* little or no Level XP
+* maybe tiny relevant Stat/Domain XP
+* no major reward
+
+Test 7 — quest completion gives major XP only when confirmed
+
+Given:
+
+Quest objective is directly fulfilled.
+
+Expected:
+
+* quest completion accepted
+* Level XP awarded
+* reward events emitted if stated
+* quest archived
+
+Given:
+
+Rumor says the quest was completed.
+
+Expected:
+
+* no quest completion
+* no XP
+* possible rumor record
+
+Test 8 — Level XP and Total XP separate correctly
+
+Given:
+
+Player gains 100 Level XP and levels up.
+
+Expected:
+
+* current XP rolls over or resets according to curve
+* total XP increases by 100
+* level increases only if threshold crossed
+
+Test 9 — stat increase requires enough Stat XP
+
+Given:
+
+Player gains a small amount of ATK XP.
+
+Expected:
+
+* ATK XP increases
+* ATK stat does not increase until threshold reached
+
+Test 10 — domain rank requires threshold
+
+Given:
+
+Player gains several small Magic Domain XP rewards.
+
+Expected:
+
+* Magic Domain XP accumulates
+* Magic Domain rank increases only when threshold is reached
+
+Test 11 — duplicate output blocked
+
+Given:
+
+Same XP-granting output is processed twice.
+
+Expected:
+
+* first pass commits XP
+* second pass is skipped
+* audit shows duplicate skip
+
+Test 12 — weak narration capped
+
+Given:
+
+Output says “You feel much stronger now” with no supporting action.
+
+Expected:
+
+* no major XP
+* no stat increase
+* maybe no reward or tiny pending flavor note
+
+⸻
+
+25. Final Chunk 4 doctrine
+
+Progression should reward meaningful confirmed play.
+
+Level represents broad adventure maturity.
+
+Total XP records lifetime growth.
+
+Domain XP records broad competence.
+
+Stat Training XP records specific physical/mental growth.
+
+Ability Growth records evidence, reliability, stabilization, cost knowledge, and mastery through AbilityReducer.
+
+One event can reward multiple lanes, but each lane has an owner.
+
+Failure can teach, but it cannot lie.
+
+Training can grow the player, but it must cost time, effort, or risk.
+
+Combat can reward the player, but only if the consequence is validated and the threat is meaningful.
+
+Quest milestones can grant major progress, but only when truly completed.
+
+Duplicate outputs never give duplicate rewards.
+
+Weak narration never grants huge growth.
+
+Level helps scale the story, but stats, domains, abilities, equipment, resources, injuries, party, terrain, and context still matter.
+
+The goal is not to make numbers dominate the story.
+
+The goal is to make the story’s consequences accumulate into believable growth.
+

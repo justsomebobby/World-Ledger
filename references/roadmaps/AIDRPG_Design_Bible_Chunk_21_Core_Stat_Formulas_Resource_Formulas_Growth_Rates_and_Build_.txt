@@ -1,0 +1,3043 @@
+AIDRPG Design Bible — Chunk 21: Core Stat Formulas, Resource Formulas, Growth Rates, and Build Archetypes
+
+1. Purpose of this chunk
+
+Chunk 21 defines how AIDRPG turns level, race, class, training, abilities, equipment, injuries, and conditions into usable player numbers.
+
+Chunk 19 defined the Level 1–1000 scale.
+
+Chunk 20 defined race/species modifiers.
+
+Chunk 21 answers:
+
+What does ATK mean?
+
+What does DEF mean?
+
+What does SPD mean?
+
+What does INT mean?
+
+What does LCK mean?
+
+How are HP, MP, and EP calculated?
+
+How do stats grow?
+
+How do race and class affect stats?
+
+How do injuries and fatigue reduce effective stats?
+
+How does the system estimate stats for freeform AI Dungeon gameplay?
+
+What should a Level 50 warrior look like?
+
+What should a Level 500 mage look like?
+
+What should a Level 1000 specialized build look like?
+
+The central rule is:
+
+Stats should guide plausibility, not replace narrative validation.
+
+AIDRPG should use stats to keep outcomes believable, but the story still matters.
+
+A high ATK does not guarantee a hit.
+
+A high DEF does not ignore poison.
+
+A high SPD does not bypass locked doors.
+
+A high INT does not solve a case without evidence.
+
+A high LCK does not rewrite canon.
+
+Stats influence what is plausible, likely, costly, risky, or impossible.
+
+⸻
+
+2. Core stat philosophy
+
+AIDRPG uses five core stats:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+
+These stats are broad.
+
+They are not meant to replace every possible skill.
+
+Instead, they work with:
+
+* domains
+* abilities
+* equipment
+* race/species
+* body state
+* conditions
+* terrain
+* enemy traits
+* story leverage
+* validation evidence
+
+The same stat can matter differently in different scenes.
+
+Example:
+
+ATK helps with sword attacks, punching, breaking objects, grappling, and some forceful abilities.
+
+DEF helps with resisting damage, enduring pain, holding ground, surviving weather, resisting physical strain, and maintaining stability.
+
+SPD helps with dodging, running, quick attacks, stealth movement, initiative, reaction, and chase scenes.
+
+INT helps with magic, analysis, crafting, investigation, tactics, memory, learning, and complex ability control.
+
+LCK helps with unstable outcomes, rare discoveries, avoiding disaster, loot fortune, gamble-like actions, and chaotic ability behavior.
+
+Stats should never be the only deciding factor.
+
+They are the player’s baseline capability.
+
+⸻
+
+3. Stat definitions
+
+ATK
+
+ATK represents forceful offensive capability.
+
+It includes:
+
+* physical striking power
+* weapon force
+* grappling force
+* destructive output
+* ability to push through resistance
+* offensive martial pressure
+* ability to damage barriers
+* raw combat aggression
+* some natural weapon strength
+
+ATK affects:
+
+* melee damage
+* ranged physical damage if strength-based
+* unarmed damage
+* breaking objects
+* overpowering enemies
+* weapon clashes
+* monster natural attacks
+* certain physical skills
+* some intimidation when physical power is obvious
+
+ATK does not automatically mean:
+
+* accuracy
+* technique
+* magical power
+* social dominance
+* instant kill
+
+Domains and abilities refine ATK.
+
+Example:
+
+A high ATK character with no Sword Domain may swing hard but clumsily.
+
+A lower ATK duelist with high Sword Domain may land cleaner hits.
+
+⸻
+
+DEF
+
+DEF represents durability, resistance, stability, and endurance under pressure.
+
+It includes:
+
+* physical toughness
+* damage resistance
+* pain tolerance
+* body stability
+* ability to block
+* armor use
+* endurance under impact
+* resistance to harsh environments
+* ability to maintain posture
+* ability to survive heavy strain
+
+DEF affects:
+
+* HP scaling
+* damage reduction
+* injury resistance
+* resistance to knockback
+* shield blocking
+* armor effectiveness
+* fatigue resistance
+* environmental endurance
+* recovery stability
+* ability to survive poison/disease indirectly if body supports it
+
+DEF does not automatically mean:
+
+* poison immunity
+* curse immunity
+* emotional resilience
+* perfect armor
+* never being injured
+
+A low DEF character can still avoid damage with SPD.
+
+A high DEF character can still be bypassed by poison, soul damage, social traps, sealing, or status effects.
+
+⸻
+
+SPD
+
+SPD represents speed, reaction, mobility, and timing.
+
+It includes:
+
+* movement speed
+* reaction time
+* dodge ability
+* quick attacks
+* chase ability
+* initiative
+* agility
+* stealth movement
+* balance
+* repositioning
+* escape ability
+
+SPD affects:
+
+* dodging attacks
+* acting before enemies
+* running away
+* chasing targets
+* avoiding traps
+* stealth movement
+* quick weapon use
+* fast casting gestures
+* acrobatics
+* travel pace in short bursts
+
+SPD does not automatically mean:
+
+* long-distance endurance
+* teleportation
+* perfect stealth
+* guaranteed escape
+* precision technique
+
+EP, terrain, injuries, and load can heavily reduce effective SPD.
+
+⸻
+
+INT
+
+INT represents reasoning, magical control, learning, analysis, memory, technical skill, and complex problem-solving.
+
+It includes:
+
+* spell control
+* mana shaping
+* tactical thinking
+* crafting planning
+* investigation
+* memory
+* learning speed
+* understanding systems
+* recipe comprehension
+* strategy
+* social reading when analytical
+* ability design/control
+
+INT affects:
+
+* MP scaling
+* magical accuracy/control
+* crafting quality
+* investigation reasoning
+* ability stabilization
+* ritual work
+* tactical combat
+* learning from failure
+* identifying enemy traits
+* understanding interfaces/status panels
+* domain growth in knowledge-heavy fields
+
+INT does not automatically mean:
+
+* knowing hidden facts
+* solving cases without evidence
+* social wisdom
+* emotional intelligence
+* perfect memory of unknown lore
+* free spellcasting
+
+High INT helps interpret clues.
+
+It does not create proof.
+
+⸻
+
+LCK
+
+LCK represents fortune, fate pressure, opportunistic timing, rare chances, instability handling, and narrative luck.
+
+It includes:
+
+* narrow escapes
+* lucky finds
+* rare drops
+* chance-based outcomes
+* resisting bad random turns
+* unstable ability behavior
+* critical opportunities
+* gamble-based actions
+* coincidence in the player’s favor
+* survival at the edge of failure
+
+LCK affects:
+
+* critical hit chance
+* rare loot chance
+* avoiding worst-case failure
+* unstable ability outcomes
+* chance discoveries
+* favorable timing
+* random encounter tilt
+* escape from death-boundary only when plausible
+* chaotic magic or mutation outcomes
+
+LCK does not automatically mean:
+
+* immunity to consequences
+* guaranteed success
+* rewriting truth
+* free resurrection
+* always finding treasure
+* escaping every death
+
+LCK can soften danger.
+
+It cannot override hard validation.
+
+⸻
+
+4. Base human stat formula
+
+Chunk 19 gave target stat ranges.
+
+Chunk 21 gives a usable formula.
+
+A simple default base stat formula for a human-like balanced character:
+
+BaseStat = 5 + floor(Level × 1.25)
+
+This gives:
+
+Level	Balanced Base Stat
+1	6
+5	11
+10	17
+20	30
+50	67
+100	130
+200	255
+500	630
+1000	1255
+
+This lands inside the “average stat” range from Chunk 19.
+
+However, actual stats should not all remain equal.
+
+Actual stats should be modified by:
+
+* race/species
+* class/build
+* stat training
+* domain growth
+* ability/passive bonuses
+* equipment
+* injuries/conditions
+* temporary buffs/debuffs
+
+So a Level 100 human with no specialization might have stats near 130, but a focused warrior may have ATK 190 and INT 80.
+
+⸻
+
+5. Stat spread model
+
+AIDRPG should use stat spread categories instead of giving every character equal stats.
+
+At each level, stats should fall into one of these categories:
+
+Category	Multiplier Against Balanced Base
+Neglected	×0.45–0.65
+Weak	×0.65–0.85
+Average	×0.85–1.15
+Strong	×1.15–1.6
+Specialized	×1.6–2.1
+Extreme	×2.1–2.6
+Supernatural Extreme	×2.6+ only with strong support
+
+Example:
+
+Level 100 balanced base stat = 130.
+
+A Level 100 warrior might have:
+
+* ATK specialized: 130 × 1.7 = 221
+* DEF strong: 130 × 1.4 = 182
+* SPD average: 130 × 1.0 = 130
+* INT weak: 130 × 0.7 = 91
+* LCK average: 130 × 0.9 = 117
+
+This matches the Chunk 19 expected ranges.
+
+⸻
+
+6. Final stat calculation order
+
+AIDRPG should calculate current stats in layers.
+
+Recommended order:
+
+1. Level Base
+2. Race/Species Modifier
+3. Class/Build Modifier
+4. Stat Training Additions
+5. Domain/Specialization Bonuses
+6. Ability/Passive Bonuses
+7. Equipment Bonuses
+8. Temporary Buffs
+9. Injuries/Conditions/Fatigue Penalties
+10. Effective Stat Output
+
+This prevents race, buffs, and equipment from multiplying each other endlessly.
+
+The system should distinguish:
+
+* permanent base stat
+* trained stat bonus
+* passive stat bonus
+* equipment stat bonus
+* temporary stat modifier
+* effective current stat
+
+Player-facing /sheet should usually show current effective stats and maybe base stats if useful.
+
+Debug commands can show the full breakdown.
+
+⸻
+
+7. Race/species stat modifiers
+
+Race/species should modify stats using modest multipliers or category shifts.
+
+Suggested numerical conversion:
+
+Race Modifier Category	Multiplier
+Very Low	×0.65
+Low	×0.8
+Slightly Low	×0.9
+Baseline	×1.0
+Slightly High	×1.1
+High	×1.25
+Very High	×1.45
+Extreme	×1.75+ only with major tradeoffs
+
+Example:
+
+A Level 50 human balanced base stat is 67.
+
+A Level 50 dragonkin with High DEF:
+
+DEF = 67 × 1.25 = 83 before class/training
+
+A Level 50 fairy with Very Low physical DEF:
+
+DEF = 67 × 0.65 = 43 before class/training
+
+Race modifiers should usually be applied before class/build and training.
+
+Race defines the body.
+
+Class/training defines what the character does with that body.
+
+⸻
+
+8. Class/build stat modifiers
+
+Class/build should apply stat emphasis.
+
+Classes are not rigid cages, but they guide starting and growth.
+
+Suggested class/build modifiers:
+
+Warrior
+
+ATK ×1.35
+DEF ×1.2
+SPD ×1.0
+INT ×0.85
+LCK ×0.95
+
+Tank / Guardian
+
+ATK ×1.1
+DEF ×1.45
+SPD ×0.8
+INT ×0.9
+LCK ×0.9
+
+Rogue / Scout
+
+ATK ×1.0
+DEF ×0.85
+SPD ×1.45
+INT ×1.05
+LCK ×1.2
+
+Mage
+
+ATK ×0.65
+DEF ×0.75
+SPD ×0.85
+INT ×1.65
+LCK ×1.0
+
+Monk / Martial Artist
+
+ATK ×1.15
+DEF ×1.1
+SPD ×1.25
+INT ×1.05
+LCK ×1.0
+
+Brawler
+
+ATK ×1.35
+DEF ×1.15
+SPD ×1.05
+INT ×0.85
+LCK ×1.0
+
+Ranger
+
+ATK ×1.1
+DEF ×0.95
+SPD ×1.25
+INT ×1.0
+LCK ×1.1
+
+Summoner
+
+ATK ×0.75
+DEF ×0.85
+SPD ×0.9
+INT ×1.45
+LCK ×1.1
+
+Crafter / Artificer
+
+ATK ×0.85
+DEF ×0.95
+SPD ×0.85
+INT ×1.45
+LCK ×1.05
+
+Investigator / Scholar
+
+ATK ×0.75
+DEF ×0.85
+SPD ×0.9
+INT ×1.55
+LCK ×1.15
+
+Leader / Commander
+
+ATK ×0.95
+DEF ×1.0
+SPD ×0.9
+INT ×1.25
+LCK ×1.15
+
+Hybrid builds should blend two or more profiles at reduced strength.
+
+Example:
+
+Spellblade:
+
+* ATK strong
+* INT strong
+* DEF average
+* SPD average
+* LCK average
+
+Do not stack full Warrior plus full Mage.
+
+⸻
+
+9. Build archetype philosophy
+
+Build identity should affect stat growth, not force exact classes.
+
+A player may begin as “Brawler” but develop magic.
+
+A mage may train swordplay.
+
+A fairy warrior may fight through speed and precision rather than raw strength.
+
+A giant scholar may have high INT and high HP.
+
+AIDRPG should track build identity as a summary:
+
+Build Identity: Human Brawler with developing mana control
+
+or:
+
+Build Identity: Dragonkin defensive spellblade
+
+Build identity helps:
+
+* Context
+* stat growth direction
+* ability candidate interpretation
+* XP lane selection
+* enemy matchup validation
+* card summaries
+
+It should not prevent creative growth.
+
+⸻
+
+10. Stat training additions
+
+Stats should grow from use.
+
+AIDRPG should distinguish level-based growth from training-based growth.
+
+Basic model:
+
+PermanentStat = LevelStatAfterRaceAndBuild + TrainingBonus + PassivePermanentBonus
+
+TrainingBonus comes from stat XP.
+
+Exact XP curve is in Chunk 22, but Chunk 21 defines how training appears.
+
+Training should affect:
+
+* ATK when attacking, lifting, grappling, breaking, weapon training
+* DEF when blocking, enduring, armor training, resisting strain
+* SPD when dodging, sprinting, stealth-moving, reacting
+* INT when studying, casting, crafting, analyzing, investigating
+* LCK when surviving risky uncertainty, gambling, chaotic magic, rare opportunities
+
+Training should not raise stats from trivial repetition forever.
+
+Example:
+
+Punching a tree at Level 200 should not keep meaningfully raising ATK.
+
+Fighting a dangerous monster, training with a master, or learning a new technique should.
+
+⸻
+
+11. Stat soft caps by level
+
+To avoid absurd early stat spikes, AIDRPG should use soft caps.
+
+Suggested soft cap:
+
+Level Soft Cap for a Stat = BalancedBaseStat × 2.1
+
+At Level 10:
+
+BalancedBaseStat = 17.
+
+Soft cap:
+
+17 × 2.1 = 35
+
+So a Level 10 player having ATK 35 is extreme but possible with race/class/specialization.
+
+ATK 200 at Level 10 should require extraordinary story support, such as divine blessing, monster transformation, temporary buff, or broken artifact.
+
+At Level 1000:
+
+BalancedBaseStat = 1255.
+
+Soft cap:
+
+1255 × 2.1 = 2635
+
+This fits the Chunk 19 extreme stat range.
+
+AIDRPG can allow above soft cap, but only if clearly supported.
+
+⸻
+
+12. Stat hard warning threshold
+
+Instead of a strict hard cap, use a warning threshold.
+
+Suggested warning threshold:
+
+Stat Warning Threshold = BalancedBaseStat × 2.6
+
+If a stat exceeds this without strong support, audit should flag it.
+
+Examples of valid reasons to exceed warning threshold:
+
+* divine transformation
+* racial evolution
+* artifact bond
+* stat absorption milestone
+* major class awakening
+* high-risk curse
+* temporary buff
+* world-scale blessing
+
+Examples of invalid reasons:
+
+* repeated trivial training
+* AI randomly says “your strength triples”
+* card text
+* dream
+* joke
+* status panel contradiction
+
+This keeps high-scale power possible but controlled.
+
+⸻
+
+13. Derived stat concepts
+
+AIDRPG can optionally use derived values internally.
+
+Do not expose too many derived stats to the player by default.
+
+Useful derived values:
+
+Physical Power
+
+Physical Power = ATK + (DEF × 0.25) + (EP factor)
+
+Used for grappling, lifting, breaking, raw force.
+
+Combat Defense
+
+Combat Defense = DEF + equipment armor + shield + relevant ability
+
+Used for reducing damage.
+
+Evasion
+
+Evasion = SPD + relevant domain + terrain modifier - burden penalty
+
+Used for dodge/chase/avoidance.
+
+Magic Control
+
+Magic Control = INT + relevant magic domain + focus/equipment + ability rank
+
+Used for spell stability and ability costs.
+
+Survival Endurance
+
+Survival Endurance = DEF + EP factor + survival domain + race modifier
+
+Used for travel, weather, hunger, exhaustion.
+
+Fortune Pressure
+
+Fortune Pressure = LCK + relevant fate/passive modifiers
+
+Used for rare/lucky/unstable events.
+
+These derived stats should guide validation but should not become a second confusing character sheet unless needed.
+
+⸻
+
+14. HP formula
+
+HP represents body integrity, health, survivability, or equivalent body stability.
+
+Default human-like HP formula:
+
+Max HP = 50 + (Level × 10) + (DEF × 8)
+
+Examples:
+
+Level 1 human, DEF 5:
+
+50 + 10 + 40 = 100 HP
+
+Level 50 warrior, DEF 90:
+
+50 + 500 + 720 = 1270 HP
+
+Level 100 mage, DEF 80:
+
+50 + 1000 + 640 = 1690 HP
+
+Level 1000 tank, DEF 2600:
+
+50 + 10000 + 20800 = 30850 HP
+
+This fits the Chunk 19 HP expectations.
+
+Race/species then modifies HP.
+
+⸻
+
+15. HP race modifier
+
+Apply race/body HP modifier after base formula.
+
+Suggested modifiers:
+
+HP Modifier Category	Multiplier
+Very Low	×0.55
+Low	×0.75
+Slightly Low	×0.9
+Baseline	×1.0
+Slightly High	×1.1
+High	×1.25
+Very High	×1.5
+Extreme	×2.0+ with major tradeoffs
+
+Examples:
+
+Fairy Level 50 with base HP 800 and Very Low HP:
+
+800 × 0.55 = 440 HP
+
+Giant Level 50 with base HP 1600 and Very High HP:
+
+1600 × 1.5 = 2400 HP
+
+Slime HP may represent mass/cohesion.
+
+Construct HP may represent structure.
+
+Undead HP may represent body integrity.
+
+The formula can still use HP, but body meaning changes.
+
+⸻
+
+16. MP formula
+
+MP represents mana, spiritual power, magic capacity, divine/infernal energy, psychic force, or equivalent.
+
+Default human-like MP formula:
+
+Max MP = 20 + (Level × 7) + (INT × 10)
+
+Examples:
+
+Level 1 human, INT 5:
+
+20 + 7 + 50 = 77 MP
+
+Level 50 mage, INT 120:
+
+20 + 350 + 1200 = 1570 MP
+
+Level 100 warrior, INT 80:
+
+20 + 700 + 800 = 1520 MP
+
+Level 1000 archmage, INT 2550:
+
+20 + 7000 + 25500 = 32520 MP
+
+This supports high-level spellcasting while allowing meaningful costs.
+
+⸻
+
+17. MP race modifier
+
+Suggested MP modifiers:
+
+MP Modifier Category	Multiplier
+Very Low	×0.5
+Low	×0.75
+Slightly Low	×0.9
+Baseline	×1.0
+Slightly High	×1.1
+High	×1.3
+Very High	×1.6
+Extreme	×2.0+ with major limits
+
+Examples:
+
+Fairy:
+
+* High or Very High MP
+
+Dragonkin:
+
+* Baseline to High depending lineage
+
+Construct:
+
+* MP may be core/battery capacity
+
+Undead:
+
+* MP may be necrotic/spiritual energy
+
+Human:
+
+* baseline unless origin/class modifies it
+
+High MP does not create abilities.
+
+AbilityReducer still owns spells and powers.
+
+⸻
+
+18. EP formula
+
+EP represents stamina, exertion capacity, physical energy, focus endurance, action endurance, or body-control energy.
+
+Default human-like EP formula:
+
+Max EP = 40 + (Level × 9) + ((DEF + SPD) × 5)
+
+Examples:
+
+Level 1 human, DEF 5, SPD 5:
+
+40 + 9 + 50 = 99 EP
+
+Level 50 brawler, DEF 85, SPD 75:
+
+40 + 450 + 800 = 1290 EP
+
+Level 100 rogue, DEF 95, SPD 190:
+
+40 + 900 + 1425 = 2365 EP
+
+Level 1000 sword saint, DEF 950, SPD 1700:
+
+40 + 9000 + 13250 = 22290 EP
+
+EP should be highly relevant for:
+
+* combat action
+* sprinting
+* dodging
+* blocking
+* travel exertion
+* crafting labor
+* physical training
+* maintaining physical stances
+* overexertion
+
+⸻
+
+19. EP race modifier
+
+Suggested EP modifiers:
+
+EP Modifier Category	Multiplier
+Very Low	×0.55
+Low	×0.75
+Slightly Low	×0.9
+Baseline	×1.0
+Slightly High	×1.1
+High	×1.25
+Very High	×1.5
+Extreme	×2.0+ with major tradeoffs
+
+Examples:
+
+Dwarf:
+
+* High EP
+
+Giant:
+
+* High or Very High EP, but many actions cost more
+
+Fairy:
+
+* Baseline or Low EP, but flight may drain EP
+
+Undead:
+
+* EP may represent animating force
+
+Construct:
+
+* EP may represent battery/mechanical endurance
+
+Slime:
+
+* EP may represent cohesion and movement control
+
+⸻
+
+20. Resource calculation order
+
+Recommended resource calculation:
+
+1. Calculate base stat values.
+2. Calculate Max HP from Level and DEF.
+3. Calculate Max MP from Level and INT.
+4. Calculate Max EP from Level, DEF, and SPD.
+5. Apply race/species resource modifiers.
+6. Apply class/build resource modifiers.
+7. Apply passive/trait modifiers.
+8. Apply equipment/artifact modifiers.
+9. Apply curses/blessings.
+10. Clamp current resources to new max unless special rule says otherwise.
+
+Important:
+
+When max resources increase from level-up, current resources do not automatically fully refill unless the design decides level-up restores resources.
+
+Recommended default:
+
+* level-up restores a small percentage
+* full refill only if setting/system says so
+
+Example:
+
+Level-up may restore:
+
+10% HP, 10% MP, 15% EP
+
+or simply increase maximums without restoring current values.
+
+This should be a setting.
+
+⸻
+
+21. Class/build resource modifiers
+
+Class/build can modify resources.
+
+Suggested modifiers:
+
+Warrior
+
+HP ×1.15
+MP ×0.8
+EP ×1.2
+
+Tank
+
+HP ×1.35
+MP ×0.75
+EP ×1.15
+
+Rogue
+
+HP ×0.9
+MP ×0.9
+EP ×1.25
+
+Mage
+
+HP ×0.75
+MP ×1.45
+EP ×0.85
+
+Monk
+
+HP ×1.0
+MP ×1.1
+EP ×1.25
+
+Brawler
+
+HP ×1.15
+MP ×0.75
+EP ×1.3
+
+Summoner
+
+HP ×0.85
+MP ×1.35
+EP ×0.9
+
+Crafter / Artificer
+
+HP ×0.95
+MP ×1.1
+EP ×0.95
+
+Investigator / Scholar
+
+HP ×0.85
+MP ×1.2
+EP ×0.9
+
+Hybrid builds blend modifiers.
+
+Do not stack full modifiers from multiple builds.
+
+⸻
+
+22. Injury and condition effective stat penalties
+
+AIDRPG should distinguish permanent stats from effective stats.
+
+Effective stats can be reduced by injuries, conditions, fatigue, or resource depletion.
+
+Suggested penalty table:
+
+State	Effective Penalty
+minor injury	-5% to relevant action/stat
+moderate injury	-10% to -20%
+severe injury	-25% to -50%
+critical injury	-50%+ or action blocked
+light fatigue	-5% SPD/ATK/EP actions
+tired	-10% to -15%
+exhausted	-25% to -40%
+0 EP	physical actions severely impaired
+low MP	magic actions unstable
+poison	varies, often DEF/SPD/INT penalty
+fear/panic	INT/SPD/action control penalty
+bleeding	HP loss over time and physical penalty
+broken limb	action-specific block or heavy penalty
+blinded	accuracy, navigation, reading penalty
+stunned	immediate action blocked/reduced
+
+Examples:
+
+Broken right arm:
+
+* sword attacks using right arm may be blocked
+* two-handed weapons blocked
+* casting gestures impaired if needed
+* general ATK not permanently reduced, but effective action is heavily impaired
+
+Exhausted:
+
+* ATK may remain high on sheet
+* effective physical actions are risky
+* EP costs may increase
+* overexertion may cause injury
+
+⸻
+
+23. Resource threshold effects
+
+Resources should have thresholds that affect validation.
+
+HP thresholds
+
+HP %	Meaning
+100–75%	healthy or mostly stable
+74–50%	wounded but functional
+49–25%	heavily wounded
+24–10%	critical danger
+9–1%	death-boundary / collapse risk
+0%	unconscious, dying, destroyed, inert, or equivalent depending body
+
+MP thresholds
+
+MP %	Meaning
+100–50%	normal casting
+49–25%	cautious casting
+24–10%	unstable or limited casting
+9–1%	severe risk, weak magic only
+0%	no normal magic unless overcharge/sacrifice
+
+EP thresholds
+
+EP %	Meaning
+100–50%	normal exertion
+49–25%	tiring
+24–10%	exhausted actions risky
+9–1%	near collapse
+0%	physical overexertion, collapse risk, severe penalties
+
+Thresholds should affect Context.
+
+Example:
+
+If EP is below 10%, Context should mention exhaustion when physical action is likely.
+
+⸻
+
+24. Low resource penalties
+
+Low resources should not always prevent action.
+
+They should increase cost, risk, and failure.
+
+Low HP
+
+Effects:
+
+* injury worsens easily
+* death-boundary risk
+* reduced endurance
+* less tolerance for damage
+* fear/social vulnerability if visible
+
+Low MP
+
+Effects:
+
+* spell failure
+* weaker output
+* backlash risk
+* inability to maintain summons/barriers
+* loss of magical perception
+* overcharge temptation
+
+Low EP
+
+Effects:
+
+* slower movement
+* weak attacks
+* poor dodges
+* block failure
+* collapse risk
+* worse travel
+* worse crafting labor
+* longer recovery needed
+
+AIDRPG should avoid binary “can/cannot” unless resource is truly insufficient.
+
+⸻
+
+25. Overexertion
+
+Players may act beyond safe resource limits.
+
+Overexertion allows dramatic freeform play.
+
+Example:
+
+“I force myself to stand and swing one more time.”
+
+If EP is 0, this may still happen, but with consequences.
+
+Possible overexertion costs:
+
+* HP damage
+* injury worsening
+* condition
+* unconsciousness after action
+* temporary stat penalty
+* ability backlash
+* fatigue increase
+* resource debt
+* partial success
+
+Overexertion should be possible but dangerous.
+
+It should not be free.
+
+⸻
+
+26. Stat comparison bands
+
+AIDRPG needs stat comparison bands for validation.
+
+Compare effective player stat against effective enemy stat or difficulty.
+
+Ratio	Meaning
+player < 0.25×	nearly impossible
+0.25–0.5×	heavily outmatched
+0.5–0.75×	disadvantaged
+0.75–1.25×	contested/even
+1.25–1.75×	favored
+1.75–2.5×	strongly favored
+2.5–4×	overwhelming
+4×+	trivial unless special context
+
+Example:
+
+Player ATK 100 versus enemy DEF 200:
+
+Ratio 0.5.
+
+Direct damage is disadvantaged.
+
+Player may need technique, weakness, magic, or repeated effort.
+
+Player ATK 500 versus enemy DEF 100:
+
+Ratio 5.
+
+Physical damage is overwhelming unless enemy has special resistance.
+
+⸻
+
+27. Difficulty target numbers
+
+For non-enemy tasks, use difficulty target bands.
+
+Suggested difficulty target by task scale:
+
+Task Difficulty	Target Stat/Derived Value
+trivial	5–20
+easy	20–50
+ordinary	50–100
+trained	100–250
+hard	250–500
+expert	500–1000
+legendary	1000–2000
+mythic	2000–4000
+divine/cosmic	4000+ plus story leverage
+
+Examples:
+
+Breaking a cheap wooden chair:
+
+* trivial/easy
+
+Breaking an iron bar:
+
+* trained/hard depending level scale
+
+Breaking an enchanted gate:
+
+* expert/legendary plus magic/crafting knowledge
+
+Understanding basic potion recipe:
+
+* ordinary/trained INT/Crafting
+
+Interpreting divine cosmic rune:
+
+* mythic/divine INT/Magic/Religion Domain
+
+This helps freeform scenes outside combat.
+
+⸻
+
+28. Freeform action interpretation using stats
+
+When the player writes a natural action, AIDRPG should identify the dominant stat.
+
+Examples:
+
+“I punch him in the jaw.”
+
+Primary:
+
+* ATK
+
+Secondary:
+
+* SPD, Brawling Domain, EP
+
+“I brace behind my shield.”
+
+Primary:
+
+* DEF
+
+Secondary:
+
+* equipment, Shield Domain, EP
+
+“I dive out of the way.”
+
+Primary:
+
+* SPD
+
+Secondary:
+
+* EP, terrain, injury
+
+“I analyze the rune.”
+
+Primary:
+
+* INT
+
+Secondary:
+
+* Magic Domain, Investigation Domain, relevant lore
+
+“I take a risky leap and hope for the best.”
+
+Primary:
+
+* SPD or ATK depending action
+
+Secondary:
+
+* LCK, EP
+
+“I try to copy the enemy’s spell.”
+
+Primary:
+
+* INT
+
+Secondary:
+
+* Magic Domain, ability copy trait, LCK, MP
+
+“I improvise a boxing move from memory.”
+
+Primary:
+
+* ATK/SPD depending action
+
+Secondary:
+
+* Brawling Domain, INT, real-world background talent
+
+This keeps freeform inputs grounded.
+
+⸻
+
+29. Stat and domain relationship
+
+Stats are broad ability.
+
+Domains are trained application.
+
+Example:
+
+High ATK but low Sword Domain:
+
+* strong swings
+* poor blade control
+* vulnerable to skilled counters
+
+Low ATK but high Sword Domain:
+
+* precise technique
+* can exploit openings
+* less raw damage
+
+High INT but low Magic Domain:
+
+* understands theory
+* unstable spellcasting
+
+Low INT but high Fire Magic Domain:
+
+* practiced fire spells
+* weaker at unfamiliar magic
+
+High SPD but low Stealth Domain:
+
+* fast movement
+* may still make noise
+
+Stat plus domain gives best results.
+
+Neither fully replaces the other.
+
+⸻
+
+30. Suggested domain contribution
+
+For internal validation, domains can add effective value.
+
+Simple model:
+
+Effective Action Score = Relevant Stat + Domain Bonus + Ability Rank Bonus + Equipment Bonus + Context Modifier
+
+Suggested domain bonus by rank:
+
+Domain Rank	Bonus
+0	0
+1	+5
+2	+15
+3	+35
+4	+70
+5	+120
+6	+200
+7	+325
+8	+500
+9	+750
+10	+1100
+11	+1500
+12	+2000
+13	+2600
+14	+3300
+15	+4200
+
+At low levels, domain rank can matter a lot.
+
+At high levels, high domain ranks keep specialization meaningful.
+
+Chunk 22 will define how domain ranks are earned.
+
+⸻
+
+31. Ability rank contribution
+
+Abilities also add effective value.
+
+Suggested ability rank bonus:
+
+Ability Rank	Bonus
+Candidate	no reliable bonus
+1	+10
+2	+25
+3	+50
+4	+90
+5	+150
+6	+250
+7	+400
+8	+650
+9	+1000
+10	+1500
+11+	special mythic scaling
+
+Ability rank should not just be raw bonus.
+
+It can also reduce cost, increase reliability, unlock variants, or reduce failure risk.
+
+⸻
+
+32. Equipment contribution
+
+Equipment should affect effective stats, not usually permanent stats.
+
+Examples:
+
+* sword improves weapon damage
+* armor improves combat defense
+* boots improve travel/dodge
+* staff improves spell control
+* ring improves MP or LCK
+* shield improves blocking
+* tool improves crafting
+
+Equipment bonuses should be contextual.
+
+A magic staff should not improve punching.
+
+Heavy armor may improve DEF but reduce SPD and increase EP cost.
+
+Example:
+
+Iron Sword:
+ATK +20 for sword attacks
+No bonus to unarmed or magic
+Heavy Plate:
+DEF +150 against physical attacks
+SPD -50
+EP costs +10% in travel/combat
+
+Equipment is important but should not dominate everything unless artifact-level.
+
+⸻
+
+33. Build archetype examples by level
+
+Level 10 Human Brawler
+
+Balanced base stat: 17.
+
+Possible stats:
+
+ATK: 24
+DEF: 20
+SPD: 18
+INT: 13
+LCK: 17
+HP: 270
+MP: 135
+EP: 350
+
+Meaning:
+
+* can handle weak thugs or a lone goblin
+* trained enemy is dangerous
+* magic weak
+* good stamina for early brawling
+
+Level 50 Human Warrior
+
+Balanced base stat: 67.
+
+Possible stats:
+
+ATK: 105
+DEF: 85
+SPD: 65
+INT: 50
+LCK: 60
+HP: 1230
+MP: 870
+EP: 1240
+
+Meaning:
+
+* competent adventurer
+* can fight dangerous beasts
+* magic possible but not main strength
+* still not immune to poison or traps
+
+Level 100 Elf Mage
+
+Balanced base stat: 130.
+
+Possible stats:
+
+ATK: 70
+DEF: 85
+SPD: 130
+INT: 245
+LCK: 125
+HP: 1680
+MP: 3800
+EP: 1950
+
+Meaning:
+
+* powerful regional caster
+* physically vulnerable compared to warriors
+* high magic control
+* can still be ambushed or silenced
+
+Level 250 Dwarf Guardian
+
+Balanced base stat: 317.
+
+Possible stats:
+
+ATK: 340
+DEF: 650
+SPD: 190
+INT: 260
+LCK: 240
+HP: 7900
+MP: 3600
+EP: 7200
+
+Meaning:
+
+* extremely durable
+* slow but hard to break
+* strong in defensive combat and harsh conditions
+
+Level 500 Fairy Archmage
+
+Balanced base stat: 630.
+
+Possible stats:
+
+ATK: 250
+DEF: 360
+SPD: 1100
+INT: 1450
+LCK: 850
+HP: 7500
+MP: 24000
+EP: 9800
+
+Meaning:
+
+* fragile relative to mythic enemies
+* extremely mobile and magical
+* physical capture or anti-magic is dangerous
+
+Level 1000 Dragonkin Spellblade
+
+Balanced base stat: 1255.
+
+Possible stats:
+
+ATK: 2100
+DEF: 1850
+SPD: 1450
+INT: 1700
+LCK: 900
+HP: 35000
+MP: 32000
+EP: 33000
+
+Meaning:
+
+* world-scale hybrid
+* direct combat and magic both strong
+* still vulnerable to anti-dragon weapons, sealing, exhaustion, divine counters, or social consequences
+
+⸻
+
+34. Level 1000 should still have weaknesses
+
+At Level 1000, stats are enormous, but weaknesses remain.
+
+Examples:
+
+Sword saint:
+
+* weak against anti-physical, sealing, illusions, curses, distant rituals
+
+Archmage:
+
+* weak if silenced, anti-magic, surprised, or drained
+
+Tank:
+
+* weak against time limits, mobility, soul attacks, battlefield objectives
+
+Trickster:
+
+* weak against unavoidable AoE, fate locks, truth-binding, brute durability checks
+
+Dragonkin:
+
+* weak against anti-dragon weapons, elemental counters, dragon oaths
+
+Undead:
+
+* weak against holy/sealing/anchor destruction
+
+Slime:
+
+* weak against drying, fire, purification, containment, core damage
+
+Stats define power.
+
+They do not remove context.
+
+⸻
+
+35. High-level stat compression for narration
+
+AI Dungeon should not always see exact huge numbers.
+
+Context may convert stats into descriptive bands.
+
+Example:
+
+Instead of injecting:
+
+ATK 2100, DEF 1850, SPD 1450, INT 1700, LCK 900
+
+Context might say:
+
+You are a world-scale dragonkin spellblade with extreme offensive power, immense durability, high speed, and advanced magical control. Anti-dragon weapons and sealing magic remain serious threats.
+
+Commands show exact numbers.
+
+Context usually gives readable scale.
+
+This prevents AI prose from getting overwhelmed by numbers.
+
+⸻
+
+36. Stat display rules
+
+/sheet
+
+Should show:
+
+* exact current stats
+* current resources
+* maybe build identity
+
+/status
+
+Should show:
+
+* resources
+* penalties
+* injuries
+* conditions
+
+/debugstats or debug mode
+
+May show:
+
+* base stat
+* race modifier
+* class modifier
+* training bonus
+* passive bonus
+* equipment bonus
+* temporary modifiers
+* effective stat
+
+Normal gameplay should not flood the player with full calculation unless requested.
+
+⸻
+
+37. Stat initialization
+
+At game start, stats can be initialized by:
+
+* default human baseline
+* scenario setup
+* status panel
+* manual command
+* class/race profile
+* migration
+
+Default Level 1 human:
+
+ATK 5
+DEF 5
+SPD 5
+INT 5
+LCK 5
+HP 100
+MP 77
+EP 99
+
+If the story starts at Level 4 Human Monk with all stats 9, as in earlier examples, the system may accept that if scenario/status setup supports it.
+
+Important:
+
+AI-generated later stat panels should not override state unless validated.
+
+⸻
+
+38. Stat update from level-up
+
+When level increases, stats should not automatically all jump equally unless the build is balanced.
+
+Suggested level-up stat gain:
+
+Each level grants:
+
+* small automatic growth to all stats
+* extra growth to build-favored stats
+* extra growth from recent training lanes
+* possible race/species growth bias
+
+Example:
+
+Human Brawler level-up may favor:
+
+* ATK
+* DEF
+* EP-related growth
+* Brawling Domain
+
+Elf Mage level-up may favor:
+
+* INT
+* MP
+* Magic Domain
+* SPD modestly
+
+Slime evolution level-up may favor:
+
+* body-related DEF/HP
+* absorption traits
+* shapeshift ability candidates
+
+Exact XP/stat growth is Chunk 22.
+
+Chunk 21 rule:
+
+Level-up should respect build, race, and recent behavior.
+
+⸻
+
+39. Stat update from training
+
+Training should affect specific stats.
+
+Examples:
+
+Punching drills:
+
+* ATK XP
+* Brawling Domain XP
+* EP cost
+
+Shield drills:
+
+* DEF XP
+* Shield Domain XP
+* EP cost
+
+Sprint training:
+
+* SPD XP
+* Athletics/Travel Domain XP
+* fatigue
+
+Meditation/mana control:
+
+* INT XP
+* Magic Domain XP
+* MP recovery/control maybe
+
+Gambling/risky survival:
+
+* LCK XP only if meaningful risk or fortune event
+
+Training must be:
+
+* time-consuming
+* resource-consuming
+* risk/effort-based
+* anti-farm controlled
+
+No infinite stat growth from repeating trivial lines.
+
+⸻
+
+40. Stat update from ability absorption
+
+Some abilities may grant stats from absorbed creatures or powers.
+
+Chunk 26 defines this in detail.
+
+Chunk 21 sets the rule:
+
+Absorption should usually grant stat XP, not direct stat points.
+
+Direct permanent stat points require:
+
+* strong source
+* meaningful risk
+* compatible target
+* cap check
+* operation ledger
+* validation
+* anti-farm check
+
+Example:
+
+Absorbing a minor slime at Level 100 should not grant +50 DEF.
+
+It might grant:
+
+* tiny Body/Adaptation XP
+* Slime Body candidate evidence
+* no meaningful stat gain if far below player scale
+
+Absorbing a dragon core at Level 300 may grant:
+
+* significant stat XP
+* ability evidence
+* mutation risk
+* temporary condition
+* possible race evolution candidate
+
+Not automatic full dragon stats.
+
+⸻
+
+41. Stat update from equipment
+
+Equipment should usually provide bonuses while equipped.
+
+Examples:
+
+Iron sword:
+
+* ATK bonus for sword attacks
+
+Heavy armor:
+
+* DEF bonus against physical hits
+* SPD penalty
+* EP cost increase
+
+Mana ring:
+
+* MP max bonus
+* maybe Magic Control bonus
+* possible corruption cost
+
+Boots of haste:
+
+* SPD bonus
+* EP or MP upkeep
+* cooldown or exhaustion
+
+Equipment should not permanently increase base stats unless it is a bound artifact, graft, or transformation.
+
+Even then, it should be logged and validated.
+
+⸻
+
+42. Stat update from conditions
+
+Conditions can temporarily alter stats.
+
+Examples:
+
+Blessing:
+
+* +10% to relevant stats
+
+Poison:
+
+* -20% DEF/SPD or HP drain
+
+Rage:
+
+* +20% ATK
+* -15% INT
+* increased EP drain
+
+Fear:
+
+* -20% ATK/INT for direct confrontation
+* maybe +10% SPD for fleeing
+
+Focus:
+
+* +15% INT/Magic Control
+* EP/MP upkeep
+
+Exhaustion:
+
+* -30% physical action effectiveness
+
+Transformation:
+
+* may replace race/body modifiers temporarily
+
+Conditions should have duration and source.
+
+No permanent stat change from temporary condition unless transformation stabilizes.
+
+⸻
+
+43. Stat update from race transformation
+
+If race changes, stats/resources may need recalculation.
+
+Example:
+
+Human becomes Vampire.
+
+Possible changes:
+
+* HP modifier changes
+* MP modifier changes
+* EP/fatigue logic changes
+* poison/disease rules change
+* sunlight weakness added
+* hunger condition added
+* racial abilities added as candidates/passives
+* equipment may still fit
+* social/reputation consequences possible
+
+This should mark dirty:
+
+* Player Sheet
+* Body & Status
+* Abilities
+* Inventory/Equipment if body changed
+* Context
+* race/species card if any
+
+Race transformation is not a simple stat buff.
+
+It changes body logic.
+
+⸻
+
+44. Effective stat examples
+
+Example 1 — injured warrior
+
+Base:
+
+Level 50 Human Warrior
+ATK 105
+DEF 85
+SPD 65
+
+Condition:
+
+* right arm moderate injury
+* EP 20%
+
+Effective sword attack:
+
+* ATK reduced 20–40%
+* SPD reduced 10%
+* EP cost increased
+* two-handed sword use maybe impaired
+
+Sheet still shows ATK 105.
+
+Action validation uses effective ATK maybe 65–80 for that action.
+
+Example 2 — exhausted mage
+
+Base:
+
+Level 100 Elf Mage
+INT 245
+MP 5%
+
+Magic Control remains high, but MP is nearly gone.
+
+Effect:
+
+* minor spells possible
+* major spells rejected or require overcharge
+* backlash risk high
+
+High INT does not create MP.
+
+Example 3 — fairy in heavy armor
+
+Base:
+
+Tiny fairy
+SPD high
+
+Equipment:
+
+* human-scale heavy armor impossible
+
+Validation:
+
+* reject wearing normal armor
+* if magically resized, SPD penalty may be severe
+* EP cost increased
+
+Example 4 — construct poisoned
+
+Base:
+
+Construct body
+
+Output:
+
+* normal venom injected
+
+Validation:
+
+* normal poison rejected
+* if venom is corrosive or magical, convert to structural/core condition
+
+⸻
+
+45. Stat and freeform outcome examples
+
+Player writes:
+
+“I try to smash the locked chest open.”
+
+Relevant:
+
+* ATK
+* weapon/tool
+* chest material
+* noise risk
+* lock/trap risk
+* quest/item consequences
+
+High ATK may break it.
+
+Low ATK may fail or damage contents.
+
+INT/Thievery might be safer.
+
+Player writes:
+
+“I try to talk him down.”
+
+Relevant:
+
+* INT if reasoning
+* reputation
+* relationship
+* actor attitude
+* social domain
+* evidence
+* tone
+
+ATK only matters if intimidation.
+
+Player writes:
+
+“I dodge between the slimes and sprint to the door.”
+
+Relevant:
+
+* SPD
+* EP
+* slime count/group tier
+* terrain
+* door status
+* slime traits
+* fatigue
+
+Level matters, but SPD/EP and group positioning matter more.
+
+Player writes:
+
+“I study the slime’s movement to see if it has a core.”
+
+Relevant:
+
+* INT
+* Investigation/Monster Lore
+* slime type
+* time available
+* danger
+* senses
+* prior knowledge
+
+High INT can reveal a clue.
+
+It should not invent a core if the slime has none unless story supports.
+
+⸻
+
+46. Build archetype stat profiles
+
+Balanced Adventurer
+
+Focus:
+
+* no major weakness
+* flexible but not specialized
+
+Stats:
+
+* all average
+* one or two slightly strong
+
+Good for:
+
+* general quests
+* flexible play
+* party support
+
+Weakness:
+
+* specialists outperform in focused scenes
+
+Berserker
+
+Focus:
+
+* ATK and HP
+* rage/overexertion
+
+Stats:
+
+* high ATK
+* high DEF/HP
+* lower INT
+* moderate/low LCK
+
+Good for:
+
+* direct combat
+* intimidation
+* breaking obstacles
+
+Weakness:
+
+* magic control
+* social nuance
+* traps/curses
+
+Guardian
+
+Focus:
+
+* DEF, HP, shield, protection
+
+Stats:
+
+* extreme DEF
+* high HP/EP
+* lower SPD
+
+Good for:
+
+* protecting allies
+* holding lines
+* surviving bosses
+
+Weakness:
+
+* mobility
+* time pressure
+* bypass damage
+
+Duelist
+
+Focus:
+
+* ATK, SPD, technique
+
+Stats:
+
+* high ATK
+* high SPD
+* moderate DEF
+* moderate INT
+
+Good for:
+
+* one-on-one combat
+* precision strikes
+* counterattacks
+
+Weakness:
+
+* swarms
+* heavy armor enemies
+* endurance if EP low
+
+Rogue
+
+Focus:
+
+* SPD, LCK, stealth
+
+Stats:
+
+* high SPD
+* high LCK
+* moderate ATK
+* lower DEF
+
+Good for:
+
+* ambush
+* escape
+* traps
+* theft
+* weak points
+
+Weakness:
+
+* direct tank fights
+* area attacks
+* being restrained
+
+Archmage
+
+Focus:
+
+* INT, MP, magic domains
+
+Stats:
+
+* extreme INT
+* high MP
+* low physical stats
+
+Good for:
+
+* spells
+* rituals
+* knowledge
+* barriers
+* large-scale magic
+
+Weakness:
+
+* anti-magic
+* surprise
+* silence
+* low HP/EP
+
+Spellblade
+
+Focus:
+
+* ATK and INT
+
+Stats:
+
+* high ATK
+* high INT
+* moderate DEF/SPD
+
+Good for:
+
+* magical melee
+* ability combos
+* hybrid fights
+
+Weakness:
+
+* resource split
+* may be outperformed by pure specialists
+
+Monk
+
+Focus:
+
+* ATK, SPD, DEF, EP balance
+
+Stats:
+
+* strong physical balance
+* moderate INT
+* high EP
+
+Good for:
+
+* unarmed combat
+* discipline
+* mobility
+* stamina
+
+Weakness:
+
+* heavy armor enemies
+* ranged artillery
+* magic if not developed
+
+Summoner
+
+Focus:
+
+* INT, MP, control
+
+Stats:
+
+* high INT/MP
+* low direct combat
+
+Good for:
+
+* allies/summons
+* battlefield control
+* preparation
+
+Weakness:
+
+* concentration disruption
+* summon loss
+* close-range pressure
+
+Artificer
+
+Focus:
+
+* INT, crafting, equipment
+
+Stats:
+
+* high INT
+* average physical
+* gear-dependent
+
+Good for:
+
+* crafting
+* tools
+* traps
+* constructs
+* item scaling
+
+Weakness:
+
+* surprise
+* loss of equipment/materials
+
+Trickster
+
+Focus:
+
+* LCK, SPD, INT
+
+Stats:
+
+* high LCK
+* high SPD/INT
+* lower ATK/DEF
+
+Good for:
+
+* deception
+* chaos
+* escape
+* lucky reversals
+
+Weakness:
+
+* direct overpowering
+* truth-binding
+* unavoidable damage
+
+⸻
+
+47. Build identity update rules
+
+Build identity should update over time.
+
+Examples:
+
+Player repeatedly uses unarmed combat and mana control:
+
+Build Identity: Mana Brawler
+
+Player starts as mage but becomes heavily armored defender:
+
+Build Identity: Arcane Guardian
+
+Player absorbs monster traits and evolves:
+
+Build Identity: Adaptive Slime Spellblade
+
+Build identity update requires:
+
+* repeated behavior
+* stable abilities
+* stat/domain growth
+* equipment style
+* race/body changes
+* player confirmation or strong pattern
+
+Do not rewrite build identity from one action.
+
+⸻
+
+48. Build identity effects
+
+Build identity may affect:
+
+* recommended stat growth
+* ability candidate interpretation
+* Context phrasing
+* card summaries
+* XP lane selection
+* enemy matchup expectations
+* training reward relevance
+
+Example:
+
+Mana Brawler:
+
+* unarmed ATK and magic INT both matter
+* Mana Strike candidate more plausible
+* EP and MP both relevant
+* anti-farm checks expect physical/magical hybrid training
+
+Build identity should guide, not force.
+
+⸻
+
+49. Resource recovery formulas
+
+Exact recovery may vary by setting, but Chunk 21 should define defaults.
+
+Short rest
+
+Requires:
+
+* safety
+* several minutes to an hour
+* no active combat
+
+Default recovery:
+
+EP: 15–30% max
+MP: 5–15% max
+HP: 0–5% max unless treated
+
+Long rest / sleep
+
+Requires:
+
+* several hours
+* relative safety
+* food/water/shelter as needed
+
+Default recovery:
+
+EP: 60–100% max
+MP: 40–100% max
+HP: 10–40% max depending injuries/treatment
+
+Full downtime
+
+Requires:
+
+* days or proper care
+
+Default recovery:
+
+HP: major recovery
+injuries: improve
+conditions: may resolve
+MP/EP: full if no blockers
+
+Race/body modifies recovery.
+
+Examples:
+
+Construct needs repair for HP.
+
+Undead may need death energy.
+
+Slime may need mass/water/mana.
+
+⸻
+
+50. Recovery and maximum resources
+
+When max resources change, current values should be handled carefully.
+
+If max HP increases from 100 to 120:
+
+Default:
+
+Current HP remains same unless level-up recovery applies.
+
+Example:
+
+HP 50/100 becomes HP 50/120.
+
+If level-up gives +10% new max recovery:
+
+HP 50/100 → max 120 → recover 12 → HP 62/120
+
+Do not automatically full heal unless setting says level-up fully restores.
+
+This prevents level-up from being an exploit.
+
+⸻
+
+51. Stat/resource safeguards
+
+51.1 No stat change from vague feeling
+
+“You feel stronger” is not enough for permanent ATK increase.
+
+It may be:
+
+* flavor
+* temporary confidence
+* pending training result
+* level-up flavor if XP threshold reached
+
+51.2 No AI status override without validation
+
+AI-generated stats must not overwrite state unless source is valid initialization/manual/system display.
+
+51.3 No duplicate stat/resource change
+
+OperationLedger dedupes stat gains, HP damage, MP cost, EP cost, recovery, level-up.
+
+51.4 No resource costs ignored
+
+Abilities, sprinting, heavy attacks, crafting labor, and overexertion should cost appropriate resources.
+
+51.5 No impossible resource spending
+
+If MP is 0, normal spellcasting should fail or overcharge.
+
+51.6 No stat gain from trivial repetition
+
+Anti-farm applies.
+
+51.7 No race/class infinite multiplier stacking
+
+Apply modifiers in controlled order.
+
+51.8 No permanent equipment stat unless valid
+
+Equipment bonuses are usually conditional.
+
+51.9 No injury-free low HP
+
+Low HP should matter.
+
+51.10 No high stat automatic proof
+
+INT does not solve cases without evidence.
+
+⸻
+
+52. Stat/resource command behavior
+
+/sheet
+
+Shows:
+
+* level
+* XP
+* stats
+* max/current resources
+* build identity
+* race/class
+* major passives
+
+/status
+
+Shows:
+
+* current HP/MP/EP
+* injuries
+* conditions
+* fatigue
+* resource warnings
+* effective penalties
+
+/resources
+
+Shows:
+
+* HP/MP/EP
+* thresholds
+* recovery expectations
+
+/progression
+
+Shows:
+
+* stat training XP
+* domain XP
+* level XP
+
+/debugstats
+
+Optional debug command.
+
+Shows stat breakdown:
+
+ATK:
+Level Base: 130
+Race Modifier: ×1.0
+Class Modifier: ×1.35
+Training Bonus: +20
+Passive Bonus: +0
+Equipment Bonus: +35 sword attacks only
+Injury Penalty: -20% right arm
+Effective Sword ATK: 174
+
+This helps testing.
+
+⸻
+
+53. Context behavior for stats
+
+Context should not always include exact stats.
+
+Include stats when:
+
+* player asks status
+* combat needs scale reminder
+* resource is low
+* AI is drifting
+* ability cost matters
+* injury affects action
+* high-level/low-level plausibility matters
+* enemy mismatch is severe
+
+Good Context:
+
+You are a Level 10 Human Brawler with strong early ATK and EP but limited magic. Your EP is low, so another hard sprint or flurry is risky.
+
+Bad Context:
+
+ATK 24 DEF 20 SPD 18 INT 13 LCK 17 HP 270 MP 135 EP 21/350 every turn.
+
+Use exact numbers in commands.
+
+Use compact meaning in story Context.
+
+⸻
+
+54. Story Card behavior for stats
+
+Stats belong mostly in protected cards.
+
+Affected protected cards:
+
+* Player Sheet
+* Body & Status
+* Abilities
+* Inventory & Equipment if equipment modifies stats
+
+Generated cards should not be created for:
+
+* ATK
+* DEF
+* SPD
+* INT
+* LCK
+* HP
+* MP
+* EP
+
+Do not make separate Story Cards named:
+
+* ATK
+* Stats
+* HP
+* Level 10
+* Strong
+
+Stats are summary data, not entity cards.
+
+If a build becomes important, it may be summarized in Player Sheet or an Abilities/Build overview.
+
+⸻
+
+55. Chunk 21 acceptance tests
+
+Test 1 — Level 1 human default
+
+Given:
+
+No race/class setup.
+
+Expected:
+
+* Level 1
+* ATK/DEF/SPD/INT/LCK near 5–6
+* HP/MP/EP calculated from default formulas
+* human baseline body rules
+
+Test 2 — Level 50 warrior
+
+Given:
+
+Level 50 Human Warrior.
+
+Expected:
+
+* ATK and DEF above balanced base
+* INT lower than mage
+* HP/EP strong
+* MP lower than mage
+
+Test 3 — Level 100 mage
+
+Given:
+
+Level 100 Elf Mage.
+
+Expected:
+
+* INT high
+* MP high
+* HP/DEF lower
+* magic actions strong if MP available
+
+Test 4 — race modifies stats safely
+
+Given:
+
+Level 20 Fairy Warrior.
+
+Expected:
+
+* SPD/MP high
+* HP/physical DEF low
+* warrior class improves combat but does not erase tiny body limits
+
+Test 5 — giant physical advantage with logistics
+
+Given:
+
+Level 20 Giant Scholar.
+
+Expected:
+
+* HP/ATK/DEF above human
+* INT from scholar class may be high
+* equipment/stealth/space issues remain
+
+Test 6 — injury affects effective stat
+
+Given:
+
+Warrior has right arm injury.
+
+Expected:
+
+* base ATK unchanged
+* sword action effective ATK reduced
+* /status warns about arm injury
+
+Test 7 — low MP limits magic
+
+Given:
+
+Mage has 0 MP.
+
+Input:
+
+“I cast a huge firestorm.”
+
+Expected:
+
+* reject or overcharge path
+* no free spell
+* possible backlash if forced
+
+Test 8 — low EP limits physical action
+
+Given:
+
+Brawler has 0 EP.
+
+Input:
+
+“I sprint and throw a full combo.”
+
+Expected:
+
+* severe penalty or overexertion
+* HP/injury/fatigue risk
+
+Test 9 — stat panel contradiction
+
+State:
+
+Level 10, ATK 20.
+
+AI output randomly says ATK 2000.
+
+Expected:
+
+* reject or flag contradiction
+* no stat update unless valid source/manual override
+
+Test 10 — equipment conditional bonus
+
+Given:
+
+Sword gives ATK bonus to sword attacks.
+
+Input:
+
+Player punches.
+
+Expected:
+
+* sword bonus not applied
+
+Test 11 — high INT does not solve without evidence
+
+Given:
+
+Player has INT 2000.
+
+Input:
+
+“I know who committed the murder.”
+
+Expected:
+
+* may form theory
+* no confirmed culprit without evidence
+
+Test 12 — LCK does not rewrite canon
+
+Given:
+
+Player has high LCK.
+
+Input:
+
+“I hope the lost artifact is already in my bag.”
+
+Expected:
+
+* no item gain unless story validates
+* LCK may help future discovery, not retroactive ownership
+
+Test 13 — level-up does not full heal by default
+
+Given:
+
+Player levels up while wounded.
+
+Expected:
+
+* max resources update
+* small configured recovery or none
+* no automatic full restore unless setting says so
+
+Test 14 — overexertion has cost
+
+Given:
+
+Player at 0 EP forces one more attack.
+
+Expected:
+
+* possible action with HP/injury/fatigue cost
+* no free full-power action
+
+Test 15 — debugstats explains calculation
+
+Given:
+
+/debugstats ATK
+
+Expected:
+
+* shows level base, race/class/training/equipment/injury breakdown
+
+⸻
+
+56. Final Chunk 21 doctrine
+
+Stats are the player’s broad capability foundation.
+
+ATK measures offensive force.
+
+DEF measures durability and stability.
+
+SPD measures speed and reaction.
+
+INT measures reasoning, learning, crafting, investigation, and magic control.
+
+LCK measures fortune, unstable outcomes, and rare opportunity.
+
+HP measures body integrity.
+
+MP measures magical or spiritual power.
+
+EP measures exertion and action endurance.
+
+Level creates base scale.
+
+Race modifies body logic.
+
+Class/build modifies growth direction.
+
+Training adds earned improvement.
+
+Domains and abilities refine application.
+
+Equipment modifies context-specific actions.
+
+Injuries, conditions, fatigue, and low resources change effective stats.
+
+Stats should guide freeform validation, not replace it.
+
+High stats do not create truth.
+
+Low resources should create risk.
+
+Race and class should not stack into infinite multipliers.
+
+Equipment should not grant permanent stats unless explicitly bonded or transformative.
+
+AI-generated stat panels are mirrors unless validated.
+
+Commands show exact numbers.
+
+Context usually shows practical meaning.
+
+The goal is to make the player’s growth measurable, scalable, and meaningful from Level 1 to Level 1000 without turning AI Dungeon into a rigid spreadsheet or letting freeform narration ignore the numbers entirely.
+

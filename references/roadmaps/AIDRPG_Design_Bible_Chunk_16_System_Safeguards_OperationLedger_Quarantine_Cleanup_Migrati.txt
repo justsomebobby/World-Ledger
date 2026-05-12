@@ -1,0 +1,2526 @@
+AIDRPG Design Bible — Chunk 16: System Safeguards, OperationLedger, Quarantine, Cleanup, Migration, Audits, and Release Checks
+
+1. Purpose of this chunk
+
+Chunk 16 defines the safety spine of AIDRPG.
+
+Earlier chunks defined the gameplay systems.
+
+Chunk 16 defines what keeps those systems from breaking.
+
+This chunk answers:
+
+How does AIDRPG prevent duplicate XP?
+
+How does it prevent duplicate cards?
+
+How does it prevent duplicate items?
+
+How does it stop junk actor/place names?
+
+How does it stop false truth from rumors, dreams, quotes, and card text?
+
+How does it handle old corrupted state?
+
+How does it migrate older versions safely?
+
+How does it quarantine bad data without deleting useful history?
+
+How does cleanup remove noise without inventing gameplay truth?
+
+How does the audit system explain what happened?
+
+How does release testing prove the system is safe?
+
+The central rule is:
+
+AIDRPG must be conservative with canon and aggressive with diagnostics.
+
+That means:
+
+Do not guess truth.
+
+Do not silently mutate unrelated systems.
+
+Do not delete important state blindly.
+
+Do not let patch systems become gameplay writers.
+
+Do explain what happened, why it happened, and what was skipped.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG is vulnerable because AI Dungeon text is freeform.
+
+The AI may say:
+
+* the player has an item they do not have
+* a companion is present when they are absent
+* a quest is complete when it is only rumored
+* a card says an old false fact
+* an NPC name appears in a weird sentence fragment
+* the same output processes twice
+* an old script version left bad data behind
+* a card duplicates because the title changed
+* an ability candidate looks like a stable ability
+* a place mention looks like arrival
+* a dream looks like real travel
+* a quote looks like player action
+
+The safety system exists because the rest of AIDRPG is too large to trust loose interpretation.
+
+The safety philosophy is:
+
+* validate before committing
+* dedupe before applying
+* quarantine before deleting
+* audit before hiding
+* migrate before using old state
+* cleanup only with strict limits
+* cards mirror only state
+* Context reads only state
+* commands display state honestly
+
+AIDRPG should prefer a missed minor update over a false major truth.
+
+⸻
+
+3. The safety stack
+
+Every meaningful change should pass through a safety stack.
+
+The stack is:
+
+1. Source classification
+2. Parsed signal detection
+3. Event proposal creation
+4. Name hygiene
+5. Target identity resolution
+6. Blocker detection
+7. Canon validation
+8. OperationLedger duplicate check
+9. Owner reducer precondition check
+10. State commit
+11. Follow-up event routing
+12. Dirty target marking
+13. Context/CardSync update through budgeted queues
+14. Audit trace
+
+Skipping the safety stack is how old versions become patch piles.
+
+The default rule is:
+
+No gameplay truth should be written outside this stack unless it is an explicit manual override, migration, or command path.
+
+Even then, it must be logged and dirty targets must be marked.
+
+⸻
+
+4. Source classification safeguard
+
+Every proposed event must know where it came from.
+
+Possible sources:
+
+* player input
+* AI output
+* command
+* manual override
+* migration
+* cleanup
+* CardSync
+* ContextBuilder
+* old state import
+* Story Card scan
+* debug/test event
+
+Source matters because not every source has the same authority.
+
+Player input
+
+Player input usually creates intent.
+
+It should not create success by itself.
+
+Example:
+
+“I pick up the key.”
+
+This is pickup intent.
+
+The key is not gained unless output or command confirms success.
+
+AI output
+
+AI output may create consequence proposals.
+
+Still must be validated.
+
+Example:
+
+“Mara places the key in your hand.”
+
+This may become item gain if accepted.
+
+Command
+
+Commands may display or explicitly modify state.
+
+Mutating commands must be intentional.
+
+Manual override
+
+Manual override may correct canon, but must be explicit and logged.
+
+Migration
+
+Migration reshapes old state.
+
+It should not invent new story truth.
+
+Cleanup
+
+Cleanup trims, archives, neutralizes, or quarantines.
+
+It should not create gameplay truth.
+
+CardSync
+
+CardSync writes cards only.
+
+It does not write gameplay truth.
+
+ContextBuilder
+
+ContextBuilder writes Context only.
+
+It does not write gameplay truth.
+
+Story Card scan
+
+Story Card text is low-authority.
+
+It may help audit or manual review.
+
+It should not create canon by default.
+
+⸻
+
+5. Universal blocker detection
+
+Blockers are words, patterns, or contexts that prevent false canon.
+
+Universal blockers include:
+
+* quoted
+* rumored
+* dreamed
+* vision-only
+* hypothetical
+* pretend
+* joke
+* fake example
+* denied
+* failed
+* attempted only
+* near miss
+* future promise
+* plan only
+* command text
+* debug text
+* card text
+* system text
+* duplicate
+* impossible without leverage
+* wrong target
+* inaccessible item
+* absent actor
+* stale Context conflict
+* junk name
+* polluted old data
+
+Blockers do not always erase the event.
+
+They may redirect it.
+
+Example:
+
+“A rumor says you died.”
+
+Blocked as body death.
+
+Allowed as reputation rumor.
+
+Example:
+
+“You try to cast Mana Slash, but nothing happens.”
+
+Blocked as ability success.
+
+Allowed as soft-failed ability attempt.
+
+Example:
+
+“She says, ‘You pick up the key.’”
+
+Blocked as item gain.
+
+May be allowed as dialogue/witness statement if relevant.
+
+⸻
+
+6. Validation safeguard
+
+Every event must receive one of the five outcomes.
+
+* accept
+* reject
+* pending
+* soft_fail
+* hard_deny
+
+No event should silently commit.
+
+Accept
+
+The event is confirmed enough to commit through the owner reducer.
+
+Reject
+
+The event is understandable but should not change canon.
+
+Pending
+
+The event may matter later, but is not active truth yet.
+
+Soft_fail
+
+A real attempt happened, but full success did not.
+
+Hard_deny
+
+The event is non-canon, unsafe, junk, polluted, or structurally invalid.
+
+The validation result must include a reason.
+
+Examples:
+
+* direct handoff accepted
+* quoted dialogue rejected
+* rumor stored as rumor only
+* duplicate operation skipped
+* candidate not stable
+* item inaccessible
+* actor absent
+* junk name hard-denied
+* card text ignored as canon
+* insufficient evidence
+* impossible without leverage
+
+The reason matters because debugging depends on it.
+
+⸻
+
+7. OperationLedger safeguard
+
+OperationLedger prevents the same consequence from applying more than once.
+
+This is one of the most important systems in AIDRPG.
+
+OperationLedger should block duplicates for:
+
+* XP gain
+* stat XP gain
+* domain XP gain
+* level-up
+* ability evidence
+* ability stabilization
+* HP damage
+* MP cost
+* EP cost
+* injury addition
+* condition addition
+* item gain
+* item loss
+* coin gain
+* coin spend
+* transaction completion
+* quest progress
+* quest completion
+* reward payout
+* contract fulfillment
+* time passage
+* travel arrival
+* recovery tick
+* group casualties
+* actor creation/promotion
+* place creation/promotion
+* card creation
+* card update
+* card neutralization
+* domain progress
+* labor progress
+* investigation evidence
+* reputation change
+* rumor spread
+* title grant
+
+A repeated output should not mean repeated consequences.
+
+⸻
+
+8. Operation key model
+
+Every committed operation needs a durable operation key.
+
+A good operation key should include:
+
+* source hook
+* turn number or turn window
+* output hash or source hash
+* event type
+* normalized target
+* normalized payload
+* owner reducer
+* reason or consequence type
+
+Example operation key concept:
+
+* output hash
+* inventory.item.gain
+* target rusted_iron_key
+* recipient player
+* source direct handoff
+
+For group casualties:
+
+* output hash
+* scale.casualties.apply
+* group goblin_ambushers
+* killed 3
+
+For time passage:
+
+* output hash
+* time.pass
+* amount one_hour
+* reason travel_to_old_chapel
+
+For quest completion:
+
+* output hash
+* quest.complete
+* quest missing_ring
+* objective return_ring_to_mara
+
+The exact implementation can be decided later.
+
+The concept is mandatory:
+
+One source consequence should commit once.
+
+⸻
+
+9. Whole-output hash is not enough
+
+A single AI output may contain multiple events.
+
+Example:
+
+“Mara hands you the key, the wolf bites your arm, and after an hour you reach the chapel.”
+
+This one output may include:
+
+* item gain
+* body damage
+* injury
+* time passage
+* travel arrival
+* place update
+* quest progress
+
+If the system only uses one whole-output hash, it may block everything or duplicate partial effects incorrectly.
+
+AIDRPG needs per-operation keys.
+
+The output hash helps identify the source, but each committed consequence needs its own key.
+
+⸻
+
+10. Duplicate item safeguard
+
+Item duplication must be prevented at several levels.
+
+Check:
+
+* exact item ID
+* canonical item key
+* aliases
+* item type
+* owner
+* custody
+* source event
+* quest/item link
+* stackable versus unique
+* current scene available item
+* pending loot item
+* operation key
+* similar-name exclusions
+
+Examples:
+
+If the player already has the rusted iron key, repeated output should not add a second rusted iron key.
+
+If the player has a stack of arrows and gains 5 more, quantity may increase once.
+
+If the player gains a second ordinary healing potion, stack if same type/quality.
+
+If the player gains another distinct sealed letter, do not stack.
+
+If the player takes “the rusted iron key, not the keyring,” the keyring must not be gained.
+
+Item duplication prevention must be stricter for:
+
+* key items
+* quest items
+* evidence items
+* artifacts
+* named weapons
+* contract items
+* custody items
+
+⸻
+
+11. Duplicate card safeguard
+
+Card duplication must be prevented before writing.
+
+Check:
+
+* managed card identity
+* family
+* canonical entity ID
+* normalized title
+* aliases
+* trigger keys
+* hidden metadata if present
+* visible content similarity
+* tombstones
+* duplicate registry
+* protected card identity
+
+Examples:
+
+Do not create separate cards for:
+
+* Mara
+* Mara Ironhand
+* Blacksmith Mara
+
+unless they are proven different actors.
+
+Do not create separate cards for:
+
+* Mana Slash
+* Mana Edge
+
+unless they are proven separate ability/variant records.
+
+Do not create cards for:
+
+* Room
+* Door
+* Goblin
+* The Street
+* Your Hand
+
+unless there is an extraordinary reason and a stable entity record.
+
+Duplicate card handling should prefer:
+
+* update existing card
+* add alias
+* skip creation
+* queue audit
+* neutralize unsafe duplicate
+* tombstone bad identity
+
+⸻
+
+12. Duplicate actor safeguard
+
+Actor duplication happens when names drift.
+
+Safeguards:
+
+* normalize names
+* compare aliases
+* compare role
+* compare location
+* compare relationships
+* compare quest/contract/case links
+* compare party/faction links
+* compare source scene
+* reject generic names
+* avoid promoting candidates too quickly
+* use merge only when evidence supports it
+* flag uncertain near-duplicates for audit
+
+Safe merge:
+
+Mara and Mara Ironhand are both the Greyford blacksmith tied to the missing ring quest.
+
+Unsafe merge:
+
+Mara the blacksmith and Mara’s Forge.
+
+Unsafe merge:
+
+Captain Jora in Greyford and Captain Jora of a distant army, if facts conflict.
+
+Unsafe merge:
+
+a generic guard and Captain Jora.
+
+Actor identity must be careful because wrong merges corrupt relationships, quests, party state, and cards.
+
+⸻
+
+13. Duplicate place safeguard
+
+Place duplication happens when descriptions shift.
+
+Safeguards:
+
+* normalize place names
+* compare parent place
+* compare routes
+* compare associated actors
+* compare quest/domain links
+* compare place type
+* compare current location
+* reject generic scenery
+* avoid card creation for candidates
+* use alias only with evidence
+
+Safe merge:
+
+Old Chapel and the old chapel beyond Blackwood Road.
+
+Unsafe merge:
+
+Old Chapel and Chapel Street.
+
+Unsafe merge:
+
+Mara and Mara’s Forge.
+
+Unsafe merge:
+
+the north door and North Gate, unless clearly same thing.
+
+Generic rooms should not become durable place records unless important.
+
+⸻
+
+14. Duplicate XP safeguard
+
+Progression is highly duplication-prone.
+
+Safeguards:
+
+* XP only through ProgressionReducer
+* operation key per XP award
+* anti-farm checks
+* source validation
+* reward lane separation
+* duplicate quest reward blocking
+* duplicate combat reward blocking
+* duplicate training output blocking
+* duplicate ability evidence blocking
+* level-up threshold idempotency
+
+Examples:
+
+Same quest completion output processed twice:
+
+* XP awarded once
+* item reward once
+* coin reward once
+* quest archived once
+
+Same training output processed twice:
+
+* stat XP once
+* domain XP once
+* EP loss once
+* time passage once
+
+Same combat output processed twice:
+
+* enemy defeated once
+* XP once
+* loot availability once
+* injury once
+
+⸻
+
+15. Duplicate damage safeguard
+
+Damage and injury duplication can ruin play.
+
+Safeguards:
+
+* operation key per damage event
+* injury identity matching
+* severity matching
+* source hash
+* target body part if known
+* condition duplicate checks
+* death-boundary idempotency
+* recovery tick dedupe
+
+Example:
+
+“The wolf bites your forearm and blood runs.”
+
+First pass:
+
+* HP loss
+* arm injury
+
+Second pass:
+
+* duplicate skip
+
+The second pass should not create:
+
+* second bite injury
+* second HP loss
+* second bleeding condition
+
+If a later output says the wolf bites again, that is a new event if source and scene support it.
+
+⸻
+
+16. Duplicate time and travel safeguard
+
+Time and travel duplication cause severe continuity errors.
+
+Safeguards:
+
+* operation key for time passage
+* operation key for travel arrival
+* active travel record
+* current location validation
+* source hash
+* amount/category matching
+* deadline tick idempotency
+* recovery tick idempotency
+
+Example:
+
+“After one hour, you arrive at the chapel.”
+
+First pass:
+
+* time +1 hour
+* location becomes chapel
+* travel resolved
+
+Second pass:
+
+* no second hour
+* no duplicate arrival
+* no duplicate recovery/deadline tick
+
+If the output later says:
+
+“Another hour passes.”
+
+That is a new time event if validated.
+
+⸻
+
+17. Duplicate quest and reward safeguard
+
+Quest duplication can cause repeated objectives and repeated rewards.
+
+Safeguards:
+
+* quest canonical key
+* giver/objective comparison
+* linked item/actor/place
+* active quest check
+* archive check
+* operation key for progress/completion
+* reward ledger
+* objective completion flags
+* status transition guard
+
+Example:
+
+Missing Ring quest active.
+
+Output repeats:
+
+“Mara asks you to find her missing ring.”
+
+Should not create a second Missing Ring quest.
+
+It may update existing quest if needed.
+
+Example:
+
+Quest completed and archived.
+
+Repeated completion output should not:
+
+* reactivate quest
+* pay reward again
+* create duplicate archive
+
+⸻
+
+18. Duplicate contract safeguard
+
+Contracts need strict identity.
+
+Safeguards:
+
+* parties
+* item/service
+* terms
+* deadline
+* payment
+* custody state
+* status
+* operation key
+
+Example:
+
+Mira repairs sword for 5 silver by morning.
+
+Repeated output should not create multiple repair contracts.
+
+If terms change, update existing contract if validated.
+
+If a new separate item/service is involved, create separate contract.
+
+Contracts should not duplicate because they can duplicate payment, custody, debt, and deadlines.
+
+⸻
+
+19. Name hygiene safeguard
+
+Name hygiene prevents junk state.
+
+Name hygiene applies to:
+
+* actors
+* places
+* items
+* abilities
+* quests
+* contracts
+* factions
+* routes
+* world entities
+* cards
+
+Reject names that are:
+
+* empty
+* too long
+* full sentences
+* pronouns
+* vague nouns
+* generic scenery
+* body parts
+* system labels
+* commands
+* debug strings
+* card labels
+* raw parser fragments
+* internal IDs as display names
+* pure adjectives
+* abstract feelings
+* quoted instructions
+* polluted old data strings
+
+Examples to reject:
+
+* the room
+* the door
+* your hand
+* someone
+* something
+* nothing
+* inventory
+* quest
+* AIDRPG
+* SAFE TO DELETE
+* pick up the key
+* the man who
+* pain
+* warmth
+* nearby
+* outside
+* item gained
+* actor memory
+
+Examples to accept:
+
+* Mara
+* Mara Ironhand
+* Old Chapel
+* Rusted Iron Key
+* Mana Slash
+* Silver Guild
+* Blackwood Road
+* Northwatch Keep
+* Missing Ring Case
+* Royal Seal
+
+If the name would look absurd in a player-facing command, it probably should not become canon.
+
+⸻
+
+20. Similar-name safeguard
+
+Similar names must not be confused.
+
+Examples:
+
+* rusted iron key versus iron keyring
+* missing ring versus plain silver ring
+* Mara versus Mara’s Forge
+* Mana Slash versus Mana Shield
+* Old Chapel versus Chapel Street
+* Silver Guild versus silver coin
+* Harlan the foreman versus Harlan’s Hammer
+
+The system should use:
+
+* entity type
+* context
+* owner bucket
+* descriptors
+* aliases
+* scene location
+* linked quest/case/contract
+* negation
+* source evidence
+
+Negation is critical.
+
+Example:
+
+“You take the rusted iron key, not the keyring.”
+
+The system must explicitly exclude the keyring.
+
+Ambiguity should become pending or require stronger evidence.
+
+Do not guess when the wrong guess would corrupt state.
+
+⸻
+
+21. False-positive safeguard
+
+False positives happen when the parser sees a pattern but the meaning is not real.
+
+Common false positives:
+
+* “almost hits you” parsed as damage
+* “you try to cast” parsed as success
+* “you dream of the chapel” parsed as travel
+* “rumor says you died” parsed as death
+* “Mara says, ‘take the key’” parsed as item gain
+* “the merchant offers a sword” parsed as purchase
+* “you feel stronger” parsed as stat increase
+* “people say the quest is done” parsed as quest completion
+* “the old card says you own it” parsed as inventory
+* “you plan to build a wall” parsed as domain completion
+
+Safeguard:
+
+Every parser signal must pass validation.
+
+Parser confidence is not canon confidence.
+
+Pattern match is not truth.
+
+⸻
+
+22. Hard-deny safeguard
+
+Hard-deny is for unsafe or non-canon events.
+
+Hard-deny examples:
+
+* pretend ability becomes real
+* debug text creates item
+* card text creates quest
+* dream travel changes real location
+* junk name becomes actor/card
+* duplicate tombstoned card recreates
+* impossible victory with no leverage becomes boss kill
+* quote becomes player action
+* failed attempt becomes success
+* old polluted card imports false truth
+* manual-looking text from AI output tries to rewrite state
+
+Hard-deny should:
+
+* block gameplay mutation
+* record audit reason
+* optionally quarantine payload
+* prevent card generation
+* prevent dirty gameplay output except diagnostics
+
+Hard-deny is not a punishment.
+
+It is a safety stop.
+
+⸻
+
+23. Quarantine
+
+Quarantine stores unsafe, malformed, suspicious, or old data that should not be active canon.
+
+Quarantine is for preservation and diagnosis.
+
+It is not active gameplay state.
+
+Quarantine may store:
+
+* malformed old inventory records
+* broken actor records
+* duplicate card snapshots
+* polluted card text
+* invalid ability records
+* old patch artifacts
+* bad migration payloads
+* junk names
+* unsafe imported fields
+* suspicious XP logs
+* impossible state fragments
+* conflicting old cards
+* corrupted quest records
+
+Quarantine protects against two bad extremes:
+
+Bad extreme 1:
+
+Trusting corrupted data as canon.
+
+Bad extreme 2:
+
+Deleting potentially useful history forever.
+
+Quarantine says:
+
+This may matter, but it is not currently trusted.
+
+⸻
+
+24. Quarantine rules
+
+Quarantined data must not:
+
+* appear in normal Context as confirmed truth
+* create cards
+* grant items
+* award XP
+* heal or damage the player
+* complete quests
+* solve cases
+* create actors
+* create places
+* create abilities
+* create reputation
+* update inventory
+* trigger recovery
+* affect combat
+
+Quarantined data may:
+
+* appear in audit
+* be reviewed by command
+* be restored through explicit manual override
+* be used by migration as source material after validation
+* be used for duplicate detection
+* be used for tombstone/neutralization reference
+
+Quarantine is a safe holding area, not a second canon.
+
+⸻
+
+25. Quarantine restore
+
+Restoring from quarantine should require explicit safe path.
+
+Possible restore modes:
+
+Manual restore
+
+The player explicitly confirms the fact.
+
+Example:
+
+“Restore the Royal Seal as a key item.”
+
+Validated migration restore
+
+Migration can validate and normalize old data.
+
+Example:
+
+Old inventory item has clean name, clear owner, clear custody.
+
+It can become active item.
+
+Partial restore
+
+Some fields are restored, unsafe fields remain quarantined.
+
+Example:
+
+Restore actor name and role, but not unsupported death state.
+
+Ignore
+
+Quarantined data remains inactive.
+
+Delete/forget
+
+Only if explicitly safe or user requests cleanup.
+
+Restoring should log:
+
+* what was restored
+* what was ignored
+* why
+* dirty targets created
+* operation key/manual override record
+
+⸻
+
+26. Migration
+
+Migration upgrades old saves or old state shapes into the current schema.
+
+Migration must be careful because this project has many old versions.
+
+Migration should:
+
+* detect schema version
+* create missing buckets
+* normalize old fields
+* preserve valid gameplay truth
+* quarantine malformed data
+* dedupe known duplicates
+* convert old records into new shape
+* preserve archives
+* mark dirty targets after migration
+* update schema version only after success
+* produce migration report
+
+Migration should not:
+
+* blindly overwrite state
+* invent new gameplay truth
+* trust old cards as canon by default
+* grant items from card text
+* complete quests
+* stabilize abilities
+* award XP
+* kill actors
+* move current location without support
+* delete important records without quarantine
+* recreate old patch systems
+
+Migration is a translator, not a storyteller.
+
+⸻
+
+27. Migration stages
+
+Recommended migration stages:
+
+Stage 1 — Snapshot
+
+Preserve old payload snapshot.
+
+This helps recovery if migration fails.
+
+Stage 2 — Schema detection
+
+Identify old version and known structures.
+
+Stage 3 — Bucket creation
+
+Ensure required buckets exist.
+
+Stage 4 — Field normalization
+
+Move old fields into new buckets.
+
+Example:
+
+old items → inventory.items.
+
+old powers → abilities.candidates or abilities.stable, depending evidence.
+
+Stage 5 — Identity normalization
+
+Normalize item/actor/place/card identities.
+
+Stage 6 — Validation
+
+Check names, types, ownership, custody, status, links.
+
+Stage 7 — Quarantine unsafe data
+
+Do not force broken data into canon.
+
+Stage 8 — Dedupe
+
+Merge safe duplicates.
+
+Leave uncertain duplicates flagged.
+
+Stage 9 — Dirty marking
+
+Mark cards/context dirty for migrated state.
+
+Stage 10 — Report
+
+Write migration summary.
+
+Stage 11 — Schema stamp
+
+Only stamp new version after migration completes safely.
+
+⸻
+
+28. Migration examples
+
+Old item record
+
+Old data:
+
+* sword: “Iron Sword”
+* condition: “cracked”
+* owner: player
+
+Migration:
+
+* create inventory item
+* owner player
+* custody player if no contradictory data
+* condition cracked
+* access available unless old repair/custody record says otherwise
+
+Old polluted item
+
+Old data:
+
+* item name: “pick up the key”
+* source: parser text
+
+Migration:
+
+* quarantine
+* no inventory item
+
+Old actor duplicate
+
+Old data:
+
+* Mara
+* Mara Ironhand
+* Blacksmith Mara
+
+Migration:
+
+* merge only if strong evidence same actor
+* otherwise flag duplicates
+* do not create three actor cards automatically
+
+Old ability candidate
+
+Old data:
+
+* “Mana Slash” from one failed attempt
+
+Migration:
+
+* ability candidate if evidence supports
+* not stable ability
+* no generated ability card
+
+Old card says item exists
+
+Old card:
+
+* Dragon Crown owned by player
+
+State has no item evidence.
+
+Migration:
+
+* do not create item
+* audit/possibly quarantine card text
+* manual override required to import
+
+⸻
+
+29. Cleanup
+
+Cleanup removes or compresses old noise.
+
+Cleanup is not migration.
+
+Cleanup happens during normal long-term play.
+
+Cleanup may:
+
+* remove stale low-value candidates
+* prune old diagnostics
+* clear old dirty queue entries
+* compress actor memories
+* compress place memories
+* archive inactive objectives
+* merge confirmed aliases
+* neutralize duplicate cards
+* tombstone junk card identities
+* remove expired temporary scene state
+* remove expired summons
+* expire old pending rumors/leads if irrelevant
+* compress old operation ledger entries while preserving dedupe safety
+
+Cleanup may not:
+
+* invent gameplay truth
+* grant items
+* award XP
+* change HP/MP/EP
+* complete quests
+* solve cases
+* create abilities
+* create cards from raw prose
+* delete important key items
+* delete important actors
+* delete important places
+* change current location
+* kill actors
+* remove active contracts
+* remove active deadlines
+* erase important archives
+* trust cards as state
+
+Cleanup should be boring, safe, and predictable.
+
+⸻
+
+30. Cleanup categories
+
+Candidate cleanup
+
+Removes stale actor/place/ability/item candidates that never became important.
+
+Example:
+
+A one-time actor candidate named “a guard” expires.
+
+Dirty queue cleanup
+
+Removes dirty entries already processed or no longer relevant.
+
+Diagnostic cleanup
+
+Prunes old logs while preserving recent useful traces.
+
+Memory compression
+
+Summarizes old actor/place memories into compact form.
+
+Example:
+
+Instead of many repair interactions, Mara memory says:
+
+“Mara has repaired the player’s gear several times and trusts them.”
+
+Archive cleanup
+
+Moves old completed objectives into archive summaries.
+
+Card cleanup
+
+Neutralizes duplicates, broad triggers, junk cards, stale cards.
+
+Temporary state cleanup
+
+Expires:
+
+* ended combat
+* expired summons
+* old scene hazards
+* resolved travel interruptions
+* old available loot not collected if no longer relevant
+
+Quarantine cleanup
+
+May compress old quarantine records, but should not silently restore them.
+
+⸻
+
+31. Cleanup budgets
+
+Cleanup should be budgeted.
+
+Do not run a massive cleanup every turn.
+
+Budget categories:
+
+* candidate removals per turn
+* card neutralizations per turn
+* memory compression count
+* dirty row cleanup count
+* diagnostic prune count
+* quarantine review count
+
+Priority:
+
+1. dangerous card pollution
+2. duplicate active cards
+3. stale Context-causing state
+4. expired active hazards/summons
+5. old dirty rows
+6. junk candidates
+7. memory compression
+8. old diagnostics
+
+Budgeting prevents cleanup from becoming the thing that breaks the script.
+
+⸻
+
+32. Manual override safeguard
+
+Manual override exists because the user may need to correct state.
+
+Manual override should be explicit.
+
+Allowed examples:
+
+* set player name
+* set race/species
+* set age
+* correct appearance
+* correct current location
+* add/remove item
+* correct item custody
+* correct HP/MP/EP
+* mark quest complete
+* mark actor important
+* merge actor aliases
+* restore quarantined item
+* neutralize bad card
+* rebuild protected cards
+
+Manual override should:
+
+* log old value and new value
+* require clear target
+* mark dirty targets
+* use operation/manual ledger
+* avoid mass changes by vague text
+* avoid importing whole card text blindly
+* report what changed
+
+Manual override should not be hidden.
+
+If the system changes canon because the user asked, the audit should say so.
+
+⸻
+
+33. Patch-system safeguard
+
+Old versions often fail when broad patch systems write gameplay truth.
+
+Bad pattern:
+
+A “polish” or “repair” system notices something and directly changes inventory, XP, actors, cards, quests, HP, and abilities all at once.
+
+This creates hidden conflicts.
+
+Safe pattern:
+
+Patch concepts must be converted into one of:
+
+* parser rule
+* validation rule
+* reducer precondition
+* operation ledger check
+* cleanup rule
+* migration rule
+* audit check
+* acceptance test
+
+Patch systems may not become gameplay writers.
+
+Example:
+
+Old patch says:
+
+“If sword is with smith, prevent using sword.”
+
+Safe conversion:
+
+* Inventory custody rule
+* ability/combat validation checks access
+* Context correction says sword unavailable
+* acceptance test proves it
+
+Example:
+
+Old patch says:
+
+“Remove duplicate Mara cards.”
+
+Safe conversion:
+
+* Card identity dedupe
+* Card audit
+* neutralization/tombstone
+* no gameplay mutation from card text
+
+⸻
+
+34. AuditSystem
+
+AuditSystem explains what happened.
+
+Audit should cover:
+
+* last input
+* last output
+* parsed signals
+* proposed events
+* validation outcomes
+* rejection reasons
+* hard-deny reasons
+* accepted events
+* reducer commits
+* operation keys
+* duplicate skips
+* follow-up events
+* dirty targets
+* Context packets
+* card updates
+* card skips
+* card duplicate detection
+* migration results
+* cleanup actions
+* quarantine actions
+* release check failures
+
+AuditSystem does not write gameplay truth.
+
+It reports and explains.
+
+⸻
+
+35. Debug trace
+
+AIDRPG needs a last-turn trace.
+
+The trace should answer:
+
+What did the system think happened?
+
+What did it accept?
+
+What did it reject?
+
+What did it skip as duplicate?
+
+What state changed?
+
+What cards/context were marked dirty?
+
+What did not happen and why?
+
+Example debug trace summary:
+
+* Proposed inventory.item.gain rusted iron key
+* Accepted: direct NPC handoff
+* InventoryReducer committed item gain
+* Operation key recorded
+* Dirty: inventory context, Inventory Overview card
+* CardSync skipped generated item card: key item not yet card-eligible
+* Proposed actor.create “the door”
+* Hard-denied: junk actor name
+
+This kind of trace is essential for testing.
+
+⸻
+
+36. State audit
+
+State audit checks active state for contradictions.
+
+It should detect:
+
+* item with no valid name
+* duplicate item identity
+* key item without owner/custody
+* item equipped but not accessible
+* actor with junk name
+* actor marked present in two incompatible places
+* companion present but party says absent
+* current location missing place record
+* quest active with missing objective
+* completed quest still active
+* contract active with missing parties
+* item in repair but also equipped
+* domain project active with impossible progress
+* ability stable but no effect/cost/limits
+* ability card exists for candidate
+* HP above max
+* negative coins without debt
+* deadline linked to missing objective
+* duplicate card identities
+* dirty queue stuck forever
+* operation ledger missing recent committed effects
+
+State audit should report problems.
+
+It should not automatically fix everything.
+
+Fixing should be through safe repair, migration, cleanup, or manual override.
+
+⸻
+
+37. Card audit
+
+Card audit checks memory surfaces.
+
+It should detect:
+
+* duplicate protected cards
+* duplicate generated cards
+* unmanaged conflicting cards
+* broad trigger keys
+* junk card titles
+* stale card content
+* card claims unsupported item
+* card claims unsupported actor death
+* card says quest active when archived
+* card says item custody old
+* card says ability stable when candidate
+* card created for generic room
+* card created for generic guard
+* tombstoned card recreated
+* card family mismatch
+* protected card missing
+* generated card missing for highly important eligible entity, if budget allows
+
+Card audit should support:
+
+* skip
+* update
+* neutralize
+* tombstone
+* flag manual review
+
+Card audit should never import card text as canon by default.
+
+⸻
+
+38. Release check
+
+Release check is the pre-build or pre-version sanity check.
+
+It should answer:
+
+Is this script safe enough to test?
+
+Release check should verify:
+
+* schema version exists
+* required buckets exist
+* event pipeline exists
+* validators exist
+* reducers route correctly
+* operation ledger exists
+* dirty queues exist
+* ContextBuilder reads only state
+* CardSync writes only cards
+* CardSync does not create canon
+* protected card identities are stable
+* card budgets exist
+* cleanup cannot invent truth
+* migration quarantines malformed state
+* commands do not claim unfinished features
+* acceptance tests are registered
+* debug commands exist
+* critical false-positive tests pass
+* duplicate replay tests pass
+* old-data migration tests pass
+
+Release check should fail loudly if:
+
+* multiple systems write XP
+* multiple systems write HP damage
+* parser writes inventory directly
+* CardSync reads card text as canon
+* ContextBuilder mutates state
+* cleanup creates gameplay truth
+* operation ledger missing
+* card dedupe missing
+* name hygiene missing
+* /help claims features not implemented
+
+⸻
+
+39. Command honesty safeguard
+
+Commands must not lie.
+
+If a feature is not implemented, /help should not claim it works.
+
+If a system is partial, command output should say partial.
+
+If a mechanic is display-only, command output should not imply it mutates state.
+
+If a card update is queued but skipped due to budget, card commands should show queued/skipped.
+
+Command honesty prevents confusion during testing.
+
+Important commands:
+
+* /debuglast
+* /stateaudit
+* /cardaudit
+* /releasecheck
+* /context
+* /cards
+* /quarantine
+* /migration
+* /cleanup
+* /help
+
+Commands should be player-facing and clear.
+
+Debug can be detailed.
+
+Normal commands should not overwhelm.
+
+⸻
+
+40. Test categories
+
+AIDRPG needs test categories, not just random testing.
+
+Required test categories:
+
+Canon validation tests
+
+Rumor, dream, quote, pretend, failed, pending, and confirmed events.
+
+Idempotency tests
+
+Same output processed twice.
+
+No duplicate consequences.
+
+Name hygiene tests
+
+Junk names rejected.
+
+Clean names accepted.
+
+Similar-name tests
+
+Key versus keyring.
+
+Mara versus Mara’s Forge.
+
+Mana Slash versus Mana Shield.
+
+Ownership/custody tests
+
+Owned but unavailable item cannot be used.
+
+Smith repair custody works.
+
+Card tests
+
+No duplicate cards.
+
+No junk cards.
+
+No candidate ability cards.
+
+Cards update over time.
+
+Card text does not create canon.
+
+Context tests
+
+No stale Context.
+
+Relevant facts included.
+
+Uncertainty preserved.
+
+No full state flood.
+
+Migration tests
+
+Old valid data migrates.
+
+Bad data quarantines.
+
+Old cards do not become canon.
+
+Cleanup tests
+
+Junk candidates removed.
+
+Important actors preserved.
+
+Cleanup does not invent truth.
+
+Release tests
+
+No forbidden writers.
+
+Required buckets present.
+
+Critical commands honest.
+
+⸻
+
+41. Replay test
+
+Replay tests are mandatory.
+
+Given the same output processed twice:
+
+Expected:
+
+* no duplicate XP
+* no duplicate item
+* no duplicate coin gain
+* no duplicate coin spend
+* no duplicate damage
+* no duplicate injury
+* no duplicate condition
+* no duplicate ability evidence
+* no duplicate quest progress
+* no duplicate quest reward
+* no duplicate contract fulfillment
+* no duplicate time passage
+* no duplicate travel arrival
+* no duplicate group casualties
+* no duplicate actor promotion
+* no duplicate place creation
+* no duplicate card write
+
+Replay safety is one of the main signs the engine is stable.
+
+⸻
+
+42. False-positive test examples
+
+Quoted item
+
+Output:
+
+“Mara says, ‘You pick up the key.’”
+
+Expected:
+
+* no item gain
+
+Confirmed item
+
+Output:
+
+“Mara places the key in your hand.”
+
+Expected:
+
+* item gain once
+
+Rumor death
+
+Output:
+
+“A rumor says you died.”
+
+Expected:
+
+* no death
+* rumor record possible
+
+Dream travel
+
+Output:
+
+“In your dream, you stand at the old chapel.”
+
+Expected:
+
+* real location unchanged
+
+Failed ability
+
+Output:
+
+“You try Mana Slash, but nothing happens.”
+
+Expected:
+
+* soft_fail possible
+* no stable ability
+* no card
+
+Pretend ability
+
+Input:
+
+“I pretend to cast Dragonfire.”
+
+Expected:
+
+* hard deny
+* no candidate
+
+Price quote
+
+Output:
+
+“The sword costs 10 silver.”
+
+Expected:
+
+* no coin spend
+* no item gain
+
+Purchase
+
+Output:
+
+“You pay 10 silver and take the sword.”
+
+Expected:
+
+* spend once
+* gain once
+
+Quest rumor
+
+Output:
+
+“People say the quest is complete.”
+
+Expected:
+
+* no quest completion
+* rumor possible
+
+Generic room
+
+Output:
+
+“You enter the room.”
+
+Expected:
+
+* scene state only
+* no place card
+
+⸻
+
+43. Old-version recovery strategy
+
+Because this project has many old versions, the final system must handle messy old saves.
+
+Old-version recovery should:
+
+* snapshot old state
+* detect schema
+* migrate obvious valid records
+* quarantine unsafe records
+* ignore old card claims unless manually confirmed
+* neutralize duplicate old cards
+* rebuild protected cards from state
+* not preserve old patch writers
+* not trust old dirty queues blindly
+* not duplicate old rewards
+* create migration report
+* allow manual restoration where needed
+
+The user should be able to see:
+
+* what migrated
+* what was quarantined
+* what was skipped
+* what needs manual review
+* what cards were neutralized
+* what protected cards were rebuilt
+
+This is how the project avoids being trapped by hundreds of old versions.
+
+⸻
+
+44. Safe failure behavior
+
+When unsure, AIDRPG should fail safely.
+
+Safe failure examples:
+
+* do not add uncertain item
+* store uncertain claim as pending
+* mark possible actor as candidate
+* create rumor instead of proof
+* create lead instead of evidence
+* create travel intent instead of arrival
+* soft-fail ability instead of stabilize
+* reject impossible victory instead of boss kill
+* quarantine malformed old data
+* audit duplicate instead of merging wrong
+* skip card creation instead of creating junk
+
+Unsafe failure examples:
+
+* give item from quote
+* kill player from rumor
+* complete quest from gossip
+* create actor named “the door”
+* create place card for “room”
+* duplicate XP on replay
+* treat old card as state
+* delete key item during cleanup
+* merge two different Maras
+* overwrite current location from weak text
+
+AIDRPG should choose safe failure.
+
+⸻
+
+45. System health states
+
+AIDRPG can have health status.
+
+Healthy
+
+No critical issues.
+
+Minor warnings only.
+
+Warning
+
+Some non-critical issues.
+
+Examples:
+
+* dirty queue backlog
+* stale low-priority card
+* old quarantine records
+* possible duplicate actor
+
+Degraded
+
+Important subsystem limited.
+
+Examples:
+
+* CardSync budget exceeded repeatedly
+* migration partially failed
+* duplicate cards unresolved
+* Context packet overflow
+* state audit warnings in active systems
+
+Critical
+
+Unsafe to trust automatic writes.
+
+Examples:
+
+* operation ledger missing
+* state schema malformed
+* player bucket missing
+* inventory corrupted
+* CardSync trying to write canon
+* multiple XP writers detected
+* parser direct mutation detected
+
+Health status can be shown in /releasecheck or /stateaudit.
+
+Critical status should not pretend everything is fine.
+
+⸻
+
+46. Example scenarios
+
+Example 1 — Same reward twice
+
+Output:
+
+“Mara gives you 5 silver for returning the ring.”
+
+First pass:
+
+* quest reward accepted
+* coins +5
+* operation key recorded
+
+Second pass:
+
+* duplicate reward skipped
+* audit shows duplicate skip
+
+Example 2 — Old card claims false item
+
+Old card:
+
+“The player owns Dragon Crown.”
+
+State:
+
+No Dragon Crown.
+
+Expected:
+
+* no item added
+* card audit flags unsupported card claim
+* card may be neutralized if managed/polluted
+* manual override required to add item
+
+Example 3 — Junk actor
+
+Output parser detects actor:
+
+“the door”
+
+Expected:
+
+* name hygiene hard-deny
+* no actor
+* possible exit record if output actually describes door
+
+Example 4 — Old malformed inventory
+
+Old state:
+
+item name: “take the thing from the”
+
+Expected:
+
+* quarantine malformed item
+* no active inventory item
+* migration report notes it
+
+Example 5 — Duplicate Mara cards
+
+Cards:
+
+* Mara
+* Mara Ironhand
+* Blacksmith Mara
+
+State:
+
+One actor Mara Ironhand.
+
+Expected:
+
+* one canonical managed actor card
+* duplicates neutralized or linked
+* no duplicate actor state
+* card audit report
+
+Example 6 — Cleanup candidate
+
+Actor candidate:
+
+“a villager,” no links, 300 turns old.
+
+Expected:
+
+* cleanup removes or archives candidate
+* no card
+* no gameplay effect
+
+Example 7 — Cleanup must preserve important actor
+
+Actor:
+
+Mara, quest giver and blacksmith, absent 300 turns.
+
+Expected:
+
+* memory may compress
+* actor retained
+* card retained/updated if managed
+* not deleted as stale
+
+Example 8 — Migration of old ability
+
+Old data:
+
+Mana Slash listed as ability from one failed attempt.
+
+Expected:
+
+* migrate as candidate or quarantine depending evidence
+* not stable
+* no generated ability card
+
+⸻
+
+47. Commands related to Chunk 16
+
+/debuglast should show
+
+* last input/output
+* proposed events
+* validation outcomes
+* accepted commits
+* rejected events
+* hard denials
+* duplicate skips
+* operation keys
+* dirty targets
+* card/context actions
+
+/stateaudit should show
+
+* state contradictions
+* missing buckets
+* invalid records
+* duplicate identities
+* active objective issues
+* current location problems
+* inventory/custody conflicts
+* resource bounds issues
+
+/cardaudit should show
+
+* duplicate cards
+* stale cards
+* broad triggers
+* unsupported card claims
+* junk cards
+* tombstones
+* neutralized cards
+* missing protected cards
+
+/quarantine should show
+
+* quarantined records
+* reason
+* source
+* restore options
+* ignore/delete options if safe
+
+/migration should show
+
+* current schema version
+* migration history
+* migrated records
+* quarantined records
+* skipped records
+* unresolved warnings
+
+/cleanup should show
+
+* what cleanup can do
+* what it did
+* what it refused to do
+* budgets used
+* records removed/compressed/neutralized
+
+/releasecheck should show
+
+* critical engine safety status
+* required bucket status
+* forbidden writer checks
+* command honesty status
+* test categories passed/failed
+* whether script is safe to test
+
+⸻
+
+48. Chunk 16 acceptance tests
+
+Test 1 — duplicate item blocked
+
+Given:
+
+Same key handoff output processed twice.
+
+Expected:
+
+* key gained once
+* duplicate skip recorded
+
+Test 2 — duplicate XP blocked
+
+Given:
+
+Same quest reward output processed twice.
+
+Expected:
+
+* XP awarded once
+* coins/items awarded once
+* duplicate skip recorded
+
+Test 3 — duplicate damage blocked
+
+Given:
+
+Same wolf bite output processed twice.
+
+Expected:
+
+* HP loss once
+* injury once
+* duplicate skip recorded
+
+Test 4 — duplicate time blocked
+
+Given:
+
+Same “one hour passes” output processed twice.
+
+Expected:
+
+* time advances once
+
+Test 5 — card text ignored as canon
+
+Given:
+
+Card says player owns Dragon Crown.
+
+Expected:
+
+* no inventory change
+* audit flags unsupported claim
+
+Test 6 — junk name hard-denied
+
+Given:
+
+Parser proposes actor named “the door.”
+
+Expected:
+
+* hard deny
+* no actor
+
+Test 7 — similar item distinction
+
+Given:
+
+Rusted iron key and keyring exist.
+
+Output says player takes rusted iron key, not keyring.
+
+Expected:
+
+* correct key affected
+* keyring unaffected
+
+Test 8 — rumor redirected
+
+Given:
+
+Rumor says player died.
+
+Expected:
+
+* body death rejected
+* reputation rumor accepted or pending if relevant
+
+Test 9 — failed ability does not stabilize
+
+Given:
+
+Mana Slash attempt fails.
+
+Expected:
+
+* soft_fail
+* candidate evidence maybe
+* no stable ability
+* no card
+
+Test 10 — migration quarantines bad data
+
+Given:
+
+Old malformed item record.
+
+Expected:
+
+* quarantined
+* no active item
+
+Test 11 — migration preserves valid data
+
+Given:
+
+Old valid item record with clean name and ownership.
+
+Expected:
+
+* migrated to inventory
+* dirty targets marked
+
+Test 12 — cleanup does not invent truth
+
+Given:
+
+Cleanup runs.
+
+Expected:
+
+* no XP, items, quests, abilities, deaths, or location changes created
+
+Test 13 — cleanup preserves important actor
+
+Given:
+
+Important actor absent for long time.
+
+Expected:
+
+* retained or memory compressed
+* not deleted
+
+Test 14 — duplicate cards neutralized
+
+Given:
+
+Multiple managed/generated cards for same actor.
+
+Expected:
+
+* one canonical card remains active
+* duplicates neutralized or skipped
+* no actor duplication
+
+Test 15 — release check fails unsafe writer
+
+Given:
+
+Parser directly writes inventory.
+
+Expected:
+
+* release check fails
+
+Test 16 — release check fails missing operation ledger
+
+Given:
+
+OperationLedger unavailable.
+
+Expected:
+
+* release check critical failure
+
+Test 17 — command honesty
+
+Given:
+
+Feature not implemented.
+
+Expected:
+
+* /help does not claim it works
+
+Test 18 — quarantine not active canon
+
+Given:
+
+Quarantined item exists.
+
+Expected:
+
+* player cannot use it
+* Context does not mention it as owned
+* no card generated
+
+Test 19 — manual restore logs change
+
+Given:
+
+User restores quarantined Royal Seal.
+
+Expected:
+
+* item created through manual override
+* audit logs source
+* dirty targets marked
+
+Test 20 — old polluted card tombstone prevents recreation
+
+Given:
+
+Bad card “The Door” neutralized and tombstoned.
+
+Expected:
+
+* CardSync does not recreate it next turn
+
+⸻
+
+49. Final Chunk 16 doctrine
+
+AIDRPG must be safe before it is clever.
+
+Every event needs validation.
+
+Every committed effect needs an operation key.
+
+Every duplicate must be skipped.
+
+Every name must pass hygiene.
+
+Every uncertain fact must stay uncertain.
+
+Every rumor must remain separate from truth.
+
+Every card must mirror state, not create it.
+
+Every Context packet must read state, not mutate it.
+
+Every old malformed record must be migrated safely or quarantined.
+
+Every cleanup action must trim noise without inventing gameplay.
+
+Every broad patch must become a parser rule, validator rule, reducer rule, cleanup rule, migration rule, audit rule, or test.
+
+Every important state change must be explainable through audit.
+
+Every release must pass safety checks before trust.
+
+The goal is not perfection.
+
+The goal is controlled failure.
+
+When the system is unsure, it should refuse, soften, quarantine, or ask for manual confirmation through commands rather than corrupting canon.
+
+That is what makes the full AIDRPG design stable enough to build.

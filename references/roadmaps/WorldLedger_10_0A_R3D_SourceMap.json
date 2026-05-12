@@ -1,0 +1,22 @@
+{
+  "buildVersion": "clean-core-build-10-0a-r3d-effort-reward-xp-calibration",
+  "buildStage": "Build 10.0A-R3D \u2014 Effort Reward / XP Calibration",
+  "owners": {
+    "EffortRewardResolver": "classifies organic effort into bounded xp_candidate proposals; no direct XP mutation",
+    "XPBudgetSystem": "anti-farm dampening and risk/contribution budget evaluation",
+    "ProgressionFormulaSystem": "XP application and level-up ownership",
+    "ProgressionDomainSystem": "hidden growth lane XP ownership",
+    "EventScanner.detectEffortRewardCandidates": "single R3D scanner entry point",
+    "CommandRenderer.build100ar3dcheck": "R3D self-test surface"
+  },
+  "changedFiles": [
+    "WorldLedger_CleanCore_Build10_0A_R3D_EffortRewardXpCalibration.txt"
+  ],
+  "boundaries": [
+    "no EffortRewardReducer",
+    "no direct parser XP mutation",
+    "no card/context/command XP grants",
+    "no hook wrapper"
+  ],
+  "next": "10.0A-R3E \u2014 Ability / Skill / Passive / Style Lifecycle"
+}

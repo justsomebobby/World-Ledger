@@ -1,0 +1,1229 @@
+AIDRPG Design Bible — Chunk 1: Core Play Philosophy and Canon Law
+
+1. Purpose of this chunk
+
+This chunk defines the foundation of AIDRPG before any mechanics, numbers, combat matrices, XP curves, cards, or reducers are designed.
+
+Its job is to answer:
+
+What is AIDRPG?
+
+What is it not?
+
+What counts as truth?
+
+How does something become canon?
+
+How does the system stay useful without feeling forced?
+
+How does the system respect AI Dungeon’s freeform storytelling?
+
+Every later chunk has to obey this one.
+
+The core architecture already identified in your clean-core reference is: Input intent → Output event proposals → CanonValidator → Reducers → Context → CardSync. It also says state.aidrpg is canon, Context is immediate truth injection, and Story Cards are durable mirrors only.  ￼
+
+⸻
+
+2. What AIDRPG is
+
+AIDRPG is a freeform RPG persistence engine for AI Dungeon.
+
+It watches natural player input and AI Dungeon output, then turns confirmed story consequences into structured RPG state.
+
+It is meant to make long adventures feel more coherent by remembering:
+
+* who the player is
+* where the player is
+* what the player owns
+* what abilities are forming
+* what injuries exist
+* what quests are active
+* who matters
+* what places matter
+* what facts are confirmed
+* what is only rumored, pending, or uncertain
+
+AIDRPG should feel like a quiet referee underneath the story.
+
+It should not dominate the player’s writing. It should not force every scene into a rigid game format. The surface experience should still feel like AI Dungeon: natural prose, flexible actions, unpredictable narration, and creative freedom.
+
+The tester reference describes the intended philosophy clearly: freeform input, structured interpretation, validation before canon, state as truth, Context as immediate AI-facing truth, and Story Cards as long-term mirrors.  ￼
+
+⸻
+
+3. What AIDRPG is not
+
+AIDRPG is not a full replacement for AI Dungeon.
+
+It is not a deterministic video game engine.
+
+It is not a strict tabletop combat simulator.
+
+It is not a menu-only RPG.
+
+It is not a system where every noun becomes a card.
+
+It is not a system where every AI sentence becomes true.
+
+It is not a pile of repair patches that tries to clean up mistakes after the fact.
+
+It is not a card generator first. Cards are only mirrors of validated state.
+
+It is not trying to make AI Dungeon perfectly predictable. That is impossible and would probably make the game less fun.
+
+AIDRPG should make the adventure feel more consistent, not less alive.
+
+⸻
+
+4. The main design sentence
+
+The whole project should obey this sentence:
+
+AIDRPG should let AI Dungeon remain freeform on the surface while maintaining structured, validated, persistent truth underneath.
+
+That means:
+
+* the player writes naturally
+* the AI narrates naturally
+* the script interprets carefully
+* uncertain things stay uncertain
+* confirmed things become canon
+* important canon is shown to the AI through Context
+* stable canon is mirrored into Story Cards
+* duplicate or unsafe consequences are blocked
+* the system helps the story instead of controlling it
+
+⸻
+
+5. The three layers of truth
+
+AIDRPG has three main truth layers.
+
+5.1 Canon state
+
+Canon state is state.aidrpg.
+
+This is the real source of truth.
+
+If the player has a rusted iron key, the truth is in state.
+
+If the player is poisoned, the truth is in state.
+
+If Mara is an important actor, the truth is in state.
+
+If a quest is active, the truth is in state.
+
+No Story Card, Context packet, output sentence, old patch, or duplicate summary should be more authoritative than state.aidrpg.
+
+This matters because AI Dungeon prose can be messy. Cards can duplicate. Context can be stale. Old systems can leave junk behind. The state must be the one place where machine truth lives.
+
+5.2 Context
+
+Context is immediate AI-facing truth.
+
+Context tells AI Dungeon what matters right now.
+
+For example, Context might tell the AI:
+
+* the player is wounded
+* the player is in Mira’s Forge
+* Mara is present and suspicious
+* the player has the rusted iron key
+* the north door is locked
+* the current quest is to find the missing ring
+
+Context should be compact, current, and useful.
+
+Context is not canon by itself.
+
+Context reads state. It does not create state.
+
+If Context says something wrong, that is a context bug, not canon.
+
+5.3 Story Cards
+
+Story Cards are long-term mirrors of stable important truth.
+
+They help AI Dungeon remember durable facts over long play.
+
+Story Cards may mirror:
+
+* player summary
+* important actors
+* important places
+* stabilized abilities
+* important items
+* active quests
+* active contracts
+* major domain projects
+
+But Story Cards do not create canon.
+
+A generated card should never become the reason something is true. It should only reflect truth that already exists in state.
+
+Your clean-core reference explicitly says CardSync must mirror state only and must not create canon from raw prose, make generic-fragment cards, read duplicate/quarantine cards as truth, or rely only on hidden metadata.  ￼
+
+⸻
+
+6. The canon law
+
+The most important rule is:
+
+Nothing becomes canon just because text mentioned it.
+
+Text can suggest something.
+
+Text can propose something.
+
+Text can imply something.
+
+Text can create a possible event.
+
+But it does not become real until validated.
+
+The canon flow is:
+
+Player input creates intent.
+
+AI output creates possible consequences.
+
+The EventPipeline extracts proposed events.
+
+CanonValidator decides whether each event is accepted, rejected, pending, soft-failed, or hard-denied.
+
+Reducers commit accepted events into the correct state bucket.
+
+Context reads state and tells the AI current truth.
+
+CardSync mirrors stable state into Story Cards.
+
+This is the main law that prevents the old “everything patches everything” problem.
+
+The compiled safeguards say the old branch failed because parsing, mutating, repairing, cleaning, and mirroring truth were spread across too many systems, and the rebuild must force every feature through the single pipeline.  ￼
+
+⸻
+
+7. Player input is intent, not success
+
+When the player types an action, AIDRPG should usually treat it as intent.
+
+For example:
+
+“I grab the crown.”
+
+This means the player is trying to grab the crown.
+
+It does not mean the player successfully has the crown.
+
+The system may store a pending input intent such as:
+
+* attempted pickup
+* attempted attack
+* attempted travel
+* attempted spell
+* attempted search
+* attempted purchase
+* attempted rest
+* attempted training
+
+But input alone should usually not mutate durable gameplay state.
+
+The exception is explicit player commands, debug commands, or manual override commands.
+
+Example:
+
+“I take the rusted iron key.”
+
+This should not immediately add the key.
+
+Possible AI output:
+
+“You reach for the key, but Mara pulls it away.”
+
+Result: no item gain.
+
+Another possible AI output:
+
+“Mara nods and places the rusted iron key in your hand.”
+
+Result: item gain may be proposed and validated.
+
+Your safeguard notes make this explicit: player input should be treated as intent, not confirmed outcome, and intent classifications should not directly mutate durable state except deliberate commands/manual overrides.  ￼
+
+⸻
+
+8. AI output is possible consequence, not automatic truth
+
+AI output is stronger than player input because it describes what happened after the player’s action.
+
+But output still needs validation.
+
+AI Dungeon can describe:
+
+* real consequences
+* failed attempts
+* partial success
+* future plans
+* rumors
+* dreams
+* visions
+* hypotheticals
+* threats
+* quoted dialogue
+* misleading narration
+* flavor text
+
+So the Output stage should not directly mutate state.
+
+It should extract possible event proposals.
+
+Example:
+
+“The wolf bites your arm, and blood runs down your sleeve.”
+
+Possible event proposal:
+
+* body.damage
+* body.injury.add
+* target: player
+* injury: wolf bite on arm
+* confidence: high
+
+Example:
+
+“A rumor spreads that you died in the woods.”
+
+Possible event proposal:
+
+* reputation.rumor.add
+* not body.death
+
+The rumor may affect reputation or witness knowledge, but it should not kill the player.
+
+Your clean-core examples already use this distinction: rumor death is rejected as damage/death, while a wolf bite with blood is accepted as damage/injury.  ￼
+
+⸻
+
+9. Canon levels
+
+Every possible fact should live at one of these canon levels.
+
+9.1 Non-canon
+
+Non-canon material should not affect gameplay state.
+
+Examples:
+
+* jokes
+* debug text
+* out-of-story instructions
+* fake examples
+* formatting artifacts
+* player saying “pretend”
+* text inside a guide or command explanation
+* impossible system noise
+
+Example:
+
+“I pretend to learn Dragonfire.”
+
+This should not create a real ability.
+
+It may be ignored or hard-denied.
+
+9.2 Rejected
+
+Rejected means the system considered a proposed event and decided it should not become truth.
+
+Example:
+
+“She says, ‘You pick up the key.’”
+
+The text contains “you pick up the key,” but it is inside dialogue. The character is saying something, not handing over the key.
+
+Result:
+
+* proposed item gain rejected
+* no key added
+* optional debug reason: quoted dialogue
+
+Rejected events should not appear as current truth in Context.
+
+They may appear in /debuglast or audit logs.
+
+9.3 Pending
+
+Pending means something might become true later, but is not confirmed yet.
+
+Examples:
+
+* an NPC promises to pay later
+* a rumor suggests a suspect
+* a route may lead to the old chapel
+* an item is seen nearby but not taken
+* a quest is offered but not accepted
+* a spell name appears but is not learned
+* travel begins but arrival has not happened
+
+Pending truth is useful, but dangerous.
+
+Pending records should:
+
+* have a source
+* have a confidence level
+* have an expiration or cleanup path
+* not grant rewards
+* not generate Story Cards
+* not complete quests
+* not solve cases
+* not appear as fully confirmed in Context
+
+Example:
+
+“Mara says she will give you the key tomorrow.”
+
+This may create a pending promise.
+
+It should not add the key to inventory.
+
+9.4 Soft-failed
+
+Soft-failed means the player made a real attempt, but the attempt did not fully succeed.
+
+This is important because failure can still matter.
+
+Examples:
+
+“You try to form Mana Slash, but nothing happens.”
+
+This should not create a stable ability.
+
+But it may create:
+
+* ability evidence
+* failed attempt history
+* MP/EP strain
+* domain XP
+* training progress
+
+Another example:
+
+“You search the room but find only a faint scratch near the window.”
+
+This may not solve the case, but it may create a clue.
+
+Soft failure lets the system reward effort without lying about success.
+
+Your safeguard notes say soft failure may preserve ability evidence, training XP, domain XP, fatigue, minor clues, pending travel, partial crafting progress, or combat pressure, but must not create finished abilities, finished items, completed quests, solved cases, confirmed kills, confirmed arrival, or full rewards.  ￼
+
+9.5 Accepted
+
+Accepted means the event is confirmed enough to become canon.
+
+Examples:
+
+“Mara places the rusted iron key in your hand, and you accept it.”
+
+Accepted:
+
+* inventory.item.gain
+
+“The wolf bites your arm and blood runs down your sleeve.”
+
+Accepted:
+
+* body.damage
+* body.injury.add
+
+“You arrive at the old chapel after an hour of walking.”
+
+Accepted:
+
+* travel.arrive
+* time.pass
+* current location changes
+
+Accepted events are sent to reducers.
+
+Reducers then write state.
+
+9.6 Stable
+
+Stable means the fact has lasted long enough or is important enough that the system can safely treat it as durable.
+
+Examples:
+
+* a stabilized ability
+* a named companion
+* a recurring place
+* a confirmed quest
+* a key item
+* a long-term injury
+* a faction relationship
+
+Stable facts can appear more confidently in Context.
+
+Some stable facts may become card-eligible.
+
+9.7 Card-eligible
+
+Card-eligible means a stable fact is important enough to mirror into Story Cards.
+
+Not every stable fact deserves a card.
+
+A mundane stick probably should not get a card.
+
+A unique heirloom sword might.
+
+A random guard probably should not get a card.
+
+Mara the recurring quest-giving companion might.
+
+A generic room should not get a card.
+
+The Sturdy Oak inn might, if it becomes recurring, named, and important.
+
+Card eligibility is not the same as canon.
+
+Canon comes first. Card eligibility comes later.
+
+9.8 Archived
+
+Archived means the fact is no longer active, but should remain part of history.
+
+Examples:
+
+* completed quest
+* solved case
+* fulfilled contract
+* abandoned domain project
+* defeated enemy group
+* old ability candidate merged into a stable ability
+* resolved rumor
+
+Archived facts should not clutter active Context unless relevant.
+
+They may appear in history, audit commands, or summaries.
+
+⸻
+
+10. Validation outcomes
+
+Every proposed event must receive one validation outcome.
+
+The five outcomes are:
+
+* accept
+* reject
+* pending
+* soft_fail
+* hard_deny
+
+Your clean-core reference already defines these and gives examples for pretend abilities, failed abilities, quoted item pickup, accepted item handoff, rumor death, and real damage.  ￼
+
+Accept
+
+Accept means the event is real enough to commit.
+
+Example:
+
+“The shopkeeper takes your 2 copper and hands you the loaf of bread.”
+
+Accepted events:
+
+* coins.spend
+* inventory.item.gain
+* economy.transaction.complete
+
+Reject
+
+Reject means the event should not commit.
+
+Example:
+
+“You almost grab the crown, but the guard pulls it away.”
+
+Rejected event:
+
+* inventory.item.gain
+
+Pending
+
+Pending means the event might matter later, but is not true yet.
+
+Example:
+
+“The old man says the chapel may hide a sealed door.”
+
+Pending:
+
+* possible place feature
+* possible investigation lead
+* not confirmed map truth
+
+Soft_fail
+
+Soft_fail means the attempt was real, but did not fully succeed.
+
+Example:
+
+“You try to ignite the flame blade, but the fire flickers out.”
+
+Soft-failed:
+
+* ability attempt
+* possible evidence
+* MP strain
+* no stable ability
+
+Hard_deny
+
+Hard_deny means the event is fake, non-canon, unsafe, or should be scrubbed.
+
+Example:
+
+“I pretend my sword becomes legendary.”
+
+Hard-denied:
+
+* item upgrade
+* ability gain
+* power jump
+
+Hard denial should be used for:
+
+* pretend actions
+* jokes
+* fake examples
+* quoted commands
+* dreams
+* visions
+* rumors treated as fact
+* debug text
+* manual explanation text
+* explicit failure
+* impossible unsupported claims
+* card text being parsed back as truth
+
+⸻
+
+11. Confirmation strength
+
+AIDRPG needs to judge how strong a story statement is.
+
+Not all text has equal authority.
+
+Weak evidence
+
+Weak evidence should usually be rejected, pending, or ignored.
+
+Examples:
+
+* “You feel stronger.”
+* “The road seems dangerous.”
+* “Someone says there might be treasure.”
+* “You think you could learn this someday.”
+* “A guard claims the thief confessed.”
+* “You nearly grab the key.”
+
+Weak evidence should not create major canon.
+
+Moderate evidence
+
+Moderate evidence may create pending truth, clues, or soft progress.
+
+Examples:
+
+* “A faint spark flickers in your palm before dying.”
+* “You find muddy footprints near the window.”
+* “Mara mentions she saw a hooded figure.”
+* “The path appears to lead toward the chapel.”
+* “You train until your arms ache.”
+
+Moderate evidence can matter, but should not overcommit.
+
+Strong evidence
+
+Strong evidence may be accepted.
+
+Examples:
+
+* “Mara hands you the key.”
+* “The wolf bites your arm and blood runs.”
+* “You arrive at the old chapel.”
+* “The shopkeeper takes your coins and gives you the bread.”
+* “After repeated attempts, the flame blade stabilizes in your hand.”
+* “The culprit confesses directly in front of the guard.”
+
+Strong evidence should still pass safety checks, but it can become canon.
+
+⸻
+
+12. The realism rule
+
+AIDRPG should not ask, “Can I parse this?”
+
+It should ask, “Would this be true in the story?”
+
+A parsed event should only become canon if it makes sense in the current narrative context.
+
+That means validation should consider:
+
+* current location
+* player state
+* current inventory
+* active intent
+* current scene
+* known actors
+* active hazards
+* combat matchup
+* resource levels
+* previous facts
+* whether the output confirms or denies the action
+* whether the source is direct narration, dialogue, rumor, dream, or speculation
+
+Example:
+
+“The dragon falls dead from your single punch.”
+
+This might be accepted if the player is legendary, empowered by an artifact, the dragon is already dying, and the scene supports it.
+
+It should probably be rejected or softened if the player is a level-one unarmed peasant.
+
+The point is not to make the system rigid.
+
+The point is to prevent unsupported consequences from becoming canon.
+
+⸻
+
+13. The fun rule
+
+AIDRPG should make the game more enjoyable, not more restrictive.
+
+The player should feel:
+
+* their choices matter
+* progress accumulates
+* the world remembers
+* failure can still create development
+* important things do not vanish
+* the AI has better continuity
+* commands help inspect the state
+* the script does not constantly interrupt the story
+
+The system should avoid:
+
+* spamming mechanical text
+* correcting the AI every turn
+* overexplaining every event
+* making the player feel punished by bookkeeping
+* forcing rigid combat results
+* turning every scene into stat math
+* creating constant card noise
+* denying creative solutions without reason
+
+AIDRPG should bias the story toward consistency, not cage it.
+
+⸻
+
+14. The humility rule
+
+AIDRPG cannot be perfect.
+
+AI Dungeon is freeform, and the AI may produce ambiguous, strange, contradictory, or poetic output.
+
+So the system should fail safely.
+
+When uncertain, AIDRPG should prefer:
+
+* pending over accepted
+* soft failure over false success
+* rejection over corrupted canon
+* audit log over hidden mutation
+* Context hint over forced correction
+* manual override over automatic guess
+* no card over junk card
+
+This is especially important for:
+
+* death
+* major injuries
+* ability stabilization
+* item ownership
+* quest completion
+* case solving
+* public reputation
+* major actor creation
+* place/card generation
+* time jumps
+* domain projects
+
+If the system is not sure, it should not pretend to be sure.
+
+⸻
+
+15. The anti-patch-pile rule
+
+No feature should be added as a broad patch layer.
+
+Old code may contain useful ideas, but those ideas must be converted into the clean architecture.
+
+The correct porting pattern is:
+
+* identify the useful rule
+* convert it into an event parser, validator rule, reducer rule, audit check, or test
+* do not paste the whole old system back in
+* do not create a new “fix everything” system
+* do not let cleanup become a gameplay writer
+* do not let CardSync infer canon from prose
+* do not let multiple systems write the same truth
+
+Your clean-core reference says useful old patches must be absorbed into the correct owner, converted into validator/helper rules, converted into diagnostics/audits, or removed. It also explicitly says no feature may return as a broad patch layer.  ￼
+
+⸻
+
+16. The one-owner rule
+
+Every truth type must have one owner.
+
+This prevents state drift.
+
+Examples:
+
+* HP, MP, EP, injuries, conditions, and body state belong to PlayerReducer / BodyReducer.
+* XP, level, stat training, and domain XP belong to ProgressionReducer.
+* Ability candidates, abilities, skills, talents, and passives belong to AbilityReducer.
+* Inventory, equipment, item custody, and coins belong to InventoryReducer / ItemAuthority.
+* Quests belong to QuestReducer.
+* Contracts, labor, and domain projects belong to ContractReducer / DomainReducer.
+* Investigation cases, clues, and evidence belong to InvestigationReducer.
+* Reputation, witness knowledge, and rumors belong to ReputationReducer.
+* Story Cards belong to CardSync only.
+
+Non-owner systems may propose events.
+
+They may not directly mutate another owner’s truth.
+
+The clean-core document lists this one-owner rule directly and says non-owner systems may only propose events.  ￼
+
+⸻
+
+17. The reducer rule
+
+Reducers are the only normal state writers.
+
+This means the EventPipeline and CanonValidator do not write gameplay truth.
+
+They only decide what should happen.
+
+Accepted events go to reducers.
+
+Reducers update state.
+
+Example:
+
+An ability attempt succeeds partially.
+
+Correct flow:
+
+* Output parser proposes ability.attempt
+* CanonValidator marks it as soft_fail or accept
+* AbilityReducer updates candidate evidence
+* ProgressionReducer may receive a follow-up XP event
+* Dirty queues mark ability and progression context dirty
+* CardSync later mirrors stable ability changes if eligible
+
+Incorrect flow:
+
+* parser directly creates the ability
+* ability scrubber modifies it afterward
+* progression system independently awards XP
+* CardSync makes a card from the prose
+* cleanup later tries to repair the mess
+
+That incorrect pattern is what the rebuild is trying to escape.
+
+⸻
+
+18. Context law
+
+Context should be helpful, compact, and truthful.
+
+Context should tell the AI what matters now.
+
+Context should not be a giant dump of every state bucket.
+
+Good Context should include things like:
+
+* current player condition
+* current location
+* immediate hazards
+* active combat/travel state
+* important inventory/equipment
+* relevant abilities and limits
+* active quest or contract
+* relevant actors nearby
+* urgent deadlines
+* current rumor/evidence only if relevant
+
+Context should not include:
+
+* every old quest
+* every old actor
+* every item
+* every archived case
+* every card
+* every debug log
+* every possible rumor
+* every distant place
+
+Context should never create canon.
+
+If Context says “you have the rusted iron key,” that should be because state says the player has the rusted iron key.
+
+⸻
+
+19. Story Card law
+
+Story Cards are long-term mirrors, not immediate truth.
+
+CardSync may create or update:
+
+* protected summary cards
+* promoted actor cards
+* promoted place cards
+* stabilized ability cards
+* important item cards
+* active quest cards
+* active contract cards
+* major domain project cards
+
+CardSync must not:
+
+* create canon from raw prose
+* make cards from every named noun
+* make cards from generic fragments
+* use broad AIDRPG trigger keys
+* create duplicate review cards
+* create managed quarantine cards
+* read duplicate cards as truth
+* treat hidden metadata as the only reliable identity
+* scan all cards every hook
+* write unlimited cards
+
+Your compiled feature guide says Story Cards should mirror state.aidrpg, avoid duplicate cards/card explosions, use stable state identity, respect write budgets, and update existing cards when canon changes.  ￼
+
+⸻
+
+20. Manual override law
+
+Manual override is allowed because the player may need to correct state.
+
+But manual override must be explicit and controlled.
+
+Manual override should not mean:
+
+* any Story Card can rewrite state
+* duplicate protected cards can overwrite canon
+* AI output can rename the player freely
+* generated card prose can restore old truth
+* cleanup can guess what the user meant
+
+Manual override should mean:
+
+* the user intentionally corrects something
+* the correction is parsed through a safe path
+* only allowed fields are changed
+* the operation is logged
+* dirty Context/CardSync targets are marked
+* the same override is not applied repeatedly
+
+Manual override should start narrow.
+
+The safest early manual override categories are:
+
+* player name
+* species/race
+* age
+* appearance
+* HP/MP/EP correction
+* current location correction
+* simple inventory correction
+
+More dangerous override areas, such as abilities, quests, generated cards, and domain state, should require stricter commands later.
+
+⸻
+
+21. Audit law
+
+Every important decision should be inspectable.
+
+If something goes wrong, the player should be able to find where.
+
+AIDRPG should eventually be able to show:
+
+* last input
+* last output
+* detected input intent
+* proposed events
+* validation result for each event
+* rejection reasons
+* accepted events
+* reducer commits
+* operation keys
+* skipped duplicates
+* dirty queues
+* card writes
+* card skips
+* card neutralizations
+* state audit results
+* card audit results
+
+This matters because the system is too large to debug by guessing.
+
+Your tester reference says the testing system should inspect state, story cards, history, debug commands, context output, and errors, then compare expected behavior against actual behavior and group failures by system.  ￼
+
+⸻
+
+22. Player-facing style law
+
+AIDRPG should not constantly expose its machinery.
+
+Most of the time, the player should just see AI Dungeon’s story.
+
+Commands can show mechanical truth when requested.
+
+The system should speak mechanically only when:
+
+* the player asks for a command
+* a debug mode is enabled
+* a manual override happens
+* a critical safety warning is needed
+* the output must be replaced because of a command response
+
+Otherwise, the system should quietly update state.
+
+Bad player experience:
+
+* every turn shows 10 lines of XP, card, and validator logs
+* every action is interrupted by mechanical disclaimers
+* the script argues with the AI output in visible prose
+* the player has to micromanage systems to play normally
+
+Good player experience:
+
+* normal turns feel like normal AI Dungeon
+* /sheet reveals the player state
+* /inventory shows items
+* /debuglast explains what happened when something seems wrong
+* Context quietly helps the AI remember important facts
+
+⸻
+
+23. How AIDRPG should handle uncertainty
+
+Uncertainty is not a bug. It is part of freeform storytelling.
+
+AIDRPG should support uncertainty explicitly.
+
+Examples:
+
+A suspicious footprint is a clue, not proof.
+
+A rumor is rumor, not fact.
+
+A failed spell is evidence, not a stable ability.
+
+A promised reward is pending, not inventory.
+
+A travel attempt is pending travel, not arrival.
+
+A monster “seems dead” may be unresolved unless confirmed.
+
+A strange NPC name may be an actor candidate, not a major actor.
+
+A new place mention may be a place candidate, not a generated card.
+
+This lets the system remember possibilities without corrupting truth.
+
+⸻
+
+24. How later chunks must use this chunk
+
+Every later design chunk should answer:
+
+* What does this feature own?
+* What events can propose changes to it?
+* What validation outcomes can apply?
+* What reducer commits accepted changes?
+* What stays pending?
+* What counts as soft failure?
+* What gets hard-denied?
+* What appears in Context?
+* What can become card-eligible?
+* What must never become canon automatically?
+* What tests prove the feature obeys Chunk 1?
+
+If a future mechanic does not fit the canon law, it should not be built yet.
+
+⸻
+
+25. Chunk 1 acceptance tests
+
+This chunk is design-only, but it still creates test expectations.
+
+AIDRPG should eventually pass these philosophy tests:
+
+Test 1 — Input is intent
+
+Player input:
+
+“I pick up the crown.”
+
+Expected:
+
+* creates pickup intent
+* does not add crown yet
+
+Test 2 — Failed action does not become success
+
+Output:
+
+“You reach for the crown, but the guard knocks your hand away.”
+
+Expected:
+
+* no item gain
+* possible failed attempt / social tension / combat pressure
+
+Test 3 — Confirmed handoff becomes canon
+
+Output:
+
+“Mara places the rusted iron key in your hand, and you accept it.”
+
+Expected:
+
+* item.gain accepted
+* InventoryReducer commits key
+* Context can mention key next turn
+* CardSync may mirror if key item/card-eligible
+
+Test 4 — Quoted action is rejected
+
+Output:
+
+“She says, ‘You pick up the key.’”
+
+Expected:
+
+* item.gain rejected
+* no key added
+
+Test 5 — Pretend ability is hard-denied
+
+Input or output:
+
+“I pretend to cast Mana Slash.”
+
+Expected:
+
+* no ability candidate
+* no stable ability
+* optional hard-deny debug record
+
+Test 6 — Failed real ability can soft-fail
+
+Output:
+
+“You try to form Mana Slash, but nothing happens.”
+
+Expected:
+
+* no stable ability
+* possible candidate evidence
+* possible MP/EP strain
+* possible soft_fail record
+
+Test 7 — Rumor is not physical truth
+
+Output:
+
+“A rumor spreads that you died in the woods.”
+
+Expected:
+
+* no death
+* no HP change
+* possible reputation.rumor event
+
+Test 8 — Real injury can become canon
+
+Output:
+
+“The wolf bites your arm and blood runs down your sleeve.”
+
+Expected:
+
+* damage/injury proposed
+* validation accepts if context supports it
+* BodyReducer commits HP/injury
+* duplicate output does not apply twice
+
+Test 9 — Story Card is not canon source
+
+Existing card says:
+
+“Player owns the Dragon Crown.”
+
+But state does not contain the Dragon Crown.
+
+Expected:
+
+* player does not own Dragon Crown
+* card may be audited as stale or polluted
+* no inventory item created from card text alone
+
+Test 10 — Context is read-only
+
+Context contains:
+
+“You have the rusted iron key.”
+
+Expected:
+
+* this must be generated from state
+* Context itself does not add the key
+
+⸻
+
+26. Final Chunk 1 doctrine
+
+AIDRPG’s final doctrine is:
+
+AI Dungeon remains the storyteller.
+
+The player remains free.
+
+AIDRPG does not believe everything.
+
+AIDRPG records only validated consequences.
+
+State is truth.
+
+Context is immediate truth shown to the AI.
+
+Story Cards are long-term mirrors.
+
+Parsers propose.
+
+Validators judge.
+
+Reducers commit.
+
+Audits explain.
+
+Tests prove.
+
+If a feature does not fit that doctrine, it should be redesigned before it is built.
+

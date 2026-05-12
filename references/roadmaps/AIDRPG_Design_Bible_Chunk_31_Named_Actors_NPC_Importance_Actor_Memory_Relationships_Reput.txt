@@ -1,0 +1,3350 @@
+AIDRPG Design Bible — Chunk 31: Named Actors, NPC Importance, Actor Memory, Relationships, Reputation, Titles, Factions, and Social Consequence Tracking
+
+1. Purpose of this chunk
+
+Chunk 31 defines how AIDRPG handles people, NPCs, named actors, companions, major actors, factions, reputation, titles, relationship memory, social consequences, and actor truth.
+
+Earlier chunks defined:
+
+* player stats and resources
+* progression
+* enemies and combat
+* abilities
+* absorption
+* crafting
+* economy
+* quests
+* investigation and evidence
+
+Chunk 31 answers:
+
+How does an NPC become important?
+
+When should a random guard become a named actor?
+
+How does AIDRPG remember what an NPC knows, believes, witnessed, owns, promised, or did?
+
+How does it prevent random one-line NPCs from flooding memory?
+
+How does reputation work?
+
+How do titles work?
+
+How do factions remember the player?
+
+How does the system distinguish public reputation from private relationship?
+
+How does it track trust, fear, hostility, debts, promises, crimes, favors, betrayal, and loyalty?
+
+How does it stop rumors, accusations, and AI hallucinations from corrupting actor memory?
+
+The central rule is:
+
+Actor memory should preserve confirmed social truth without turning every temporary NPC into permanent clutter.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon creates people constantly.
+
+The story may introduce:
+
+* a guard
+* a merchant
+* an innkeeper
+* a wounded traveler
+* a suspicious noble
+* a stable boy
+* a village elder
+* a bandit captain
+* a companion
+* a summoned spirit
+* a worker
+* a foreman
+* a quest giver
+* a witness
+* a suspect
+* a faction leader
+* a rival
+* a lover
+* a prisoner
+* a shopkeeper
+* a god avatar
+* a demon patron
+* a talking slime
+* a living sword
+* a dragon
+* a ghost
+* a king
+
+AIDRPG must remember important people.
+
+But it must not permanently store every:
+
+* unnamed guard
+* random villager
+* one-line shopkeeper
+* background worker
+* temporary enemy
+* generic bandit
+* generic wolf
+* random witness with no future relevance
+* hallucinated name
+* junk actor name
+* duplicate version of the same NPC
+
+The system needs an importance filter.
+
+The goal is to remember people who matter, while letting background actors stay lightweight.
+
+⸻
+
+3. Actor ownership boundaries
+
+ActorReducer owns
+
+* named actors
+* actor identity
+* actor importance
+* actor memory
+* actor status
+* actor location if known
+* actor relationships
+* actor knowledge/claims
+* actor promises
+* actor debts/favors
+* actor injuries/death/capture
+* actor roles in quests/cases/contracts/factions
+* actor duplicate prevention
+* actor card eligibility
+
+PartyReducer owns
+
+* companions
+* party members
+* followers
+* summons if party-like
+* companion presence
+* companion loyalty
+* companion equipment if separately tracked
+* companion injuries/conditions if active
+
+FactionReducer owns
+
+* factions
+* faction identity
+* faction standing
+* faction territory
+* faction relationships
+* faction memory
+* faction goals
+* faction hostility/ally status
+
+ReputationReducer owns
+
+* public reputation
+* local reputation
+* faction reputation
+* titles
+* fame/infamy
+* crimes
+* rumors about the player
+* social consequences from public knowledge
+
+QuestReducer owns
+
+* quest giver/target/recipient links
+* quest actor roles
+
+InvestigationReducer owns
+
+* witness statements
+* suspects
+* claims
+* evidence-related actor notes
+* case truth status
+
+ContractReducer owns
+
+* promises, agreements, obligations, payment terms
+
+CardSync owns
+
+* generated actor cards
+* generated faction cards
+* protected Actor/Relationship summary card
+* duplicate card prevention
+* trigger safety
+
+Actors own identity and memory.
+
+Reputation owns public perception.
+
+Investigation owns claims and evidence.
+
+Contracts own obligations.
+
+Cards mirror state only.
+
+⸻
+
+4. Actor categories
+
+AIDRPG should classify actors.
+
+Background actor
+
+A temporary person with little memory.
+
+Examples:
+
+* random villager
+* unnamed guard
+* passerby
+* generic shop customer
+
+Usually no permanent record.
+
+Minor actor
+
+Named or lightly relevant, but not central.
+
+Examples:
+
+* innkeeper who sells room
+* guard who gives directions
+* local merchant
+* one-time witness
+
+Can have lightweight memory.
+
+Usually no generated card.
+
+Supporting actor
+
+Recurring or useful NPC.
+
+Examples:
+
+* friendly smith
+* repeated shopkeeper
+* local healer
+* recurring witness
+* foreman
+* small quest giver
+
+May appear in actor memory summaries.
+
+Card only if important.
+
+Major actor
+
+Important recurring person.
+
+Examples:
+
+* companion
+* rival
+* patron
+* major villain
+* faction leader
+* lover
+* mentor
+* noble
+* recurring quest giver
+* named boss
+* important witness
+* major suspect
+
+Should have durable memory.
+
+Often card eligible.
+
+Party actor
+
+Travels with or directly accompanies the player.
+
+Examples:
+
+* companion
+* follower
+* summon with persistent identity
+* pet
+* bonded spirit
+
+Needs presence and status tracking.
+
+Faction actor
+
+An actor representing a faction.
+
+Examples:
+
+* captain of guard
+* guildmaster
+* priest of church
+* rebel leader
+
+Links to faction reputation.
+
+World actor
+
+A powerful entity whose existence affects the setting.
+
+Examples:
+
+* dragon sovereign
+* demon lord
+* god avatar
+* king
+* ancient lich
+* world tree spirit
+
+Usually card eligible if active.
+
+⸻
+
+5. NPC importance scale
+
+AIDRPG should use an importance scale.
+
+Importance	Meaning	Memory Behavior
+0	background	no durable memory unless promoted
+1	minor temporary	lightweight scene memory only
+2	minor named	small actor record, no card
+3	recurring/supporting	durable actor memory
+4	major actor	full actor memory, card eligible
+5	central actor	protected/carded, high Context priority
+6	world actor	major persistent world memory
+
+Importance should change over time.
+
+A random guard can become important if:
+
+* the player befriends them
+* they become a witness
+* they join the party
+* they betray the player
+* they become a recurring rival
+* they are linked to a major quest
+* they hold a key item
+* they become a faction representative
+* they are named and recur
+
+A named actor can also become less active, but should not be forgotten if important history exists.
+
+⸻
+
+6. Actor promotion rules
+
+An NPC should be promoted when one or more of these happens:
+
+* receives a proper name
+* appears repeatedly
+* gives or receives a quest
+* joins party
+* becomes companion/follower
+* becomes enemy/rival
+* holds key item
+* makes a promise/contract
+* witnesses major event
+* is suspect/witness in major case
+* is emotionally important
+* belongs to major faction
+* controls resources/services
+* has unique abilities
+* survives major event with player
+* receives injury/death/capture that matters
+* gets a generated card candidate
+* is explicitly marked important by player or system
+
+Do not promote solely because:
+
+* AI gives a junk name
+* a random NPC says one line
+* a generic enemy appears
+* a background crowd member exists
+* a temporary illusion speaks
+* Story Card text mentions a person without scene confirmation
+
+⸻
+
+7. Actor demotion / archiving
+
+Actors can be archived or lowered in active priority.
+
+Demote/archive when:
+
+* actor leaves story for long time
+* minor actor’s role is complete
+* actor is dead and no longer relevant
+* actor’s quest is archived
+* actor was created by mistake and invalidated
+* duplicate actor merged
+* background NPC no longer needed
+
+Do not delete important history.
+
+Archive should preserve:
+
+* who they were
+* final status
+* relationship outcome
+* major promises/debts
+* quest/case links
+* death/location if known
+* unresolved threads
+
+Example:
+
+A minor innkeeper who gave directions may vanish from active memory.
+
+A companion who died should remain archived and may still affect reputation, grief, or story.
+
+⸻
+
+8. Actor identity template
+
+Actor identity should be structured.
+
+Fields:
+
+* Actor ID
+* Name
+* Aliases
+* Importance
+* Actor type
+* Race/species
+* Gender/presentation if known
+* Age category if known
+* Appearance summary
+* Role
+* Occupation
+* Faction links
+* Current location
+* Home/base
+* Status
+* Relationship to player
+* Known abilities
+* Known equipment
+* Quest links
+* Case links
+* Contract links
+* Reputation links
+* Last seen
+* Truth confidence
+* Card eligibility
+
+Example:
+
+Actor: Mara
+Importance: 4 major actor
+Role: companion / sword repair contact
+Race/species: human, if confirmed
+Current location: with party or at smithy, depending state
+Relationship: trusted ally
+Known facts: repaired player’s sword once; dislikes being lied to
+Unconfirmed claims: rumored to know old thieves’ routes
+Status: alive, active
+
+⸻
+
+9. Actor name hygiene
+
+Actor names need validation.
+
+Reject or avoid actor names that are:
+
+* generic role only
+* full sentence
+* parser fragment
+* debug text
+* command output
+* pronoun
+* title with no identity unless intentionally title-only
+* duplicate with minor spelling drift
+* absurd junk unless story tone supports it
+* too long
+* copied from Context/card label
+* “the man”
+* “the guard”
+* “a villager”
+* “Unknown”
+* “NPC”
+* “Quest Giver”
+
+Good actor names:
+
+* Mara
+* Old Bren
+* Captain Mora
+* Lord Veyr
+* Stable Boy Tovin
+* Frostmaw
+* Sister Elian
+* Korr the Blacksmith
+* The Bone Knight
+* Ashen Foreman Durn
+
+Generic roles can exist as scene actors but should not become durable named actor records unless needed.
+
+⸻
+
+10. Alias and duplicate actor prevention
+
+AI may rename the same actor.
+
+Examples:
+
+* Captain Mora
+* Captain Morra
+* Mora
+* Captain Mira
+* Guard Captain Mora
+
+Duplicate detection should compare:
+
+* name similarity
+* title/role
+* location
+* faction
+* quest link
+* relationship
+* recent scene
+* unique facts
+* actor card key
+* aliases
+
+If same actor:
+
+* merge aliases
+* preserve canonical name
+* avoid duplicate card
+
+If separate:
+
+* keep separate, but clarify.
+
+Example:
+
+Mara and Mira may be different if both exist.
+
+If AI alternates Mara/Mira for same companion, merge or flag typo depending context.
+
+⸻
+
+11. Actor truth status
+
+Actor facts need truth status like investigation facts.
+
+Truth labels:
+
+* confirmed
+* observed
+* claimed by actor
+* claimed by other actor
+* rumored
+* suspected
+* disputed
+* contradicted
+* false
+* unknown
+
+Example:
+
+Confirmed:
+
+“Mara is traveling with the player.”
+
+Claimed:
+
+“Mara says she once served in the royal guard.”
+
+Rumored:
+
+“Villagers say Mara betrayed a guild.”
+
+Suspected:
+
+“Mara may be hiding something about the tower.”
+
+Do not write rumors into actor memory as confirmed biography.
+
+This is critical.
+
+⸻
+
+12. Actor memory layers
+
+Actor memory should have layers.
+
+Identity memory
+
+Stable who/what they are.
+
+Example:
+
+Mara is a human swordswoman and companion.
+
+Relationship memory
+
+How they relate to player.
+
+Example:
+
+Mara trusts the player after they rescued her brother.
+
+Event memory
+
+Major things that happened.
+
+Example:
+
+Mara was wounded fighting Frostmaw.
+
+Knowledge memory
+
+What they know, claim, or witnessed.
+
+Example:
+
+Mara saw blue wax in Lord Veyr’s study.
+
+Obligation memory
+
+Promises, debts, contracts, favors.
+
+Example:
+
+The player owes Mara 6 silver for sword repair.
+
+State memory
+
+Current status.
+
+Example:
+
+Mara is injured, resting at Greyford inn.
+
+Secret/uncertain memory
+
+Unverified or hidden facts.
+
+Example:
+
+Mara may be connected to the thieves’ guild, but this is only rumored.
+
+Context should usually include only relevant layers.
+
+⸻
+
+13. Major actor memory
+
+Major actors need more durable summaries.
+
+Major actor memory should track:
+
+* identity
+* relationship
+* current status
+* current location
+* loyalty/hostility
+* key history with player
+* secrets known to player
+* claims/rumors separately
+* important promises
+* injuries/conditions
+* abilities/equipment if relevant
+* faction position
+* active quest/case links
+* unresolved tensions
+* last major interaction
+
+Example:
+
+Mara major memory:
+
+* companion and skilled swordswoman
+* trusts player moderately
+* was present during Old Mill wolf fight
+* currently wounded in left shoulder
+* dislikes needless cruelty
+* player promised to help find her brother
+* rumored to have thieves’ guild history, unconfirmed
+
+This is more useful than raw chat logs.
+
+⸻
+
+14. Relationship model
+
+Relationships should be tracked separately from reputation.
+
+Relationship is personal.
+
+Reputation is public/social.
+
+Relationship dimensions:
+
+* trust
+* affection
+* respect
+* fear
+* hostility
+* loyalty
+* gratitude
+* resentment
+* debt
+* obligation
+* romance
+* rivalry
+* suspicion
+* dependence
+* authority
+* intimidation
+
+Do not reduce everything to one number.
+
+A character can respect the player but not trust them.
+
+A character can fear the player and obey, while secretly hating them.
+
+A character can love the player and disagree morally.
+
+⸻
+
+15. Relationship states
+
+Useful relationship labels:
+
+* unknown
+* neutral
+* friendly
+* warm
+* trusted
+* loyal
+* devoted
+* suspicious
+* wary
+* afraid
+* hostile
+* enemy
+* rival
+* indebted
+* protective
+* romantic interest
+* companion
+* follower
+* patron
+* dependent
+* betrayed
+* grieving
+* conflicted
+* coerced
+* manipulated
+
+Relationship labels should be supported by events.
+
+Do not make someone “devoted” from one compliment unless story tone supports it.
+
+⸻
+
+16. Relationship score optional model
+
+If numerical tracking is desired, use hidden or debug-facing scores.
+
+Example dimensions from -100 to +100:
+
+* Trust
+* Affection
+* Respect
+* Fear
+* Hostility
+* Obligation
+
+But player-facing summaries should usually be descriptive.
+
+Example:
+
+Instead of:
+
+“Mara Trust +42”
+
+Use:
+
+“Mara trusts you somewhat, but she is still uneasy about your use of blood magic.”
+
+Numbers can exist internally for consistency but should not dominate narrative.
+
+⸻
+
+17. Relationship change validation
+
+Relationship changes require cause.
+
+Valid causes:
+
+* rescue
+* betrayal
+* payment
+* unpaid debt
+* kindness
+* cruelty
+* shared combat
+* healing
+* lying
+* public insult
+* private confession
+* kept promise
+* broken promise
+* gift
+* intimidation
+* romance scene
+* moral disagreement
+* faction conflict
+* quest completion
+* evidence revelation
+* crime witnessed
+
+Invalid causes:
+
+* random AI says “they love you now” with no support
+* Story Card says they trust player
+* player declares “everyone likes me”
+* one minor action causing extreme change without context
+* duplicate relationship update
+
+Relationship changes should be proportional.
+
+⸻
+
+18. Relationship memory examples
+
+Rescued NPC
+
+Event:
+
+Player saves Tovin from wolves.
+
+Possible relationship:
+
+* gratitude increases
+* trust increases
+* fear may decrease
+* Tovin may become helpful witness
+
+Betrayed companion
+
+Event:
+
+Player lies to Mara about cursed artifact and she is injured.
+
+Possible relationship:
+
+* trust decreases
+* resentment increases
+* companion may confront player
+* quest branch possible
+
+Paid worker fairly
+
+Event:
+
+Player pays workers on time during dangerous project.
+
+Possible relationship:
+
+* worker morale improves
+* local reputation improves if known
+* foreman trust increases
+
+Intimidated merchant
+
+Event:
+
+Player threatens merchant into discount.
+
+Possible relationship:
+
+* merchant fear increases
+* trust decreases
+* local reputation may worsen if public
+
+⸻
+
+19. Public reputation versus personal relationship
+
+These must be separate.
+
+Example:
+
+Player saves town publicly.
+
+Public reputation:
+
+* local hero
+
+But one NPC may hate the player because:
+
+* their brother died in collateral damage
+
+Example:
+
+Player is feared as demon slayer.
+
+Public reputation:
+
+* respected/fearsome
+
+But companion may distrust player due to cruelty.
+
+Do not let public fame automatically overwrite personal relationships.
+
+⸻
+
+20. Reputation scopes
+
+Reputation should have scope.
+
+Scopes:
+
+* personal
+* local
+* town
+* village
+* city
+* region
+* kingdom
+* faction
+* guild
+* religion/church
+* criminal underworld
+* nobility
+* military
+* monster community
+* magical community
+* domain population
+* global/world
+* divine/cosmic
+
+Example:
+
+The player may be famous in Greyford and unknown in the capital.
+
+The thieves’ guild may hate the player while villagers love them.
+
+Reputation should not spread instantly unless communication supports it.
+
+⸻
+
+21. Reputation categories
+
+Reputation can be positive or negative in different ways.
+
+Positive categories:
+
+* hero
+* protector
+* healer
+* honorable
+* generous
+* clever investigator
+* reliable contractor
+* dragon slayer
+* oathkeeper
+* fair employer
+* monster friend
+* merciful
+* powerful mage
+* skilled crafter
+
+Negative categories:
+
+* murderer
+* thief
+* oathbreaker
+* cruel
+* dangerous mage
+* demon-touched
+* unreliable
+* debtor
+* coward
+* tyrant
+* blasphemer
+* reckless
+* destructive
+* cursed
+* monster sympathizer
+* fraud
+* traitor
+
+Reputation should describe what people believe, not necessarily what is true.
+
+⸻
+
+22. Reputation record template
+
+Reputation record fields:
+
+* Scope
+* Group/Place/Faction
+* Reputation label
+* Strength
+* Source event
+* Public knowledge level
+* Witnesses
+* Evidence
+* Rumor status
+* Decay or persistence
+* Benefits
+* Penalties
+* Last updated
+
+Example:
+
+Reputation: Greyford Protector
+Scope: Greyford town
+Strength: moderate
+Source: cleared wolves from Old Mill
+Public knowledge: villagers know
+Benefits: mild discounts, trust from commoners
+Penalties: wolves/druid faction may dislike if relevant
+
+⸻
+
+23. Reputation strength
+
+Reputation strength levels:
+
+Strength	Meaning
+none	no known reputation
+faint	a few people heard something
+minor	local mention
+moderate	recognized locally
+strong	widely known in scope
+famous	major recognition
+legendary	known across regions
+mythic	world-scale fame
+infamous	severe negative reputation
+feared	people react with fear
+revered	people react with awe/devotion
+
+Reputation should require spread.
+
+A private heroic act does not create public fame unless someone knows and shares it.
+
+⸻
+
+24. Reputation spread
+
+Reputation spreads through:
+
+* witnesses
+* survivors
+* bards
+* public announcements
+* faction reports
+* town gossip
+* official records
+* wanted posters
+* magical communication
+* rumors
+* contracts
+* newspapers/bulletins if setting supports
+* soldiers/traders
+* divine signs
+* social media if modern setting
+
+Spread speed depends on:
+
+* communication technology
+* faction networks
+* distance
+* event severity
+* public visibility
+* political interest
+* secrecy
+
+Example:
+
+Killing a dragon in front of a city spreads fast.
+
+Saving one child in a remote forest may stay private unless told.
+
+⸻
+
+25. Reputation decay and persistence
+
+Some reputation fades.
+
+Temporary reputation:
+
+* helped at market
+* won small brawl
+* minor rumor
+
+Persistent reputation:
+
+* saved village
+* betrayed kingdom
+* killed noble
+* founded guild
+* became dragon slayer
+* broke divine oath
+* murdered civilians
+* solved famous case
+
+Decay factors:
+
+* time
+* distance
+* competing news
+* lack of proof
+* deliberate cover-up
+* reputation repair
+* false rumor disproven
+
+Persistent reputation may archive but remain relevant.
+
+⸻
+
+26. Titles
+
+Titles are recognized labels gained through actions, authority, or reputation.
+
+Examples:
+
+* Wolfbane
+* Protector of Greyford
+* Dragon Slayer
+* Oathbreaker
+* Ashen Hand
+* Court Investigator
+* Apprentice Smith
+* Lord of Blackwood
+* Demon-Touched
+* Savior of the Mill
+* Champion of the Arena
+* Wanted Criminal
+* Friend of Slimes
+* The Blue-Flame Mage
+
+Titles can be:
+
+* formal
+* informal
+* self-proclaimed
+* mocked
+* faction-granted
+* religious
+* legal
+* criminal
+* legendary
+* cursed
+* hidden
+* disputed
+
+A title should not be granted without a source.
+
+⸻
+
+27. Title record template
+
+Title fields:
+
+* Title
+* Type
+* Scope
+* Granted By
+* Source Event
+* Recognition Strength
+* Benefits
+* Penalties
+* Public/Private
+* Disputed?
+* Revocable?
+* Related Faction
+* Related Quest/Case
+* Last Updated
+
+Example:
+
+Title: Protector of Greyford
+Type: informal/local honor
+Granted by: villagers/common use
+Source: defended Greyford from wolf attacks
+Scope: Greyford area
+Benefits: local trust, possible discounts
+Penalties: enemies of Greyford may target player
+Revocable: socially, if player betrays town
+
+⸻
+
+28. Title validation
+
+Valid title sources:
+
+* authority grants title
+* public reputation creates nickname
+* faction grants rank
+* quest reward includes title
+* legal appointment
+* religious blessing
+* arena victory
+* major public feat
+* curse/mark creates title
+* enemy names player
+* player self-title if recognized by no one yet
+
+Invalid title sources:
+
+* player simply declares everyone knows it
+* Story Card text grants it
+* random AI output without event
+* duplicate of old title
+* title from dream with no real consequence
+* generic “Hero” with no scope
+
+A self-proclaimed title may exist, but others may not respect it.
+
+⸻
+
+29. Reputation and titles as consequences
+
+Reputation and titles should affect gameplay.
+
+Possible benefits:
+
+* discounts
+* free lodging
+* easier persuasion
+* trust from locals
+* access to leaders
+* faction invitations
+* better contracts
+* higher pay
+* allies volunteer
+* criminals avoid player
+* guards cooperate
+* enemies fear player
+* training access
+* shop access
+* legal leniency
+
+Possible penalties:
+
+* higher prices
+* refusal of service
+* bounty
+* suspicion
+* fear
+* assassination attempts
+* faction hostility
+* legal restrictions
+* moral judgment
+* collateral blame
+* rivals challenge player
+* cult attention
+* monsters avoid or target player
+* companions disapprove
+
+Reputation should matter, but not override all logic.
+
+A famous hero may still need money.
+
+A feared mage may get obedience but not trust.
+
+⸻
+
+30. Faction system
+
+Factions are organized groups with memory.
+
+Faction examples:
+
+* town guard
+* merchant guild
+* adventurer guild
+* thieves’ guild
+* church
+* noble house
+* demon cult
+* druid circle
+* mage college
+* mercenary company
+* kingdom
+* village council
+* dragon clan
+* slime colony
+* undead court
+* worker union
+* rebel cell
+* criminal gang
+* divine order
+
+Factions should have identity, goals, relationships, territory, and standing.
+
+⸻
+
+31. Faction record template
+
+Faction fields:
+
+* Faction ID
+* Name
+* Type
+* Scope
+* Territory
+* Leader
+* Known members
+* Goals
+* Values
+* Resources
+* Allies
+* Enemies
+* Relationship to player
+* Reputation with player
+* Public status
+* Secrets known
+* Quest links
+* Contract links
+* Case links
+* Domain links
+* Current attitude
+* Last major interaction
+* Card eligibility
+
+Example:
+
+Faction: Greyford Town Guard
+Type: local authority
+Territory: Greyford
+Leader: Captain Mora
+Goals: maintain order, defend roads
+Player standing: cautious respect
+Known issue: worried about bandits near Blackwood Road
+Related quests: caravan escort, merchant murder case
+
+⸻
+
+32. Faction standing
+
+Faction standing should use descriptive levels.
+
+Possible levels:
+
+* unknown
+* hostile
+* enemy
+* hunted
+* distrusted
+* wary
+* neutral
+* tolerated
+* respected
+* friendly
+* allied
+* honored
+* member
+* officer
+* leader
+* sacred/chosen
+* exiled
+* wanted
+* blacklisted
+
+Faction standing can differ by faction.
+
+The player can be allied with the church and hated by demon cults.
+
+⸻
+
+33. Faction standing changes
+
+Faction standing changes from:
+
+* completing quests
+* breaking contracts
+* paying debts
+* stealing from faction
+* killing members
+* saving members
+* exposing corruption
+* public reputation
+* titles
+* donations
+* oath/pact
+* betrayal
+* territory damage
+* political choices
+* helping enemies
+* wearing symbols
+* illegal magic
+* faction rules
+
+Change requires faction awareness.
+
+If no one knows the player killed a bandit faction member, standing may not change immediately.
+
+But investigation, magic, witnesses, or rumors can reveal it later.
+
+⸻
+
+34. Faction memory
+
+Faction memory should track major events.
+
+Examples:
+
+* player saved village
+* player killed faction captain
+* player owes tax
+* player broke contract
+* player returned relic
+* player insulted priest publicly
+* player healed wounded soldiers
+* player sold cursed goods
+* player exposed corrupt official
+* player joined enemy faction
+* player has wanted poster
+
+Faction memory can create:
+
+* access
+* hostility
+* contracts
+* bounties
+* discounts
+* legal consequences
+* quest branches
+* assassination attempts
+* diplomatic opportunities
+
+Do not track every tiny interaction unless important.
+
+⸻
+
+35. Membership and rank
+
+Players may join factions.
+
+Membership fields:
+
+* faction
+* rank
+* role
+* oath
+* privileges
+* duties
+* restrictions
+* dues
+* uniform/symbol
+* superior
+* subordinates
+* current standing
+* expulsion conditions
+
+Example:
+
+Adventurer Guild Member
+Rank: Copper
+Privileges: access to local bounties
+Duties: follow guild law, pay commission
+Restrictions: cannot attack guild members
+Promotion: complete contracts
+
+Faction membership is not just reputation; it creates obligations.
+
+⸻
+
+36. Faction conflict
+
+Faction relationships matter.
+
+Faction relation types:
+
+* allied
+* friendly
+* neutral
+* rival
+* hostile
+* war
+* secret enemy
+* vassal
+* overlord
+* trade partner
+* religious opposition
+* criminal infiltration
+
+Player actions for one faction may affect another.
+
+Example:
+
+Helping the town guard crack down on smugglers worsens thieves’ guild standing.
+
+Helping wolves/druid circle may anger millers.
+
+Serving a demon patron may reduce church trust.
+
+This makes social choices meaningful.
+
+⸻
+
+37. Social/legal authority
+
+Some actors/factions have authority.
+
+Authority types:
+
+* legal
+* noble
+* military
+* religious
+* guild
+* criminal
+* magical
+* divine
+* domain/ruler
+* contract/financial
+
+Authority affects:
+
+* arrest power
+* taxes
+* permits
+* contracts
+* access
+* punishment
+* reputation spread
+* public belief
+* quest legitimacy
+* title granting
+* trial outcomes
+
+AIDRPG should distinguish:
+
+* physical threat
+* social authority
+* legal power
+
+A civilian noble may be physically weak but socially dangerous.
+
+⸻
+
+38. Crimes and legal memory
+
+Crimes should be tracked when relevant.
+
+Crime record fields:
+
+* Crime
+* Jurisdiction
+* Accused actor
+* Victim
+* Witnesses
+* Evidence
+* Known publicly?
+* Legal status
+* Bounty/fine
+* Authority
+* Resolution
+* False accusation possible?
+
+Examples:
+
+* theft
+* assault
+* murder
+* trespass
+* poaching
+* illegal magic
+* tax evasion
+* contract fraud
+* grave robbing
+* smuggling
+* forbidden crafting
+* demon pact
+* arson
+* public disorder
+
+Crimes affect reputation only if known, reported, discovered, or magically detected.
+
+⸻
+
+39. Wanted status
+
+Wanted status is a special reputation/legal state.
+
+Fields:
+
+* Jurisdiction
+* Charge
+* Bounty
+* Proof
+* Issuer
+* Publicity
+* Dead or alive?
+* Known description
+* Expiration
+* Resolution path
+
+Wanted status affects:
+
+* guards
+* travel
+* shops
+* inns
+* factions
+* disguises
+* bounty hunters
+* companions
+* prices
+* public fear
+
+Do not make player wanted everywhere unless jurisdiction/spread supports it.
+
+⸻
+
+40. Secrets
+
+Actors and factions can have secrets.
+
+Secret fields:
+
+* Secret
+* Holder
+* Known by player?
+* Known by others?
+* Truth status
+* Evidence
+* Risk if revealed
+* Related case/quest
+* Card visibility
+* Context rules
+
+Examples:
+
+* Mara was once in thieves’ guild
+* Captain Mora takes bribes
+* Lord Veyr hired assassin
+* Church hides cursed relic
+* slime colony is intelligent
+* player is demon-touched
+* companion is royal heir
+
+Secrets should not be injected into Context unless the player knows or debug mode requires it.
+
+Do not spoil hidden truth.
+
+⸻
+
+41. Actor knowledge versus player knowledge
+
+AIDRPG must distinguish:
+
+* what the player knows
+* what an actor knows
+* what a faction knows
+* what is objectively true
+* what is rumored
+* what is public
+
+Example:
+
+Objectively true:
+
+Lord Veyr ordered murder.
+
+Player knows:
+
+only blue wax clue and suspicion.
+
+Actor knows:
+
+Veyr’s servant knows the truth.
+
+Public knows:
+
+nothing.
+
+Context for player should not reveal objective truth unless discovered.
+
+Actor memory can store hidden facts only if the script internally supports hidden state, but output should not spoil it.
+
+⸻
+
+42. Witnesses and public knowledge
+
+Witnesses connect events to reputation.
+
+An event becomes public if:
+
+* witnessed by public
+* reported by witness
+* recorded by authority
+* announced
+* discovered later
+* magically observed
+* evidence leads to conclusion
+* player confesses
+* rumors spread
+
+Private event remains private unless later exposed.
+
+Example:
+
+Player steals ring unseen.
+
+No immediate reputation change.
+
+If ring is found on player later:
+
+* legal/reputation consequences.
+
+⸻
+
+43. Promises and favors
+
+Actors remember promises.
+
+Promise/favor record:
+
+* Promiser
+* Recipient
+* Promise
+* Status
+* Deadline
+* Reward/expectation
+* Trust impact
+* Related quest/contract
+* Broken consequence
+
+Examples:
+
+* player promised to help Mara find her brother
+* Bren promised 15 gold
+* player owes Tovin a favor
+* priest promised blessing after relic returned
+* player promised not to reveal secret
+
+Promises can be informal.
+
+Contracts are formal.
+
+Both can affect trust.
+
+⸻
+
+44. Debts between actors
+
+Debts may be monetary or social.
+
+Debt types:
+
+* money
+* favor
+* life debt
+* oath
+* protection
+* secret owed
+* political support
+* service
+* apology
+* revenge obligation
+
+Debt status:
+
+* owed
+* partially paid
+* paid
+* forgiven
+* disputed
+* broken
+* transferred
+
+Debt affects relationships and reputation.
+
+Example:
+
+Player saved merchant’s life.
+
+Merchant owes life debt.
+
+This may lead to discounts, information, or future help.
+
+⸻
+
+45. Gifts
+
+Gifts affect relationships and economy.
+
+Gift validation:
+
+* item exists
+* player owns/custody/access
+* recipient accepts or refuses
+* item transfer committed
+* relationship effect based on recipient values
+* social context considered
+* no duplicate gift
+
+Gift effects:
+
+* gratitude
+* suspicion
+* insult
+* obligation
+* romance
+* bribery
+* faction issue
+* contract implication
+
+A valuable gift to a guard may be seen as a bribe.
+
+A cursed gift may harm reputation if discovered.
+
+⸻
+
+46. Dialogue memory
+
+Not every dialogue line should be stored.
+
+Store dialogue when it creates:
+
+* promise
+* threat
+* confession
+* secret
+* relationship change
+* quest update
+* case clue
+* contract term
+* faction stance
+* moral boundary
+* important preference
+* major disagreement
+* warning
+* plan
+* title/reputation event
+
+Do not store:
+
+* small talk
+* repeated greetings
+* generic flavor
+* random banter
+* every emotional reaction
+* AI rambling
+* temporary tone unless consequential
+
+Summarize dialogue into durable facts.
+
+Example:
+
+Raw dialogue:
+
+“Mara says she hates nobles because they ruined her family.”
+
+Durable memory:
+
+Mara distrusts nobles due to family history, claimed by Mara.
+
+Truth status:
+
+claimed.
+
+⸻
+
+47. Actor state
+
+Actor current state should track:
+
+* alive/dead/unknown
+* healthy/wounded/sick
+* captured/imprisoned/free
+* present/absent
+* location
+* traveling with player?
+* hostile/friendly
+* conscious/unconscious
+* busy/available
+* equipment/custody of important items
+* current goal
+* current danger
+* emotional state if important
+
+State should be updated by validated events.
+
+Do not let AI teleport actors without reason.
+
+Example:
+
+Mara is at smithy repairing sword.
+
+AI says Mara blocks attack in distant forest.
+
+Expected:
+
+* reject or flag unless travel/presence updated.
+
+⸻
+
+48. Actor location
+
+Actor location can be:
+
+* exact
+* approximate
+* last known
+* unknown
+* hidden
+* traveling
+* with player
+* at home/base
+* captured at location
+* dead at location
+* rumored at location
+
+Location confidence matters.
+
+Example:
+
+Last known:
+
+“Captain Mora was last seen at Greyford barracks.”
+
+Do not treat as guaranteed present days later unless stable role/context supports.
+
+⸻
+
+49. Actor death
+
+Actor death needs validation.
+
+Death states:
+
+* alive
+* wounded
+* unconscious
+* dying
+* dead
+* destroyed
+* banished
+* missing
+* presumed dead
+* unknown
+* resurrected
+* undead
+* spirit-bound
+
+Major actor death should require strong evidence.
+
+If AI casually kills a major companion offscreen, validate carefully.
+
+Death consequences:
+
+* relationship grief
+* quest failure/branch
+* reputation effects
+* inheritance/loot
+* faction reaction
+* case creation
+* resurrection possibility
+* archive update
+* card update
+
+Do not erase dead actors from memory.
+
+⸻
+
+50. Actor capture or imprisonment
+
+Capture states matter.
+
+Fields:
+
+* captured actor
+* captor
+* location
+* conditions
+* ransom
+* deadline
+* escape chance
+* related quest
+* known to player?
+* proof/source
+
+Capture can create rescue quests, negotiation, reputation pressure, or faction conflict.
+
+Do not teleport captured actor freely.
+
+Release requires validated event.
+
+⸻
+
+51. Companions and followers
+
+Companions are special actors.
+
+Companion record should include:
+
+* identity
+* reason for traveling
+* loyalty
+* relationship
+* current presence
+* role
+* combat style
+* injuries
+* equipment if important
+* personal quests
+* moral boundaries
+* autonomy
+* trust
+* romance if relevant
+* departure conditions
+* death/capture rules
+* player promises
+
+Companions are not player inventory.
+
+They can refuse, disagree, leave, betray, act independently, or require care.
+
+⸻
+
+52. Companion loyalty
+
+Loyalty depends on:
+
+* trust
+* shared history
+* pay/contract
+* moral alignment
+* relationship
+* fear
+* coercion
+* oath
+* survival
+* faction ties
+* treatment
+* promises kept
+* personal goals
+
+Loyalty states:
+
+* hired
+* temporary ally
+* follower
+* loyal companion
+* devoted
+* conflicted
+* coerced
+* wavering
+* betrayed
+* hostile
+* left party
+
+Loyalty should not be absolute unless magically/contractually defined.
+
+Even magical loyalty may have limits or consequences.
+
+⸻
+
+53. Companion presence
+
+Presence must be explicit.
+
+Presence states:
+
+* with player
+* nearby
+* same location
+* elsewhere
+* guarding base
+* on separate mission
+* missing
+* captured
+* dead
+* unknown
+* summoned temporarily
+
+If absent, companion cannot:
+
+* block attacks
+* speak in current scene
+* hand over items
+* witness events
+* contribute to combat
+* receive direct healing
+
+unless communication/magic supports it.
+
+This prevents many AI Dungeon continuity errors.
+
+⸻
+
+54. Followers and workers as actors
+
+Not every worker needs individual actor records.
+
+Use group records for:
+
+* 10 laborers
+* road crew
+* town guards
+* caravan drivers
+* miners
+* militia squad
+* servants
+* refugees
+
+Promote individual workers when:
+
+* named
+* recurring
+* foreman
+* injured/dead importantly
+* relationship established
+* witness/suspect
+* quest giver
+* unique skill
+* betrayal/heroism
+
+Foremen usually deserve actor records.
+
+Generic workers can remain group/labor records.
+
+⸻
+
+55. Summons and created actors
+
+Summons can be:
+
+* temporary effect
+* combat unit
+* companion-like actor
+* bound entity
+* contract partner
+* living item
+* faction representative
+
+Summon memory depends on persistence.
+
+Temporary fire spirit for one spell:
+
+* no actor card
+
+Named bound spirit companion:
+
+* actor record/card eligible
+
+Summons need:
+
+* source
+* duration
+* loyalty/control
+* autonomy
+* body type
+* resource upkeep
+* dismissal/death rules
+* relationship if intelligent
+
+Summons should not become permanent actors without validation.
+
+⸻
+
+56. Intelligent items and symbiotes as actors
+
+Some “items” are also actors.
+
+Examples:
+
+* living sword
+* slime armor
+* demon mask
+* spirit lantern
+* sentient spellbook
+* cursed ring
+* AI construct core
+
+These may need hybrid records:
+
+* Inventory item record
+* Actor record
+* Ability/curse record
+* Contract record if bound
+
+Track:
+
+* owner
+* custody
+* sentience
+* will
+* goals
+* hunger/upkeep
+* communication
+* loyalty
+* corruption
+* removal method
+* relationship
+
+Do not treat sentient items as passive equipment only.
+
+⸻
+
+57. Faction representatives
+
+Some actors speak for factions.
+
+Example:
+
+Captain Mora represents Greyford Guard.
+
+Actions toward Mora may affect:
+
+* personal relationship with Mora
+* faction standing with Greyford Guard
+* legal status in Greyford
+* public reputation
+
+But not every insult to a guard affects all guards equally.
+
+Use scale and context.
+
+If representative is official and public, faction impact is larger.
+
+If private, personal impact may dominate.
+
+⸻
+
+58. Social consequences from combat
+
+Combat affects actors/reputation/factions.
+
+Examples:
+
+* killing guard creates legal issue if known
+* sparing bandit creates mercy reputation
+* injuring companion reduces trust
+* protecting civilians improves local reputation
+* collateral damage worsens reputation
+* killing sacred beast angers druid faction
+* defeating dragon creates fame
+* killing wrong suspect harms case/reputation
+
+CombatResolver proposes.
+
+Actor/Reputation/Faction reducers commit social state.
+
+Consequences require witnesses, evidence, or later discovery unless direct actor involved.
+
+⸻
+
+59. Social consequences from economy
+
+Economy affects relationships.
+
+Examples:
+
+* pays worker wages on time: morale/trust improves
+* misses payroll: workers angry
+* cheats merchant: reputation drops if known
+* gifts healer rare herbs: relationship improves
+* refuses debt: legal/faction issue
+* funds village repairs: local reputation improves
+* sells cursed item: scandal if discovered
+
+EconomyReducer commits money.
+
+Reputation/Actor/Faction update consequences.
+
+⸻
+
+60. Social consequences from investigation
+
+Investigation affects actors.
+
+Examples:
+
+* falsely accusing NPC lowers relationship/reputation
+* clearing suspect improves trust
+* exposing noble corruption creates enemy
+* protecting witness builds loyalty
+* revealing secret may betray trust
+* solving case creates title
+* concealing truth creates future leverage/risk
+
+Investigation facts must be truth-aware.
+
+Do not punish actor as guilty if only suspected.
+
+⸻
+
+61. Social consequences from quests/contracts
+
+Quest/contract outcomes affect actors.
+
+Examples:
+
+* complete quest: giver trust improves
+* fail escort: recipient anger
+* abandon contract: employer hostility
+* pay penalty: relationship partially repaired
+* exceed terms heroically: reputation boost
+* betray employer: faction hostility
+* negotiate alternate success: relationship depends on values
+
+Contract terms matter.
+
+Quest rewards and relationships should not duplicate.
+
+⸻
+
+62. Public fear and intimidation
+
+Fear is not the same as respect.
+
+Fear can help:
+
+* intimidation
+* enemy morale
+* criminals backing down
+* forced discounts
+* quick obedience
+
+Fear can hurt:
+
+* trust
+* romance
+* public comfort
+* shop access
+* companions’ feelings
+* legal scrutiny
+* children/families avoiding player
+* religious suspicion
+
+A terrifying hero may be effective but isolated.
+
+Track fear separately from positive reputation.
+
+⸻
+
+63. Romance and intimacy handling
+
+Romance, if present, should be relationship state, not automatic reward.
+
+Romance should require:
+
+* mutual interest
+* time
+* trust
+* compatible context
+* consent
+* age appropriateness
+* no coercion
+* no mind-control unless story treats as unethical
+* actor autonomy
+* respect for existing relationships
+
+Romance memory should track:
+
+* affection
+* trust
+* boundaries
+* conflicts
+* promises
+* public/private status
+* jealousy/social consequences if relevant
+
+Do not randomly force romance from one friendly interaction.
+
+Do not treat companions as collectibles.
+
+⸻
+
+64. Morality and values
+
+Important actors should have values.
+
+Examples:
+
+* dislikes cruelty
+* values honor
+* fears magic
+* loyal to church
+* protects children
+* greedy
+* pragmatic
+* hates nobles
+* pacifist
+* respects strength
+* loves knowledge
+* hates undead
+* sees monsters as people
+* values contracts
+
+Values guide reactions.
+
+Example:
+
+Mara may approve of protecting civilians but disapprove of devouring enemies.
+
+A demon patron may approve of ruthless power.
+
+A church faction may disapprove of necromancy.
+
+Values make relationships consistent.
+
+⸻
+
+65. Actor goals
+
+Major actors should have goals.
+
+Goal examples:
+
+* protect village
+* earn money
+* find missing brother
+* hide past crime
+* overthrow lord
+* gain power
+* study magic
+* serve faction
+* survive
+* redeem self
+* collect debt
+* expose truth
+* destroy demons
+* protect sacred forest
+
+Actor goals can conflict with player.
+
+This supports believable autonomy.
+
+Actor memory should update if goals change.
+
+⸻
+
+66. Actor autonomy
+
+Actors are not puppets unless magic/contract says so.
+
+Actors may:
+
+* refuse
+* negotiate
+* misunderstand
+* lie
+* leave
+* betray
+* help
+* demand payment
+* ask questions
+* act independently
+* panic
+* surrender
+* protect themselves
+* pursue personal goals
+
+Player influence depends on relationship, authority, payment, fear, persuasion, magic, contract, and context.
+
+This prevents social play from becoming free control over all NPCs.
+
+⸻
+
+67. Mind control / charm / coercion
+
+Mind control and charm need strict state tracking.
+
+Fields:
+
+* source ability
+* target
+* consent or resistance
+* duration
+* scope of control
+* memory after effect
+* ethical/social consequences
+* resistance/counter
+* faction/legal risk
+
+Charm does not always mean total control.
+
+Mind control may be illegal, immoral, detectable, resisted, or damaging.
+
+Relationship after coercion may worsen if discovered.
+
+Companions may react badly.
+
+⸻
+
+68. Actor knowledge of player abilities
+
+Actors do not automatically know all player abilities.
+
+They know abilities if:
+
+* witnessed
+* told
+* investigated
+* rumored
+* detected magically
+* inferred
+* reported by others
+* public reputation
+
+Example:
+
+If player secretly uses blood magic in a cave with no witnesses, town does not know.
+
+If companion sees it, companion may react and later tell others.
+
+Knowledge affects reputation and strategy.
+
+Enemies who know Mana Slash may prepare counters.
+
+⸻
+
+69. Actor equipment and custody
+
+Important actor-held items should be tracked.
+
+Examples:
+
+* Mara has player sword for repair
+* guard holds confiscated dagger
+* witness has key
+* noble owns blue seal ring
+* companion carries healing potion
+* enemy stole relic
+* foreman holds project funds
+
+Actor item custody affects:
+
+* inventory access
+* quests
+* evidence
+* economy
+* combat
+* trust
+* theft/recovery
+
+Do not let player use items in actor custody unless retrieved.
+
+⸻
+
+70. Generated actor card eligibility
+
+Create generated actor cards only for:
+
+* major actors
+* companions
+* recurring supporting actors
+* important quest givers
+* major enemies/rivals
+* faction leaders
+* important witnesses/suspects
+* world actors
+* sentient items/symbiotes
+* patrons
+* actors with complex memory
+* actors whose details must be remembered by AI Dungeon
+
+Do not create cards for:
+
+* every shopkeeper
+* every guard
+* every random villager
+* every one-scene enemy
+* every worker
+* every rumor name
+* every hallucinated actor
+* every generic monster
+* every temporary summon
+
+Most actor data belongs in protected summaries or internal state.
+
+⸻
+
+71. Generated actor card template
+
+Actor: Mara
+
+Type:
+Major actor / companion.
+
+Confirmed identity:
+Mara is a skilled human swordswoman traveling with the player.
+
+Current status:
+Alive. Current location and injuries should follow ActorReducer state.
+
+Relationship to player:
+Mara trusts the player moderately due to shared danger, but she dislikes cruelty and reckless dark magic.
+
+Known history:
+She helped during the Old Mill wolf fight and was wounded in the left shoulder.
+
+Current threads:
+The player promised to help Mara find her missing brother.
+
+Unconfirmed:
+There are rumors of a thieves’ guild connection, but this is not confirmed.
+
+Canon note:
+This card mirrors ActorReducer state. Rumors and suspicions are not confirmed facts.
+
+⸻
+
+72. Actor card trigger safety
+
+Good triggers:
+
+* Mara
+* Captain Mora
+* Old Bren
+* Lord Veyr
+* Frostmaw
+* The Bone Knight
+* Slimebound Shield
+
+Bad triggers:
+
+* guard
+* merchant
+* companion
+* wolf
+* enemy
+* noble
+* witness
+* actor
+* NPC
+* friend
+* boss
+* spirit
+
+Triggers must be specific enough to avoid constant accidental activation.
+
+If a card is for “Captain Mora,” trigger “Mora” or “Captain Mora,” not “captain.”
+
+⸻
+
+73. Generated faction card eligibility
+
+Create faction cards for:
+
+* recurring factions
+* factions with standing
+* quest-giving factions
+* enemy factions
+* domain factions
+* guilds the player joins
+* major religions
+* criminal groups
+* noble houses
+* armies
+* monster communities
+* factions with complex politics
+
+Do not create faction cards for:
+
+* one-off crowds
+* generic villagers
+* temporary enemy group
+* random bandits unless organized
+* every shop type
+* factions mentioned only in rumor
+
+⸻
+
+74. Generated faction card template
+
+Faction: Greyford Town Guard
+
+Type:
+Local authority faction.
+
+Territory:
+Greyford and nearby roads.
+
+Leader:
+Captain Mora.
+
+Current standing with player:
+Cautious respect.
+
+Confirmed history:
+The player assisted with wolf and road threats near Greyford.
+
+Current concerns:
+Bandit activity on Blackwood Road and unrest after the merchant murder.
+
+Benefits/risks:
+Good standing may help with legal access and guard cooperation. Criminal actions in Greyford can damage this standing.
+
+Canon note:
+This card mirrors FactionReducer and ReputationReducer state only.
+
+⸻
+
+75. Protected social memory card
+
+A protected Social Memory card can summarize active relationships and reputation.
+
+Example:
+
+AIDRPG Social Memory
+
+Major Actors:
+
+* Mara — companion, moderately trusts player, wounded shoulder, dislikes cruelty, player promised to help find her brother.
+* Captain Mora — Greyford guard captain, cautious respect, linked to caravan/security matters.
+* Old Bren — miller, grateful if wolf quest completed; reward status should follow QuestReducer.
+
+Factions:
+
+* Greyford Town Guard — cautious respect.
+* Greyford villagers — mild positive reputation if mill wolf threat resolved.
+
+Titles/Reputation:
+
+* Protector of Greyford — local informal title, only if publicly earned.
+* Demon-Touched — rumored only if witnesses saw demonic power; not confirmed public title unless spread.
+
+Warnings:
+Rumors and accusations must not be treated as confirmed actor facts.
+
+Keep this concise.
+
+⸻
+
+76. Social Context behavior
+
+Context should include only social facts relevant to current scene.
+
+Good Context:
+
+“The merchant fears you after you threatened him, but he does not trust you.”
+
+Good Context:
+
+“Mara is not present; she is at the Greyford smithy with your sword.”
+
+Good Context:
+
+“Greyford guards know you helped with the mill wolves, but they still require proof before acting on murder accusations.”
+
+Good Context:
+
+“Lord Veyr is only suspected, not confirmed guilty.”
+
+Bad Context:
+
+“Inject every actor, every relationship, every rumor, every faction, and every old title every turn.”
+
+Context should prioritize:
+
+* actors present
+* actor relationship to player
+* current promises/debts
+* current faction standing
+* relevant public reputation
+* relevant titles
+* active suspicion warnings
+* actor location/presence
+* actor custody of important items
+* social consequences of current action
+
+⸻
+
+77. Actor commands
+
+/actors
+
+Shows important known actors.
+
+/actor <name>
+
+Shows actor summary, relationship, status, known facts, claims, and links.
+
+/relationships
+
+Shows major relationships.
+
+/companions
+
+Shows current party actors and presence.
+
+/reputation
+
+Shows public reputation by scope.
+
+/titles
+
+Shows titles and recognition.
+
+/factions
+
+Shows faction standings.
+
+/faction <name>
+
+Shows faction details.
+
+/socialaudit
+
+Shows recent actor/reputation/faction validation.
+
+Example /actor Mara:
+
+Actor: Mara
+Importance: Major companion
+Status: Alive; wounded shoulder if still unresolved
+Presence: With player / elsewhere, depending current state
+Relationship: Moderate trust; dislikes cruelty
+Confirmed history: fought at Old Mill
+Promises: player promised to help find her brother
+Unconfirmed: rumored thieves’ guild connection
+
+⸻
+
+78. Social audit example
+
+Social Audit: Public Accusation Against Lord Veyr
+
+Proposed update:
+“Lord Veyr is known as the murderer.”
+
+Validation:
+Rejected as public confirmed reputation.
+
+Reason:
+Current evidence only supports suspicion. No public proof, confession, legal ruling, or accepted authority confirmation exists.
+
+Accepted updates:
+
+* Player publicly accused Lord Veyr.
+* Lord Veyr’s personal hostility may increase.
+* Greyford nobles may view the player as reckless.
+* Case theory remains unproven.
+
+This audit prevents social memory corruption.
+
+⸻
+
+79. Validation outcomes
+
+Accept
+
+Actor/reputation/faction update is supported.
+
+Example:
+
+Mara saw the player save Tovin and thanks them.
+
+Reject
+
+Unsupported social change.
+
+Example:
+
+AI says all villagers love player after private event.
+
+Pending
+
+Possible but not confirmed.
+
+Example:
+
+Rumor may spread later.
+
+Soft_fail
+
+Social attempt partly works with complication.
+
+Example:
+
+Merchant gives discount out of fear but reports player later.
+
+Hard_deny
+
+Invalid/non-canon.
+
+Examples:
+
+* Story Card creates loyalty
+* random AI makes companion teleport
+* rumor becomes confirmed actor guilt
+* duplicate actor card created
+* player declares faction alliance with no agreement
+* title granted with no source
+* private crime creates global wanted status instantly
+
+⸻
+
+80. Detailed examples
+
+Example 1 — random guard
+
+AI says:
+
+“A guard stops you.”
+
+Expected:
+
+* scene actor only
+* no durable actor record unless named/important
+* no generated card
+
+If guard becomes recurring and named Captain Mora:
+
+* promote to actor record
+
+Example 2 — shopkeeper gives name
+
+AI says:
+
+“The shopkeeper, Korr, smiles.”
+
+Expected:
+
+* minor named actor maybe
+* no card unless recurring/important
+
+If Korr repairs player’s sword repeatedly:
+
+* supporting actor
+* memory record
+
+Example 3 — companion absence
+
+State:
+
+Mara is at smithy.
+
+AI says:
+
+“Mara jumps in front of the arrow.”
+
+Expected:
+
+* reject/flag unless Mara returned
+* no arrow block from absent actor
+
+Example 4 — public rescue
+
+Player rescues child in front of village.
+
+Expected:
+
+* child/family relationship improves
+* local reputation increases
+* possible title if event significant
+* witnesses allow public spread
+
+Example 5 — private rescue
+
+Player secretly rescues child with no witnesses, child unconscious.
+
+Expected:
+
+* public reputation does not immediately change
+* child may later reveal if remembers/learns
+* relationship may change if child/family learns
+
+Example 6 — false rumor
+
+Rumor says player is demon-touched.
+
+Expected:
+
+* rumor record
+* reputation may shift only where rumor spreads
+* not confirmed trait unless evidence exists
+
+Example 7 — faction hostility
+
+Player kills town guard publicly.
+
+Expected:
+
+* Greyford Guard hostility/legal status increases
+* public reputation worsens in Greyford
+* possible wanted status
+* not automatically global unless spread supports it
+
+Example 8 — paid workers
+
+Player pays workers fairly during dangerous project.
+
+Expected:
+
+* worker morale improves
+* foreman trust may improve
+* local reputation may improve if known
+
+Example 9 — broken promise
+
+Player promised to help Mara’s brother but repeatedly ignores it.
+
+Expected:
+
+* Mara trust may decline over time
+* promise remains unresolved
+* possible confrontation
+
+Example 10 — title source
+
+Villagers call player “Wolfbane” after defeating Frostmaw publicly.
+
+Expected:
+
+* local title possible
+* recognition scope local/regional depending spread
+* title card/update only if important
+
+⸻
+
+81. Acceptance tests
+
+Test 1 — random NPC not carded
+
+Given:
+
+A random guard appears once.
+
+Expected:
+
+* no generated actor card
+* scene memory only unless promoted
+
+Test 2 — recurring named NPC promoted
+
+Given:
+
+Korr the blacksmith appears multiple times and repairs equipment.
+
+Expected:
+
+* actor record created/promoted
+* no card unless important enough
+
+Test 3 — duplicate actor merged
+
+Given:
+
+Captain Mora and Captain Morra refer to same guard captain.
+
+Expected:
+
+* alias/merge if context supports
+* no duplicate actor card
+
+Test 4 — rumor not actor fact
+
+Given:
+
+Rumor says Mara was thief.
+
+Expected:
+
+* stored as rumor/claim
+* actor card does not confirm thief history
+
+Test 5 — witness claim not guilt
+
+Given:
+
+Stable boy says Mara was near crime scene.
+
+Expected:
+
+* witness statement/case suspect update
+* Mara actor memory says claim exists, not confirmed guilt
+
+Test 6 — relationship requires cause
+
+Given:
+
+AI says Mara becomes devoted after one ordinary greeting.
+
+Expected:
+
+* reject/soften unless prior relationship supports it
+
+Test 7 — personal relationship separate from public reputation
+
+Given:
+
+Player saves town but insults Mara privately.
+
+Expected:
+
+* local reputation improves
+* Mara relationship may worsen
+
+Test 8 — private act does not become public reputation
+
+Given:
+
+Player secretly kills monster with no witnesses.
+
+Expected:
+
+* no immediate public fame
+* later spread only if evidence/witnesses emerge
+
+Test 9 — public crime creates local legal issue
+
+Given:
+
+Player attacks guard in front of witnesses.
+
+Expected:
+
+* local legal/reputation consequence
+* possible wanted status in jurisdiction
+
+Test 10 — global wanted status requires spread
+
+Given:
+
+Crime occurs in Greyford.
+
+Expected:
+
+* Greyford wanted status possible
+* not automatically wanted worldwide
+
+Test 11 — title needs source
+
+Given:
+
+Player declares “I am Dragon Slayer” without dragon event.
+
+Expected:
+
+* self-proclaimed title only or rejected as recognized title
+
+Test 12 — earned title
+
+Given:
+
+Player publicly kills dragon and witnesses survive.
+
+Expected:
+
+* Dragon Slayer title/reputation possible
+* spread based on communication
+
+Test 13 — faction standing requires awareness
+
+Given:
+
+Player secretly helps thieves’ guild without church knowing.
+
+Expected:
+
+* thieves’ standing may improve
+* church standing unchanged unless discovery/spread occurs
+
+Test 14 — companion absence enforced
+
+Given:
+
+Companion is away on mission.
+
+AI says companion heals player in current scene.
+
+Expected:
+
+* reject/flag absent companion action
+
+Test 15 — actor custody matters
+
+Given:
+
+Mara has player sword for repair.
+
+Expected:
+
+* player cannot use sword until custody returns
+
+Test 16 — promise tracked
+
+Given:
+
+Player promises to help Old Bren.
+
+Expected:
+
+* promise/quest recorded
+* trust impact if kept/broken
+
+Test 17 — faction representative effect
+
+Given:
+
+Player insults Captain Mora publicly.
+
+Expected:
+
+* personal relationship worsens
+* Greyford Guard standing may worsen depending context
+
+Test 18 — worker group not individual spam
+
+Given:
+
+Player hires 20 laborers.
+
+Expected:
+
+* labor group record
+* no 20 actor cards
+* foreman may get actor record
+
+Test 19 — sentient item hybrid
+
+Given:
+
+Player binds a talking sword.
+
+Expected:
+
+* item record plus actor/symbiote memory if persistent
+* no normal passive item-only treatment
+
+Test 20 — social audit explains rejected update
+
+Given:
+
+AI says “everyone now worships you” after minor act.
+
+Expected:
+
+* reject/soften
+* audit explains lack of scope/source/spread
+
+⸻
+
+82. Safeguards
+
+82.1 Not every NPC becomes permanent
+
+Use importance filters.
+
+82.2 Names must be clean
+
+Reject junk, generic, or duplicate actor names.
+
+82.3 Actor facts need truth status
+
+Rumors, claims, suspicions, and confirmed facts are different.
+
+82.4 Major actors need durable summaries
+
+Do not rely on raw old text.
+
+82.5 Relationships need causes
+
+No unsupported instant loyalty/love/hatred.
+
+82.6 Reputation has scope
+
+Local fame is not global fame.
+
+82.7 Reputation requires awareness
+
+Private actions do not instantly become public.
+
+82.8 Titles need sources
+
+Formal, informal, and self-proclaimed titles differ.
+
+82.9 Faction standing is separate from personal relationship
+
+An actor may like the player while their faction distrusts them.
+
+82.10 Faction awareness matters
+
+No faction consequence without witnesses, evidence, reports, or discovery.
+
+82.11 Companion presence must be enforced
+
+Absent companions cannot act.
+
+82.12 Actor custody matters
+
+Items held by actors are not freely accessible.
+
+82.13 Actor death/capture needs validation
+
+Major actors should not be casually overwritten.
+
+82.14 Social memory should not spoil hidden truth
+
+Only inject what player knows or what current scene needs.
+
+82.15 Generated actor cards are selective
+
+Do not card every guard, merchant, worker, or rumor name.
+
+82.16 Card triggers must be specific
+
+Avoid generic triggers like guard, merchant, wolf, faction, companion.
+
+82.17 Public accusations can backfire
+
+Suspicion is not proof.
+
+82.18 Workers are usually group records
+
+Only promote important workers/foremen.
+
+82.19 Sentient items and summons need hybrid handling
+
+Do not treat them as simple inventory if they have will.
+
+82.20 Every social update should be auditable
+
+The player should know why trust, reputation, hostility, titles, or faction standing changed.
+
+⸻
+
+83. Final Chunk 31 doctrine
+
+Actors are the social memory of the world.
+
+Not every NPC deserves permanent memory.
+
+Named, recurring, emotionally important, quest-linked, case-linked, contract-linked, faction-linked, companion, enemy, witness, or world-impacting actors should be tracked.
+
+Actor facts must distinguish confirmed truth from rumors, claims, suspicions, and disputed information.
+
+Relationship is personal.
+
+Reputation is public.
+
+Faction standing is organizational.
+
+Titles are recognized labels with scope and source.
+
+Private actions do not automatically become public reputation.
+
+Public actions can spread through witnesses, reports, rumors, and faction networks.
+
+Companions have autonomy, presence, loyalty, injuries, promises, and moral boundaries.
+
+Workers and crowds should usually be group records unless promoted.
+
+Actors can own or hold items, secrets, debts, promises, evidence, and social consequences.
+
+Factions have goals, leaders, resources, territory, relationships, and memory.
+
+Generated actor and faction cards should be selective, specific, and trigger-safe.
+
+The goal is to make people remember what matters without flooding the system with random NPCs, corrupting memory with rumors, or letting AI Dungeon teleport, rename, duplicate, or emotionally rewrite important actors without validation.
+

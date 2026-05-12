@@ -1,0 +1,47 @@
+# AIDRPG Repair Summary and Authority Order
+
+## What changed
+
+This repaired package does not destructively rewrite the original 32 chunks. Instead, it adds a binding repair layer as Chunk 33.
+
+That was chosen because the 32 chunks are conceptually valid and useful as a design bible. The main risks were not that the ideas were wrong, but that implementation details were still under-specified.
+
+## Main repairs applied
+
+1. Made Chunk 33 the authority for build readiness and ambiguity resolution.
+2. Locked the authority order between early broad chunks and later detailed chunks.
+3. Defined required build modes: Narrative, Balanced RPG, Strict Simulation, Debug, and Safe Mode.
+4. Defined a smaller MVP scope instead of building all 32 chunks at once.
+5. Defined a phased build order.
+6. Added a final reducer ownership table.
+7. Added a required event proposal schema.
+8. Added parser confidence rules.
+9. Added resolver rules for similar names, aliases, negation, and ambiguity.
+10. Added OperationLedger key rules and retention categories.
+11. Added ContextAllocator packet priorities and size guidance.
+12. Added CardSync write limits and trigger requirements.
+13. Added name hygiene rules.
+14. Added body compatibility registry requirements.
+15. Added default ability stabilization thresholds.
+16. Added interim formula requirements and placeholder formulas for XP/stats/resources.
+17. Locked true multi-protagonist support out of MVP.
+18. Added cleanup and memory compression policy.
+19. Added runtime constraints for AI Dungeon hook safety.
+20. Added test gates before major systems are enabled.
+
+## Authority order
+
+1. Chunk 33 — Final Pre-Build Lockdown and exact repair rules.
+2. Chunks 19–32 — detailed final gameplay systems.
+3. Chunks 1–18 — original design foundation and broad architecture.
+4. Older source scripts/plans/tests — reference only.
+5. AI Dungeon narration — event source only, not automatic canon.
+6. Story Cards — memory surface only, never authority.
+
+## How to use this package
+
+Use the 32 original chunks to understand the full intended gameplay system.
+
+Use Chunk 33 to decide what gets built first, what must wait, and how ambiguity is resolved.
+
+Then create the Developer Spec from this repaired package.

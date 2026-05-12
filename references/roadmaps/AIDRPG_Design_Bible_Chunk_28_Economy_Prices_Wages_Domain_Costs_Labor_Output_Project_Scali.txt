@@ -1,0 +1,3271 @@
+AIDRPG Design Bible — Chunk 28: Economy, Prices, Wages, Domain Costs, Labor Output, Project Scaling, and Anti-Exploit Rules
+
+1. Purpose of this chunk
+
+Chunk 28 defines how AIDRPG handles money, prices, wages, workers, foremen, project costs, domain expenses, market logic, and economic validation.
+
+Earlier chunks defined:
+
+* level scaling
+* race/species scaling
+* stats/resources
+* XP and progression
+* enemy scaling
+* combat math
+* ability costs
+* absorption/anime growth
+* crafting and item creation
+
+Chunk 28 answers:
+
+How much should things cost?
+
+How much does a sword cost?
+
+How much does armor cost?
+
+How much does a potion cost?
+
+How much does a worker earn?
+
+How much can workers build in a day?
+
+How much does it cost to repair a sword?
+
+How much does it cost to build a wall, road, house, workshop, keep, or fortress?
+
+How does AIDRPG stop infinite-money exploits?
+
+How does the system validate transactions?
+
+How does the economy scale from early village play to high-level kingdom/domain play?
+
+The central rule is:
+
+Economy exists to make resources, labor, ownership, and large projects believable.
+
+It should support gameplay, not drown the player in accounting.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon often creates economic events freely.
+
+The player may write:
+
+“I buy a sword.”
+
+“I sell the wolf pelts.”
+
+“I hire five workers.”
+
+“I pay Mara to repair my sword.”
+
+“I build a wall around my camp.”
+
+“I open a shop.”
+
+“I mine silver.”
+
+“I sell dragon scales.”
+
+“I hire guards.”
+
+“I start a mercenary company.”
+
+“I build a fortress.”
+
+“I pay the villagers to gather materials.”
+
+“I use my gold to fund a guild.”
+
+“I create infinite coins with magic.”
+
+AIDRPG must support economic play while preventing:
+
+* free item creation
+* free money generation
+* duplicate transactions
+* buying items without paying
+* selling the same item repeatedly
+* workers doing impossible amounts of labor
+* instant buildings
+* untracked debt
+* inconsistent currency
+* infinite crafting profit loops
+* high-level players trivializing every economy without consequence
+* AI Dungeon randomly awarding huge money without validation
+
+Economy should be flexible, setting-aware, and scalable.
+
+A village economy should feel different from a capital city economy.
+
+A copper economy should feel different from a divine/cosmic artifact economy.
+
+⸻
+
+3. Economy ownership boundaries
+
+EconomyReducer owns
+
+* currency balances
+* prices
+* transactions
+* purchases
+* sales
+* debts
+* loans
+* taxes
+* fees
+* wages
+* service costs
+* market availability
+* economic modifiers
+* profit/loss calculations
+* anti-exploit checks
+
+InventoryReducer owns
+
+* actual items
+* item ownership
+* item custody
+* item access
+* item condition
+* item transfer
+* material stockpiles
+* sold/removed items
+
+CraftingReducer owns
+
+* crafting material requirements
+* repair requirements
+* upgrade requirements
+* item output quality
+* crafting labor needs
+
+LaborReducer owns
+
+* workers
+* foremen
+* specialists
+* hirelings
+* productivity
+* worker morale
+* worker availability
+* assigned tasks
+* work progress
+
+DomainReducer owns
+
+* bases
+* holdings
+* buildings
+* domain projects
+* maintenance
+* income-producing assets
+* domain storage
+* domain project completion
+
+ContractReducer owns
+
+* work contracts
+* commissions
+* obligations
+* delivery terms
+* payment terms
+* penalties
+* escrow
+* deadlines
+
+ReputationReducer owns
+
+* discounts
+* markups
+* credit access
+* black-market access
+* faction trust
+* social/economic consequences
+
+EconomyReducer handles money.
+
+InventoryReducer handles things.
+
+LaborReducer handles people doing work.
+
+DomainReducer handles large assets.
+
+ContractReducer handles promises.
+
+⸻
+
+4. Currency model
+
+AIDRPG should support a simple default currency model.
+
+Recommended default:
+
+100 copper = 1 silver
+100 silver = 1 gold
+100 gold = 1 platinum
+
+So:
+
+1 silver = 100 copper
+1 gold = 10,000 copper
+1 platinum = 1,000,000 copper
+
+This gives enough scale for:
+
+* cheap meals
+* simple tools
+* weapons
+* armor
+* property
+* domain projects
+* high-level wealth
+
+Alternative settings may use:
+
+* coins only
+* credits
+* spirit stones
+* mana crystals
+* barter
+* shells
+* gems
+* favor
+* ration tokens
+* gold/silver/copper with different conversion
+* paper notes
+* guild credit
+* divine favor
+
+But the script needs one default.
+
+The default should be copper/silver/gold/platinum unless the scenario defines another system.
+
+⸻
+
+5. Currency display
+
+Player-facing currency should be readable.
+
+Example:
+
+Currency:
+3 gold, 42 silver, 18 copper
+
+Internally, store currency as base copper value to avoid arithmetic bugs.
+
+Example:
+
+3 gold = 30,000 copper
+42 silver = 4,200 copper
+18 copper = 18 copper
+Total = 34,218 copper
+
+Display can convert back.
+
+This prevents transaction errors.
+
+⸻
+
+6. Currency ownership and custody
+
+Currency should track ownership and custody like items when needed.
+
+Common cases:
+
+* player purse
+* bank deposit
+* guild account
+* domain treasury
+* party fund
+* locked chest
+* merchant escrow
+* contract deposit
+* stolen coins
+* taxes owed
+* debt owed
+* coins carried by companion
+
+Currency fields:
+
+Owner:
+Custody:
+Access:
+Location:
+Amount:
+Currency Type:
+Source:
+Restricted Use:
+Debt/Claim:
+
+If gold is in the domain treasury, the player may not be able to spend it personally without political or accounting consequences.
+
+If gold is in a locked chest at base, the player cannot spend it while traveling unless credit or transfer exists.
+
+⸻
+
+7. Baseline price philosophy
+
+Prices should be approximate.
+
+AIDRPG should not need exact real-world medieval economy accuracy.
+
+Prices should be believable enough to support gameplay.
+
+Prices depend on:
+
+* settlement size
+* supply
+* demand
+* rarity
+* danger
+* season
+* war
+* famine
+* taxes
+* quality
+* reputation
+* faction relationship
+* legality
+* distance from source
+* magical nature
+* urgency
+* bargaining
+* scarcity
+* currency inflation
+* world setting
+
+Use price bands, not fixed universal numbers.
+
+A sword in a village may cost more than in a smithing city.
+
+Healing potions may be common in a high-magic capital and rare in a poor frontier town.
+
+Dragon scales may be priceless in one place and illegal in another.
+
+⸻
+
+8. Basic cost-of-living prices
+
+Default low-fantasy price bands:
+
+Item / Service	Typical Price
+cheap meal	5–15 copper
+decent meal	20–50 copper
+good meal	1–3 silver
+poor lodging	20–80 copper/night
+common inn room	1–5 silver/night
+good inn room	5–20 silver/night
+stable fee	20 copper–2 silver/day
+simple clothing	1–10 silver
+quality clothing	10 silver–2 gold
+noble clothing	2–50 gold
+common tool	20 copper–5 silver
+specialized tool	5 silver–2 gold
+basic backpack	2–10 silver
+rope	1–5 silver
+torch	1–5 copper
+lantern	5 silver–2 gold
+oil flask	5–30 copper
+healer visit, simple	1–10 silver
+healer visit, serious	1–10 gold
+messenger local	5 copper–1 silver
+messenger long-distance	1–20 gold
+
+These are baseline.
+
+Magic, war, remote location, or scarcity can change prices heavily.
+
+⸻
+
+9. Weapon prices
+
+Default weapon price bands:
+
+Weapon Type	Common Price
+crude club/staff	free–5 copper
+dagger/knife	5 silver–2 gold
+short sword	2–8 gold
+arming sword	5–20 gold
+spear	5 silver–5 gold
+axe	1–10 gold
+mace	2–12 gold
+bow	2–15 gold
+crossbow	10–50 gold
+greatsword/greataxe	15–60 gold
+fine weapon	×2–×5 base
+masterwork weapon	×5–×20 base
+silvered weapon	+10–100 gold depending weapon
+magical minor weapon	100–1,000 gold
+strong magical weapon	1,000–25,000 gold
+legendary weapon	usually not ordinary market item
+
+Weapon price depends on:
+
+* quality
+* material
+* enchantment
+* cultural availability
+* military restrictions
+* local smith skill
+* demand
+* legality
+
+A village smith may not sell masterwork weapons.
+
+A capital armory may.
+
+⸻
+
+10. Armor prices
+
+Armor is expensive.
+
+Armor Type	Common Price
+padded/cloth armor	5 silver–3 gold
+leather armor	2–10 gold
+reinforced leather	8–25 gold
+chain shirt	20–75 gold
+scale armor	30–120 gold
+breastplate	50–200 gold
+half plate	150–800 gold
+full plate	500–3,000 gold
+fine armor	×2–×5 base
+masterwork armor	×5–×20 base
+monster-hide armor	varies heavily
+dragon-scale armor	legendary/commission only
+minor enchanted armor	250–5,000 gold
+strong enchanted armor	5,000–50,000+ gold
+
+Armor also has fitting costs.
+
+Race/body fitting modifiers:
+
+Body Type	Price Modifier
+standard humanoid	×1
+small/tiny	×1.5–×5 depending specialty
+large/giant	×2–×10
+wings/tail/horns	×1.25–×3
+slime/formless	special design required
+construct	integrated/custom
+spirit/incorporeal	magical only
+
+A dragonkin with wings and tail needs custom armor.
+
+A fairy needs tiny specialized armor.
+
+A slime may need a core harness or enchanted membrane instead of normal armor.
+
+⸻
+
+11. Potion and alchemy prices
+
+Potion prices depend heavily on magic availability.
+
+Default price bands:
+
+Potion / Alchemical Item	Price
+weak healing tonic	5 silver–2 gold
+minor healing potion	2–15 gold
+common healing potion	10–50 gold
+strong healing potion	50–250 gold
+severe wound potion	250–2,000 gold
+antidote, common poison	2–25 gold
+antidote, rare poison	25–500 gold
+mana potion, weak	5–30 gold
+stamina potion	2–25 gold
+resistance potion	20–500 gold
+invisibility potion	100–2,000 gold
+transformation potion	500–10,000+ gold
+resurrection-grade elixir	legendary / quest item
+
+Potions should not fully erase severe injuries unless their tier supports it.
+
+A weak healing tonic may help recovery but not regrow organs.
+
+⸻
+
+12. Materials price bands
+
+Material prices:
+
+Material	Price Band
+common wood	cheap/free locally
+good lumber	1–20 silver per bundle
+stone block	1–20 silver each depending region
+iron ore	5 copper–2 silver per unit
+iron ingot	1–10 silver
+steel ingot	5 silver–2 gold
+silver ingot	5–50 gold
+gold ingot	high value/currency
+leather	1–20 silver
+fine leather	1–10 gold
+cloth	5 copper–5 silver
+silk	1–20 gold
+common herbs	1 copper–1 silver
+rare herbs	1–100 gold
+mana crystal, weak	5–100 gold
+mana crystal, strong	100–10,000 gold
+monster bone	1 silver–50 gold
+monster hide	1–500 gold
+monster core, weak	5–100 gold
+monster core, strong	100–10,000+ gold
+dragon scale	500–50,000+ gold
+demon horn	100–10,000+ gold
+angel feather	usually not market item
+divine/cosmic material	priceless / quest-scale
+
+Rare materials should often be unavailable for normal purchase.
+
+The player may need quests, reputation, auctions, factions, or domain access.
+
+⸻
+
+13. Service prices
+
+Service price examples:
+
+Service	Price
+simple weapon sharpening	5 copper–1 silver
+minor weapon repair	1–10 silver
+major weapon repair	1–20 gold
+armor patch	5 silver–10 gold
+full armor repair	10–200 gold
+custom fitting	5–500 gold depending armor/body
+minor enchant assessment	5–50 gold
+simple enchantment	100–1,000 gold
+major enchantment	1,000–50,000+ gold
+healer minor wound	1–10 silver
+healer serious wound	1–20 gold
+magical healing	10–1,000+ gold
+curse removal minor	50–1,000 gold
+curse removal major	quest or 1,000+ gold
+hire guide/day	1–20 silver
+hire guard/day	5 silver–5 gold
+hire skilled mercenary/day	2–25 gold
+hire mage/day	25–1,000+ gold
+
+NPC service must consider:
+
+* availability
+* trust
+* reputation
+* legality
+* danger
+* urgency
+* scarcity
+
+⸻
+
+14. Magical item availability
+
+Magical items should not always be for sale.
+
+Availability by settlement:
+
+Settlement Type	Magic Item Availability
+hamlet	almost none
+village	charms, folk remedies, weak potions maybe
+town	minor potions, scrolls, simple charms
+city	moderate magic market
+capital	strong magic services possible
+mage city	advanced magic items
+divine city	holy relics/services
+black market	cursed/illegal items
+planar hub	rare/exotic items
+divine/cosmic realm	special economy
+
+Even if the player has money, item availability matters.
+
+A Level 1 player cannot simply buy a world-ending sword in a village.
+
+A Level 500 player may have access to higher markets through reputation, factions, and travel.
+
+⸻
+
+15. Sale value
+
+Selling an item usually returns less than buy price.
+
+Default sale value:
+
+Situation	Sale Value
+common item to normal merchant	40–60% market price
+high-demand item	60–90%
+rare item to specialist	70–120%
+damaged item	reduced by condition
+stolen item	10–50% and legal risk
+illegal item	black-market risk
+unknown artifact	appraisal needed
+desperate sale	10–40%
+auction	variable, may exceed value
+
+Players should not buy and sell same item for profit unless market manipulation, trade routes, or business systems support it.
+
+⸻
+
+16. Appraisal
+
+Unknown items require appraisal.
+
+Appraisal depends on:
+
+* INT
+* relevant domain
+* merchant skill
+* magic detection
+* item rarity
+* deception risk
+* condition
+* provenance
+* time
+
+Appraisal outcomes:
+
+* accurate value
+* rough range
+* mistaken value
+* hidden curse missed
+* fake identified
+* origin discovered
+* buyer interest found
+
+Appraisal services cost money.
+
+Rare items may need specialists.
+
+A village merchant may not know the value of dragon bone.
+
+⸻
+
+17. Transaction lifecycle
+
+Every transaction should follow a lifecycle.
+
+17.1 Offer
+
+Seller offers item/service.
+
+17.2 Price
+
+Price is determined or negotiated.
+
+17.3 Availability
+
+Item/service must exist.
+
+17.4 Affordability
+
+Buyer must have accessible funds.
+
+17.5 Consent
+
+Owner must agree to sell or transaction must be theft/confiscation.
+
+17.6 Transfer
+
+Currency and item/service change hands.
+
+17.7 Commit
+
+EconomyReducer updates money.
+
+InventoryReducer updates item ownership/custody.
+
+17.8 Receipt/Audit
+
+OperationLedger records transaction.
+
+This prevents one-sided purchases.
+
+⸻
+
+18. Transaction record
+
+Transaction template:
+
+Transaction ID:
+Type:
+Buyer:
+Seller:
+Item/Service:
+Quantity:
+Price:
+Currency:
+Payment Source:
+Item Source:
+Ownership Transfer:
+Custody Transfer:
+Access Change:
+Location:
+Reputation Modifier:
+Tax/Fee:
+Debt/Installment:
+Validation Result:
+Operation Key:
+
+Example:
+
+Transaction: buy_rope_market_001
+Type: purchase
+Buyer: player
+Seller: Greyford general merchant
+Item: 50 ft rope
+Price: 3 silver
+Payment Source: player purse
+Ownership Transfer: merchant to player
+Custody Transfer: player
+Validation: accepted
+
+⸻
+
+19. Buying rules
+
+Buying requires:
+
+* item/service exists or can be commissioned
+* seller has authority to sell
+* player has accessible funds
+* item is legal/available
+* price agreed
+* inventory/custody updated
+* money removed
+* transaction deduped
+
+If player lacks funds:
+
+* reject purchase
+* offer debt/credit only if seller allows
+* barter possible if item offered
+
+If item is unavailable:
+
+* reject immediate purchase
+* allow order/commission/search
+
+If item is too rare:
+
+* require quest, auction, specialist, or faction access
+
+⸻
+
+20. Selling rules
+
+Selling requires:
+
+* player owns or can legally sell item
+* item is accessible
+* buyer exists and wants/can afford item
+* price agreed
+* item custody transferred
+* player receives money
+* item removed from inventory or ownership changed
+* transaction deduped
+
+Cannot sell:
+
+* absent item
+* borrowed item
+* item already sold
+* item in someone else’s custody unless authorized
+* fake duplicate
+* quest item if protected, unless story allows
+* cursed item without disclosure, unless deception path
+
+Selling stolen items may trigger legal/reputation risk.
+
+⸻
+
+21. Barter rules
+
+Barter uses item-for-item or service-for-service value.
+
+Barter requires:
+
+* both parties agree
+* both sides own/access items
+* values are plausible
+* social/reputation context supports trade
+* transfer committed
+
+Barter can include:
+
+* goods
+* labor
+* favors
+* protection
+* information
+* titles
+* contracts
+* future payment
+* hostages/collateral
+* magical oaths
+
+ContractReducer may track deferred barter.
+
+Example:
+
+“I repair your roof if you give me the old map.”
+
+Creates contract if not completed immediately.
+
+⸻
+
+22. Debt and credit
+
+Debt may exist.
+
+Debt fields:
+
+Debtor:
+Creditor:
+Principal:
+Interest:
+Due Date:
+Collateral:
+Penalty:
+Payment Schedule:
+Status:
+Contract Link:
+
+Debt can arise from:
+
+* loans
+* unpaid services
+* credit purchases
+* fines
+* taxes
+* contract penalties
+* emergency healing
+* domain construction loans
+
+Debt should create consequences:
+
+* reputation damage
+* legal action
+* interest
+* collateral seizure
+* bounty
+* blocked services
+* faction pressure
+
+Debt should not be forgotten if important.
+
+⸻
+
+23. Taxes and fees
+
+Domains, cities, guilds, and factions may impose costs.
+
+Possible fees:
+
+* gate toll
+* market stall fee
+* guild fee
+* trade tax
+* property tax
+* import/export tax
+* road toll
+* bridge toll
+* license fee
+* magic casting permit
+* weapon permit
+* monster-part tax
+* religious tithe
+* domain maintenance tax
+
+Taxes depend on setting.
+
+Do not apply taxes constantly unless relevant.
+
+Use them to support realistic domain/economy play.
+
+⸻
+
+24. Wages: unskilled and common labor
+
+Default wage bands:
+
+Worker Type	Daily Wage
+unskilled laborer	5–20 silver/day
+poor laborer	2–8 silver/day
+farmhand	5–15 silver/day
+porter	5–20 silver/day
+cleaner/helper	3–10 silver/day
+miner laborer	10–40 silver/day
+dangerous laborer	20 silver–2 gold/day
+road crew laborer	10–30 silver/day
+
+Wages depend on:
+
+* danger
+* local economy
+* food/lodging included
+* skill
+* season
+* urgency
+* reputation
+* legal status
+* worker scarcity
+* domain morale
+
+If food/lodging are provided, wage may be lower.
+
+If work is dangerous, wage rises.
+
+⸻
+
+25. Wages: skilled workers
+
+Skilled Worker	Daily Wage
+carpenter	5 silver–2 gold/day
+mason	5 silver–3 gold/day
+smith	1–5 gold/day
+tailor/leatherworker	5 silver–2 gold/day
+alchemist assistant	1–5 gold/day
+healer	1–10 gold/day
+engineer	5–50 gold/day
+mage assistant	10–100 gold/day
+enchanter	25–500+ gold/day
+master craftsman	10–200+ gold/day
+architect	10–100 gold/day
+specialist monster harvester	2–50 gold/day
+
+Skilled workers may not be available everywhere.
+
+High-skill workers may require reputation, guild access, or contracts.
+
+⸻
+
+26. Wages: guards and fighters
+
+Hireling	Daily Wage
+town guard equivalent	5 silver–2 gold/day
+caravan guard	1–5 gold/day
+trained mercenary	2–10 gold/day
+veteran mercenary	10–50 gold/day
+elite bodyguard	50–500 gold/day
+mage guard	50–1,000 gold/day
+monster hunter	20–500+ gold/day
+adventuring companion	contract/share-based
+army soldier	wage + supplies + command structure
+
+Danger increases cost.
+
+A guard hired to stand at a shop costs less than one hired to fight trolls.
+
+⸻
+
+27. Foremen and supervisors
+
+Foremen improve labor productivity.
+
+Foreman roles:
+
+* organizes workers
+* reduces waste
+* estimates materials
+* prevents accidents
+* improves daily progress
+* reports blockers
+* manages morale
+* protects against worker fraud
+* coordinates specialists
+
+Foreman wage:
+
+Foreman Type	Daily Wage
+basic foreman	1–5 gold/day
+skilled foreman	5–20 gold/day
+specialist foreman	20–100 gold/day
+master builder/engineer	100+ gold/day
+
+Foreman productivity modifier:
+
+Foreman Quality	Productivity Modifier
+none	×0.75–1.0
+poor	×0.8
+basic	×1.0
+good	×1.15
+excellent	×1.3
+master	×1.5+
+
+Without a foreman, large projects become slower, wasteful, or chaotic.
+
+⸻
+
+28. Worker productivity units
+
+For domain-scale projects, use Work Units.
+
+One unskilled laborer produces:
+
+1 Work Unit per safe normal workday
+
+Modifiers:
+
+Factor	Modifier
+good tools	×1.1
+excellent tools	×1.25
+poor tools	×0.75
+no proper tools	×0.25–0.5
+good foreman	×1.15–1.3
+dangerous conditions	×0.5–0.8
+bad weather	×0.5–0.9
+night work	×0.5–0.8 unless lighting/schedule
+hungry/tired workers	×0.5–0.8
+high morale	×1.1
+low morale	×0.5–0.9
+skilled workers	×1.5–4 depending task
+magic assistance	variable
+player direct help	variable
+missing materials	×0 or blocker
+
+This gives a simple construction system.
+
+⸻
+
+29. Skilled productivity
+
+Different workers produce different Work Units depending on task.
+
+Worker Type	Relevant Task Productivity
+unskilled laborer	1 WU/day
+trained laborer	1.5 WU/day
+carpenter on woodwork	3 WU/day
+mason on stonework	3 WU/day
+smith on metalwork	3 WU/day
+engineer on technical work	4+ WU/day
+mage on magical construction	variable, often high but costly
+master craftsman	5+ WU/day for specialty
+wrong-specialty worker	0.5–1 WU/day
+
+A carpenter is not automatically useful for enchantment.
+
+A mage is not automatically useful for masonry unless using magic.
+
+⸻
+
+30. Project Work Unit costs
+
+Default Work Unit costs:
+
+Project	Work Units
+simple fence repair	5–20 WU
+small shack repair	20–80 WU
+small cabin	80–200 WU
+simple workshop	150–400 WU
+house	200–800 WU
+sturdy house	500–1,500 WU
+small bridge	200–1,000 WU
+road clearing, short	50–300 WU
+road construction, short	300–2,000 WU
+wooden palisade around camp	200–1,000 WU
+stone wall section	500–3,000 WU
+watchtower	300–1,500 WU
+small fort	2,000–10,000 WU
+keep	10,000–50,000 WU
+fortress	50,000–500,000 WU
+village restoration	5,000–100,000 WU
+city wall	100,000+ WU
+castle	100,000–1,000,000+ WU
+
+Work Units are affected by tools, terrain, materials, skill, weather, and magic.
+
+⸻
+
+31. Material requirements for projects
+
+Large projects need materials.
+
+Common project materials:
+
+* timber
+* stone
+* clay
+* mortar
+* iron nails/brackets
+* rope
+* thatch
+* tiles
+* glass
+* tools
+* fuel
+* food for workers
+* scaffolding
+* carts
+* draft animals
+* water
+* specialized materials
+* magical components
+
+Project material states:
+
+* required
+* stockpiled
+* in transit
+* reserved
+* consumed
+* wasted
+* stolen
+* damaged
+* unavailable
+
+Missing material creates blocker.
+
+Workers cannot build a stone wall without stone/mortar.
+
+⸻
+
+32. Project cost formula
+
+Domain project cost includes:
+
+Total Project Cost =
+Material Cost
++ Labor Cost
++ Specialist Cost
++ Tool/Station Cost
++ Transport Cost
++ Security Cost
++ Permit/Tax/Bribe Cost
++ Waste/Risk Margin
+
+Waste/risk margin:
+
+Situation	Margin
+well-planned safe project	+5–10%
+normal project	+10–25%
+rushed project	+25–50%
+dangerous frontier project	+25–100%
+magical/experimental project	+50–200%
+corrupt/hostile region	+20–100%
+
+This prevents underpricing large projects.
+
+⸻
+
+33. Example: repair wooden fence
+
+Project:
+
+Repair 50 feet of simple wooden fence.
+
+Requirements:
+
+* timber
+* nails/rope
+* tools
+* 1–3 laborers
+* 1–3 days
+
+Work Units:
+
+10–30 WU
+
+Cost:
+
+* materials: 5 silver–5 gold
+* labor: 1–10 gold depending workers/time/local wage
+* total: 1–15 gold
+
+If player does it personally:
+
+* time and EP cost
+* Crafting/Carpentry XP if meaningful
+* no labor wage cost
+* still needs materials/tools
+
+⸻
+
+34. Example: build wooden palisade around camp
+
+Project:
+
+Small wooden palisade.
+
+Requirements:
+
+* timber
+* digging tools
+* rope/nails
+* laborers
+* foreman recommended
+* several days/weeks
+
+Work Units:
+
+200–1,000 WU
+
+If 10 laborers produce 10 WU/day:
+
+* 20–100 days without modifiers
+
+With 25 workers, tools, foreman:
+
+* perhaps 8–30 days
+
+Cost:
+
+* materials: 50–500 gold
+* labor: 100–1,000+ gold
+* total: 200–2,000+ gold depending scale
+
+Not instant.
+
+⸻
+
+35. Example: repair stone wall section
+
+Project:
+
+Repair damaged town wall section.
+
+Requirements:
+
+* stone blocks
+* mortar
+* scaffolding
+* mason
+* laborers
+* carts
+* foreman
+* security if dangerous
+
+Work Units:
+
+500–3,000 WU
+
+Workers:
+
+* 10 laborers + 2 masons + foreman
+
+Daily progress:
+
+* laborers: 10 WU
+* masons: 6 WU
+* foreman modifier ×1.15
+* daily total around 18 WU/day
+
+Time:
+
+* 28–167 days depending scale
+
+With more workers and better organization:
+
+* shorter, but material/logistics still matter
+
+This makes “repair a wall” meaningful.
+
+⸻
+
+36. Example: build small workshop
+
+Project:
+
+Build a smith/crafting workshop.
+
+Requirements:
+
+* land/space
+* timber/stone
+* roof
+* forge or workbench
+* tools
+* chimney/ventilation
+* fuel storage
+* labor
+* specialist installation
+
+Work Units:
+
+150–400 WU basic workshop
+400–1,500 WU advanced workshop
+
+Costs:
+
+* basic: 100–1,000 gold
+* advanced: 1,000–10,000+ gold
+* magical workshop: 10,000+ gold and rare materials
+
+Workshop provides:
+
+* crafting station
+* improved crafting quality cap
+* project support
+* storage
+* possible income
+* worker assignment point
+
+⸻
+
+37. Example: open a mine
+
+Project:
+
+Open small mine.
+
+Requirements:
+
+* mineral deposit confirmed
+* legal rights
+* workers
+* timber supports
+* tools
+* carts
+* foreman
+* safety
+* guards if dangerous
+* transport route
+* food/water
+* investment
+
+Work Units:
+
+1,000–10,000 WU for initial small mine
+
+Ongoing costs:
+
+* wages
+* tools
+* timber supports
+* guards
+* transport
+* accidents
+* taxes
+
+Possible income:
+
+* ore output
+* gems
+* monster encounters
+* domain wealth
+
+Mine income should not be automatic infinite money.
+
+It requires:
+
+* production
+* transport
+* market
+* security
+* taxes
+* maintenance
+* workers
+* depletion risk
+
+⸻
+
+38. Business income model
+
+Businesses can generate income, but with costs.
+
+Business income fields:
+
+Business Name:
+Type:
+Location:
+Owner:
+Manager:
+Workers:
+Inventory/Stock:
+Daily Revenue:
+Daily Costs:
+Profit:
+Risks:
+Market Demand:
+Reputation:
+Security:
+Taxes:
+Maintenance:
+
+Basic formula:
+
+Profit = Revenue - Wages - Materials - Rent/Tax - Maintenance - Losses
+
+Business profit should be modest unless the business is special.
+
+Example:
+
+Small tavern:
+
+* daily revenue: 1–20 gold
+* daily costs: wages, food, rent/tax
+* profit: maybe 20 silver–5 gold/day
+
+Magic item shop:
+
+* high revenue but high inventory cost, security, rare supply, licensing, theft risk
+
+Mine:
+
+* high potential but high labor/security/logistics cost
+
+⸻
+
+39. Domain income sources
+
+Domain income can come from:
+
+* taxes
+* rent
+* farms
+* mines
+* workshops
+* trade routes
+* shops
+* tolls
+* contracts
+* guild fees
+* fishing/hunting rights
+* magical resource nodes
+* dungeon loot taxation
+* mercenary contracts
+* pilgrimage
+* tourism
+* noble grants
+* faction support
+
+Income must be tied to actual domain assets.
+
+No asset, no income.
+
+If the player says “my domain earns 1000 gold/day,” validate against holdings, population, economy, and risks.
+
+⸻
+
+40. Domain maintenance costs
+
+Domains cost money.
+
+Maintenance categories:
+
+* worker wages
+* guards
+* food
+* repairs
+* taxes/tribute
+* road upkeep
+* building upkeep
+* tools
+* fuel
+* animal feed
+* administration
+* bribes
+* magical ward upkeep
+* public services
+* debt payments
+* emergency reserves
+
+Suggested maintenance:
+
+Domain Asset	Maintenance
+small camp	1–10 gold/week
+small workshop	5–50 gold/week
+house/base	1–20 gold/week
+shop	5–100 gold/week
+mine	50–1,000+ gold/week
+village holding	100–5,000+ gold/month
+keep	500–10,000+ gold/month
+fortress	5,000–100,000+ gold/month
+magical facility	variable, often high
+
+Domain assets should not be pure profit machines.
+
+⸻
+
+41. Worker morale
+
+Labor output depends on morale.
+
+Morale factors:
+
+* pay on time
+* food quality
+* safety
+* housing
+* leadership
+* danger
+* respect
+* weather
+* overwork
+* injuries
+* monster attacks
+* reputation
+* fairness
+* promises kept
+* foreman quality
+
+Morale states:
+
+* loyal
+* good
+* steady
+* uneasy
+* low
+* angry
+* striking
+* fleeing
+* rebellious
+
+Low morale can cause:
+
+* slower work
+* theft
+* accidents
+* quitting
+* sabotage
+* rumors
+* wage demands
+* contract disputes
+
+High morale can increase productivity and loyalty.
+
+⸻
+
+42. Worker safety
+
+Danger matters.
+
+Dangerous projects require:
+
+* hazard pay
+* guards
+* safety equipment
+* healer
+* foreman
+* downtime
+* insurance/compensation
+* morale management
+
+Danger examples:
+
+* monster territory
+* cursed ruins
+* unstable mine
+* war zone
+* plague area
+* extreme weather
+* magical contamination
+* toxic fumes
+* active dungeon
+
+Ignoring danger can cause:
+
+* injuries
+* deaths
+* worker flight
+* reputation loss
+* legal consequences
+* project delay
+* compensation claims
+
+This prevents using workers as free disposable labor.
+
+⸻
+
+43. Foreman reports
+
+Foremen should produce concise status.
+
+Example:
+
+North Wall Repair:
+Progress: 38%
+Workers: 12 laborers, 2 masons
+Materials: stone adequate, mortar low
+Blocker: rain slowed work
+Estimated completion: 9–14 days if mortar arrives
+Morale: steady
+
+The system can use this for /project or Context.
+
+Foreman reports help make domain play manageable.
+
+⸻
+
+44. Project blockers
+
+Projects should have blockers.
+
+Blocker types:
+
+* missing materials
+* missing tools
+* missing specialist
+* bad weather
+* site unsafe
+* worker shortage
+* low morale
+* injury/accident
+* funding shortage
+* legal dispute
+* monster attack
+* theft
+* sabotage
+* design flaw
+* magical instability
+* transport delay
+* disease
+* contract dispute
+
+Blockers pause or slow progress.
+
+Solving blockers can grant XP, reputation, and domain progress.
+
+This makes domain play active instead of passive.
+
+⸻
+
+45. Project progress calculation
+
+Daily progress:
+
+Daily Progress =
+Total Worker Units
+× Tool Modifier
+× Foreman Modifier
+× Morale Modifier
+× Weather Modifier
+× Safety Modifier
+× Material Availability Modifier
+× Skill Match Modifier
+
+If materials missing:
+
+Material Availability Modifier = 0
+
+If only partial materials:
+
+Material Availability Modifier = 0.25–0.75
+
+Example:
+
+10 laborers, 2 masons.
+
+* laborers: 10 WU
+* masons: 6 WU
+* total: 16 WU
+* good foreman ×1.15
+* rain ×0.75
+* adequate tools ×1
+
+Progress:
+
+16 × 1.15 × 0.75 = 13.8 WU/day
+
+Round as needed.
+
+⸻
+
+46. Magic-assisted labor
+
+Magic can accelerate labor, but not for free.
+
+Magic assistance may:
+
+* move earth
+* shape stone
+* create light
+* dry mortar
+* lift beams
+* purify water
+* reinforce structure
+* detect flaws
+* protect site
+* ward monsters
+* automate tools
+
+Costs:
+
+* MP
+* caster wages
+* material catalysts
+* fatigue
+* risk of instability
+* legal/guild permission
+* maintenance
+* anti-magic vulnerability
+
+Magic can reduce Work Units or increase daily progress.
+
+But large-scale magic should have:
+
+* high MP cost
+* skilled caster requirement
+* cooldown/recovery
+* expensive materials
+* risk
+* maintenance
+
+No instant castle from one basic Earth spell unless the ability is mythic and consequences are appropriate.
+
+⸻
+
+47. High-level player labor
+
+A high-level player can contribute huge labor, but still has limits.
+
+A Level 500 giant can move stones faster than workers.
+
+A Level 1000 earth mage can shape terrain.
+
+But constraints remain:
+
+* EP/MP cost
+* precision
+* design knowledge
+* materials
+* time
+* collateral damage
+* legal/social consequences
+* fatigue
+* project complexity
+* need for finishing work
+* maintenance
+* domain administration
+
+Example:
+
+A Level 1000 earth mage raises a stone wall in minutes.
+
+Possible if ability supports it.
+
+But still must consider:
+
+* stability
+* foundations
+* property damage
+* magical maintenance
+* public fear
+* legal authority
+* enemy detection
+* MP cost
+* whether wall has gates/drainage/defensive walkways
+
+High-level power speeds projects but does not erase all project logic.
+
+⸻
+
+48. Commissioning items
+
+A commission is a contract.
+
+Commission fields:
+
+Commission ID:
+Client:
+Crafter:
+Item Requested:
+Quality Target:
+Materials Provided:
+Materials Needed:
+Price:
+Deposit:
+Deadline:
+Delivery Location:
+Failure Terms:
+Ownership:
+Custody:
+Progress:
+Status:
+
+Commission process:
+
+1. Agree design.
+2. Agree price/deposit.
+3. Transfer materials/item custody if needed.
+4. Work progresses.
+5. Output quality determined.
+6. Final payment.
+7. Item delivered.
+8. Contract closed.
+
+A commission can fail, delay, or produce different quality.
+
+Reputation affects trust.
+
+⸻
+
+49. Contracts and payments
+
+Economic contracts include:
+
+* labor contracts
+* guard contracts
+* delivery contracts
+* construction contracts
+* crafting commissions
+* bounty contracts
+* domain service contracts
+* loans
+* leases
+* supply contracts
+* mercenary agreements
+
+Payment terms can be:
+
+* upfront
+* deposit + completion
+* daily wage
+* weekly wage
+* milestone payment
+* profit share
+* item share
+* barter
+* favor owed
+* debt
+* bounty on proof
+
+ContractReducer owns obligations.
+
+EconomyReducer owns money transfer.
+
+⸻
+
+50. Bounties
+
+Bounties are economic quest contracts.
+
+Bounty fields:
+
+Target:
+Issuer:
+Reward:
+Proof Required:
+Dead or Alive:
+Deadline:
+Legal Status:
+Competition:
+Risks:
+Payment Location:
+Fraud Risk:
+
+Proof may include:
+
+* body part
+* token
+* witness
+* captured target
+* signed report
+* magical confirmation
+
+Bounty reward should not pay unless proof is accepted.
+
+Killing a random wolf does not complete “Frostmaw” bounty.
+
+⸻
+
+51. Loot valuation
+
+Loot should have value, but not always immediate money.
+
+Loot categories:
+
+* coins
+* weapons
+* armor
+* jewelry
+* gems
+* materials
+* monster parts
+* documents
+* art
+* trade goods
+* magic items
+* cursed items
+* stolen goods
+* illegal goods
+* quest items
+
+Loot value depends on:
+
+* condition
+* legality
+* buyer
+* transport
+* appraisal
+* market
+* reputation
+* authenticity
+* danger
+* curse/taint
+
+Heavy loot may need transport.
+
+Stolen loot may create legal risk.
+
+Monster parts may rot.
+
+Cursed items may be unsellable or dangerous.
+
+⸻
+
+52. Loot is not automatically liquid
+
+The player may own a valuable item but not have spendable money.
+
+Example:
+
+Dragon scale worth 5,000 gold.
+
+But:
+
+* no local buyer
+* illegal to sell
+* hard to transport
+* needs appraisal
+* guild claims tax
+* dragon cult wants it
+* merchant offers only 1,000 gold
+* item is useful for crafting
+
+AIDRPG should separate:
+
+* estimated value
+* sale price
+* liquid currency
+* buyer availability
+
+This prevents “valuable item = instant money anywhere.”
+
+⸻
+
+53. Infinite money exploit prevention
+
+AIDRPG must block economic exploits.
+
+Exploit examples:
+
+* selling same item twice
+* buying without paying
+* crafting from nothing
+* selling crafted item for more than inputs infinitely with no market limit
+* summoning gold
+* transmuting dirt into gold with no cost
+* duplicated loot
+* NPC pays infinite bounty repeatedly
+* workers generate output without wages/materials/time
+* domain income with no assets
+* AI randomly says “you find 1,000,000 gold”
+* Story Card grants money
+* command output parsed as loot
+* item appears both sold and owned
+* selling cursed/stolen item with no risk forever
+
+Every money change needs source validation and operation key.
+
+⸻
+
+54. Crafting profit loops
+
+Crafting can be profitable, but not infinite.
+
+Profit requires:
+
+* materials
+* labor/time
+* tools
+* market demand
+* buyers
+* quality
+* transport
+* taxes
+* risk
+* competition
+* anti-farm decay
+* market saturation
+
+If player mass-produces basic daggers:
+
+* material cost
+* labor time
+* market saturation
+* low sale price
+* merchant may refuse more
+* XP decays
+* profit may be modest or negative
+
+If player makes rare enchanted items:
+
+* high profit possible
+* rare materials
+* high MP/time
+* buyer scarcity
+* legal attention
+* crafting risk
+
+This allows business play without unlimited loops.
+
+⸻
+
+55. Market saturation
+
+Selling too many similar items can lower price.
+
+Saturation examples:
+
+* 100 wooden spoons in small village
+* 50 goblin swords in poor town
+* repeated basic potions
+* mass-produced monster pelts
+* many low-quality daggers
+* too much ore without transport
+
+Saturation effects:
+
+* lower sale price
+* buyer refuses more
+* storage needed
+* transport needed
+* larger market needed
+* contract needed
+* reputation as supplier possible
+
+Market saturation can reset over time or with new markets.
+
+⸻
+
+56. Supply and demand
+
+Prices should shift based on context.
+
+Examples:
+
+War:
+
+* weapons, armor, food, healing, horses cost more
+
+Famine:
+
+* food prices high
+* wages may change
+* crime rises
+
+Plague:
+
+* medicine/healers cost more
+* travel restricted
+
+Monster attacks:
+
+* guards, repairs, weapons cost more
+* property values drop
+
+Festival:
+
+* lodging/food prices rise
+* luxury goods sell well
+
+Remote village:
+
+* imported items cost more
+* local materials cheaper
+
+Magic city:
+
+* potions cheaper
+* mundane labor maybe expensive
+
+These modifiers make the world feel alive.
+
+⸻
+
+57. Reputation and bargaining
+
+Reputation affects prices.
+
+Price modifiers:
+
+Reputation / Relationship	Price Modifier
+hated	service refused or ×2–×5
+distrusted	×1.5–×2
+neutral	×1
+friendly	×0.8–×0.95
+allied	×0.5–×0.8
+revered	discounts, gifts, or priority
+feared	discount possible, but reputation consequences
+wanted criminal	black market only or refused
+
+Bargaining depends on:
+
+* Social Domain
+* INT
+* LCK
+* reputation
+* urgency
+* seller personality
+* market conditions
+* evidence/appraisal
+* relationship
+* item demand
+
+Bargaining should not always succeed.
+
+Aggressive bargaining can harm reputation.
+
+⸻
+
+58. Theft and crime economy
+
+Theft is possible but has consequences.
+
+Theft requires:
+
+* access
+* stealth/deception/force
+* target ownership
+* witnesses
+* security
+* item custody update
+* legal/reputation risk
+
+Stolen items:
+
+* owner remains previous owner legally
+* player custody maybe
+* access yes
+* legal status stolen
+* sale value reduced
+* black-market risk
+
+If caught:
+
+* fines
+* jail
+* bounty
+* combat
+* reputation loss
+* faction hostility
+* confiscation
+
+This prevents theft from being free money.
+
+⸻
+
+59. Counterfeit and fraud
+
+Fraud economy may exist.
+
+Examples:
+
+* fake gems
+* fake potions
+* forged documents
+* false contracts
+* counterfeit coins
+* fake relics
+* cursed item sold as safe
+* inflated appraisal
+
+Fraud requires:
+
+* deception skill
+* forgery tools
+* target gullibility
+* risk
+* consequences
+
+AIDRPG should not make fraud consequence-free.
+
+Fraud can create:
+
+* legal trouble
+* reputation damage
+* bounty
+* criminal contacts
+* black-market access
+* retaliation
+
+⸻
+
+60. Banking and storage
+
+Large wealth should require storage.
+
+Storage options:
+
+* carried purse
+* chest
+* hidden cache
+* bank
+* guild vault
+* temple vault
+* domain treasury
+* magical storage
+* companion custody
+* merchant credit
+
+Storage risks:
+
+* theft
+* access delay
+* fees
+* faction control
+* political seizure
+* travel limitation
+* bank failure
+* tax reporting
+
+Carrying huge gold physically may be impractical.
+
+High-level economies may use letters of credit, gems, platinum, mana crystals, or magical contracts.
+
+⸻
+
+61. Domain treasury
+
+Domain money should be separate from personal money.
+
+Fields:
+
+Domain Treasury:
+Owner/Authority:
+Current Funds:
+Income:
+Expenses:
+Reserved Funds:
+Debt:
+Taxes Owed:
+Payroll:
+Emergency Reserve:
+Access Rules:
+
+Player may control it if they are ruler/owner.
+
+But spending domain treasury personally may create:
+
+* morale loss
+* corruption reputation
+* legal issue
+* worker pay shortage
+* project delays
+* faction anger
+
+This makes domain management meaningful.
+
+⸻
+
+62. Payroll
+
+Workers must be paid.
+
+Payroll fields:
+
+Workers:
+Wage Rate:
+Pay Period:
+Food/Lodging Included:
+Total Payroll:
+Due Date:
+Payment Status:
+Morale Effect:
+
+Missed payroll can cause:
+
+* morale drop
+* work stoppage
+* quitting
+* theft
+* riot
+* contract breach
+* reputation loss
+
+Payroll should matter for active labor/domain projects.
+
+⸻
+
+63. Supplies and logistics
+
+Workers, armies, and domains need supplies.
+
+Supply categories:
+
+* food
+* water
+* tools
+* fuel
+* medicine
+* clothing
+* shelter
+* animal feed
+* replacement parts
+* ammunition
+* carts
+* storage
+
+Logistics affect:
+
+* travel
+* construction
+* military action
+* mining
+* remote projects
+* sieges
+* expeditions
+
+Ignoring logistics can create delays or losses.
+
+AIDRPG should not overtrack small supplies unless relevant, but large projects need logistics.
+
+⸻
+
+64. Army and militia costs
+
+Military forces are expensive.
+
+Costs include:
+
+* wages
+* food
+* weapons
+* armor
+* training
+* officers
+* horses
+* healers
+* ammunition
+* tents
+* transport
+* morale
+* casualties
+* replacement
+* legal/political cost
+
+Example daily cost:
+
+Force	Daily Cost
+10 militia	5–50 gold/day with supplies
+10 trained soldiers	20–200 gold/day
+10 cavalry	100–1,000 gold/day
+10 elite soldiers	500–5,000 gold/day
+1 battle mage	50–1,000+ gold/day
+
+Armies should not be free just because the player is high level.
+
+⸻
+
+65. Maintenance of magical assets
+
+Magical assets may require upkeep.
+
+Examples:
+
+* wards need mana crystals
+* golems need core maintenance
+* teleport circle needs recharge
+* enchanted forge needs fuel
+* spirit bound to base needs offerings
+* divine shrine needs worship/ritual
+* demon engine needs blood/contracts
+* floating island needs stabilizers
+
+Upkeep can be:
+
+* money
+* materials
+* rituals
+* MP
+* workers
+* priests/mages
+* contracts
+* sacrifices
+* rare resources
+
+Magical infrastructure without upkeep can weaken, fail, corrupt, or become dangerous.
+
+⸻
+
+66. Price scaling by quality
+
+Quality changes value.
+
+Quality	Price Modifier
+ruined	0–5%
+broken	5–20%
+poor/crude	25–60%
+common	×1
+good	×1.5
+fine	×2–×3
+excellent	×3–×5
+masterwork	×5–×20
+minor magical	×10–×100
+strong magical	×100–×1,000
+legendary	market unavailable or priceless
+mythic/divine	not normal economy
+
+Condition modifies price separately.
+
+A masterwork broken sword may still be valuable as repairable item, but not full value.
+
+⸻
+
+67. Price scaling by condition
+
+Condition	Price Modifier
+pristine	×1.1–×1.5
+excellent	×1.0–×1.2
+good	×1
+worn	×0.75
+damaged	×0.4–×0.7
+badly damaged	×0.1–×0.4
+broken	×0.05–×0.2
+ruined	scrap value
+cursed/corrupted	variable; often lower or illegal
+historically important	may increase despite damage
+
+Quality and condition combine.
+
+Example:
+
+Fine sword, damaged:
+
+* base price ×2 quality ×0.5 condition = around base price
+
+⸻
+
+68. Contracts for labor projects
+
+Large labor should use contracts.
+
+Labor contract fields:
+
+Employer:
+Workers/Company:
+Foreman:
+Work Description:
+Wage:
+Duration:
+Food/Lodging:
+Hazard Pay:
+Materials Provided By:
+Tools Provided By:
+Payment Schedule:
+Completion Criteria:
+Penalty:
+Safety Terms:
+Status:
+
+This prevents confusion.
+
+Example:
+
+Player hires 10 workers for palisade.
+
+Contract:
+
+* 10 laborers
+* 15 silver/day each
+* food included
+* expected 20 days
+* foreman separate
+* player provides timber
+
+If timber missing, workers may still need wages while waiting unless contract says otherwise.
+
+⸻
+
+69. Economy and quests
+
+Economy interacts with quests.
+
+Examples:
+
+* bounty rewards
+* item delivery
+* repair commission
+* debt repayment
+* hiring escort
+* funding rebellion
+* paying ransom
+* buying information
+* bribing official
+* paying taxes
+* investing in village
+
+Quest rewards should be validated.
+
+A quest should not pay twice.
+
+Quest reward operation key should prevent duplicate rewards.
+
+If a quest promises 100 gold, reward happens when issuer pays, not when the promise is made.
+
+⸻
+
+70. Economy and reputation
+
+Economic behavior affects reputation.
+
+Examples:
+
+Positive:
+
+* pays workers fairly
+* funds repairs
+* honors contracts
+* supports village
+* pays debts
+* refunds mistakes
+* trades honestly
+
+Negative:
+
+* cheats merchants
+* misses payroll
+* sells cursed items
+* price gouges
+* steals wages
+* defaults on debt
+* floods market with dangerous goods
+* refuses compensation
+
+Reputation changes require witnesses, victims, records, or rumor spread.
+
+Private behavior may become public if discovered.
+
+⸻
+
+71. Economy and cards
+
+Economy should update cards carefully.
+
+Protected Inventory card should include:
+
+* currency
+* key valuables
+* important items
+* major unavailable items
+
+Domain cards may include:
+
+* treasury
+* active income/expenses
+* important projects
+* payroll warnings
+
+Generated item cards may include value only if important.
+
+Do not create cards for:
+
+* every coin transaction
+* every wage payment
+* every small purchase
+* every common market item
+* every price estimate
+
+Economy cards should not create money.
+
+Cards mirror state only.
+
+⸻
+
+72. Economy Context behavior
+
+Context should include economic facts when relevant.
+
+Good Context:
+
+Your sword is still with Mara, and you owe her 6 silver for the repair.
+
+Good Context:
+
+The North Wall project is stalled because mortar supplies are missing and workers are still owed wages tomorrow.
+
+Good Context:
+
+You have only 2 silver accessible in your purse; most of your wealth is stored in the domain treasury back at the keep.
+
+Bad Context:
+
+Every historical purchase and every item price is injected every turn.
+
+Economy Context should prioritize:
+
+* current affordability
+* unpaid debts
+* active contracts
+* item custody
+* project blockers
+* payroll deadlines
+* unavailable resources
+* market constraints
+
+⸻
+
+73. Economy command behavior
+
+/money
+
+Shows accessible personal currency.
+
+/wealth
+
+Shows personal currency, stored funds, domain treasury, valuables, debts.
+
+/transactions
+
+Shows recent transactions.
+
+/prices <item>
+
+Shows estimated price range if market context supports it.
+
+/buy <item>
+
+Attempts purchase or shows requirement if unclear.
+
+/sell <item>
+
+Attempts sale or shows likely value/buyer issue.
+
+/hire <worker type>
+
+Shows wage and availability.
+
+/payroll
+
+Shows worker payroll due.
+
+/domainfunds
+
+Shows treasury, income, expenses, reserved funds.
+
+/projectcost <project>
+
+Estimates materials, labor, time, and money.
+
+/economyaudit
+
+Shows validation details.
+
+Example:
+
+Economy Audit: Buy Iron Sword
+Market: Greyford smithy
+Availability: 1 common iron sword available
+Price: 8 gold
+Player accessible funds: 5 gold, 20 silver
+Result: cannot afford unless bargaining, debt, barter, or cheaper item
+
+⸻
+
+74. Economic validation outcomes
+
+Accept
+
+Transaction or cost is valid and committed.
+
+Example:
+
+Player buys rope and pays 3 silver.
+
+Reject
+
+Transaction unsupported.
+
+Example:
+
+Player buys plate armor with 2 copper.
+
+Pending
+
+Transaction possible but needs missing detail or future completion.
+
+Example:
+
+Commission armor; not finished yet.
+
+Soft_fail
+
+Partial/complicated outcome.
+
+Example:
+
+Merchant agrees to reserve item with deposit.
+
+Hard_deny
+
+Invalid/non-canon/exploit.
+
+Examples:
+
+* selling same item twice
+* gaining money from Story Card
+* buying unavailable item
+* duplicate quest reward
+* infinite transmutation
+* domain income with no asset
+* workers complete fortress instantly
+
+⸻
+
+75. Detailed examples
+
+Example 1 — buying rope
+
+State:
+
+Player has 1 gold.
+
+Input:
+
+“I buy rope.”
+
+Market:
+
+General store has rope.
+
+Expected:
+
+* price 1–5 silver
+* money removed
+* rope added
+* transaction logged
+
+Example 2 — buying full plate in village
+
+Input:
+
+“I buy full plate armor.”
+
+Location:
+
+Small village.
+
+Expected:
+
+* likely unavailable
+* possible commission/order
+* price high
+* fitting required
+* no instant armor
+
+Example 3 — selling wolf pelts
+
+State:
+
+Player has 3 wolf pelts, good condition.
+
+Market:
+
+Town tanner.
+
+Expected:
+
+* buyer exists
+* price depends quality/demand
+* pelts removed
+* money added
+* no duplicate sale
+
+Example 4 — selling same pelt twice
+
+State:
+
+Pelt already sold.
+
+Input:
+
+“I sell the pelt again.”
+
+Expected:
+
+* reject
+* no money added
+* audit says item unavailable/already sold
+
+Example 5 — hiring workers
+
+Input:
+
+“I hire 10 laborers for the palisade.”
+
+Expected:
+
+* check labor availability
+* wage estimate
+* contract/payroll created
+* workers assigned if paid/agreed
+* no instant palisade
+
+Example 6 — missed payroll
+
+State:
+
+Workers owed wages today, treasury empty.
+
+Expected:
+
+* morale drops
+* work slows/stops
+* possible quitting/dispute
+* debt/contract issue
+
+Example 7 — building wall with materials missing
+
+Input:
+
+“Have workers build the stone wall.”
+
+State:
+
+No stone stockpile.
+
+Expected:
+
+* project blocked
+* workers may wait or gather stone if assigned
+* no progress on wall until material supplied
+
+Example 8 — high-level earth mage wall
+
+Input:
+
+“I raise a stone wall with earth magic.”
+
+State:
+
+Player has strong earth magic, enough MP.
+
+Expected:
+
+* possible faster wall creation
+* MP cost
+* stability/foundation check
+* maybe rough wall, not fully engineered fortress
+* collateral/legal/domain consequences possible
+
+Example 9 — mine income
+
+Input:
+
+“My mine earns 10,000 gold today.”
+
+State:
+
+Mine not opened, no workers.
+
+Expected:
+
+* reject
+* no income
+
+If mine exists:
+
+* income calculated from output, workers, transport, market, costs, taxes
+
+Example 10 — buying magic sword in capital
+
+State:
+
+Capital has magic market.
+
+Input:
+
+“I buy a minor flaming sword.”
+
+Expected:
+
+* check availability, price likely hundreds/thousands gold
+* attunement/legality possible
+* if funds insufficient, reject or finance
+* if bought, item committed and money removed
+
+⸻
+
+76. Economy safeguards
+
+76.1 Money changes need a source
+
+No unexplained currency gain/loss.
+
+76.2 Transactions need both sides
+
+Buyer, seller, item/service, and price must exist or be reasonably inferred.
+
+76.3 Accessible funds matter
+
+Money in distant treasury is not purse money.
+
+76.4 Ownership matters
+
+The player cannot sell what they do not own or control.
+
+76.5 Custody matters
+
+An item with a smith cannot be sold or used unless retrieved or authorized.
+
+76.6 Availability matters
+
+Rare items are not always for sale.
+
+76.7 Condition and quality affect value
+
+Damaged items sell for less.
+
+76.8 Sale value is not buy value
+
+No default buy/sell profit loop.
+
+76.9 Market saturation prevents infinite sales
+
+Small markets cannot buy endless goods.
+
+76.10 Workers require wages, tools, materials, and time
+
+No free labor.
+
+76.11 Foremen matter for large projects
+
+Large unorganized projects are inefficient.
+
+76.12 Domain income requires assets
+
+No income without holdings/workers/market.
+
+76.13 Domain assets require maintenance
+
+Buildings, guards, mines, wards, and workers cost money.
+
+76.14 Magic can reduce labor but has costs
+
+No free instant city-building without mythic support.
+
+76.15 Contracts must be tracked
+
+Deferred payments and obligations cannot vanish.
+
+76.16 Quest rewards pay once
+
+Promises are not payment.
+
+76.17 Story Cards do not create money
+
+Cards mirror state.
+
+76.18 AI narration is validated
+
+AI cannot randomly grant impossible wealth.
+
+76.19 Duplicate transactions are blocked
+
+OperationLedger prevents repeated money/item transfer.
+
+76.20 Every major economic result should be auditable
+
+The player should know what was paid, earned, owed, sold, bought, or blocked.
+
+⸻
+
+77. Chunk 28 acceptance tests
+
+Test 1 — basic purchase
+
+Given:
+
+Player has 1 gold.
+
+Player buys rope for 3 silver.
+
+Expected:
+
+* 3 silver removed
+* rope added
+* transaction logged once
+
+Test 2 — insufficient funds
+
+Given:
+
+Player has 2 silver.
+
+Player tries to buy sword costing 8 gold.
+
+Expected:
+
+* purchase rejected or debt/barter offered if supported
+* no sword added
+* no money removed unless deposit/failed scam is validated
+
+Test 3 — unavailable item
+
+Given:
+
+Player is in small village.
+
+Player tries to buy enchanted plate armor.
+
+Expected:
+
+* unavailable
+* possible commission/search lead
+* no item added
+
+Test 4 — item sold once
+
+Given:
+
+Player sells wolf pelt.
+
+Expected:
+
+* pelt removed/transferred
+* money added
+* sale operation logged
+
+Test 5 — duplicate sale blocked
+
+Given:
+
+Same sale output processed again.
+
+Expected:
+
+* no second money gain
+* no duplicate sale
+
+Test 6 — damaged item value reduced
+
+Given:
+
+Player sells damaged sword.
+
+Expected:
+
+* sale price below good-condition value
+* condition considered
+
+Test 7 — stolen item risk
+
+Given:
+
+Player sells stolen noble ring.
+
+Expected:
+
+* lower sale value or black-market need
+* legal/reputation risk possible
+
+Test 8 — hire workers
+
+Given:
+
+Player hires 10 laborers at 10 silver/day.
+
+Expected:
+
+* labor contract/payroll created
+* daily payroll calculated
+* workers assigned if available
+* no instant project completion
+
+Test 9 — workers unpaid
+
+Given:
+
+Payroll due and unpaid.
+
+Expected:
+
+* morale penalty
+* work slows/stops
+* possible contract/reputation consequences
+
+Test 10 — project missing materials
+
+Given:
+
+Workers assigned to stone wall but no stone.
+
+Expected:
+
+* progress blocked or redirected to gathering
+* no wall progress without material
+
+Test 11 — foreman improves productivity
+
+Given:
+
+Same project with and without good foreman.
+
+Expected:
+
+* foreman version progresses faster
+* foreman wage added
+
+Test 12 — magic-assisted work costs resources
+
+Given:
+
+Earth mage shapes stone wall.
+
+Expected:
+
+* MP cost
+* project progress faster
+* stability/finish/material/legal concerns remain
+
+Test 13 — mine income requires mine
+
+Given:
+
+Player claims mine income without mine.
+
+Expected:
+
+* reject income
+
+Given:
+
+Mine exists with workers and market access.
+
+Expected:
+
+* income calculated after wages/materials/security/transport
+
+Test 14 — domain treasury separate from purse
+
+Given:
+
+Player has 1 silver in purse, 1,000 gold in domain treasury far away.
+
+Player tries to buy item in market for 10 gold.
+
+Expected:
+
+* cannot pay from inaccessible treasury unless credit/transfer exists
+
+Test 15 — quest reward paid once
+
+Given:
+
+Quest reward output repeats.
+
+Expected:
+
+* reward granted once
+* duplicate skipped
+
+Test 16 — commission changes custody
+
+Given:
+
+Player commissions sword upgrade and leaves sword.
+
+Expected:
+
+* sword custody moves to crafter
+* access unavailable
+* commission contract created
+
+Test 17 — commission completion
+
+Given:
+
+Crafter finishes upgrade and player pays final amount.
+
+Expected:
+
+* item updated
+* custody returns
+* money removed
+* contract closed
+
+Test 18 — market saturation
+
+Given:
+
+Player sells 100 crude daggers in small village.
+
+Expected:
+
+* price drops
+* buyers limited
+* no infinite profit
+
+Test 19 — infinite transmutation blocked
+
+Given:
+
+Player says they turn dirt into gold with no ability/cost.
+
+Expected:
+
+* reject
+* no money added
+
+If player has mythic transmutation:
+
+* cost, legality, market inflation, divine/economic consequences checked
+
+Test 20 — economy audit explains result
+
+Given:
+
+Transaction fails.
+
+Expected:
+
+/economyaudit shows funds, item availability, price, ownership, custody, and reason.
+
+⸻
+
+78. Final Chunk 28 doctrine
+
+Economy is the structure that makes money, labor, materials, services, and domains believable.
+
+Currency should be tracked in a stable base unit.
+
+Prices should use setting-aware bands.
+
+Items require availability.
+
+Purchases require accessible funds.
+
+Sales require ownership and buyers.
+
+Sale value is not buy value.
+
+Workers require wages.
+
+Foremen improve productivity.
+
+Projects require Work Units, materials, tools, specialists, time, and safety.
+
+Domain assets create income only when they actually exist and operate.
+
+Domain assets also require maintenance.
+
+Magic can speed labor, but magic has costs, risks, and limits.
+
+Large projects need logistics.
+
+NPC services can change item custody.
+
+Contracts track deferred obligations.
+
+Debt matters.
+
+Market saturation prevents infinite selling.
+
+Crafting profit loops are controlled by material costs, labor, demand, and market size.
+
+Stolen or illegal goods create risk.
+
+Quest rewards pay once.
+
+Story Cards do not create money.
+
+AI narration is validated.
+
+OperationLedger prevents duplicate currency, item, wage, and reward changes.
+
+The goal is not to turn AI Dungeon into an accounting simulator.
+
+The goal is to make economic choices meaningful, prevent exploits, support crafting and domain play, and make the world react believably when the player buys, sells, hires, builds, invests, owes, earns, or rules.
+

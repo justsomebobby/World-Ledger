@@ -1,0 +1,2398 @@
+AIDRPG Design Bible — Chunk 10: Crafting, Materials, Recipes, Quality, Repair, and Workflows
+
+1. Purpose of this chunk
+
+Chunk 9 defined inventory, equipment, ownership, custody, economy, and transactions.
+
+Chunk 10 defines how items are made, repaired, improved, modified, consumed, and transformed.
+
+This chunk answers:
+
+What counts as crafting?
+
+What counts as repair?
+
+What counts as upgrading or altering an item?
+
+How do materials work?
+
+How do recipes work?
+
+When are materials consumed?
+
+How does item quality get decided?
+
+How does crafting avoid instantly creating items from vague narration?
+
+How do NPC crafting, hired labor, contracts, and domain projects connect?
+
+How does crafting give progression without becoming farmable?
+
+The central rule is:
+
+Crafting is a workflow, not instant item generation.
+
+Mentioning a forge does not create a sword.
+
+Starting work does not create a finished item.
+
+A finished item exists only when the story confirms completion and the required conditions are satisfied.
+
+⸻
+
+2. Core philosophy
+
+Crafting should feel like meaningful work.
+
+It should support:
+
+* making items
+* repairing items
+* improving items
+* modifying items
+* enchanting items
+* preparing consumables
+* processing materials
+* learning recipes
+* experimenting
+* failing productively
+* commissioning NPCs
+* using workshops
+* using domain labor
+* creating quest items
+* creating evidence items
+* creating tools for later scenes
+
+Crafting should not:
+
+* create items from every crafting-related phrase
+* consume materials without confirmation
+* upgrade gear for free
+* ignore tools/workstations
+* make perfect items from one vague output
+* duplicate completed products
+* bypass inventory ownership/custody
+* treat every NPC service as player crafting
+* turn ordinary labor into domain projects automatically
+
+Crafting should be useful, but not so detailed that it slows normal AI Dungeon play.
+
+⸻
+
+3. Ownership boundaries
+
+Crafting touches many systems, but each truth still has one owner.
+
+CraftingReducer owns
+
+* crafting attempts
+* crafting progress
+* known recipes
+* recipe discovery
+* recipe improvisation
+* work stages
+* crafting project status
+* repair workflow status
+* upgrade workflow status
+* material requirement proposals
+* crafting failure records
+* quality result proposals
+* crafting-related diagnostics
+
+InventoryReducer / ItemAuthority owns
+
+* actual item records
+* material quantities
+* consumed materials
+* new crafted items
+* repaired item condition
+* upgraded item records
+* item custody
+* item ownership
+* item access
+* equipment effects
+
+CraftingReducer may propose item creation, material consumption, item repair, or item alteration.
+
+InventoryReducer commits actual item changes.
+
+EconomyReducer owns
+
+* material prices
+* service prices
+* crafting fees
+* sale value
+* repair costs
+* paid commissions
+
+ContractReducer owns
+
+* NPC crafting agreements
+* repair contracts
+* commission terms
+* payment obligations
+* delivery deadlines
+* custody obligations
+* breach/fulfillment
+
+LaborReducer / DomainReducer owns
+
+* worker groups
+* workshops
+* domain production
+* large projects
+* repeated manufacturing
+* base/holding improvements
+
+ProgressionReducer owns
+
+* Crafting Domain XP
+* relevant Stat XP
+* Level XP from major creations
+* anti-farm reward control
+
+CardSync owns
+
+* generated item cards only after item state is stable and important
+* protected inventory/crafting summaries if needed
+
+The rule:
+
+CraftingReducer manages the process. InventoryReducer owns the item truth.
+
+⸻
+
+4. What counts as crafting
+
+Crafting is the process of creating something new from materials, tools, knowledge, time, and effort.
+
+Examples:
+
+* forging an iron dagger
+* brewing a healing potion
+* carving a wooden charm
+* sewing a cloak
+* preparing poison
+* cooking travel rations
+* inscribing a rune plate
+* building a trap
+* assembling arrows
+* making bandages
+* refining mana crystals
+* shaping leather armor
+* constructing a lockpick set
+
+Crafting usually requires:
+
+* intent or assignment
+* materials
+* tools
+* workspace or station
+* recipe or improvisation
+* time
+* skill/domain/stat support
+* result confirmation
+
+⸻
+
+5. What counts as repair
+
+Repair is restoring an existing item’s condition.
+
+Examples:
+
+* mending torn cloak
+* sharpening chipped sword
+* reforging cracked blade
+* patching leather armor
+* repairing shield straps
+* re-stringing a bow
+* fixing broken lockpicks
+* stabilizing cracked mana crystal
+* cleansing curse damage from an amulet
+
+Repair should reference an existing item.
+
+If there is no existing item, the event may be invalid or become crafting instead.
+
+Repair usually requires:
+
+* item access or custody
+* correct tools
+* materials or replacement parts
+* skill
+* time
+* possible cost
+* completion confirmation
+
+Repair changes item condition.
+
+It does not necessarily improve item quality beyond its original quality unless upgraded.
+
+⸻
+
+6. What counts as upgrading
+
+Upgrade means improving an existing item beyond its current baseline.
+
+Examples:
+
+* reinforcing a shield
+* sharpening a sword beyond normal
+* adding silver edge to a blade
+* enchanting a cloak
+* adding hidden pockets
+* improving potion potency
+* adding runes to armor
+* converting a staff into a focus
+* strengthening a bowstring
+* fitting a weapon to the player’s grip
+
+Upgrade differs from repair.
+
+Repair restores.
+
+Upgrade improves.
+
+An item can be repaired and upgraded in the same project, but those should be distinct effects.
+
+Upgrade usually requires stronger validation than repair because it changes item power.
+
+⸻
+
+7. What counts as alteration
+
+Alteration means changing an item’s form, function, or fit.
+
+Examples:
+
+* resizing armor
+* dyeing cloak
+* changing sword grip
+* turning a broken spear into a staff
+* modifying a trap
+* cutting a cloak into bandages
+* converting raw herbs into poultice
+* removing a crest from armor
+* disguising a weapon as a cane
+
+Alteration may:
+
+* preserve item identity
+* create a new item
+* consume the old item
+* split one item into several
+* combine multiple items
+
+InventoryReducer should commit the final item changes.
+
+CraftingReducer should manage the workflow.
+
+⸻
+
+8. What counts as processing materials
+
+Material processing turns raw materials into usable crafting inputs.
+
+Examples:
+
+* tanning hide into leather
+* smelting ore into ingots
+* drying herbs
+* grinding crystal dust
+* cutting timber
+* weaving cloth
+* purifying water
+* distilling alcohol
+* extracting venom
+* cleaning monster parts
+
+Processing may produce:
+
+* refined materials
+* waste
+* quality changes
+* spoilage
+* dangerous byproducts
+* crafting XP
+
+Processing should not create finished gear unless the output directly supports it.
+
+⸻
+
+9. Crafting workflow
+
+Crafting should follow a lifecycle.
+
+Stage 1 — Intent
+
+The player wants to craft, repair, upgrade, alter, or process something.
+
+Example:
+
+“I want to forge a dagger.”
+
+Intent alone does not create the dagger.
+
+Stage 2 — Requirement check
+
+The system checks whether required pieces exist or are implied.
+
+Requirements may include:
+
+* materials
+* item to repair/upgrade
+* tools
+* station
+* recipe
+* knowledge
+* time
+* safety
+* assistant/NPC
+* heat/fire/water
+* magical resource
+* workspace access
+
+If requirements are missing, the project may become pending, blocked, or improvised.
+
+Stage 3 — Work started
+
+The player begins the work.
+
+This may consume time, EP, MP, or reserve materials.
+
+It may not consume all materials yet unless the story says so.
+
+Stage 4 — Progress made
+
+Work advances.
+
+Progress may be partial.
+
+The system may track progress percent, stage count, or narrative milestone.
+
+Examples:
+
+* blade shaped
+* herbs prepared
+* rune circle drawn
+* leather cut
+* shield cleaned and braced
+
+Stage 5 — Complication or failure
+
+Something may go wrong.
+
+Examples:
+
+* material cracks
+* potion curdles
+* blade warps
+* rune misaligns
+* tool breaks
+* fire too cold
+* player exhausted
+* magical backlash
+* recipe incomplete
+
+Failure can be productive.
+
+It may teach, consume some materials, or reveal a requirement.
+
+Stage 6 — Completion
+
+The item, repair, upgrade, alteration, or processed material is finished.
+
+This is when final inventory changes should commit.
+
+Completion must be confirmed by narration or command.
+
+Stage 7 — Quality assignment
+
+The system assigns quality based on evidence.
+
+Quality may be:
+
+* crude
+* poor
+* common
+* sturdy
+* fine
+* masterwork
+* exceptional
+* legendary
+* flawed
+* unstable
+* cursed
+* enchanted
+
+Quality should reflect skill, materials, tools, time, luck, risk, and story result.
+
+Stage 8 — Inventory update
+
+InventoryReducer commits:
+
+* new item
+* material consumption
+* condition repair
+* quality update
+* item alteration
+* ownership/custody
+* access state
+
+CraftingReducer does not directly own final item truth.
+
+Stage 9 — Progression and dirty updates
+
+ProgressionReducer may award:
+
+* Crafting Domain XP
+* INT XP
+* ATK/DEF/SPD XP if physical labor matters
+* Magic Domain XP if magical crafting matters
+* Level XP for major creations
+
+Dirty queues mark inventory, crafting, equipment, Context, and cards if relevant.
+
+⸻
+
+10. Crafting state model
+
+A crafting project should track:
+
+* project ID
+* project type
+* target item or desired output
+* crafter
+* assistants
+* owner
+* current stage
+* progress
+* materials required
+* materials available
+* materials reserved
+* materials consumed
+* tools/station required
+* tools/station available
+* recipe known or improvised
+* difficulty
+* related domains/stats
+* time required
+* time spent
+* resource costs
+* failure risks
+* quality target
+* quality result
+* contract link if NPC service
+* domain project link if large-scale
+* inventory links
+* source/evidence
+* last updated turn
+* status
+
+Possible statuses:
+
+* planned
+* blocked
+* active
+* paused
+* interrupted
+* failed
+* partially complete
+* complete
+* abandoned
+* archived
+
+⸻
+
+11. Materials
+
+Materials are items used to craft, repair, upgrade, or process.
+
+Examples:
+
+* iron ore
+* iron ingot
+* timber
+* leather
+* cloth
+* herbs
+* crystal dust
+* mana crystal
+* wolf pelt
+* bone
+* venom sac
+* silver thread
+* glass vial
+* oil
+* charcoal
+* rune ink
+
+Materials can be:
+
+* raw
+* refined
+* rare
+* unstable
+* magical
+* perishable
+* cursed
+* contaminated
+* high quality
+* low quality
+
+Material state should include:
+
+* quantity
+* quality
+* condition
+* storage location
+* ownership
+* custody
+* access
+* spoilage risk if relevant
+* crafting tags
+
+Materials are inventory items.
+
+InventoryReducer owns material quantities.
+
+CraftingReducer may reserve or request consumption.
+
+⸻
+
+12. Material consumption timing
+
+One of the most important design decisions is when materials are consumed.
+
+Recommended model:
+
+Planning stage
+
+No materials consumed.
+
+The system may check requirements.
+
+Work start
+
+Materials may be reserved.
+
+Some expendable materials may be consumed if the narration says work actually begins.
+
+Example:
+
+“You pour the oil into the crucible.”
+
+Oil may be consumed.
+
+Progress stage
+
+Materials may be partially consumed.
+
+Example:
+
+“You cut the leather panels.”
+
+Leather may be consumed or converted into partially finished component.
+
+Failure stage
+
+Some, all, or no materials may be lost depending on failure.
+
+Example:
+
+Potion curdles.
+
+Herbs and vial contents may be consumed.
+
+Example:
+
+Sword shaping goes poorly.
+
+Ingot may become flawed blank, not vanish.
+
+Completion stage
+
+Remaining required materials are consumed or transformed into the finished product.
+
+The rule:
+
+Do not consume all materials at intent unless the story clearly says they were used.
+
+⸻
+
+13. Material reservation
+
+For longer projects, materials may be reserved.
+
+Reserved means:
+
+* the materials still exist
+* they are tied to a project
+* they should not be freely used elsewhere without releasing them
+* they may be consumed later
+* they may be returned if project is cancelled before use
+
+Example:
+
+The player prepares iron ingots, leather strips, and charcoal for a shield reinforcement.
+
+Those materials may be reserved.
+
+If the project is cancelled before work starts, they remain.
+
+If work begins, some may be consumed.
+
+Material reservation prevents double-use while avoiding premature deletion.
+
+⸻
+
+14. Recipes
+
+A recipe is knowledge of how to make something.
+
+Recipe records should track:
+
+* recipe name
+* output type
+* required materials
+* required tools
+* required station
+* required domain rank or skill
+* time estimate
+* difficulty
+* possible qualities
+* failure risks
+* variations
+* known by whom
+* source
+* confidence
+
+Recipe knowledge can be:
+
+* unknown
+* rumored
+* partial
+* improvised
+* learned
+* mastered
+* corrupted
+* secret
+* forbidden
+
+Examples:
+
+* healing poultice recipe
+* iron dagger recipe
+* mana crystal focus recipe
+* fire resistance potion recipe
+* wolf-hide cloak recipe
+* silvered blade process
+* binding rune formula
+
+⸻
+
+15. Recipe discovery
+
+Recipes can be learned from:
+
+* books
+* teachers
+* experimentation
+* observation
+* old notes
+* guild training
+* reverse engineering
+* magical insight
+* domain project research
+* quest rewards
+* cultural background
+* species memory
+
+Recipe discovery should be validated.
+
+Mentioning a recipe name does not mean the player knows it.
+
+Example:
+
+“The book describes a potion of fire resistance.”
+
+Possible result:
+
+* recipe lead/pending
+* partial recipe knowledge if read and understood
+* not automatically mastered
+
+Example:
+
+“Mira teaches you the steps to brew frost salve.”
+
+Possible result:
+
+* recipe learned or partial learned depending narration
+
+⸻
+
+16. Improvised crafting
+
+The player may try to craft without a known recipe.
+
+Improvised crafting should be possible but riskier.
+
+Improvisation depends on:
+
+* INT
+* Crafting Domain
+* relevant material knowledge
+* similar known recipes
+* tools/station
+* quality of materials
+* time
+* risk tolerance
+* LCK
+* teacher/assistant help
+
+Improvised results may be:
+
+* crude
+* unstable
+* partial
+* functional but flawed
+* failed
+* dangerous
+* surprisingly good with strong support
+
+Improvised crafting should not easily create high-quality or magical items without strong story support.
+
+⸻
+
+17. Tools and workstations
+
+Crafting usually requires tools or stations.
+
+Examples:
+
+Basic tools
+
+* knife
+* needle
+* hammer
+* mortar and pestle
+* cooking pot
+* rope
+* whetstone
+
+Specialist tools
+
+* smithing hammer
+* anvil
+* alchemy kit
+* rune stylus
+* jeweler’s tools
+* carpenter’s tools
+* leatherworking kit
+* glassware
+
+Workstations
+
+* forge
+* workbench
+* alchemy table
+* ritual circle
+* kitchen
+* tannery
+* workshop
+* laboratory
+* sewing room
+* enchanting altar
+
+Missing tools may cause:
+
+* blocked project
+* lower quality
+* longer time
+* higher failure risk
+* improvised substitute
+* inability to complete
+
+Example:
+
+The player can sharpen a knife with a whetstone on the road.
+
+The player probably cannot forge a steel sword without a forge.
+
+⸻
+
+18. Crafting difficulty
+
+Crafting should classify difficulty.
+
+Suggested difficulty scale:
+
+Simple
+
+Examples:
+
+* bandage
+* sharpen stick
+* cook meal
+* basic poultice
+* tie simple trap
+
+Requirements:
+
+* minimal tools
+* common materials
+* little time
+
+Basic
+
+Examples:
+
+* crude spear
+* leather patch
+* simple potion
+* arrow bundle
+* repaired strap
+
+Requirements:
+
+* basic tools
+* some skill
+* short-to-moderate time
+
+Skilled
+
+Examples:
+
+* iron dagger
+* sturdy shield repair
+* fine cloak
+* reliable healing potion
+* lockpick set
+
+Requirements:
+
+* correct tools/station
+* relevant domain
+* time
+* quality materials
+
+Advanced
+
+Examples:
+
+* enchanted blade
+* complex trap
+* masterwork armor adjustment
+* mana focus
+* rare medicine
+
+Requirements:
+
+* specialist tools
+* strong domain
+* recipe
+* rare materials
+* time
+* risk
+
+Masterwork
+
+Examples:
+
+* masterwork sword
+* powerful potion
+* intricate rune device
+* magical prosthetic
+* legendary gear repair
+
+Requirements:
+
+* expert domain
+* excellent materials
+* proper station
+* repeated work
+* strong validation
+
+Legendary
+
+Examples:
+
+* artifact forging
+* soul-bound weapon
+* divine relic repair
+* dragon-scale armor
+* world-changing construct
+
+Requirements:
+
+* major quest
+* rare materials
+* high domain
+* ritual
+* story milestone
+* serious risk
+* likely multiple chunks of time
+
+⸻
+
+19. Crafting progress model
+
+Crafting progress can be tracked in one of three ways.
+
+19.1 Simple completion
+
+Use for small items.
+
+Example:
+
+The player makes a bandage.
+
+One confirmed output can complete it.
+
+19.2 Stage-based progress
+
+Use for moderate projects.
+
+Example:
+
+Forging a sword:
+
+* gather materials
+* heat ingot
+* shape blade
+* quench
+* grind edge
+* fit hilt
+* finish
+
+Each stage may require time and resources.
+
+19.3 Project progress percentage
+
+Use for large/domain projects.
+
+Example:
+
+Repairing a wall:
+
+* 35% complete
+
+This belongs more to domain/labor, but crafting can link to it.
+
+Recommended rule:
+
+Use simple completion for small personal crafting.
+
+Use stages for important items.
+
+Use progress percentages for domain-scale work.
+
+⸻
+
+20. Crafting failure
+
+Failure should not be all-or-nothing unless appropriate.
+
+Failure outcomes:
+
+* no progress
+* partial progress
+* material wasted
+* material damaged
+* item flawed
+* item unstable
+* tool damaged
+* time lost
+* EP/MP cost
+* injury
+* condition
+* hazard created
+* inferior item created
+* recipe insight gained
+* requirement discovered
+
+Examples:
+
+Potion failure:
+
+* herbs consumed
+* potion ruined
+* alchemy insight gained
+* maybe fumes cause condition
+
+Sword forging failure:
+
+* blade warps
+* ingot becomes flawed blank
+* more work needed
+* no finished sword
+
+Rune failure:
+
+* MP backlash
+* crystal cracks
+* unstable enchantment
+* clue about missing symbol
+
+Failure should feel like consequence, not random punishment.
+
+⸻
+
+21. Partial success
+
+Partial success is important.
+
+Examples:
+
+* potion is weak but usable
+* sword is crude but functional
+* armor patch holds temporarily
+* trap works once
+* rune activates but drains extra MP
+* cloak is repaired but ugly
+* crystal focus works but is unstable
+
+Partial success may create:
+
+* lower-quality item
+* temporary item
+* flawed condition
+* unstable tag
+* higher cost
+* lower durability
+* limited uses
+
+Partial success should be especially common when:
+
+* recipe is partial
+* tools are improvised
+* materials are poor
+* player is low skill
+* project is rushed
+* player is exhausted
+* magic is unstable
+
+⸻
+
+22. Quality calculation
+
+Quality should be assigned from story evidence and system factors.
+
+Quality factors:
+
+* material quality
+* tool/station quality
+* recipe knowledge
+* Crafting Domain rank
+* relevant stats, especially INT
+* relevant abilities/talents
+* time spent
+* assistance
+* environment
+* failure/complication
+* resource state
+* LCK
+* narration wording
+
+Quality should not be random only.
+
+Narration matters.
+
+Example:
+
+“You carefully temper the blade under Mira’s guidance until it rings clear.”
+
+Likely quality:
+
+* sturdy or fine, depending skill/materials
+
+Example:
+
+“You hammer the scrap metal into a rough blade by firelight.”
+
+Likely quality:
+
+* crude or poor
+
+Example:
+
+“The rune flares wildly, unstable but powerful.”
+
+Likely quality:
+
+* unstable enchanted
+
+⸻
+
+23. Quality levels
+
+Recommended quality levels:
+
+Ruined
+
+Not useful except scrap.
+
+Crude
+
+Functional but poor.
+
+Higher failure risk.
+
+Lower value.
+
+Poor
+
+Usable but unreliable or weak.
+
+Common
+
+Ordinary functional item.
+
+Sturdy
+
+Reliable and durable.
+
+Fine
+
+Better than average.
+
+Good balance, durability, or potency.
+
+Masterwork
+
+Excellent workmanship.
+
+Strong mechanical and story value.
+
+Exceptional
+
+Rarely crafted.
+
+May have special features.
+
+Legendary
+
+Story-defining quality.
+
+Requires major support.
+
+Flawed
+
+Can apply alongside another quality.
+
+Example:
+
+fine but flawed.
+
+Unstable
+
+Works, but unpredictable or risky.
+
+Common for magical experiments.
+
+Enchanted
+
+Magically empowered.
+
+Needs effect and limits.
+
+Cursed
+
+Has harmful or binding property.
+
+Needs condition and removal rules.
+
+Quality should affect value, durability, effectiveness, and card eligibility.
+
+⸻
+
+24. Repair workflow
+
+Repair should use a specific workflow.
+
+Stage 1 — Damage identified
+
+The item condition is known.
+
+Example:
+
+Shield is cracked.
+
+Stage 2 — Repair requirements determined
+
+May require:
+
+* tools
+* materials
+* station
+* skill
+* money
+* NPC
+* time
+
+Stage 3 — Item custody confirmed
+
+Who has the item?
+
+If NPC repairs it, custody may transfer.
+
+Stage 4 — Work begins
+
+Time/resources/materials may be spent.
+
+Stage 5 — Progress or complication
+
+Repair may advance, fail, or reveal hidden damage.
+
+Stage 6 — Repair complete
+
+InventoryReducer updates condition.
+
+Stage 7 — Item returned or stored
+
+Custody/access updates.
+
+Repair can restore condition.
+
+Upgrade is separate.
+
+Example:
+
+Cracked shield repaired to good condition.
+
+That does not automatically make it masterwork.
+
+⸻
+
+25. Repair outcomes
+
+Repair outcomes:
+
+* fully repaired
+* partially repaired
+* patched temporarily
+* improved
+* failed
+* worsened
+* transformed
+* destroyed
+* revealed hidden damage
+* cursed/tainted if magical repair fails
+
+Temporary repair should have limits.
+
+Example:
+
+“The patch will hold for one fight.”
+
+That should create temporary condition or durability note.
+
+⸻
+
+26. Upgrade workflow
+
+Upgrade means improving item performance or adding feature.
+
+Upgrade stages:
+
+* choose upgrade goal
+* verify item
+* verify materials
+* verify tools/station
+* verify skill/recipe
+* start modification
+* progress
+* complication
+* completion
+* quality/effect assignment
+* inventory update
+
+Upgrade examples:
+
+* silvered edge
+* reinforced shield
+* hidden blade mechanism
+* enchanted rune
+* improved grip
+* lighter armor fitting
+* potion potency boost
+* sharpened master edge
+
+Upgrade should require stronger support than repair.
+
+Do not upgrade from vague praise.
+
+Example:
+
+“Your sword feels better.”
+
+Not enough.
+
+“Mira reforges the edge with silver and quenches it in moonwater.”
+
+Strong upgrade evidence.
+
+⸻
+
+27. Enchanting and magical crafting
+
+Enchanting is crafting plus magic.
+
+It may require:
+
+* MP
+* magical domain
+* recipe/ritual
+* rare materials
+* focus item
+* time
+* risk
+* ritual circle
+* alignment/lunar/elemental conditions
+* magical backlash handling
+
+Enchanting outcomes:
+
+* stable enchantment
+* weak enchantment
+* unstable enchantment
+* cursed item
+* failed ritual
+* temporary charge
+* passive item effect
+* active item ability
+* attunement requirement
+
+Enchanting should always define:
+
+* effect
+* cost
+* trigger
+* limit
+* duration
+* recharge
+* risk
+* ownership/custody
+* whether player can use it
+
+Magical items should not become limitless powers without limits.
+
+⸻
+
+28. Consumable crafting
+
+Consumables include:
+
+* potions
+* poisons
+* salves
+* bombs
+* scrolls
+* traps
+* rations
+* bandages
+* talismans
+* oils
+* ammunition
+
+Consumables should track quantity and uses.
+
+Crafting consumables usually consumes materials at completion or batch stage.
+
+Batch crafting should be supported.
+
+Example:
+
+The player brews three minor healing potions.
+
+Inventory result:
+
+* healing potion quantity +3
+
+Duplicate output must not add six.
+
+Consumables should have:
+
+* potency
+* quality
+* expiration if relevant
+* risk if unstable
+* use effect
+* use conditions
+
+⸻
+
+29. Crafting and time
+
+Crafting should cost time.
+
+Time cost depends on:
+
+* difficulty
+* tools
+* assistants
+* domain rank
+* workspace
+* materials
+* rush
+* failure
+* project size
+
+Examples:
+
+* bandage: minutes
+* simple meal: minutes/hour
+* potion: hour or more
+* dagger: hours/day
+* armor: days/weeks
+* artifact: quest-scale
+
+TimeReducer owns time passage.
+
+CraftingReducer proposes time costs.
+
+If time passes, deadlines and recovery ticks may also occur.
+
+Do not let crafting time apply twice on repeated output.
+
+⸻
+
+30. Crafting and resources
+
+Crafting may cost resources.
+
+Common costs:
+
+* EP for physical labor
+* MP for magical crafting
+* HP only for blood magic, dangerous backlash, injury, or sacrifice
+* materials
+* tool durability
+* money
+* time
+
+Resource costs depend on:
+
+* difficulty
+* duration
+* environment
+* fatigue
+* ability use
+* rushing
+* failure
+* assistance
+
+Example:
+
+Forging for hours costs EP.
+
+Enchanting costs MP.
+
+Blood rune costs HP if explicitly using blood/life force.
+
+⸻
+
+31. Crafting and progression
+
+Crafting can reward progression.
+
+Possible rewards:
+
+* Crafting Domain XP
+* INT XP
+* ATK XP for heavy physical work
+* DEF XP for endurance/long labor
+* Magic Domain XP for enchanting
+* Ability evidence for crafting-related powers
+* Level XP for major creations or quest/domain milestones
+
+Reward depends on:
+
+* meaningful work
+* difficulty
+* risk
+* time
+* material cost
+* success/partial/failure
+* novelty
+* story relevance
+* anti-farm rules
+
+Small repetitive crafting should not farm infinite XP.
+
+Example:
+
+Making ten simple bandages after mastering it:
+
+* little XP
+
+Forging a first proper sword under pressure:
+
+* meaningful Crafting Domain XP
+* INT XP
+* possible Level XP if story-relevant
+
+⸻
+
+32. Crafting and anti-farm rules
+
+Crafting is highly farmable, so it needs safeguards.
+
+No or reduced XP from:
+
+* repeated trivial item
+* no-cost crafting
+* duplicate output
+* vague “you craft something”
+* crafting with no materials/time
+* low-risk mass repetition
+* same recipe spam beyond usefulness
+
+Reduced rewards if:
+
+* same recipe repeated
+* same context
+* no new difficulty
+* no new quality goal
+* no risk
+* no meaningful result
+
+Full or better rewards if:
+
+* new recipe
+* harder item
+* rare material
+* teacher challenge
+* meaningful deadline
+* dangerous environment
+* improved quality
+* quest/domain relevance
+* first successful version
+* major repair or upgrade
+
+⸻
+
+33. NPC crafting
+
+NPC crafting is not player crafting.
+
+If an NPC crafts for the player, the main systems are:
+
+* ContractReducer
+* EconomyReducer
+* InventoryReducer
+* possibly CraftingReducer for progress/status
+
+Example:
+
+“Mira agrees to repair your sword for 5 silver.”
+
+This is primarily:
+
+* contract
+* economy
+* item custody
+* repair workflow
+
+The player should not gain full Crafting Domain XP for Mira doing the work.
+
+The player may gain:
+
+* social/contract progress
+* maybe crafting insight if observing or assisting
+* no direct crafting mastery if uninvolved
+
+If the player assists Mira:
+
+* player may gain Crafting Domain XP
+* work may progress faster
+* failure/success may depend partly on player stats
+
+⸻
+
+34. Crafting contracts
+
+A crafting contract is an agreement for someone to make, repair, upgrade, or deliver an item.
+
+Contract should track:
+
+* item
+* service
+* crafter
+* customer
+* payment
+* materials supplied
+* custody
+* deadline
+* quality expectation
+* failure terms
+* current status
+
+Examples:
+
+* repair sword by morning
+* craft silvered dagger for 10 silver
+* brew antidote if herbs supplied
+* enchant cloak under moonlight
+* make 20 arrows by dawn
+
+If NPC has custody of player item, inventory access must update.
+
+If NPC fails or steals item, contract may breach.
+
+⸻
+
+35. Domain-scale crafting
+
+Large crafting or construction becomes domain/labor.
+
+Examples:
+
+* build a wall
+* repair a bridge
+* arm the militia
+* produce 100 arrows
+* construct a workshop
+* outfit a caravan
+* reinforce a keep gate
+* forge weapons for a guard unit
+
+This should not be handled as one personal crafting item.
+
+Domain-scale projects involve:
+
+* DomainReducer
+* LaborReducer
+* EconomyReducer
+* InventoryReducer
+* TimeReducer
+* possibly CraftingReducer for recipe/production logic
+
+Rule:
+
+Personal crafting makes items.
+
+Domain crafting manages production or infrastructure.
+
+⸻
+
+36. Crafting and investigation
+
+Items can be evidence.
+
+Crafting can affect investigation when:
+
+* item is forged
+* evidence is repaired
+* clue is analyzed
+* poison is identified
+* weapon is matched to wound
+* document is restored
+* fake item is detected
+* tool marks are studied
+
+InvestigationReducer owns evidence meaning.
+
+CraftingReducer may propose analysis/repair.
+
+InventoryReducer owns the item itself.
+
+Example:
+
+The player repairs a torn letter.
+
+InventoryReducer updates letter condition.
+
+InvestigationReducer may add readable evidence if text is revealed.
+
+⸻
+
+37. Crafting and abilities
+
+Some abilities interact with crafting.
+
+Examples:
+
+* Rune Inscription
+* Alchemical Sense
+* Mana Weaving
+* Fire Shaping
+* Metal Whisper
+* Quick Stitch
+* Poison Brewing
+* Spirit Binding
+
+Ability use in crafting may affect:
+
+* quality
+* time
+* failure risk
+* material efficiency
+* magical effect
+* cost
+* backlash
+
+AbilityReducer owns ability growth.
+
+CraftingReducer owns crafting process.
+
+InventoryReducer owns final items.
+
+ProgressionReducer owns XP.
+
+⸻
+
+38. Crafting Context behavior
+
+Context should include crafting facts when relevant.
+
+Good Context examples:
+
+“You are midway through repairing your cracked shield. You have leather straps and a hammer, but no proper forge.”
+
+“Mira currently has custody of your iron sword for repair. It is due by morning.”
+
+“The fire resistance potion recipe is only partially known; failure risk is high.”
+
+“You have enough frost herbs for one antidote attempt.”
+
+Bad Context examples:
+
+Dumping every known recipe every turn.
+
+Listing every material count in unrelated combat.
+
+Explaining the entire crafting state when the player is traveling.
+
+Context should include crafting when:
+
+* player is crafting
+* item is unavailable because of repair/custody
+* quest requires crafted item
+* materials are relevant
+* recipe/risk matters
+* deadline exists
+* damaged equipment matters
+
+⸻
+
+39. Crafting Story Card behavior
+
+Crafting should rarely generate cards by itself.
+
+Cards may be appropriate for:
+
+* major crafted artifact
+* important named weapon
+* key quest item
+* magical item
+* cursed item
+* domain workshop
+* major crafting contract
+* important recipe collection
+* unique crafting project
+
+Do not create cards for:
+
+* every bandage
+* every potion
+* every material
+* every recipe hint
+* every failed craft
+* every repair step
+* every mundane item
+
+Protected summary cards may include:
+
+* Inventory Overview
+* Equipment Overview
+* Domain & Contracts
+* Abilities Overview if crafting ability matters
+
+Generated item cards should update only if the item is stable and important.
+
+⸻
+
+40. Crafting validation outcomes
+
+Crafting uses the same five validation outcomes.
+
+Accept
+
+Use when crafting progress, completion, repair, or material use is clearly confirmed.
+
+Example:
+
+“You finish stitching the cloak, and the torn seam holds.”
+
+Accepted:
+
+* repair progress/complete
+* condition update
+
+Reject
+
+Use when crafting did not happen or is unsupported.
+
+Example:
+
+“You think about making a potion.”
+
+Rejected:
+
+* potion creation
+
+Pending
+
+Use when crafting is planned or possible.
+
+Example:
+
+“You set the herbs aside to brew later.”
+
+Pending:
+
+* planned craft
+* materials reserved maybe, if explicit
+
+Soft_fail
+
+Use when real work occurs but result is incomplete or failed productively.
+
+Example:
+
+“The potion curdles, but you learn the mixture needed less heat.”
+
+Soft-fail:
+
+* materials may be consumed
+* recipe insight gained
+* no finished potion
+
+Hard_deny
+
+Use when crafting event comes from non-canon or unsafe source.
+
+Examples:
+
+* pretend crafting
+* dream crafting
+* quoted instruction
+* card text
+* debug example
+* impossible artifact creation with no support
+* junk item name
+
+⸻
+
+41. Crafting safety rules
+
+41.1 No item from intent alone
+
+“I craft a sword” does not create sword.
+
+41.2 No material consumption from planning alone
+
+Thinking about crafting does not consume materials.
+
+41.3 No finished product without completion
+
+Starting work is not finishing work.
+
+41.4 No crafting without required access
+
+Cannot repair sword if sword is with someone else unless working there or custody is transferred.
+
+41.5 No infinite material use
+
+Materials cannot be used twice.
+
+41.6 No duplicate finished item
+
+Repeated output does not create duplicate product.
+
+41.7 No free high quality
+
+Masterwork or legendary items require strong support.
+
+41.8 No NPC work as player mastery
+
+Player does not gain full crafting XP for NPC doing all work.
+
+41.9 No domain-scale projects as personal craft
+
+Building a wall is domain/labor, not one personal craft.
+
+41.10 No card spam
+
+Ordinary crafted items do not get cards.
+
+41.11 No quality from vague praise
+
+“The item feels nice” is not enough for masterwork.
+
+41.12 No repair without item
+
+Repair requires existing item or clear target.
+
+⸻
+
+42. Example scenarios
+
+Example 1 — Intent only
+
+Input:
+
+“I craft a dagger.”
+
+Expected:
+
+* crafting intent
+* no dagger created
+* requirements may be checked
+
+Example 2 — Work starts
+
+Output:
+
+“You heat the iron ingot and begin hammering it into a rough blade.”
+
+Expected:
+
+* crafting project active
+* time/EP may be spent
+* ingot may be reserved or partially consumed
+* no finished dagger yet
+
+Example 3 — Partial success
+
+Output:
+
+“The blade takes shape, crude but usable if you can finish the grip.”
+
+Expected:
+
+* progress advanced
+* possible crude quality forecast
+* no final dagger unless completion confirmed
+* required grip/hilt still pending
+
+Example 4 — Completion
+
+Output:
+
+“You bind the grip and sharpen the edge. The crude iron dagger is finished.”
+
+Expected:
+
+* materials consumed
+* crude iron dagger created
+* Crafting Domain XP
+* INT or ATK XP possible
+* inventory dirty
+
+Example 5 — Potion failure
+
+Output:
+
+“The potion curdles into black sludge, ruining the herbs but teaching you the heat was too high.”
+
+Expected:
+
+* crafting soft_fail
+* herbs consumed
+* no potion gained
+* recipe insight
+* Crafting/Alchemy Domain XP small
+
+Example 6 — Repair shield
+
+State:
+
+Shield condition: cracked.
+
+Output:
+
+“You replace the split brace and tighten the leather. The shield holds firm again.”
+
+Expected:
+
+* shield condition improves
+* materials may be consumed
+* repair progress complete
+* no new shield item created
+
+Example 7 — NPC repair
+
+Output:
+
+“Mira takes your sword for repair and says it will be ready by morning.”
+
+Expected:
+
+* contract created
+* sword custody Mira
+* access unavailable
+* no repair complete yet
+* no player crafting XP unless assisting
+
+Example 8 — NPC returns repaired item
+
+Output:
+
+“Mira returns your sword, the edge clean and the crack reforged.”
+
+Expected:
+
+* sword custody player
+* condition improved
+* contract fulfilled
+* possible payment handled if due
+
+Example 9 — Missing tools
+
+Input:
+
+“I forge a steel sword in the forest.”
+
+State:
+
+No forge, no anvil.
+
+Expected:
+
+* project blocked or improvised impossible
+* no sword
+* possible requirement note
+
+Example 10 — Enchanting risk
+
+Output:
+
+“The rune flares too brightly, cracking the mana crystal and burning your palm.”
+
+Expected:
+
+* enchant soft_fail or fail
+* mana crystal condition damaged/consumed
+* HP injury possible
+* MP cost possible
+* no stable enchantment unless partial success confirmed
+
+Example 11 — Domain-scale production
+
+Input:
+
+“I have the workers produce 100 arrows for the militia.”
+
+Expected:
+
+* domain/labor project or order
+* not personal crafting
+* materials/labor/time checked
+* production progress tracked as group/domain work
+
+Example 12 — Card text says artifact crafted
+
+Card text:
+
+“You forged the Dragon Crown.”
+
+State:
+
+No such project or item.
+
+Expected:
+
+* no item created
+* no crafting completion
+* card may be audited as stale/polluted
+
+⸻
+
+43. Crafting commands
+
+/crafting should show
+
+* active crafting projects
+* blocked projects
+* materials reserved
+* progress stages
+* requirements
+* known recipes
+* recent crafting results
+* failures/insights
+* NPC crafting contracts if linked
+
+/recipes should show, if included
+
+* known recipes
+* partial recipes
+* recipe requirements
+* difficulty
+* discovered sources
+
+/materials should show, if included
+
+* available materials
+* reserved materials
+* stored materials
+* material quality/condition if relevant
+
+/inventory should show
+
+* crafted items
+* materials
+* damaged/repairing items
+* key crafted items
+
+/contracts should show
+
+* NPC repair/crafting commissions
+* item custody
+* payment
+* deadline
+* status
+
+/debuglast should show
+
+* crafting event proposals
+* validation result
+* material consumption
+* item creation/update
+* duplicate skips
+* progression follow-ups
+
+⸻
+
+44. Chunk 10 acceptance tests
+
+Test 1 — crafting intent does not create item
+
+Given:
+
+Player says “I craft a sword.”
+
+Expected:
+
+* crafting intent/proposal
+* no sword item yet
+
+Test 2 — work start does not finish item
+
+Given:
+
+Player begins hammering ingot into blade.
+
+Expected:
+
+* crafting project active
+* progress recorded
+* no finished sword yet
+
+Test 3 — completion creates item once
+
+Given:
+
+Output confirms the dagger is finished.
+
+Expected:
+
+* materials consumed once
+* dagger created once
+* duplicate output does not create second dagger
+
+Test 4 — missing tools blocks advanced craft
+
+Given:
+
+Player tries to forge steel sword with no forge.
+
+Expected:
+
+* blocked or failed
+* no sword
+* requirement note
+
+Test 5 — partial failure can teach
+
+Given:
+
+Potion fails but reveals heat issue.
+
+Expected:
+
+* no potion
+* materials may be consumed
+* recipe insight
+* small crafting XP possible
+
+Test 6 — repair updates existing item
+
+Given:
+
+Cracked shield is repaired.
+
+Expected:
+
+* same shield condition improves
+* no duplicate shield created
+
+Test 7 — NPC repair transfers custody
+
+Given:
+
+Smith takes sword for repair.
+
+Expected:
+
+* sword owner remains player
+* custody smith
+* access unavailable
+* contract active
+
+Test 8 — unavailable item cannot be personally repaired elsewhere
+
+Given:
+
+Sword is with smith.
+
+Player tries to repair it at camp.
+
+Expected:
+
+* reject/block unless sword retrieved or player is with smith
+
+Test 9 — material cannot be used twice
+
+Given:
+
+One mana crystal is consumed in enchant attempt.
+
+Expected:
+
+* unavailable for second craft unless another exists
+
+Test 10 — high quality requires support
+
+Given:
+
+Player casually says they craft legendary sword from scrap.
+
+Expected:
+
+* legendary quality rejected or softened
+* possible crude/failed result if work is validated
+
+Test 11 — NPC work does not give full player crafting XP
+
+Given:
+
+NPC crafts item while player waits.
+
+Expected:
+
+* item/contract may complete
+* player gains no or minimal crafting XP unless observing/assisting
+
+Test 12 — domain production routes to domain/labor
+
+Given:
+
+Player orders workers to build 100 shields.
+
+Expected:
+
+* labor/domain production
+* not one personal crafting event
+
+Test 13 — generated item card only for important item
+
+Given:
+
+Player crafts mundane bandage.
+
+Expected:
+
+* no generated card
+
+Given:
+
+Player crafts named enchanted sword.
+
+Expected:
+
+* generated item card may be eligible after stable item state
+
+Test 14 — card text cannot complete craft
+
+Given:
+
+Story Card says “the sword is complete.”
+
+Expected:
+
+* no item completion unless state/event validates it
+
+Test 15 — repair completion returns custody if NPC gives item back
+
+Given:
+
+Smith returns repaired sword.
+
+Expected:
+
+* custody player
+* condition improved
+* contract fulfilled
+
+⸻
+
+45. Final Chunk 10 doctrine
+
+Crafting is a process.
+
+Repair restores.
+
+Upgrade improves.
+
+Alteration changes form or function.
+
+Processing transforms materials.
+
+Materials are inventory.
+
+Recipes are knowledge.
+
+Tools and stations matter.
+
+Time matters.
+
+Resources matter.
+
+Quality comes from evidence, skill, materials, tools, time, and story result.
+
+Failure can teach.
+
+Partial success can create flawed but useful results.
+
+NPC crafting is contract/economy/custody first, not player mastery.
+
+Domain-scale production belongs to labor/domain systems.
+
+CraftingReducer manages workflow.
+
+InventoryReducer owns actual items and materials.
+
+ProgressionReducer owns XP.
+
+ContractReducer owns NPC agreements.
+
+CardSync mirrors only important stable crafted items.
+
+The goal is not to simulate every hammer blow.
+
+The goal is to make created, repaired, upgraded, and magical items feel earned, persistent, and believable.
+

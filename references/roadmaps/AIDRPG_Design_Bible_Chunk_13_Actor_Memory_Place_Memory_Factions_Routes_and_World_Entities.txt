@@ -1,0 +1,2590 @@
+AIDRPG Design Bible — Chunk 13: Actor Memory, Place Memory, Factions, Routes, and World Entities
+
+1. Purpose of this chunk
+
+Chunk 13 defines how AIDRPG remembers the living world.
+
+This chunk answers:
+
+What is an actor?
+
+What is a named actor?
+
+What is actor memory?
+
+What is major actor memory?
+
+When does an NPC become important?
+
+When should an NPC become a Story Card?
+
+What is place memory?
+
+What is building memory?
+
+When does a place become important?
+
+What is a faction?
+
+What is a world entity?
+
+What is a route?
+
+How does travel connect places?
+
+How do we prevent junk names, duplicate actors, duplicate places, generic room cards, and memory bloat?
+
+The central rule is:
+
+AIDRPG should remember important people, places, factions, routes, and world entities because they matter to play — not merely because their names appeared once.
+
+⸻
+
+2. Core philosophy
+
+AI Dungeon can mention many names, places, objects, crowds, buildings, and locations.
+
+AIDRPG should not save everything.
+
+It should remember things that are:
+
+* named
+* repeated
+* interacted with
+* connected to quests
+* connected to contracts
+* connected to investigations
+* connected to combat
+* connected to party
+* connected to domain projects
+* connected to reputation
+* owned, visited, damaged, changed, or important
+* likely to matter again
+
+The system should avoid saving:
+
+* random background extras
+* generic scenery
+* ordinary doors
+* vague rooms
+* unnamed crowds
+* junk fragments
+* parser mistakes
+* body parts
+* abstract concepts
+* sentence fragments
+* quoted examples
+* dream-only entities unless dream world is canon
+* duplicate versions of the same actor/place
+
+The goal is object permanence without memory pollution.
+
+⸻
+
+3. Ownership boundaries
+
+This chunk touches several owners.
+
+ActorReducer owns
+
+* actor candidates
+* actor records
+* actor identity
+* actor aliases
+* actor roles
+* actor status
+* actor location
+* actor importance
+* actor relationships
+* actor ordinary memory
+* actor card eligibility
+* actor merge/split records
+
+MajorActorMemoryReducer owns
+
+* long-term important actor memories
+* recurring relationship summaries
+* trust/fear/loyalty/grudge notes
+* goals
+* major decisions involving actor
+* promises
+* betrayals
+* personal history with player
+* recurring arc summaries
+
+This should apply only to important actors.
+
+PlaceReducer owns
+
+* place candidates
+* place records
+* place aliases
+* buildings
+* rooms if important
+* local hazards
+* local exits
+* place status
+* current location
+* current scene state
+* place importance
+* place memory
+* building memory
+* place card eligibility
+
+FactionReducer, if separate, or ReputationReducer/ActorReducer combined owns
+
+* factions
+* faction identity
+* faction aliases
+* faction goals
+* faction relationships
+* faction reputation
+* faction territory
+* faction membership
+* faction conflicts
+
+If no separate FactionReducer exists in the final code, faction records should still be a clearly owned state bucket, not scattered across actor/reputation/place systems.
+
+RouteReducer or PlaceReducer/TimeReducer combined owns
+
+* route identity
+* route endpoints
+* route status
+* route hazards
+* route travel conditions
+* route discovery
+* route accessibility
+
+TimeReducer owns travel time/duration.
+
+PlaceReducer owns place identity.
+
+Route ownership can be a sub-bucket, but its boundaries must be clear.
+
+WorldEntityReducer, if separate, owns
+
+* major non-actor/non-place entities
+* armies
+* organizations that are not factions
+* magical phenomena
+* world-scale threats
+* monuments
+* vehicles
+* domains/holdings if not handled elsewhere
+* persistent hazards
+* recurring monsters if not actor-like
+
+If no separate WorldEntityReducer exists, world entities still need clear classification.
+
+CardSync owns
+
+* generated actor cards
+* generated place cards
+* generated faction/domain/entity cards
+* card identity
+* tombstones
+* duplicate neutralization
+* protected summaries
+
+CardSync mirrors state.
+
+It does not create actor/place/faction canon from raw prose.
+
+⸻
+
+4. What is an actor?
+
+An actor is a person, creature, monster, spirit, construct, named animal, intelligent object, or other entity that can act in the story.
+
+Examples:
+
+* Mara the blacksmith
+* Captain Jora
+* Harlan the foreman
+* Ash Wolf
+* the mayor of Greyford
+* Umbra the bound shadow wolf
+* a named ghost
+* a dragon
+* a merchant
+* a guard captain
+* a companion
+* a rival
+* a suspect
+* a quest giver
+* a faction leader
+
+Not every living thing is an actor record.
+
+Generic examples that should usually remain summarized:
+
+* a guard
+* three goblins
+* some villagers
+* the crowd
+* five workers
+* a wolf
+* a rat
+* a shopkeeper, if never named or important
+* a traveler, if never relevant again
+
+These may exist as temporary scene participants, group records, worker groups, or background references without becoming durable actors.
+
+⸻
+
+5. Actor candidate versus actor record
+
+AIDRPG should use actor candidates before creating durable actors.
+
+Actor candidate
+
+A possible actor that may matter.
+
+Created from:
+
+* named mention
+* direct dialogue
+* possible quest involvement
+* possible witness
+* possible merchant/service provider
+* possible companion
+* possible enemy
+* possible recurring NPC
+
+An actor candidate is not yet important.
+
+It should not get a card.
+
+It should be eligible for cleanup if never used again.
+
+Actor record
+
+A durable actor state record.
+
+Created or promoted when:
+
+* name is stable
+* actor has direct interaction
+* actor gives/receives quest
+* actor joins party
+* actor enters contract
+* actor becomes suspect/witness/culprit
+* actor fights meaningfully
+* actor recurs
+* actor has relationship state
+* actor is tied to faction/domain/place
+* actor receives persistent status/injury
+* actor is manually marked important
+* actor has enough importance score
+
+Actor records can appear in commands and Context when relevant.
+
+Only important/card-eligible actor records may get generated cards.
+
+⸻
+
+6. Actor record model
+
+An actor record should track:
+
+* actor ID
+* display name
+* canonical key
+* aliases
+* type
+* species/race if known
+* role
+* occupation
+* faction links
+* current location
+* home/base location if known
+* status
+* injuries/conditions if important
+* relationship to player
+* attitude
+* trust/fear/loyalty/grudge
+* importance score
+* importance tier
+* quest links
+* contract links
+* investigation links
+* reputation links
+* party links
+* domain/labor links
+* combat history if important
+* memories
+* major memory summary if promoted
+* card eligibility
+* source/evidence
+* last seen turn
+* last updated turn
+* merge/alias history
+
+The actor record should not become a giant transcript.
+
+It should store useful durable truth.
+
+⸻
+
+7. Actor types
+
+Actor type helps decide behavior, memory, and card eligibility.
+
+Common actor types:
+
+Civilian
+
+Ordinary non-hostile person.
+
+Examples:
+
+* villager
+* innkeeper
+* farmer
+* child
+* traveler
+
+Usually low importance unless recurring or quest-linked.
+
+Merchant / service provider
+
+Sells goods or services.
+
+Examples:
+
+* blacksmith
+* alchemist
+* tailor
+* stablemaster
+* guide
+
+May become important through transactions/contracts.
+
+Quest actor
+
+Gives, receives, blocks, or resolves quests.
+
+Examples:
+
+* Mara asks for missing ring
+* mayor rewards player
+* prisoner to rescue
+
+Likely higher importance.
+
+Witness
+
+Has case/reputation knowledge.
+
+Examples:
+
+* saw suspect
+* heard scream
+* reported crime
+
+May be important if tied to investigation.
+
+Suspect / culprit
+
+Investigation role.
+
+Requires careful uncertainty tracking.
+
+Companion
+
+Persistent named ally who travels or acts with player.
+
+High importance.
+
+Party member
+
+Currently part of player’s party.
+
+Can be companion, temporary ally, follower leader, summon, or protagonist.
+
+Follower leader / foreman
+
+Named leader of a worker/follower group.
+
+Can become important through domain/labor systems.
+
+Enemy
+
+Hostile actor.
+
+May be generic or named.
+
+Named enemies, rivals, bosses, and recurring foes deserve durable records.
+
+Boss / major enemy
+
+Important hostile actor with strong memory/card potential.
+
+Faction actor
+
+Actor linked to faction role.
+
+Examples:
+
+* guildmaster
+* guard captain
+* cult priest
+* faction envoy
+
+Summon / familiar
+
+Created by ability/ritual/item.
+
+Temporary summons may be group records.
+
+Named persistent summons may be actors.
+
+Animal / beast
+
+Only becomes actor if named, bonded, recurring, important, or quest-linked.
+
+Construct / spirit / undead
+
+Actor if it behaves as an entity.
+
+May have unusual status/recovery rules.
+
+⸻
+
+8. Actor importance tiers
+
+Actor importance should be tiered.
+
+Tier 0 — Background mention
+
+Mentioned but not saved or only temporary.
+
+Example:
+
+“a passerby”
+
+Tier 1 — Candidate
+
+Possibly important.
+
+Example:
+
+“Mara” is named once in a tavern conversation.
+
+Tier 2 — Local actor
+
+Named and interacted with, but not major.
+
+Example:
+
+a merchant the player buys from once.
+
+Tier 3 — Relevant actor
+
+Tied to quest, contract, investigation, combat, party, reputation, or repeated interaction.
+
+Example:
+
+Mara gives a quest.
+
+Tier 4 — Important actor
+
+Recurring or strongly connected to gameplay.
+
+Example:
+
+Mara is quest giver, blacksmith, and repair contract holder.
+
+Tier 5 — Major actor
+
+Long-term relationship or major plot role.
+
+Example:
+
+Mara becomes companion, rival, major witness, faction leader, or recurring ally.
+
+Tier 6 — Card-eligible actor
+
+Important enough that AI Dungeon should remember them long-term through a generated actor card.
+
+Not every major actor must immediately get a card if card budget is tight, but they are eligible.
+
+⸻
+
+9. Actor importance scoring
+
+AIDRPG should use an importance score to avoid arbitrary promotion.
+
+Suggested scoring:
+
+* named appearance: +1
+* repeated appearance: +1
+* direct conversation with player: +2
+* gives quest: +3
+* receives quest turn-in: +2
+* quest-critical actor: +3
+* joins party: +5
+* companion bond: +6
+* contract party: +3
+* holds player item/custody: +3
+* merchant/service provider with repeated use: +2
+* investigation witness: +2
+* suspect: +3
+* confirmed culprit: +4
+* combat opponent who survives/recurs: +3
+* boss/major enemy: +5
+* faction role: +3
+* domain/labor leader/foreman: +3
+* has relationship state: +2
+* major memory event: +4
+* player manually marks important: +5
+* generated card already exists: +4
+* absent/stale for long time with no links: possible decay if low tier
+
+Suggested thresholds:
+
+* 1–2: candidate
+* 3–5: local actor
+* 6–9: relevant actor
+* 10–14: important actor
+* 15+: major actor
+* 18+ and stable: card-eligible
+
+Manual tuning can change numbers later.
+
+The key is that promotion should come from evidence, not name appearance alone.
+
+⸻
+
+10. Actor promotion rules
+
+Promote candidate to actor if:
+
+* directly interacts with player
+* speaks meaningfully
+* gives/receives quest
+* joins party
+* becomes contract party
+* holds player item
+* is witness/suspect/culprit
+* is named enemy/boss
+* recurs in multiple scenes
+* is tied to current location/domain/faction
+* is manually marked important
+* importance score passes threshold
+
+Do not promote if:
+
+* name is junk
+* name appears only in quote/example
+* name is from dream/vision and dream world is not canon
+* actor is generic background
+* actor is a title without identity
+* actor is a group better handled by Scale/Labor
+* actor appears only in a generated card not supported by state
+* actor name is actually an item/place/action
+
+⸻
+
+11. Actor name hygiene
+
+Actor names must be clean.
+
+Reject actor names that are:
+
+* generic nouns
+* item names
+* locations
+* body parts
+* commands
+* fragments
+* long sentences
+* system labels
+* card labels
+* placeholders
+* pronouns
+* pure titles without identity unless title functions as stable name
+* common role names with no uniqueness
+* obviously polluted text
+
+Bad actor names:
+
+* the room
+* the door
+* your hand
+* inventory
+* quest
+* AIDRPG
+* SAFE TO DELETE
+* the man who
+* someone
+* they
+* guard, if generic and not important
+* villager, if generic
+* blacksmith, if not named and not recurring
+* goblin, if part of group
+* wolf, if generic enemy
+* the old
+* a tall
+
+Acceptable actor names:
+
+* Mara
+* Mara the blacksmith
+* Captain Jora
+* Harlan
+* Ash Wolf
+* Umbra
+* Elder Vey
+* The Red Saint, if used as stable identity
+* Greyford Mayor, if no personal name but role is stable and important
+
+Titles can be actor identities if the story consistently uses them as a unique identifier.
+
+Example:
+
+“The Bone King” is acceptable.
+
+“a guard” is not.
+
+⸻
+
+12. Actor aliases and duplicate prevention
+
+Actors often have multiple names.
+
+Examples:
+
+* Mara
+* Mara Ironhand
+* the blacksmith
+* Mira, if typo or alternate spelling
+* Blacksmith Mara
+
+Aliases should merge only with evidence.
+
+Safe merge signs:
+
+* same scene
+* same role
+* same relationships
+* same location
+* explicit “also called”
+* consistent dialogue
+* same quest/contract link
+* same item custody
+* same actor card identity
+
+Unsafe merge signs:
+
+* same first name but different roles
+* same title in different towns
+* generic role name
+* similar spelling but conflicting facts
+* one is actor, one is place/item/faction
+* old polluted card text
+
+Example:
+
+“Mara the blacksmith” and “Mara Ironhand” can merge if same blacksmith.
+
+“Mara” and “Mara’s Forge” should not merge. One is actor, one is place.
+
+“Captain Jora” and “Captain Yora” may be typo aliases if context strongly supports it, but should be pending/audit if uncertain.
+
+⸻
+
+13. Actor memory
+
+Actor memory stores useful facts about an actor.
+
+Memory should include:
+
+* what the actor did
+* relationship changes
+* promises
+* debts
+* conflicts
+* injuries
+* known preferences
+* quest involvement
+* contract involvement
+* investigation role
+* reputation/witness knowledge
+* current location
+* last interaction summary
+
+Memory should not store:
+
+* every line of dialogue
+* every mood adjective
+* every passing description
+* duplicate repeated facts
+* false rumors as confirmed facts
+* player theories as canon
+* internal IDs
+* giant prose dumps
+
+Actor memory should be compact.
+
+Example:
+
+Mara memory:
+
+* blacksmith in Greyford
+* asked player to find missing ring
+* has repaired player’s sword once
+* trusts player after ring was returned
+* dislikes Harlan after confession
+* can repair metal equipment
+* last seen at Mira/Mara’s Forge
+
+This is useful.
+
+A transcript of every conversation is not.
+
+⸻
+
+14. Major actor memory
+
+Major actor memory is for important recurring actors only.
+
+Major actor memory may track:
+
+* relationship arc
+* trust/fear/loyalty/grudge
+* major promises
+* betrayals
+* secrets known
+* personal goals
+* faction ties
+* moral stance
+* long-term injuries
+* recurring conflict
+* unresolved emotional beats
+* companion history
+* rival history
+* player choices affecting them
+
+Major actor memory should be summarized, not exhaustive.
+
+Example:
+
+Mara major memory:
+
+* The player cleared Mara of theft by exposing Harlan.
+* Mara trusts the player and agreed to repair gear at reduced cost.
+* Mara fears the Silver Guild because they threatened her forge.
+* Mara currently holds no player items.
+* Mara may become a companion if the player asks.
+
+Only actors with sustained importance should get this layer.
+
+⸻
+
+15. Actor status
+
+Actor status describes current condition.
+
+Examples:
+
+* alive
+* dead
+* wounded
+* missing
+* captured
+* unconscious
+* hostile
+* friendly
+* neutral
+* absent
+* traveling
+* guarding
+* working
+* imprisoned
+* hiding
+* cursed
+* transformed
+* unknown
+
+Named actor death or major status changes require stronger validation than generic actor changes.
+
+Example:
+
+“The guard falls dead.”
+
+If generic guard:
+
+* group/actor status may update.
+
+“Mara is probably dead.”
+
+For important actor:
+
+* pending danger/rumor, not confirmed death.
+
+“Mara’s body lies still, and the healer says she is gone.”
+
+For important actor:
+
+* death candidate; validate strongly.
+
+⸻
+
+16. Actor relationship model
+
+Actors may have relationships to the player.
+
+Relationship dimensions:
+
+* trust
+* fear
+* respect
+* affection
+* loyalty
+* resentment
+* suspicion
+* debt
+* rivalry
+* hostility
+* obligation
+* gratitude
+
+Relationship should be based on events.
+
+Examples:
+
+Player saves Mara:
+
+* trust/gratitude increases
+
+Player falsely accuses Mara:
+
+* resentment/suspicion increases
+
+Player pays debt:
+
+* trust/respect increases
+
+Player steals from Mara:
+
+* trust decreases, hostility/reputation may change if known
+
+Do not change relationship from private actions the actor does not know about.
+
+Unless the actor witnesses, learns, or has reason to know.
+
+⸻
+
+17. Place definition
+
+A place is a location that can be visited, remembered, changed, used for navigation, or connected to events.
+
+Examples:
+
+* Greyford
+* Mara’s Forge
+* the old chapel
+* Northwatch Keep
+* Blackwood Road
+* the ruined shrine
+* the tavern cellar
+* the east gate
+* the silver mine
+* the Moonlit Grove
+* the player’s camp
+* the domain warehouse
+
+Not every location phrase is a durable place.
+
+Usually do not save:
+
+* the room
+* the door
+* the street
+* the floor
+* the corner
+* the table
+* the wall
+* the hallway
+* outside
+* inside
+* nearby
+* the area
+* the path, unless a named route
+* a clearing, unless important/named/visited repeatedly
+
+Generic scene elements may exist in scene state, not durable place memory.
+
+⸻
+
+18. Place candidate versus place record
+
+Place candidate
+
+A possible location.
+
+Examples:
+
+* old chapel mentioned by rumor
+* road to Blackwood mentioned
+* hidden shrine suspected
+* unnamed cave entrance seen in distance
+
+Candidates can be pending and low confidence.
+
+They should not get cards.
+
+Place record
+
+A durable place.
+
+Created or promoted when:
+
+* visited
+* current location
+* named and important
+* linked to quest
+* linked to domain
+* linked to investigation
+* linked to route
+* owned/controlled by player
+* contains key item
+* is recurring
+* has hazards/exits
+* has building memory
+* has stable identity
+
+⸻
+
+19. Place record model
+
+A place record should track:
+
+* place ID
+* display name
+* canonical key
+* aliases
+* place type
+* parent place
+* child places
+* current known status
+* owner/controller if any
+* faction links
+* actors present or associated
+* routes/exits
+* hazards
+* resources
+* buildings
+* quest links
+* contract/domain links
+* investigation links
+* reputation links
+* visited status
+* importance score
+* importance tier
+* memory summary
+* card eligibility
+* source/evidence
+* last visited turn
+* last updated turn
+
+Example:
+
+Mara’s Forge:
+
+* type: shop/workshop
+* parent: Greyford
+* associated actor: Mara
+* services: repair/blacksmithing
+* status: active
+* links: repair contracts, item custody, missing ring quest maybe
+* importance: relevant/important
+* card eligible if recurring
+
+⸻
+
+20. Place types
+
+Common place types:
+
+Settlement
+
+* village
+* town
+* city
+* camp
+* fortress
+* domain holding
+
+Building
+
+* forge
+* inn
+* chapel
+* guildhall
+* tower
+* warehouse
+* home
+* shop
+* keep
+
+Room / interior
+
+Only if important.
+
+Examples:
+
+* ritual chamber
+* locked vault
+* tavern cellar
+* throne room
+* player bedroom if persistent
+
+Generic rooms should stay scene state.
+
+Natural place
+
+* forest
+* grove
+* river
+* cave
+* mountain pass
+* swamp
+* clearing if named/important
+
+Route
+
+Can be separate route record.
+
+Examples:
+
+* Blackwood Road
+* north trail
+* river crossing
+
+Dungeon / ruin
+
+* old chapel ruins
+* sealed crypt
+* ancient mine
+* cursed tower
+
+Domain asset
+
+* north wall
+* workshop
+* farmland
+* watchtower
+* mine
+* bridge
+* road
+
+Scene-only location
+
+Temporary location for current scene.
+
+May not become durable unless promoted.
+
+⸻
+
+21. Place importance tiers
+
+Tier 0 — Scenery
+
+Not saved.
+
+Example:
+
+“the floor”
+
+Tier 1 — Candidate
+
+Mentioned or suspected.
+
+Example:
+
+“old chapel beyond the woods”
+
+Tier 2 — Visited place
+
+Player has been there.
+
+Example:
+
+“old chapel” after arrival.
+
+Tier 3 — Relevant place
+
+Linked to quest, actor, item, case, route, or service.
+
+Example:
+
+Mara’s Forge.
+
+Tier 4 — Important place
+
+Recurring, owned, dangerous, domain-linked, or story-significant.
+
+Example:
+
+Northwatch Keep.
+
+Tier 5 — Major place
+
+Central hub, base, domain holding, major dungeon, faction seat.
+
+Example:
+
+Greyford, player’s keep, ancient shrine.
+
+Tier 6 — Card-eligible place
+
+Important enough that AI Dungeon should remember it through a generated place card.
+
+⸻
+
+22. Place importance scoring
+
+Suggested scoring:
+
+* named place mention: +1
+* player visits: +2
+* current location: +2
+* repeated visit: +1
+* quest-linked: +3
+* investigation-linked: +2
+* contract/economy service location: +2
+* domain/holding link: +5
+* player-owned/controlled: +5
+* route hub: +2
+* major hazard: +2
+* contains key item: +2
+* contains important actor: +2
+* combat/boss site: +3
+* major state change/damage: +3
+* manually marked important: +5
+
+Suggested thresholds:
+
+* 1–2: candidate
+* 3–5: visited/relevant
+* 6–9: important
+* 10–14: major
+* 15+: card-eligible
+
+⸻
+
+23. Place name hygiene
+
+Reject place names that are:
+
+* generic scenery
+* body parts
+* pure directions
+* item names
+* actor names
+* commands
+* long sentences
+* internal labels
+* card labels
+* abstract states
+* pronouns
+* parser fragments
+
+Bad place names:
+
+* the room
+* the door
+* the floor
+* your hand
+* inside
+* outside
+* nearby
+* somewhere
+* nothing
+* inventory
+* quest
+* AIDRPG
+* the place where
+* a path
+* the old
+* the wall, unless domain asset context makes it specific
+
+Acceptable place names:
+
+* Greyford
+* Mara’s Forge
+* Northwatch Keep
+* Old Chapel
+* Blackwood Road
+* Moonlit Grove
+* East Gate
+* Shrine Cellar
+* Silver Mine
+* North Wall of Northwatch, if domain asset
+
+Generic terms can be part of specific names.
+
+“The Old Chapel” is acceptable.
+
+“the chapel” may become alias if linked.
+
+“a chapel” alone is probably candidate/pending unless visited/important.
+
+⸻
+
+24. Building memory
+
+A building is a place with structure, use, and condition.
+
+Examples:
+
+* forge
+* inn
+* chapel
+* keep
+* tower
+* warehouse
+* home
+* workshop
+* bridge
+* gatehouse
+
+Building memory may track:
+
+* owner/controller
+* function
+* condition
+* rooms/areas if important
+* services
+* hazards
+* damage
+* repairs
+* upgrades
+* stored items
+* associated actors
+* domain links
+* quest links
+* contracts
+* access restrictions
+
+Example:
+
+Mara’s Forge:
+
+* owner: Mara
+* function: blacksmithing/repair
+* condition: functional
+* services: repair, forge work
+* associated actor: Mara
+* player sword custody: if active
+
+Example:
+
+North Wall:
+
+* domain asset
+* condition: damaged
+* project: repair north wall
+* materials needed: timber/stone
+* workers assigned: five carpenters
+* progress: 33%
+
+Building memory connects directly to domain projects.
+
+⸻
+
+25. Scene state versus place memory
+
+Scene state is current immediate situation.
+
+Place memory is durable location history.
+
+Scene state may include:
+
+* current location
+* current room/area
+* current actors present
+* current exits
+* current hazards
+* current weather
+* current light
+* current combat state
+* loose objects present
+* temporary obstacles
+* immediate mood
+
+Place memory includes:
+
+* durable facts about the place
+* services
+* ownership
+* known routes
+* past changes
+* recurring hazards
+* important actors
+* domain state
+* quest links
+
+Example:
+
+Current scene:
+
+Mara’s Forge is smoky, Mara is present, sword is on the workbench, rain beats on the roof.
+
+Place memory:
+
+Mara’s Forge is a blacksmith shop in Greyford owned by Mara, known for repairs, linked to prior sword contract.
+
+Scene state changes quickly.
+
+Place memory changes slowly.
+
+Do not turn every scene detail into permanent place memory.
+
+⸻
+
+26. Current location
+
+Current location is one of the most important state fields.
+
+Rules:
+
+* current location changes only on confirmed arrival or confirmed scene transition
+* travel intent does not change current location
+* route progress does not change current location until arrival
+* “heading toward” is not arrival
+* “you arrive at” is arrival
+* “you enter” can be arrival if target is clear
+* dream/vision location does not change real location unless dream world is canon
+* flashback does not change current location
+* quoted location does not change current location
+
+Examples:
+
+“I head toward the chapel.”
+
+Result:
+
+* travel intent or travel started
+* current location unchanged
+
+“After an hour, you arrive at the old chapel.”
+
+Result:
+
+* current location becomes old chapel
+* time passes
+
+“You dream you stand in the old chapel.”
+
+Result:
+
+* no real location change
+* dream scene possible if supported
+
+⸻
+
+27. Local exits
+
+Local exits are immediate ways out of the current scene.
+
+Examples:
+
+* north door
+* cellar stairs
+* window
+* alley
+* trapdoor
+* road east
+* bridge
+* tunnel
+* hidden passage
+
+Local exits should be tracked only when useful.
+
+Exit records may track:
+
+* direction/name
+* destination if known
+* locked/unlocked
+* blocked/open
+* hidden/revealed
+* danger
+* required key/item
+* source/evidence
+
+Exit state should not become a full place unless destination matters.
+
+Example:
+
+“north door” is an exit.
+
+“The North Gate of Greyford” may be a place/building if important.
+
+⸻
+
+28. Local hazards
+
+Local hazards are current or persistent dangers in a place or scene.
+
+Examples:
+
+* fire
+* collapsing ceiling
+* poison gas
+* flooded tunnel
+* unstable bridge
+* hostile patrol
+* magical ward
+* cursed fog
+* freezing wind
+* trap
+* exposed cliff
+* disease zone
+
+Hazard records should track:
+
+* type
+* location
+* severity
+* duration
+* source
+* active/inactive
+* affected actions
+* removal condition
+* linked quest/place/domain if any
+
+Hazards can affect:
+
+* combat
+* travel
+* recovery
+* crafting
+* investigation
+* resource loss
+* Context
+
+Hazards should be validated.
+
+A rumor of poison gas does not make gas active unless confirmed.
+
+⸻
+
+29. Factions
+
+A faction is an organized group with identity, goals, members, reputation, territory, and influence.
+
+Examples:
+
+* Silver Guild
+* Greyford Guard
+* Moon Cult
+* Northwatch Militia
+* Ashen Court
+* Blackwood Bandits
+* Church of the Dawn
+* Ironhand Smiths
+* Royal Army
+* Merchant League
+
+A faction is not the same as an actor.
+
+A faction can have actors.
+
+A faction can control places.
+
+A faction can own items.
+
+A faction can offer quests/contracts.
+
+A faction can affect reputation/legal status.
+
+⸻
+
+30. Faction record model
+
+A faction record should track:
+
+* faction ID
+* display name
+* canonical key
+* aliases
+* type
+* goals
+* values
+* territory
+* headquarters
+* important members
+* leaders
+* relationship to player
+* relationship to other factions
+* reputation scope
+* resources
+* known laws/rules
+* current conflicts
+* quests/contracts
+* domain links
+* actor links
+* place links
+* public/private knowledge
+* importance score
+* card eligibility
+* source/evidence
+* last updated turn
+
+Faction types:
+
+* guild
+* government
+* guard/military
+* church/religion
+* cult
+* merchant group
+* criminal group
+* noble house
+* tribe/clan
+* rebel group
+* monster faction
+* magical order
+* worker organization
+* domain faction
+* family/household if important
+
+⸻
+
+31. Faction relationship model
+
+Faction relationships may include:
+
+* allied
+* friendly
+* neutral
+* suspicious
+* hostile
+* at war
+* indebted
+* protected
+* banned
+* wanted
+* trusted
+* member
+* contractor
+* rival
+* unknown
+
+Relationships should be scoped and evidence-based.
+
+Example:
+
+The Silver Guild may distrust the player because of unpaid debt.
+
+Greyford villagers may love the player for saving the wall.
+
+The Moon Cult may hunt the player after a stolen relic.
+
+These are separate reputations.
+
+Faction reputation should not become global reputation unless news spreads.
+
+⸻
+
+32. Faction memory
+
+Faction memory should store:
+
+* major deeds
+* contracts
+* betrayals
+* debts
+* titles
+* wanted status
+* completed quests
+* faction favors
+* faction enemies
+* known player abilities if public
+* public rumors affecting faction view
+* territory access
+
+Do not store every minor conversation with faction members.
+
+Example:
+
+Silver Guild memory:
+
+* player owes 20 silver due by dawn
+* player returned stolen ledger
+* guild trusts player moderately
+* Harlan is guild informant
+* guild controls warehouse district
+
+This helps future scenes feel consistent.
+
+⸻
+
+33. World entities
+
+A world entity is a persistent non-standard thing that affects the world but is not best treated as a normal actor or place.
+
+Examples:
+
+* a roaming storm
+* cursed fog
+* ancient barrier
+* royal caravan
+* warband
+* plague
+* magical portal
+* divine omen
+* moving fortress
+* sealed titan
+* spirit swarm
+* merchant caravan
+* army
+* domain supply caravan
+* leyline
+* world tree
+* floating island
+* siege engine
+* demon invasion force
+
+World entities can be:
+
+* mobile
+* stationary
+* hostile
+* neutral
+* beneficial
+* environmental
+* political
+* magical
+* military
+* economic
+
+The system should not force every world entity into actor/place.
+
+A cursed fog is not an actor.
+
+A roaming army is not a single actor.
+
+A portal may be a place feature or world entity depending use.
+
+⸻
+
+34. World entity record model
+
+A world entity should track:
+
+* entity ID
+* display name
+* type
+* status
+* location or route
+* movement pattern if any
+* threat/effect
+* scope
+* linked places
+* linked factions
+* linked quests
+* linked domain projects
+* linked actors
+* known weaknesses/limits
+* current effects
+* importance score
+* card eligibility
+* source/evidence
+* last updated turn
+
+Examples:
+
+Cursed Fog:
+
+* type: environmental magical hazard
+* location: Blackwood Road
+* effect: visibility loss, cold condition risk
+* linked quest: missing travelers
+* linked route: Blackwood Road
+* status: active
+
+Royal Caravan:
+
+* type: mobile political/economic entity
+* route: Greyford to Northwatch
+* faction: Royal Army / Merchant League
+* status: traveling
+* linked contract: escort job
+
+⸻
+
+35. Routes
+
+A route connects places.
+
+Routes matter because travel, deadlines, hazards, and place memory depend on them.
+
+Examples:
+
+* Blackwood Road connects Greyford and Old Chapel
+* north trail leads to Silver Mine
+* river path reaches Northwatch
+* hidden tunnel connects cellar to shrine
+* mountain pass leads to Ashen Valley
+
+A route should track:
+
+* route ID
+* display name
+* start place
+* end place
+* intermediate places if known
+* discovered status
+* travel time
+* difficulty
+* hazards
+* current accessibility
+* required items
+* weather effects
+* faction control
+* known shortcuts
+* last traveled turn
+* source/evidence
+
+⸻
+
+36. Route statuses
+
+Routes can be:
+
+* unknown
+* rumored
+* discovered
+* mapped
+* active
+* blocked
+* dangerous
+* safe
+* patrolled
+* hidden
+* sealed
+* one-way
+* collapsed
+* flooded
+* magically locked
+* faction-controlled
+
+Example:
+
+Old tunnel route:
+
+* discovered but blocked by rubble
+
+Blackwood Road:
+
+* discovered, dangerous due to cursed fog
+
+Hidden shrine passage:
+
+* hidden until clue discovered
+
+⸻
+
+37. Route versus place
+
+A place is a destination.
+
+A route is the connection between destinations.
+
+Example:
+
+Greyford is a place.
+
+Old Chapel is a place.
+
+Blackwood Road is a route, but may also be treated as a place if scenes occur there often.
+
+If a route has many scenes, hazards, or landmarks, it can have place-like memory.
+
+But it should still maintain endpoint/travel logic.
+
+⸻
+
+38. Route discovery
+
+Routes can be discovered through:
+
+* travel
+* maps
+* NPC directions
+* investigation
+* scouting
+* old records
+* magical vision
+* following tracks
+* domain surveys
+* faction knowledge
+
+Route discovery confidence:
+
+* rumored
+* described
+* partially mapped
+* confirmed
+* traveled
+* blocked/disproven
+
+Example:
+
+“Harlan says there is a hidden tunnel beneath the forge.”
+
+Result:
+
+* route lead / rumored route
+* not confirmed until found
+
+“You find the trapdoor and descend into the tunnel.”
+
+Result:
+
+* route discovered/confirmed
+
+⸻
+
+39. Travel connection
+
+Chunk 14 will define full time/travel rules.
+
+Chunk 13 defines route memory.
+
+Travel should use:
+
+* current location
+* target place
+* route if known
+* travel state
+* time cost
+* hazards
+* party state
+* weather
+* deadlines
+
+Route memory helps answer:
+
+* how long it takes
+* what dangers exist
+* whether the path is blocked
+* what places connect
+* whether the player has traveled it before
+* what shortcuts exist
+* who controls it
+
+⸻
+
+40. Place and actor Context behavior
+
+Context should include actor/place facts when relevant.
+
+Good actor Context:
+
+“Mara, the Greyford blacksmith, is present. She trusts you after you returned her missing ring and can repair metal gear.”
+
+Good place Context:
+
+“You are in Mara’s Forge in Greyford. It is a working blacksmith shop; your iron sword is currently on Mara’s workbench for repair.”
+
+Good route Context:
+
+“The Blackwood Road leads toward the old chapel, but it is currently dangerous due to cursed fog.”
+
+Bad Context:
+
+Listing every actor ever met.
+
+Listing every place ever mentioned.
+
+Injecting “the door” as a remembered place.
+
+Saying Mara is present when she is away.
+
+Calling Harlan guilty when only suspected.
+
+Context should be relevance-based and uncertainty-aware.
+
+⸻
+
+41. Actor/place Story Card behavior
+
+Generated actor/place cards should be selective.
+
+Cards may be generated for:
+
+* major actors
+* companions
+* recurring rivals
+* important quest givers
+* major witnesses/suspects/culprits
+* major faction leaders
+* important places
+* recurring hubs
+* player-owned bases
+* major domain assets
+* important routes if story-critical
+* major world entities
+
+Do not generate cards for:
+
+* generic guards
+* unnamed workers
+* every goblin
+* every shopkeeper
+* every room
+* every door
+* every street
+* every temporary camp
+* every minor route mention
+* every rumor-only place
+* every actor candidate
+
+Actor cards should update when:
+
+* relationship changes
+* role changes
+* status changes
+* location changes if important
+* quest/contract/case involvement changes
+* major memory changes
+* death/capture/absence confirmed
+
+Place cards should update when:
+
+* place status changes
+* ownership/control changes
+* damage/repair occurs
+* hazards appear/disappear
+* services change
+* domain project changes
+* important actors/items are associated
+* route/access changes
+
+CardSync mirrors state.
+
+CardSync does not create actor/place truth from prose.
+
+⸻
+
+42. Actor/place validation outcomes
+
+Accept
+
+Use when actor/place/entity/route state is directly confirmed.
+
+Examples:
+
+* named actor speaks to player
+* player arrives at Old Chapel
+* faction formally appears
+* route discovered by map
+* building damaged directly
+* actor joins party
+* place becomes player-owned
+
+Reject
+
+Use when proposed memory is unsupported.
+
+Examples:
+
+* quoted actor action
+* dream-only place
+* vague scenery as place
+* generic guard as major actor
+* rumor as confirmed location
+* actor present when absent
+* duplicate actor/place from same source
+
+Pending
+
+Use when entity may matter but is not confirmed.
+
+Examples:
+
+* rumored hidden tunnel
+* mentioned old chapel
+* possible NPC name
+* possible faction involvement
+* suspected place
+* unknown actor identity
+
+Soft_fail
+
+Use when real attempt produces partial world knowledge.
+
+Examples:
+
+* scouting finds tracks but not route
+* player asks about faction but gets vague clue
+* search reveals hidden door outline but not open path
+* actor name uncertain
+* place location approximate
+
+Hard_deny
+
+Use when memory candidate is junk or unsafe.
+
+Examples:
+
+* actor named “the door”
+* place named “your hand”
+* card text creates actor
+* debug text creates place
+* pretend NPC
+* fake route
+* system label
+* generic fragment
+
+⸻
+
+43. Cleanup rules for actors and places
+
+Cleanup is necessary but must be safe.
+
+Cleanup may:
+
+* remove stale low-score actor candidates
+* remove stale low-score place candidates
+* merge confirmed aliases
+* archive inactive minor actors
+* compress old actor memory
+* compress old place memory
+* remove junk fragments
+* neutralize duplicate cards
+* clear dirty rows
+* prune old diagnostics
+
+Cleanup may not:
+
+* delete important actors
+* delete important places
+* kill actors
+* move actors
+* change current location
+* create new actors
+* create new places
+* promote candidates without evidence
+* create cards
+* complete quests
+* solve cases
+* rewrite faction truth
+* erase key memories without archive
+
+Low-score candidates can expire.
+
+Important linked records should not.
+
+Example:
+
+A candidate named “a guard” from 200 turns ago with no links can be removed.
+
+Mara cannot be removed just because she has not appeared recently.
+
+⸻
+
+44. Manual override rules
+
+Manual override may be needed for actor/place correction.
+
+Allowed safe corrections may include:
+
+* rename actor
+* merge actor aliases
+* mark actor important
+* mark actor not important
+* correct current location
+* correct place name
+* correct actor status
+* correct actor location
+* correct faction name
+* correct route endpoint
+
+Dangerous corrections should require explicit commands later:
+
+* actor death
+* faction war
+* domain ownership
+* major place destruction
+* mass actor merge
+* card import
+* world entity creation
+
+Manual override should log changes and mark dirty targets.
+
+⸻
+
+45. Example scenarios
+
+Example 1 — Named actor first mention
+
+Output:
+
+“Mara, the blacksmith, looks up from the forge.”
+
+Expected:
+
+* actor candidate or local actor created
+* role: blacksmith
+* associated place if forge exists
+* no generated card yet unless importance grows
+
+Example 2 — Actor becomes quest giver
+
+Output:
+
+“Mara asks you to find her missing ring.”
+
+Expected:
+
+* Mara importance increases
+* quest link added
+* actor likely promoted to relevant actor
+* no card unless threshold/card eligibility reached
+
+Example 3 — Actor becomes companion
+
+Output:
+
+“Mara tightens her pack and says she will travel with you.”
+
+Expected:
+
+* actor promoted important/major
+* PartyReducer adds Mara as companion
+* actor card may become eligible
+
+Example 4 — Junk actor rejected
+
+Output parser detects “the door” as actor.
+
+Expected:
+
+* hard deny
+* no actor record
+* possible place/exit if relevant
+
+Example 5 — Place mention only
+
+Output:
+
+“The old chapel lies somewhere beyond Blackwood Road.”
+
+Expected:
+
+* place candidate: Old Chapel
+* route/place lead maybe
+* no current location change
+* no place card
+
+Example 6 — Arrival at place
+
+Output:
+
+“After an hour, you arrive at the old chapel.”
+
+Expected:
+
+* current location changes to Old Chapel
+* place record confirmed/visited
+* time passes
+* route may update
+* card only if importance threshold reached
+
+Example 7 — Generic room
+
+Output:
+
+“You enter the room.”
+
+Expected:
+
+* scene state may update
+* no durable place card named “room”
+
+Example 8 — Building damage
+
+Output:
+
+“The fire spreads across Mara’s Forge, blackening the roof beams.”
+
+Expected:
+
+* place/building condition update
+* hazard: fire active
+* actor/location consequences if Mara present
+* domain/quest/reputation links if relevant
+
+Example 9 — Faction introduced
+
+Output:
+
+“The Silver Guild seal is stamped on the letter.”
+
+Expected:
+
+* faction candidate or record
+* linked evidence/item/quest if relevant
+* no full faction card unless importance grows
+
+Example 10 — Faction reputation
+
+Output:
+
+“The Silver Guild declares you a debtor until you repay the 20 silver.”
+
+Expected:
+
+* faction relationship/status update
+* debt/contract/economy link
+* reputation scoped to Silver Guild
+* not global reputation
+
+Example 11 — Route rumor
+
+Output:
+
+“A hunter says a hidden trail leads to the shrine.”
+
+Expected:
+
+* route lead/pending
+* not confirmed route until found/traveled
+
+Example 12 — Route confirmed
+
+Output:
+
+“You follow the hunter’s trail and find the hidden path to the shrine.”
+
+Expected:
+
+* route discovered/confirmed
+* endpoints linked
+* travel memory updated
+
+⸻
+
+46. Commands related to Chunk 13
+
+/actors should show
+
+* important actors
+* current scene actors
+* companions
+* relevant NPCs
+* actor status
+* relationship summary
+* last known location
+* quest/contract/case links
+* importance tier if debug mode
+
+/actor Mara should show, if included
+
+* role
+* relationship
+* current status
+* location
+* key memories
+* active links
+* card status
+
+/places should show
+
+* current location
+* important places
+* visited places
+* major hubs
+* domain places
+* known hazards/routes
+
+/place Old Chapel should show, if included
+
+* status
+* known exits
+* hazards
+* linked actors/items/quests/cases
+* memory summary
+
+/factions should show
+
+* known factions
+* player standing
+* faction goals if known
+* leaders if known
+* territory if known
+* active conflicts/contracts
+
+/routes should show
+
+* known routes
+* endpoints
+* travel time if known
+* hazards
+* blocked/safe status
+
+/debuglast should show
+
+* actor/place/faction/route event proposals
+* name hygiene results
+* alias merge decisions
+* promotion score changes
+* current location validation
+* duplicate skips
+* card eligibility changes
+
+⸻
+
+47. Chunk 13 acceptance tests
+
+Test 1 — named actor candidate
+
+Given:
+
+“Mara the blacksmith speaks to you.”
+
+Expected:
+
+* actor candidate or local actor
+* role blacksmith
+* no generated card yet unless importance threshold reached
+
+Test 2 — actor promotion through quest
+
+Given:
+
+Mara gives player a quest.
+
+Expected:
+
+* importance increases
+* quest link added
+* actor promoted if threshold reached
+
+Test 3 — generic guard does not become card
+
+Given:
+
+“A guard nods.”
+
+Expected:
+
+* no durable actor/card unless repeated/important
+
+Test 4 — junk actor rejected
+
+Given:
+
+Parser tries to create actor named “the door.”
+
+Expected:
+
+* hard deny
+* no actor
+
+Test 5 — actor alias merge requires evidence
+
+Given:
+
+“Mara” and “Mara Ironhand” appear in same blacksmith context.
+
+Expected:
+
+* merge or alias if evidence supports
+
+Given:
+
+“Mara” and “Mara’s Forge.”
+
+Expected:
+
+* do not merge actor with place
+
+Test 6 — place mention does not change current location
+
+Given:
+
+“The chapel lies north.”
+
+Expected:
+
+* place/route lead
+* current location unchanged
+
+Test 7 — arrival changes current location
+
+Given:
+
+“You arrive at the old chapel.”
+
+Expected:
+
+* current location changes
+* place visited/confirmed
+
+Test 8 — generic room does not become place card
+
+Given:
+
+“You enter the room.”
+
+Expected:
+
+* scene state only
+* no generated place card
+
+Test 9 — important place promotes
+
+Given:
+
+Player repeatedly visits Mara’s Forge, uses services, and has item repair contract there.
+
+Expected:
+
+* place importance increases
+* possible place card eligibility
+
+Test 10 — faction reputation scoped
+
+Given:
+
+Silver Guild distrusts player.
+
+Expected:
+
+* Silver Guild standing changes
+* unrelated local/global reputation unchanged unless news spreads
+
+Test 11 — route rumored versus confirmed
+
+Given:
+
+NPC says hidden trail may exist.
+
+Expected:
+
+* route pending/rumored
+
+Given:
+
+Player finds and travels trail.
+
+Expected:
+
+* route confirmed
+
+Test 12 — world entity not forced into actor
+
+Given:
+
+Cursed fog covers Blackwood Road.
+
+Expected:
+
+* hazard/world entity or route hazard
+* not actor named “fog” unless setting makes it sentient
+
+Test 13 — absent actor not assumed present
+
+Given:
+
+Mara is at Greyford, player is at Old Chapel.
+
+Expected:
+
+* Context does not place Mara beside player unless she travels/arrives
+
+Test 14 — actor death requires strong evidence
+
+Given:
+
+Rumor says Mara died.
+
+Expected:
+
+* rumor/pending danger
+* Mara not dead
+
+Given:
+
+Direct confirmed death scene.
+
+Expected:
+
+* death-boundary or death status validated carefully
+
+Test 15 — cleanup does not delete important actor
+
+Given:
+
+Mara is important but absent for many turns.
+
+Expected:
+
+* memory retained or compressed
+* not deleted as stale candidate
+
+Test 16 — card generated only after eligibility
+
+Given:
+
+Place candidate Old Chapel mentioned once.
+
+Expected:
+
+* no card
+
+Given:
+
+Old Chapel becomes major quest dungeon.
+
+Expected:
+
+* generated place card may become eligible
+
+⸻
+
+48. Final Chunk 13 doctrine
+
+Actors are people or entities that can act.
+
+Not every NPC deserves a durable record.
+
+Not every named mention deserves a card.
+
+Actor importance must grow through evidence.
+
+Major actor memory is for important recurring actors only.
+
+Places are durable locations, not every room or door.
+
+Current location changes only on confirmed arrival or scene transition.
+
+Scene state is immediate; place memory is durable.
+
+Buildings can have condition, services, ownership, and domain links.
+
+Factions are organized powers with scoped relationships and reputation.
+
+Routes connect places and support travel memory.
+
+World entities represent persistent forces that are not simple actors or places.
+
+Aliases require evidence.
+
+Junk names must be rejected.
+
+Cleanup may trim candidates but cannot rewrite truth.
+
+Context should show relevant actors, places, factions, and routes without flooding.
+
+Cards should mirror only important stable actors, places, factions, routes, or world entities.
+
+The goal is to make the world feel remembered and alive without filling the game with duplicate NPCs, generic room cards, junk names, and stale memory clutter.
+

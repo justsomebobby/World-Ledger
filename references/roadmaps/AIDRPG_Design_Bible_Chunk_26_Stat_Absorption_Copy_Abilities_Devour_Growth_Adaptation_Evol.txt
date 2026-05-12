@@ -1,0 +1,3122 @@
+AIDRPG Design Bible — Chunk 26: Stat Absorption, Copy Abilities, Devour Growth, Adaptation, Evolution, and Anime-Style Power Systems
+
+1. Purpose of this chunk
+
+Chunk 26 defines how AIDRPG handles anime-style growth systems.
+
+This includes:
+
+* absorbing stats
+* devouring monsters
+* eating cores
+* copying abilities
+* mimicking techniques
+* stealing powers
+* adapting to damage
+* evolving after combat
+* gaining traits from defeated enemies
+* learning by observation
+* growing through pain
+* mutating from monster essence
+* awakening bloodlines
+* transforming race/species
+* gaining powers from souls, contracts, spirits, divine blessings, curses, or artifacts
+
+This chunk answers:
+
+Can a player gain stats from enemies?
+
+Can a player copy a spell by seeing it?
+
+Can a slime player absorb monsters?
+
+Can a vampire grow by drinking blood?
+
+Can a dragonkin awaken stronger dragon traits?
+
+Can a player adapt to poison?
+
+Can a player gain resistance after surviving fire?
+
+Can a player devour 100 rats for infinite stats?
+
+Can a player absorb a dragon core and become a dragon god?
+
+The central rule is:
+
+Anime-style growth is allowed, but it must be bounded, validated, source-based, and auditable.
+
+Growth should feel exciting.
+
+It should not become infinite free power.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG should support power fantasy.
+
+Many players want systems inspired by:
+
+* isekai
+* cultivation
+* monster evolution
+* devourer builds
+* skill-copy builds
+* mimic powers
+* adaptation powers
+* reincarnation systems
+* dungeon monster growth
+* RPG status panels
+* bloodline awakening
+* soul absorption
+* demon contracts
+* divine blessings
+* cursed evolution
+* “gain stats by eating monsters”
+* “gain resistance by surviving damage”
+* “copy enemy skills after seeing them”
+* “learn faster because of Quick Learner”
+* “turn monster traits into abilities”
+
+This is fun and should be supported.
+
+But these systems are dangerous because they can easily break the game.
+
+Without safeguards, a player can say:
+
+“I absorb the rat and gain all its stats.”
+
+“I copy the demon lord’s ultimate spell.”
+
+“I adapt to all damage.”
+
+“I eat 100 slimes and become immune to everything.”
+
+“I devour the dragon and gain its full power.”
+
+“I observe god once and learn creation magic.”
+
+AIDRPG must prevent this from becoming uncontrolled.
+
+The correct approach is:
+
+Absorption usually gives progress, evidence, stat XP, traits, candidates, or temporary effects — not instant full mastery.
+
+⸻
+
+3. Ownership boundaries
+
+AbilityReducer owns
+
+* copy abilities
+* mimic abilities
+* absorption abilities
+* adaptation abilities
+* evolution abilities
+* copied ability candidates
+* stolen power records
+* ability evidence
+* ability rank changes
+* passive/candidate creation
+* unstable powers
+* transformed ability variants
+
+ProgressionReducer owns
+
+* stat XP from absorption
+* domain XP from copied learning
+* level XP from meaningful absorption events
+* anti-farm scaling
+* stat increases
+* source caps
+
+BodyReducer owns
+
+* mutation conditions
+* corruption
+* backlash injuries
+* body instability
+* poison/adaptation consequences
+* transformation body effects
+* HP/MP/EP costs
+* compatibility sickness
+
+PlayerReducer owns
+
+* race/species changes
+* ancestry/origin updates
+* player sheet race/body identity
+
+InventoryReducer owns
+
+* monster cores
+* consumed materials
+* essence items
+* blood samples
+* body parts
+* artifacts
+* ownership/custody/access of absorbable items
+
+ActorReducer / ScaleReducer owns
+
+* defeated enemy records
+* corpse/source availability
+* group source counts
+* unique enemy identity
+* boss source state
+
+CardSync owns
+
+* generated ability cards after stabilization
+* race/evolution card updates
+* absorbed trait card updates if important
+* avoiding duplicate ability cards
+
+ContextBuilder owns
+
+* current warnings about unstable absorbed powers
+* candidate versus stable reminders
+* active mutation/corruption warnings
+* relevant limits in the current scene
+
+No system should directly grant permanent power without going through validation and the correct owner.
+
+⸻
+
+4. Anime-style growth categories
+
+AIDRPG should separate these systems clearly.
+
+Stat Absorption
+
+The player gains stat XP or rarely stat points from a source.
+
+Example:
+
+Absorbing a beast core grants ATK XP and Beast Adaptation progress.
+
+Devour Growth
+
+The player eats, consumes, digests, or assimilates a creature/material.
+
+Example:
+
+A slime devours a wolf corpse and gains minor predator-trait evidence.
+
+Ability Copy
+
+The player learns or imitates an observed ability.
+
+Example:
+
+The player sees Shadow Step and creates a Shadow Step candidate.
+
+Skill Mimicry
+
+The player imitates a mundane technique or combat style.
+
+Example:
+
+The player copies a boxer’s footwork after seeing it.
+
+Power Theft
+
+The player steals part of an enemy’s power.
+
+Example:
+
+A vampire drains blood to gain temporary strength.
+
+Adaptation
+
+The player becomes more resistant or responsive after exposure.
+
+Example:
+
+After surviving weak poison several times, the player gains Poison Tolerance candidate.
+
+Evolution
+
+The player’s body/species/build changes after enough progress.
+
+Example:
+
+Slime evolves into Acid Slime.
+
+Bloodline Awakening
+
+Inherited power activates through stress, ritual, age, or story event.
+
+Example:
+
+Dragonkin awakens Ember Breath.
+
+Soul/Core Absorption
+
+The player absorbs a soul, core, crystal, essence, or magic organ.
+
+Example:
+
+Absorbing a dragon core grants Dragon Essence progress, risk, and possible breath evolution.
+
+Contract/Blessing/Curse Growth
+
+Power is gained from outside authority.
+
+Example:
+
+Demon pact grants Hellfire candidate but creates debt and holy vulnerability.
+
+Each category needs different rules.
+
+⸻
+
+5. Required source record
+
+Every absorption/copy/growth event needs a source.
+
+Source record:
+
+Source ID:
+Source Name:
+Source Type:
+Source Tier:
+Source Effective Level:
+Source Condition:
+Source Ownership/Custody:
+Source Availability:
+Source Uniqueness:
+Source Traits:
+Compatible Traits:
+Incompatible Traits:
+Consumed or Reusable:
+Already Used:
+Risk Level:
+Evidence Quality:
+
+Examples of sources:
+
+* wolf corpse
+* slime core
+* dragon heart
+* demon blood
+* monster essence crystal
+* spell scroll
+* enemy technique observation
+* teacher demonstration
+* divine blessing
+* curse mark
+* artifact charge
+* vampire blood meal
+* spirit contract
+* boss soul fragment
+
+If no source exists, absorption should fail or become only an attempt.
+
+Example:
+
+Player says:
+
+“I absorb the dragon’s power.”
+
+But no dragon was defeated, touched, contracted, or available.
+
+Expected:
+
+* reject or pending fantasy/attempt
+* no stat gain
+
+⸻
+
+6. Source availability rules
+
+The system must verify that the source is actually available.
+
+Valid source availability examples:
+
+* enemy defeated and body remains
+* monster core dropped and player has access
+* blood is collected
+* player is bitten/exposed
+* enemy ability observed clearly
+* teacher demonstrates technique
+* artifact is in player custody
+* spirit willingly grants pact
+* ritual captures essence
+* player consumes material
+* player touches magic crystal
+* player survives damage exposure
+
+Invalid source examples:
+
+* enemy escaped
+* body destroyed
+* source is only rumored
+* source exists only in Story Card text
+* source was mentioned in a dream
+* source belongs to an absent scene
+* source already consumed
+* source is in someone else’s custody
+* source is hypothetical
+* player merely says they absorbed it
+* source is debug/example text
+
+No source, no growth.
+
+⸻
+
+7. Source uniqueness
+
+Sources should be classified by uniqueness.
+
+Source Uniqueness	Meaning
+common	ordinary rat, goblin, wolf, basic herb
+uncommon	magical beast, trained enemy, rare material
+rare	special monster, named creature part, unusual core
+unique	named boss, one-of-a-kind artifact, bloodline source
+legendary	dragon heart, lich core, divine relic
+mythic	god avatar fragment, world beast essence
+cosmic	reality-scale source
+
+Uniqueness affects:
+
+* potential gain
+* risk
+* card eligibility
+* anti-farm cap
+* mutation chance
+* story consequences
+
+Common sources should not grant huge permanent growth.
+
+Unique sources can grant major growth, but should also carry major risks and consequences.
+
+⸻
+
+8. Compatibility
+
+Absorption and copying require compatibility.
+
+Compatibility factors:
+
+* race/species
+* body type
+* existing traits
+* ability category
+* domain knowledge
+* stat support
+* source element
+* source tier
+* player level
+* current condition
+* equipment/focus
+* ritual support
+* source consent or resistance
+* corruption risk
+* divine/infernal alignment
+* biological possibility
+* magical framework
+
+Compatibility levels:
+
+Compatibility	Meaning
+incompatible	cannot absorb/copy normally
+poor	possible only with major risk or special method
+partial	limited gain, high failure chance
+moderate	usable with cost/risk
+strong	good fit
+perfect	source matches build/body/ability very well
+
+Example:
+
+Human eats wolf meat:
+
+* can gain food/energy
+* maybe Survival/Body training
+* no automatic wolf stats
+
+Wolfkin absorbs wolf spirit:
+
+* moderate to strong compatibility
+
+Slime absorbs slime core:
+
+* strong compatibility
+
+Fire dragonkin absorbs fire drake core:
+
+* strong compatibility, but still capped
+
+Ice fairy absorbs fire demon heart:
+
+* poor/incompatible, high backlash/corruption risk
+
+⸻
+
+9. Gain types
+
+Absorption/copy events can grant different gain types.
+
+Possible gains:
+
+* Level XP
+* stat XP
+* domain XP
+* ability evidence
+* ability candidate
+* passive candidate
+* trait candidate
+* temporary buff
+* resistance progress
+* mutation progress
+* race evolution progress
+* skill insight
+* recipe/material insight
+* condition
+* corruption
+* sickness
+* backlash
+* hunger/satiety
+* relationship/reputation effect
+* title progress
+* no gain
+
+Most absorption should grant progress, not instant permanent power.
+
+Preferred gain hierarchy:
+
+1. Evidence or progress
+2. Stat XP / Domain XP
+3. Temporary effect
+4. Candidate ability/trait
+5. Stable ability/trait only after enough evidence
+6. Direct stat point only rarely
+7. Race evolution only after major threshold/story event
+
+⸻
+
+10. Stat absorption rule
+
+Stat absorption should usually grant stat XP, not raw stat points.
+
+Default:
+
+Absorption Gain = stat XP based on source tier, compatibility, uniqueness, and risk.
+
+Direct stat points require:
+
+* source is meaningful
+* player has compatible absorption ability/body
+* source is not trivial
+* source is consumed or otherwise spent
+* source has not been used before
+* gain passes cap
+* event is validated
+* operation ledger records it
+* risk/consequence considered
+
+Example:
+
+Absorbing a wolf essence at Level 10:
+
+* ATK XP
+* SPD XP
+* Beast/Predator Domain XP
+* possible Scent/Tracking candidate if compatible
+
+Not:
+
+* +20 ATK instantly
+* full wolf transformation
+* permanent fangs unless mutation/evolution supports it
+
+⸻
+
+11. Suggested stat XP absorption formula
+
+Use source effective level and compatibility.
+
+Base Absorption Stat XP = Source Effective Level × 5
+
+Then apply modifiers:
+
+Modifier	Multiplier
+far weaker than player	×0 to ×0.1
+weaker than player	×0.25
+near player scale	×1
+stronger than player	×1.5
+much stronger	×2 to ×3, high risk
+common source	×0.5
+uncommon source	×1
+rare source	×1.5
+unique source	×2
+legendary source	×3
+mythic source	×5
+poor compatibility	×0.25
+partial compatibility	×0.5
+moderate compatibility	×1
+strong compatibility	×1.5
+perfect compatibility	×2
+safe/processed source	×0.75
+dangerous raw source	×1.25 plus risk
+repeated same source	decay applies
+
+Example:
+
+Level 20 slime absorbs Level 18 acid slime core.
+
+Base:
+
+18 × 5 = 90 stat XP
+
+Near scale:
+
+×1
+
+Uncommon:
+
+×1
+
+Strong compatibility:
+
+×1.5
+
+Final:
+
+135 stat XP distributed into relevant stats/traits
+
+Distribution might be:
+
+* DEF XP
+* INT XP if magical control
+* Slime Body/Acid trait evidence
+* Acid Resistance progress
+
+Not all into raw ATK.
+
+⸻
+
+12. Direct stat point rule
+
+Direct stat points are rare.
+
+Direct stat gain may happen from:
+
+* major boss core
+* divine blessing
+* evolution milestone
+* stat crystal
+* system reward
+* race transformation
+* legendary training breakthrough
+* unique artifact fusion
+* high-risk sacrifice
+
+Direct stat gain should be small relative to current scale.
+
+Suggested direct stat gain cap:
+
+Source Scale	Direct Stat Gain
+common	none
+uncommon	none or +1 if low-level and special
+rare	+1 to one stat or stat XP
+unique	+1–3 distributed
+legendary	+3–10 distributed
+mythic	+10–25 distributed, high risk
+cosmic	special story-scale, not normal math
+
+At Level 1000, +1 stat can still matter as permanent growth.
+
+Do not casually grant +1000 stats from one monster unless campaign is intentionally absurd and the source is cosmic with severe consequences.
+
+⸻
+
+13. Stat absorption distribution
+
+Absorbed stat XP should go to traits that make sense.
+
+Examples:
+
+Wolf:
+
+* ATK XP
+* SPD XP
+* Survival/Tracking Domain XP
+* Scent candidate if compatible
+
+Ogre:
+
+* ATK XP
+* DEF XP
+* HP/body progress
+* Brute Force trait candidate
+
+Fairy:
+
+* MP/INT XP
+* LCK XP
+* Illusion/Glamour Domain XP
+* tiny flight magic candidate if compatible
+
+Dragon:
+
+* ATK XP
+* DEF XP
+* MP XP through INT/magic domain
+* Dragon Breath evidence
+* elemental resistance progress
+* dragon mutation risk
+
+Slime:
+
+* DEF/body XP
+* cohesion trait progress
+* acid/absorption candidate
+* body instability risk
+
+Construct:
+
+* DEF XP
+* crafting/engineering insight
+* core energy candidate if compatible
+* repair/upgrade material rather than biological absorption
+
+Spirit:
+
+* MP/INT/LCK XP
+* Spirit Sight/possession candidate
+* soul instability risk
+
+Do not grant unrelated stats unless source supports it.
+
+⸻
+
+14. Devour growth
+
+Devour growth is a subtype of absorption where the player physically consumes a source.
+
+Valid devour sources:
+
+* corpse
+* core
+* blood
+* flesh
+* essence crystal
+* mana organ
+* soul fragment
+* plant material
+* monster part
+* artifact shard
+* magical liquid
+
+Devour requirements:
+
+* source available
+* player can physically or magically consume it
+* body supports digestion/assimilation
+* source not too dangerous without preparation
+* source not already consumed
+* ownership/custody/access checked
+* contamination/corruption checked
+
+Devour outcomes:
+
+* food/nutrition
+* stat XP
+* domain XP
+* ability evidence
+* temporary buff
+* mutation progress
+* sickness
+* poison
+* corruption
+* rejection/vomiting
+* body instability
+* hunger change
+* social/reputation consequences if witnessed
+
+Eating something should not automatically mean gaining its full power.
+
+⸻
+
+15. Devour compatibility by race/body
+
+Human
+
+Can eat normal food/meat.
+
+Cannot normally digest monster cores into powers unless ability/system/magic supports it.
+
+Slime
+
+Often strong devour compatibility.
+
+May absorb mass/material/traits, but needs caps.
+
+Vampire
+
+Blood devour compatibility.
+
+Growth through blood, life force, or essence.
+
+Must manage hunger, sunlight/holy risks, consent/social consequences.
+
+Demon
+
+May consume souls/corruption/contracts if setting supports.
+
+High corruption/social/divine risk.
+
+Undead
+
+May consume death energy, souls, flesh, blood, or necromancy depending subtype.
+
+Normal food may not help.
+
+Construct
+
+May assimilate parts, cores, mana batteries, upgrades.
+
+Does not digest flesh normally.
+
+Dragon
+
+May consume elemental essence, hoard magic, powerful prey.
+
+May have age/element constraints.
+
+Spirit
+
+May absorb emotion, memory, worship, spirit energy, essence.
+
+Physical food irrelevant unless manifested.
+
+Devour rules must follow body category.
+
+⸻
+
+16. Devour anti-farm
+
+Devouring repeated weak sources decays quickly.
+
+Rules:
+
+* same species/source type decays
+* far weaker sources give little/no gain
+* common food gives nutrition, not stat gain
+* self-created sources give little/no gain
+* summoned creatures give no normal devour reward
+* source must be spent
+* scene/day caps apply
+* compatibility does not bypass caps
+* repeated consumption may cause sickness/corruption instead of growth
+
+Example:
+
+Slime devours 100 rats at Level 50.
+
+Expected:
+
+* maybe nutrition/mass recovery
+* no meaningful stat gain after early decay
+* possible disease/taint risk if rats are dirty
+* no infinite growth
+
+Example:
+
+Level 5 slime devours first magic rat core.
+
+Expected:
+
+* small stat XP
+* possible poison/taint clue
+* maybe ability evidence if core special
+
+⸻
+
+17. Ability copy
+
+Ability copying means learning from observation, contact, analysis, or absorption.
+
+Copy methods:
+
+* visual observation
+* magical analysis
+* mimic talent
+* skill theft
+* devour essence
+* memory absorption
+* soul reading
+* teacher demonstration
+* status/system scan
+* artifact recording
+* bloodline resonance
+
+Copy result should usually be:
+
+* observation evidence
+* candidate ability
+* unstable imitation
+* weaker version
+* temporary echo
+* partial technique
+* style insight
+* domain XP
+* no gain if incompatible
+
+Not normally:
+
+* full stable copied ability
+* full enemy rank
+* full enemy cost efficiency
+* full passive immunity
+* all variants
+
+⸻
+
+18. Copy requirements
+
+To copy an ability, check:
+
+* was ability observed clearly?
+* did player understand it?
+* does player have copy/mimic talent?
+* does player have relevant body?
+* does player have relevant stat/domain?
+* does player have enough level/scale?
+* is source ability too high-tier?
+* is source ability unique/divine/racial?
+* does it require equipment/body part?
+* was there time to study?
+* was player under pressure?
+* did enemy hide the method?
+* did source resist copying?
+* is copy permanent or temporary?
+
+AIDRPG should not allow copying impossible body-specific powers without adaptation.
+
+Example:
+
+Human observes dragon flying.
+
+Can learn:
+
+* dragon flight mechanics?
+* air movement insight?
+* maybe anti-dragon tactics
+
+Cannot instantly grow wings.
+
+Unless:
+
+* transformation ability
+* dragon bloodline
+* magic flight candidate
+* artifact support
+
+⸻
+
+19. Copy compatibility table
+
+Source Ability Type	Copy Difficulty
+mundane skill	easiest
+weapon technique	easy if body/equipment compatible
+martial art	moderate
+spell	moderate to hard
+racial natural weapon	hard unless body compatible
+passive resistance	hard, usually adaptation/evolution
+regeneration	hard, body/source required
+divine ability	very hard, requires blessing/law
+demonic ability	hard, corruption/contract risk
+cosmic ability	usually impossible without story leverage
+unique boss ability	candidate only, major risk
+artifact ability	may require item, not copyable directly
+
+Example:
+
+Copying sword feint:
+
+* possible with observation and Sword Domain
+
+Copying vampire regeneration:
+
+* not normally possible by watching
+
+Copying dragon breath:
+
+* requires draconic body, spell emulation, or absorbed source
+
+Copying god’s creation word:
+
+* impossible without divine/cosmic story support
+
+⸻
+
+20. Copied ability rank
+
+Copied ability should start lower than source.
+
+Suggested rule:
+
+Copied Ability Starting Stage = min(Candidate or Rank 1, Source Rank - 3)
+
+For most cases:
+
+* observed once: candidate
+* practiced with support: unstable Rank 1
+* taught directly: Rank 1–2
+* absorbed compatible source: candidate to Rank 2 depending evidence
+* copied from much stronger enemy: candidate only with risk
+
+Example:
+
+Enemy uses Rank 7 Shadow Step.
+
+Player observes once with mimic talent.
+
+Expected:
+
+* Shadow Step candidate
+* not Rank 7
+
+Player trains and partially manifests it.
+
+* Rank 1 unstable
+
+After repeated successful use:
+
+* Rank 2–3
+
+⸻
+
+21. Temporary copied powers
+
+Some copy abilities may create temporary echoes.
+
+Temporary copied power rules:
+
+* duration limited
+* cost higher
+* effect weaker
+* source link required
+* ability may vanish
+* leaves evidence for later learning
+* may cause backlash
+* may not create card unless stabilized
+
+Example:
+
+Mirror Mimic lets player use a weaker copy of enemy firebolt once.
+
+Result:
+
+* temporary Firebolt Echo
+* high MP cost
+* evidence for Firebolt candidate
+* no stable Firebolt yet
+
+Temporary powers are useful and fun without breaking long-term progression.
+
+⸻
+
+22. Skill mimicry
+
+Skill mimicry applies to mundane or semi-mundane techniques.
+
+Examples:
+
+* copying boxing footwork
+* copying sword stance
+* copying guard’s spear grip
+* copying thief’s lockpick motion
+* copying monk breathing
+* copying smith hammer rhythm
+
+Skill mimicry can grant:
+
+* domain XP
+* talent evidence
+* technique candidate
+* small stat XP
+* improved next attempt
+* partial technique
+
+Skill mimicry should not require magic unless the skill is supernatural.
+
+Example:
+
+Player from Earth remembers boxing.
+
+AIDRPG may create:
+
+* Brawler’s Instinct talent candidate
+* Brawling Domain XP
+* better interpretation of punches/footwork
+
+But:
+
+Real-world memory alone does not make them a master fighter.
+
+Training and combat evidence are still needed.
+
+⸻
+
+23. Power theft
+
+Power theft means taking power from another being.
+
+Examples:
+
+* vampire blood drain
+* soul steal
+* mana drain
+* demon contract
+* skill theft
+* stealing divine spark
+* taking enemy core
+* absorbing spell mid-cast
+* draining life force
+
+Power theft is more aggressive than copy.
+
+Requirements:
+
+* target available
+* contact/range
+* ability exists
+* target resistance
+* source tier check
+* compatibility
+* moral/social consequences
+* corruption risk
+* resource cost
+* target consequence
+* duplicate/source cap
+
+Power theft outcomes:
+
+* temporary buff
+* resource restoration
+* stat XP
+* ability evidence
+* stolen charge
+* target weakened
+* backlash
+* corruption
+* relationship/reputation consequence
+
+Power theft from major beings is dangerous.
+
+Stealing from a god should not be casual.
+
+⸻
+
+24. Mana/life drain rules
+
+Drain abilities should define:
+
+* what is drained
+* how much
+* from whom
+* range/contact
+* resistance
+* conversion efficiency
+* target harm
+* user cap
+* overflow risk
+* moral/social consequences
+* whether drained power is temporary or permanent
+
+Example:
+
+Mana Drain Rank 2:
+
+Drains small MP from touched target.
+Conversion: 50% efficiency.
+Limit: cannot exceed user's max MP.
+Resistance: target magic defense applies.
+Risk: backlash if target is much stronger or corrupted.
+
+Drain should not bypass max resources unless overcharge/storage ability exists.
+
+⸻
+
+25. Adaptation
+
+Adaptation means the player becomes better at resisting or responding to repeated exposure.
+
+Examples:
+
+* poison tolerance
+* heat tolerance
+* cold tolerance
+* pain tolerance
+* fear resistance
+* mana backlash resistance
+* acid resistance
+* curse resistance
+* anti-magic adaptation
+* monster trait adaptation
+* damage type adaptation
+* enemy style adaptation
+
+Adaptation should usually progress through:
+
+* exposure
+* survival
+* evidence
+* cost/consequence
+* recovery
+* repeated meaningful challenge
+* compatible body/ability
+* rank-up
+
+Adaptation should not grant instant immunity.
+
+⸻
+
+26. Adaptation lifecycle
+
+Exposure
+
+The player experiences a damage type or condition.
+
+Example:
+
+minor poison.
+
+Survival
+
+The player survives and recovers.
+
+Tolerance candidate
+
+The system tracks possible adaptation.
+
+Example:
+
+Poison Tolerance candidate.
+
+Partial resistance
+
+Future similar exposure is slightly less severe.
+
+Stable resistance
+
+A passive trait forms.
+
+Improved resistance
+
+Resistance grows through harder exposure.
+
+Counter-resistance
+
+Specific counter is learned.
+
+Immunity
+
+Only at high rank, narrow scope, and with strong support.
+
+Immunity should be rare and specific.
+
+Example:
+
+“Resistant to common weak goblin venom” is reasonable.
+
+“Immune to all poison, disease, curses, acid, divine toxins, and cosmic corruption” is not.
+
+⸻
+
+27. Adaptation gain rules
+
+Adaptation requires meaningful exposure.
+
+Valid exposure:
+
+* real poison affected player
+* fire burned player
+* curse nearly took hold
+* repeated cold travel caused hardship
+* enemy style forced adaptation
+* mana backlash occurred
+* body processed toxin with cost
+* training used controlled exposure
+
+Invalid exposure:
+
+* harmless tiny exposure far below player scale
+* pretend exposure
+* dream-only exposure
+* repeated safe self-harm
+* immunity already blocks everything
+* source was not real
+* card text says exposure happened
+
+Adaptation gain should be reduced if:
+
+* exposure is too weak
+* repeated same exposure
+* player is overleveled
+* source is artificial/farmed
+* no actual harm/risk occurred
+
+⸻
+
+28. Adaptation resistance levels
+
+Use resistance levels:
+
+Stage	Name	Meaning
+0	none	no special resistance
+1	familiarity	can recognize/handle minor exposure better
+2	tolerance	mild reduction
+3	resistance	clear reduction
+4	strong resistance	major reduction
+5	high resistance	severe exposure reduced
+6	conditional immunity	immune to specific narrow source
+7	broad resistance	applies to related sources
+8	rare immunity	very high-rank and limited
+9+	mythic adaptation	story-scale, still needs counters
+
+Example:
+
+Poison Tolerance Rank 3:
+
+* reduces mundane poisons
+* does not stop divine venom
+
+Fire Resistance Rank 4:
+
+* reduces normal fire
+* dragon fire still dangerous
+
+Adaptation should specify scope.
+
+⸻
+
+29. Adaptation counters
+
+Every adaptation needs counters.
+
+Examples:
+
+Poison resistance counters:
+
+* stronger poison
+* magical poison
+* soul venom
+* unknown toxin
+* overwhelming dose
+
+Fire resistance counters:
+
+* dragon fire
+* holy fire
+* hellfire
+* starfire
+* sustained exposure
+* internal burning
+
+Physical resistance counters:
+
+* armor-piercing
+* magic damage
+* precision weak point
+* crushing force
+* soul damage
+
+Curse resistance counters:
+
+* stronger curse
+* true name
+* divine law
+* consent/oath
+* artifact curse
+
+No resistance should become universal without explicit mythic design.
+
+⸻
+
+30. Evolution
+
+Evolution is a major body/build/race change.
+
+Evolution can be:
+
+* race evolution
+* class evolution
+* ability evolution
+* body mutation
+* monster form evolution
+* bloodline awakening
+* divine/demonic transformation
+* artifact fusion
+* specialization evolution
+
+Evolution should require:
+
+* threshold progress
+* strong source
+* story event
+* validation
+* cost/risk
+* new limits
+* body/resource recalculation
+* card/context updates
+* audit record
+
+Evolution should not happen from one vague phrase.
+
+Example:
+
+“You feel more monstrous.”
+
+Not enough.
+
+“The slime core fuses with yours, your status changes to Acid Slime, and your body begins secreting weak acid.”
+
+Potentially enough if source is valid and transformation rules allow it.
+
+⸻
+
+31. Evolution progress tracks
+
+AIDRPG can track evolution progress.
+
+Examples:
+
+Evolution Track: Acid Slime
+Progress Sources:
+- absorbed acid slime core
+- survived acid exposure
+- practiced acid secretion
+- body tolerated acidic mana
+Progress: Candidate / Unstable / Stabilizing / Complete
+Risks:
+- corrosion
+- loss of fine control
+- friendly equipment damage
+
+Evolution tracks should be used for complex transformations.
+
+Do not make a separate track for every tiny change.
+
+Use when:
+
+* race/body changes
+* major passive develops
+* monster evolution matters
+* build identity shifts
+* story card update needed
+
+⸻
+
+32. Evolution stages
+
+Evolution stages:
+
+Stage	Meaning
+none	no evolution track
+seeded	first compatible source
+candidate	possible evolution path
+unstable mutation	traits appear temporarily
+developing	repeated evidence/progress
+threshold ready	enough progress but trigger/cost needed
+evolving	transformation active
+stabilized	new form/trait confirmed
+rejected	evolution fails
+corrupted	evolution goes wrong
+hybridized	partial blend
+sealed	evolution suppressed
+
+This prevents sudden unsupported transformation.
+
+⸻
+
+33. Evolution costs
+
+Evolution may cost:
+
+* HP
+* MP
+* EP
+* time
+* sleep/downtime
+* cocoon/ritual state
+* materials
+* essence
+* core
+* sacrifice
+* hunger
+* vulnerability
+* temporary weakness
+* memory
+* social consequence
+* faction attention
+* mutation risk
+* trait loss
+* body instability
+
+Example:
+
+Slime evolves into Acid Slime:
+
+* consumes acid slime core
+* body unstable for a scene
+* equipment corrosion risk
+* gains weak Acid Secretion candidate
+* fire/drying vulnerability may worsen
+
+Evolution should give and take.
+
+⸻
+
+34. Bloodline awakening
+
+Bloodline awakening is a special evolution path.
+
+Sources:
+
+* inherited race/species
+* ancestry
+* prophecy
+* stress
+* ritual
+* age
+* teacher
+* artifact
+* bloodline source
+* near-death event
+* emotional trigger
+
+Examples:
+
+* dragonkin awakens Ember Breath
+* angel-blooded player awakens Light Wings
+* demon-blooded player awakens Hellfire
+* beastkin awakens Beast Form
+* royal blood awakens Command Aura
+* ancient hero blood awakens Sword Memory
+
+Awakening rules:
+
+* ancestry must exist or be revealed with evidence
+* awakening starts as candidate/unstable unless strong ritual/status confirms
+* costs and weaknesses added
+* not every bloodline trait awakens at once
+* major awakening may change race/body/resources
+
+⸻
+
+35. Soul/core absorption
+
+Soul/core absorption is high-risk.
+
+Sources:
+
+* monster core
+* mana crystal
+* demon soul
+* spirit shard
+* dragon heart
+* lich phylactery fragment
+* divine spark
+* world seed
+
+Rules:
+
+* source must exist
+* source must be accessible
+* source may resist
+* source may be contaminated
+* source may contain memories/will
+* source may be incompatible
+* source may attract attention
+* source may mutate body/soul
+* source may create curse/debt
+* source may require ritual processing
+* source may be too strong to absorb safely
+
+Soul/core absorption should not be casual inventory use.
+
+⸻
+
+36. Soul/core absorption outcomes
+
+Possible outcomes:
+
+* stat XP
+* domain XP
+* ability evidence
+* passive candidate
+* temporary buff
+* mutation
+* corruption
+* possession attempt
+* memory flash
+* relationship with source spirit
+* curse
+* hunger
+* sleep/coma
+* evolution progress
+* race transformation candidate
+* source rejection
+* explosion/backlash
+* item remains partially consumed
+* source becomes sealed in player
+
+Example:
+
+Player absorbs dragon core.
+
+Possible:
+
+* Dragon Essence progress
+* Fire Resistance progress
+* Breath candidate strengthens
+* HP/MP/ATK/DEF stat XP
+* severe fever
+* anti-dragon scent
+* dragon instinct condition
+* no instant full dragon power
+
+⸻
+
+37. Divine/demonic/cosmic absorption
+
+Absorbing divine, demonic, or cosmic power is special.
+
+These sources may include:
+
+* god fragment
+* angel feather
+* demon heart
+* eldritch eye
+* world tree seed
+* cosmic shard
+* forbidden scripture
+* primordial blood
+
+Rules:
+
+* always high risk
+* compatibility matters heavily
+* may create debt, oath, corruption, madness, mutation, faction attention
+* power may be temporary, sealed, or conditional
+* may change reputation/faction status
+* may require quests to stabilize
+* may produce candidate rather than stable ability
+* may be impossible without ritual/container
+
+Example:
+
+Absorbing god fragment:
+
+* possible Divine Spark candidate
+* severe body/soul strain
+* divine faction attention
+* cannot use world-scale miracles immediately
+* may require worship/oath/domain alignment
+
+⸻
+
+38. Temporary versus permanent gains
+
+Every absorption/copy outcome must define duration.
+
+Duration types:
+
+* instant
+* one action
+* one scene
+* until rest
+* one day
+* until source burns out
+* until condition removed
+* permanent candidate
+* permanent stat XP
+* permanent trait after stabilization
+* unstable permanent mutation
+* sealed power
+* recurring but conditional
+
+Temporary buffs are easier to grant than permanent power.
+
+Example:
+
+Drinking ogre blood:
+
+* temporary ATK buff
+* nausea/corruption risk
+* maybe minor stat XP if compatible
+
+Permanent ogre strength:
+
+* requires repeated source, compatible body, evolution path, or major ritual
+
+⸻
+
+39. Source caps
+
+Each source can provide meaningful growth once.
+
+Source cap examples:
+
+* one monster core = one core absorption event
+* one defeated wolf = one devour/essence event
+* one observed spell = one observation evidence event
+* one boss soul = one major absorption event
+* one divine blessing = one blessing record
+* one teacher lesson = one lesson reward
+
+Repeated processing of same source should be rejected or give only minor leftover effects.
+
+Operation keys must track source use.
+
+Example:
+
+absorb.core.acid_slime_17.turn_204
+copy.observation.shadow_step.enemy_mage.turn_322
+adapt.fire.exposure.dragon_breath.turn_811
+
+⸻
+
+40. Scene caps
+
+A scene should not grant unlimited growth from repeated similar actions.
+
+Suggested scene cap:
+
+A scene can grant at most 1 major absorption/copy/adaptation reward per source type unless the danger escalates or a new unique source appears.
+
+Examples:
+
+* absorbing one slime core: valid
+* absorbing ten identical weak slimes in same scene: decay heavily
+* copying the same spell ten times in one fight: one observation plus maybe extra evidence if conditions change
+* adapting to the same weak fire repeatedly: decay
+
+Scene caps prevent spam.
+
+⸻
+
+41. Day/rest caps
+
+For safe training and controlled absorption:
+
+Safe controlled absorption/training should have a daily cap unless special story conditions exist.
+
+This applies to:
+
+* eating weak monsters
+* controlled poison exposure
+* repeated spell copying
+* repeated self-harm adaptation
+* training with same technique
+* processing stored cores
+
+A major dangerous ritual can bypass ordinary daily caps but adds high risk and story cost.
+
+⸻
+
+42. Level-band caps
+
+Absorption should respect level scale.
+
+Example level-band cap:
+
+Player Level Band	Maximum Normal Permanent Gain From One Non-Unique Source
+1–10	small stat XP, rare +1 stat
+11–50	moderate stat XP, rare +1–2 stats
+51–150	moderate stat XP, trait evidence
+151–300	larger sources needed for meaningful gain
+301–500	only rare/legendary sources matter
+501–800	mythic sources required for major growth
+801–1000	world/cosmic sources required for major growth
+
+A Level 900 player should not gain meaningful permanent stats from basic goblins.
+
+They might still gain story, reputation, or moral consequences.
+
+⸻
+
+43. Source-tier versus player-level rule
+
+Compare source effective level to player effective level.
+
+Source Compared to Player	Growth Result
+far weaker	no meaningful growth, maybe nutrition/flavor
+weaker	tiny stat/domain XP
+near equal	meaningful stat/domain XP
+stronger	strong progress, risk
+much stronger	major progress, severe risk
+impossible-scale	usually cannot absorb safely without story leverage
+
+Example:
+
+Level 10 player absorbs Tier 5 ogre core:
+
+* strong potential
+* high risk
+* compatibility sickness likely
+
+Level 500 player absorbs same ogre core:
+
+* little permanent growth
+* maybe material or flavor
+* no major stat gain
+
+⸻
+
+44. Risk table
+
+Absorption/copy/adaptation should often carry risk.
+
+Risk level:
+
+Risk	Meaning
+none	safe, minor source
+low	discomfort or small cost
+moderate	condition/resource cost possible
+high	injury, mutation, corruption, sickness
+severe	major body/soul risk
+catastrophic	death-boundary, possession, permanent transformation
+forbidden	should hard-deny without major story support
+
+Risk increases when:
+
+* source is stronger
+* compatibility is poor
+* source is corrupted
+* source is divine/demonic/cosmic
+* player lacks ability
+* player is injured/exhausted
+* ritual is rushed
+* source resists
+* player overcharges
+* source is unstable
+* environment is hostile
+
+High reward should usually mean high risk.
+
+⸻
+
+45. Corruption and contamination
+
+Some sources carry contamination.
+
+Contamination types:
+
+* poison
+* disease
+* curse
+* demonic taint
+* divine burn
+* madness
+* alien thought
+* slime infection
+* undead rot
+* soul echo
+* blood hunger
+* elemental imbalance
+* mana sickness
+* parasite
+* ego fragment
+* memory bleed
+
+Contamination can produce:
+
+* condition
+* personality pressure
+* dreams
+* mutation
+* ability instability
+* social aura
+* faction detection
+* weakness
+* new quest
+* purification requirement
+
+Example:
+
+Absorbing demon blood:
+
+* Hellfire candidate
+* corruption condition
+* holy vulnerability
+* demonic whispers
+* possible power, not free
+
+⸻
+
+46. Adaptation versus immunity safeguard
+
+The system must avoid universal immunity.
+
+Bad:
+
+After being burned once, player is immune to fire.
+
+Good:
+
+After surviving several low-grade fire exposures, player gains Fire Tolerance Rank 1, reducing minor mundane fire discomfort.
+
+Resistance must specify:
+
+* source type
+* severity covered
+* current rank
+* exceptions
+* counters
+* growth path
+
+Example:
+
+Fire Tolerance Rank 2:
+Reduces minor mundane flame and heat.
+Does not protect against dragon fire, hellfire, divine flame, lava, or sustained burning.
+
+⸻
+
+47. Copy versus ownership safeguard
+
+Copying an ability does not mean stealing it permanently from source unless the ability is power theft.
+
+Observation copy:
+
+* source keeps ability
+* player gets candidate/evidence
+
+Power theft:
+
+* source may lose power temporarily/permanently
+* requires stronger validation
+* may create moral/social consequences
+* target may resist
+* may be illegal/evil/hostile depending world
+
+Do not conflate copy and theft.
+
+⸻
+
+48. Copying passives
+
+Passives are harder to copy than actives.
+
+Examples:
+
+* regeneration
+* natural armor
+* fire resistance
+* undead body
+* dragon scales
+* slime body
+* divine aura
+* wolf scent
+
+Copying passives usually requires:
+
+* body transformation
+* mutation
+* absorption
+* bloodline
+* artifact
+* ritual
+* race evolution
+* long adaptation
+
+Watching a troll regenerate should not grant regeneration.
+
+It may grant:
+
+* knowledge of regeneration
+* clue about fire weakness
+* regeneration candidate only if player has mimic/adaptation power and compatible source
+
+⸻
+
+49. Copying skills
+
+Mundane skills can be learned more normally.
+
+Examples:
+
+* boxing move
+* sword stance
+* lockpicking method
+* crafting technique
+* guard formation
+* breathing method
+
+Copying skills can grant:
+
+* domain XP
+* technique candidate
+* talent evidence
+* improved next attempt
+
+But mastery still requires practice.
+
+Example:
+
+Player sees master swordsman perform a counter.
+
+Expected:
+
+* Sword Domain XP
+* Counter technique candidate
+* no instant master-level counter
+
+Quick Learner may improve this, but anti-farm still applies.
+
+⸻
+
+50. Quick Learner and similar passives
+
+Quick Learner-type abilities are important.
+
+They may improve:
+
+* evidence gain
+* domain XP
+* stat XP
+* ability stabilization speed
+* learning from failure
+* copying mundane techniques
+* understanding patterns
+
+But Quick Learner must not:
+
+* grant instant mastery
+* bypass source requirements
+* bypass anti-farm
+* make impossible body powers possible
+* remove costs
+* ignore level/tier gaps
+* create stable abilities from one weak hint
+
+Suggested Quick Learner effect:
+
+Increases learning rewards from meaningful new experiences by 10–50% depending rank.
+Does not apply to trivial repetition.
+Does not bypass compatibility.
+Does not convert candidates into stable abilities without evidence.
+
+At high rank, Quick Learner may allow faster stabilization, but still needs meaningful evidence.
+
+⸻
+
+51. Adaptive defense powers
+
+Some builds may have explicit adaptation abilities.
+
+Example:
+
+Adaptive Body
+
+Effect:
+
+* after surviving damage type, gains temporary resistance
+* repeated meaningful exposure can create permanent tolerance
+* stronger sources require stronger adaptation rank
+* adaptation has limits and counters
+
+Template:
+
+Name: Adaptive Body
+Trigger: surviving meaningful damage/exposure
+Gain: temporary resistance or adaptation evidence
+Cost: HP/EP/MP strain, recovery time
+Limit: one adaptation track per scene; weak sources cap quickly
+Counter: overwhelming damage, divine/cosmic sources, incompatible effects
+Risk: mutation, instability, exhaustion
+
+Adaptive powers can be strong, but must be tracked.
+
+⸻
+
+52. Devourer archetype
+
+A Devourer build grows by consuming sources.
+
+Core features:
+
+* source detection
+* consumption
+* compatibility
+* digestion/assimilation
+* stat XP
+* trait candidates
+* mutation risk
+* hunger
+* source caps
+* anti-farm
+* evolution tracks
+
+Weaknesses:
+
+* hunger or instability
+* corruption risk
+* social fear
+* moral consequences
+* dependence on sources
+* incompatibility sickness
+* purification/containment vulnerability
+* body changes
+
+Devourer should feel powerful but risky.
+
+Devourer should not gain full power from every meal.
+
+⸻
+
+53. Mimic archetype
+
+A Mimic build grows by copying techniques.
+
+Core features:
+
+* observation
+* analysis
+* temporary echo
+* candidate creation
+* rapid practice
+* partial imitation
+* domain XP
+* ability evidence
+* compatibility checks
+
+Weaknesses:
+
+* needs exposure
+* weaker than original at first
+* body/equipment limitations
+* high INT/LCK/Domain requirements
+* errors/backlash
+* cannot easily copy passives
+* divine/cosmic/unique powers resist copying
+
+Mimic should feel flexible but not omnipotent.
+
+⸻
+
+54. Adapter archetype
+
+An Adapter build grows by surviving threats.
+
+Core features:
+
+* exposure tracking
+* tolerance candidates
+* resistance ranks
+* mutation
+* counter-learning
+* body refinement
+* damage-type memory
+
+Weaknesses:
+
+* must survive exposure
+* high risk
+* adaptation is specific
+* repeated weak exposure decays
+* stronger versions still dangerous
+* adaptation may create vulnerabilities
+* too many adaptations may cause instability
+
+Adapter should reward dangerous survival, not self-harm farming.
+
+⸻
+
+55. Bloodline archetype
+
+A Bloodline build grows through inherited power.
+
+Core features:
+
+* ancestry
+* awakening stages
+* bloodline traits
+* emotional/stress triggers
+* rituals
+* mentor/lineage knowledge
+* race/class synergy
+* inherited memories
+* signature powers
+
+Weaknesses:
+
+* bloodline enemies
+* instinct pressure
+* oath/curse
+* social/faction attention
+* partial awakenings
+* backlash
+* loss of control
+* heritage obligations
+
+Bloodline should unfold through story milestones, not random skill lists.
+
+⸻
+
+56. Contract archetype
+
+A Contract build gains power through deals.
+
+Sources:
+
+* demon contracts
+* spirit pacts
+* divine covenants
+* fae bargains
+* elemental contracts
+* patron relationships
+* artifact oaths
+
+Contract abilities require:
+
+* terms
+* cost
+* obligation
+* breach consequence
+* patron/source
+* duration
+* power scope
+* revocation rules
+
+Contract power can be strong because it has external cost.
+
+Example:
+
+Hellfire Contract:
+
+* grants Hellfire candidate/stable ability
+* costs soul debt or service
+* holy vulnerability
+* patron can demand payment
+* breach may seal power or curse player
+
+Contracts should connect to ContractReducer.
+
+⸻
+
+57. Mutation archetype
+
+A Mutation build changes body over time.
+
+Sources:
+
+* monster essence
+* radiation/mana storms
+* curses
+* experiments
+* alchemy
+* corruption
+* symbiotes
+* bloodline instability
+
+Mutation outcomes:
+
+* body trait candidate
+* stat XP
+* new weakness
+* appearance change
+* equipment issue
+* social reaction
+* unstable condition
+* ability candidate
+
+Mutation should not be purely beneficial unless setting supports very heroic evolution.
+
+Most mutations need tradeoffs.
+
+⸻
+
+58. Symbiosis archetype
+
+Symbiosis occurs when another entity or substance bonds with the player.
+
+Examples:
+
+* slime armor
+* living weapon
+* spirit companion in body
+* parasite
+* demon shard
+* divine seed
+* shadow familiar
+* cursed armor
+
+Symbiosis requires:
+
+* entity/item record
+* consent/resistance
+* bond level
+* custody/body link
+* benefits
+* costs
+* hunger/upkeep
+* autonomy
+* communication
+* removal method
+* corruption risk
+* card eligibility if important
+
+Symbiosis is not ordinary equipment.
+
+It may touch:
+
+* BodyReducer
+* InventoryReducer
+* ActorReducer
+* AbilityReducer
+* ContractReducer
+* CardSync
+
+Example:
+
+Slime armor bond:
+
+* item? actor? body trait? ability?
+* likely hybrid record
+* gives defense candidate
+* has hunger/moisture/corrosion risk
+* may become companion-like if intelligent
+
+⸻
+
+59. Absorption and story cards
+
+Absorption should update cards only when stable truth changes.
+
+Do not create cards for:
+
+* every consumed monster
+* every tiny stat XP gain
+* every temporary buff
+* every failed absorption
+* every minor adaptation tick
+
+Update protected cards for:
+
+* stat changes
+* stable ability changes
+* race/body changes
+* major conditions
+* important candidates summary
+
+Create/update generated cards for:
+
+* stable important absorbed ability
+* major evolution
+* significant race/species form
+* persistent symbiote
+* unique source if it remains relevant
+* major boss essence sealed in player
+* contract/patron if important
+
+Example:
+
+Player absorbs Acid Slime Core.
+
+Do not create:
+
+* “Acid Slime Core Absorption Event Card”
+
+Maybe update:
+
+* Abilities protected card: Acid Secretion candidate
+* Body/Status card: mild acidic instability condition
+* Race card if slime body evolves
+
+Generated card only after Acid Secretion stabilizes or Acid Slime form becomes important.
+
+⸻
+
+60. Absorption trigger safety
+
+Generated cards for absorbed powers need safe triggers.
+
+Good triggers:
+
+* Acid Secretion
+* Slime Armor
+* Dragon Essence
+* Ember Breath
+* Adaptive Body
+* Quick Learner
+* Aurelic Slimekin
+
+Bad triggers:
+
+* absorb
+* devour
+* slime
+* dragon
+* power
+* skill
+* stat
+* evolve
+* mutation
+* core
+* blood
+* ability
+
+Trigger should be specific and not activate constantly.
+
+⸻
+
+61. Absorption command behavior
+
+Optional commands:
+
+/absorption
+
+Shows:
+
+* active absorption/evolution tracks
+* recent sources
+* source caps
+* risks
+* stable gains
+* candidates
+* corruption/instability
+
+/evolution
+
+Shows:
+
+* race/body evolution tracks
+* progress
+* requirements
+* risks
+* status
+
+/abilityaudit
+
+Shows copied/absorbed ability evidence.
+
+/debuglast
+
+Shows absorption proposals and validation.
+
+Example /absorption:
+
+Absorption Tracks:
+Acid Slime Adaptation
+Status: Candidate
+Sources: absorbed one acid slime core
+Progress: weak acid tolerance evidence, acid secretion not stable
+Risks: equipment corrosion, body irritation
+Caps: acid slime core source already consumed
+Dragon Essence
+Status: none
+No valid dragon source absorbed.
+
+⸻
+
+62. Absorption validation outcomes
+
+Accept
+
+Valid source, compatible enough, gain committed.
+
+Example:
+
+Absorbed slime core grants Slime Body XP and Acid Secretion evidence.
+
+Reject
+
+Source or compatibility insufficient.
+
+Example:
+
+Human eats normal wolf meat and claims wolf stats.
+
+Pending
+
+Possible but not confirmed.
+
+Example:
+
+Strange core pulses; absorption may be possible after analysis.
+
+Soft_fail
+
+Partial gain with cost.
+
+Example:
+
+Dragon core rejects player but leaves Ember Breath candidate and severe fever.
+
+Hard_deny
+
+Unsafe/impossible/non-canon.
+
+Examples:
+
+* absorbing absent dragon
+* copying god power from rumor
+* gaining infinite stats from rats
+* card text grants evolution
+* dream devour affects real body without support
+
+⸻
+
+63. Absorption safety rules
+
+63.1 No source, no gain
+
+There must be a real source.
+
+63.2 Source must be available
+
+Defeated, accessible, observed, consumed, touched, contracted, or otherwise connected.
+
+63.3 Source is spent or capped
+
+Same source cannot be farmed repeatedly.
+
+63.4 Weak sources decay
+
+Far weaker enemies give little/no growth.
+
+63.5 Absorption usually gives stat XP, not raw stats
+
+Direct stat points are rare.
+
+63.6 Copying gives candidates, not mastery
+
+Observed powers start lower than source.
+
+63.7 Passives are hard to copy
+
+Body traits require body change, adaptation, ritual, or absorption.
+
+63.8 Adaptation is specific
+
+No universal immunity from one exposure.
+
+63.9 Strong source means strong risk
+
+Dragon/god/demon/cosmic sources are dangerous.
+
+63.10 Compatibility matters
+
+Wrong body/source can fail or corrupt.
+
+63.11 Anti-farm always applies
+
+Repeated safe actions decay.
+
+63.12 Self-created source farming is blocked
+
+Summons, illusions, or generated weak sources cannot produce full rewards.
+
+63.13 Cards do not grant powers
+
+Cards mirror confirmed state only.
+
+63.14 Evolution requires thresholds
+
+No race/body transformation from vague flavor.
+
+63.15 Every gain must be auditable
+
+The player should know source, gain, cost, and risk.
+
+⸻
+
+64. Detailed examples
+
+Example 1 — Human eats wolf meat
+
+State:
+
+Human Level 5.
+
+Source:
+
+ordinary wolf meat.
+
+Input:
+
+“I eat the wolf and absorb its strength.”
+
+Expected:
+
+* eating provides food
+* no direct wolf stat absorption unless ability/system supports it
+* maybe tiny Survival XP if first time butchering/eating in wilderness
+* no wolf power
+* debug: human body has no absorption ability
+
+Possible if special ability exists:
+
+* Devourer candidate may process source
+* small ATK/SPD XP
+* no full wolf traits
+
+⸻
+
+Example 2 — Slime devours wolf corpse
+
+State:
+
+Slime Level 5.
+
+Source:
+
+wolf corpse.
+
+Expected:
+
+* source available
+* slime body compatible with devour growth
+* gain small ATK/SPD/body XP
+* possible Scent/Predator Instinct candidate only if source/setting supports
+* source consumed
+* no instant wolf transformation
+* repeated wolves decay
+
+⸻
+
+Example 3 — Player copies Shadow Step by watching enemy
+
+State:
+
+Player has Mimic Talent.
+
+Enemy uses Shadow Step.
+
+Expected:
+
+* observation evidence accepted
+* Shadow Step candidate created
+* no stable teleport
+* ability audit records source enemy and observed effect
+* future practice needed
+* cost unknown
+
+⸻
+
+Example 4 — Player copies Shadow Step after one glance without mimic talent
+
+State:
+
+No mimic ability.
+
+Expected:
+
+* maybe INT/Magic Domain clue
+* maybe “observed technique” note
+* no ability candidate unless player has relevant magic/domain and story supports learning
+* no stable ability
+
+⸻
+
+Example 5 — Dragonkin awakens breath
+
+State:
+
+Dragonkin player.
+
+Input/output:
+
+Player tries to breathe fire; smoke and sparks appear.
+
+Expected:
+
+* Ember Breath candidate
+* MP/EP cost or throat strain
+* no full breath weapon
+* repeated evidence needed
+
+Later:
+
+Player produces controlled cone of flame in real fight.
+
+Expected:
+
+* ability stabilizes at low rank if evidence enough
+* cost/limits recorded
+* generated ability card eligible if important
+
+⸻
+
+Example 6 — Player absorbs dragon core at Level 30
+
+Source:
+
+dragon core, much stronger than player.
+
+Expected:
+
+* source valid if acquired
+* compatibility check
+* high risk
+* possible severe fever/body damage
+* Dragon Essence track seeded
+* Ember Breath candidate strengthens
+* stat XP significant for level
+* no full dragon powers
+* possible corruption/instinct/social scent
+* source consumed
+
+If unsupported attempt:
+
+* soft_fail or severe backlash
+
+⸻
+
+Example 7 — Player absorbs dragon core at Level 900
+
+Source:
+
+young dragon core far below player scale.
+
+Expected:
+
+* little meaningful stat gain
+* possible crafting/material use
+* maybe minor essence flavor
+* no major level/stat gain
+* if unique/elementally compatible, may support refinement but not huge growth
+
+⸻
+
+Example 8 — Adaptive body and fire
+
+State:
+
+Player has Adaptive Body candidate.
+
+Exposure:
+
+minor campfire burn.
+
+Expected:
+
+* tiny/no adaptation
+* maybe pain/injury
+
+Exposure:
+
+survives fire mage spell in dangerous fight.
+
+Expected:
+
+* Fire Tolerance evidence
+* possible condition
+* recovery needed
+* no full immunity
+
+Repeated meaningful exposure:
+
+* Fire Tolerance Rank 1–2
+
+Dragon fire later:
+
+* still dangerous
+
+⸻
+
+Example 9 — Vampire drains guard
+
+State:
+
+Vampire player.
+
+Source:
+
+human guard, alive.
+
+Input/output confirms bite and feeding.
+
+Expected:
+
+* HP/EP/MP restoration maybe
+* hunger reduced
+* possible temporary ATK/DEF buff
+* social/legal/moral consequence if witnessed
+* guard harmed
+* no massive permanent stats unless special bloodline/source
+* source cannot be farmed repeatedly
+
+⸻
+
+Example 10 — Construct absorbs golem core
+
+State:
+
+Construct player.
+
+Source:
+
+defeated golem core.
+
+Expected:
+
+* high compatibility
+* Engineering/Construct Domain XP
+* DEF/MP/core stat XP
+* possible Core Reinforcement candidate
+* repair/upgrade process required
+* not instant if installation needed
+* source consumed or installed
+
+⸻
+
+Example 11 — Player absorbs demon blood
+
+Source:
+
+demon blood.
+
+Expected:
+
+* Hellfire/Corruption candidate possible if compatible
+* demonic taint risk
+* holy vulnerability condition possible
+* nausea/fever
+* no free demon lord powers
+* social/faction consequences if detected
+
+⸻
+
+Example 12 — God power copy attempt
+
+Input:
+
+“I copy the god’s creation ability after seeing it once.”
+
+Expected:
+
+* hard deny as stable ability
+* maybe awe/knowledge clue
+* possible Divine Mystery evidence if protected by story
+* cosmic backlash risk if actually attempted
+* no creation power
+
+⸻
+
+65. Acceptance tests
+
+Test 1 — no source absorption rejected
+
+Given:
+
+Player says they absorb dragon power.
+
+State:
+
+No dragon/source present.
+
+Expected:
+
+* reject
+* no stat gain
+* debug says no valid source
+
+Test 2 — source consumed once
+
+Given:
+
+Player absorbs acid slime core.
+
+Then tries to absorb same core again.
+
+Expected:
+
+* first may grant progress
+* second rejected as source already consumed
+
+Test 3 — weak source decay
+
+Given:
+
+Level 100 player devours normal rats repeatedly.
+
+Expected:
+
+* no meaningful stat gain
+* decay/cap logs
+* possible nutrition only
+
+Test 4 — slime devour valid but capped
+
+Given:
+
+Slime player devours wolf corpse.
+
+Expected:
+
+* small compatible growth
+* source consumed
+* no instant full wolf traits
+
+Test 5 — human devour invalid without ability
+
+Given:
+
+Human eats wolf meat and claims wolf power.
+
+Expected:
+
+* food only
+* no stat absorption unless system/ability supports it
+
+Test 6 — copy observed spell creates candidate
+
+Given:
+
+Player with mimic talent observes Shadow Step.
+
+Expected:
+
+* Shadow Step candidate
+* no stable ability
+
+Test 7 — copied ability starts weaker
+
+Given:
+
+Source uses Rank 8 spell.
+
+Player copies it.
+
+Expected:
+
+* candidate/unstable lower version
+* no Rank 8 mastery
+
+Test 8 — passive copy blocked
+
+Given:
+
+Player watches troll regenerate.
+
+Expected:
+
+* no regeneration passive
+* possible knowledge/evidence only
+* regeneration candidate only with compatible absorption/adaptation source
+
+Test 9 — adaptation from weak exposure limited
+
+Given:
+
+Player touches candle flame repeatedly.
+
+Expected:
+
+* no meaningful fire immunity
+* anti-farm decay
+
+Test 10 — adaptation from dangerous exposure
+
+Given:
+
+Player survives fire spell in battle.
+
+Expected:
+
+* Fire Tolerance evidence
+* injury/resource cost
+* no full immunity
+
+Test 11 — direct stat gain rare
+
+Given:
+
+Common wolf source.
+
+Expected:
+
+* stat XP, not direct +stats
+
+Given:
+
+legendary dragon core, compatible, high-risk ritual.
+
+Expected:
+
+* possible direct stats plus major risk if validated
+
+Test 12 — divine absorption high risk
+
+Given:
+
+Player absorbs divine spark.
+
+Expected:
+
+* strong risk/debt/oath/faction attention
+* candidate/blessing track
+* no free godhood
+
+Test 13 — self-created summon farming blocked
+
+Given:
+
+Player summons weak creatures and devours them repeatedly.
+
+Expected:
+
+* no meaningful absorption XP
+* maybe tiny control/domain XP first time
+* anti-farm blocks loop
+
+Test 14 — compatibility failure
+
+Given:
+
+Ice fairy absorbs hellfire demon heart.
+
+Expected:
+
+* poor compatibility
+* high backlash/corruption
+* limited or failed gain
+
+Test 15 — evolution threshold required
+
+Given:
+
+Player feels more dragonlike after one event.
+
+Expected:
+
+* no race change
+* possible Dragon Essence progress
+
+Given:
+
+multiple sources, ritual, and status confirms Dragonkin evolution.
+
+Expected:
+
+* transformation validated
+* body/resource/card updates
+
+Test 16 — Quick Learner does not bypass evidence
+
+Given:
+
+Player has Quick Learner and sees ultimate spell once.
+
+Expected:
+
+* improved observation/evidence maybe
+* no instant mastery
+
+Test 17 — source tier affects gain
+
+Given:
+
+Level 10 absorbs Tier 5 source.
+
+Expected:
+
+* significant but risky progress
+
+Given:
+
+Level 500 absorbs same Tier 5 source.
+
+Expected:
+
+* little permanent gain
+
+Test 18 — copied ability card not created immediately
+
+Given:
+
+Shadow Step candidate from observation.
+
+Expected:
+
+* appears in protected Abilities card
+* no generated ability card until stable and important
+
+Test 19 — absorbed stable ability card update
+
+Given:
+
+Acid Secretion stabilizes after slime evolution.
+
+Expected:
+
+* ability record stable
+* generated ability card eligible
+* safe trigger “Acid Secretion”
+
+Test 20 — absorption audit explains result
+
+Given:
+
+Absorption event processed.
+
+Expected:
+
+/debuglast shows source, compatibility, gain, risk, cap, validation result.
+
+⸻
+
+66. Final Chunk 26 doctrine
+
+Anime-style growth is allowed.
+
+Devourers can grow.
+
+Mimics can copy.
+
+Adapters can resist.
+
+Bloodlines can awaken.
+
+Slimes can assimilate.
+
+Vampires can feed.
+
+Constructs can upgrade.
+
+Dragonkin can awaken breath.
+
+Demons, angels, spirits, and gods can grant dangerous power.
+
+But every gain needs a real source.
+
+Every source needs availability.
+
+Every source can be used only within caps.
+
+Weak sources decay.
+
+Compatibility matters.
+
+Risk matters.
+
+Most gains become stat XP, domain XP, ability evidence, candidates, temporary buffs, or evolution progress.
+
+Direct stat points are rare.
+
+Stable abilities require evidence.
+
+Passives are hard to copy.
+
+Adaptation is specific, not universal immunity.
+
+Evolution requires thresholds and story support.
+
+Divine, demonic, and cosmic sources are powerful but dangerous.
+
+Story Cards do not grant powers.
+
+AI narration does not bypass validation.
+
+Quick Learner helps learning but does not erase limits.
+
+The goal is to support exciting anime-style progression while keeping AIDRPG coherent, fair, auditable, and safe from infinite freeform power inflation.
+

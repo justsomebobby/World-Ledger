@@ -1,0 +1,2622 @@
+AIDRPG Design Bible — Chunk 14: Time, Travel, Scene State, Weather, Deadlines, and Recovery Ticks
+
+1. Purpose of this chunk
+
+Chunk 14 defines how AIDRPG handles the current situation.
+
+This chunk answers:
+
+How does time pass?
+
+How does the system avoid advancing time twice?
+
+How does travel begin, progress, interrupt, and complete?
+
+When does current location change?
+
+What is scene state?
+
+What is the difference between scene state and place memory?
+
+How do local hazards and exits work?
+
+How do deadlines tick?
+
+How do recovery ticks happen?
+
+How does weather affect play?
+
+How does the system keep the story grounded without forcing every moment into exact clock math?
+
+The central rule is:
+
+Time, travel, and scene state should make the world feel continuous without turning AI Dungeon into a rigid calendar simulator.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG needs time and travel because many systems depend on them.
+
+Time affects:
+
+* recovery
+* fatigue
+* deadlines
+* travel
+* weather
+* crafting
+* labor
+* domain projects
+* contracts
+* quest urgency
+* investigation windows
+* shops opening/closing
+* NPC availability
+* enemy movement
+* rumor spread
+* resource recovery
+* rest
+* injury worsening or healing
+
+Travel affects:
+
+* current location
+* routes
+* hazards
+* encounters
+* fatigue
+* weather exposure
+* party presence
+* deadlines
+* quest progress
+* place discovery
+* route memory
+
+Scene state affects:
+
+* who is present
+* where the player is
+* what hazards exist
+* what exits are available
+* what objects are nearby
+* what combat/travel/crafting/investigation context is active
+* what the AI needs to remember right now
+
+But time and travel must be handled carefully.
+
+Bad behavior:
+
+* time advances twice from one output
+* travel intent instantly changes current location
+* “I head north” means the player arrived
+* a dream changes real location
+* weather changes every turn randomly
+* recovery happens without rest
+* every scene creates a new place card
+* every “door” becomes a place
+* deadlines are missed from vague time language
+* the player teleports accidentally because the AI mentioned a place
+* Context says the player is in two places at once
+
+Chunk 14 prevents those bugs.
+
+⸻
+
+3. Ownership boundaries
+
+TimeReducer owns
+
+* current time
+* current day/date if used
+* elapsed time
+* time passage
+* rest periods
+* sleep periods
+* travel duration
+* deadline ticking
+* recovery tick timing
+* project time advancement
+* time contradiction flags
+* calendar/clock state if used
+
+PlaceReducer owns
+
+* current location
+* current scene location
+* place records
+* local exits
+* local hazards
+* scene state
+* arrival confirmation
+* place status
+* building status
+* location aliases
+
+RouteReducer, or route sub-bucket under PlaceReducer, owns
+
+* route identity
+* route endpoints
+* discovered routes
+* blocked/open route state
+* route hazards
+* route difficulty
+* known shortcuts
+
+BodyReducer owns
+
+* HP/MP/EP changes from recovery or weather exposure
+* injuries
+* conditions
+* fatigue
+* unconsciousness/death boundary
+
+TimeReducer may propose recovery ticks.
+
+BodyReducer commits resource/body changes.
+
+WeatherSystem, if separate, owns
+
+* current weather
+* weather scope
+* weather severity
+* weather duration
+* weather hazards
+* weather forecast if supported
+
+If no separate WeatherSystem exists, weather can be a world/scene/place state sub-bucket owned by PlaceReducer or TimeReducer. The final implementation must choose one owner.
+
+QuestReducer / ContractReducer / DomainReducer / InvestigationReducer own
+
+* what deadlines mean for their own objectives
+
+TimeReducer ticks time.
+
+Objective owners decide consequences.
+
+ContextBuilder owns
+
+* immediate scene/time/travel/weather packets shown to AI
+
+CardSync owns
+
+* long-term mirror cards only when stable important time/place/domain state changes
+
+The main rule:
+
+TimeReducer advances time. PlaceReducer changes location. BodyReducer applies recovery or exposure effects. Objective owners apply deadline consequences.
+
+⸻
+
+4. Time model
+
+AIDRPG needs a time model that is useful but not too heavy.
+
+Recommended default:
+
+Use flexible narrative time with optional clock precision.
+
+Track:
+
+* day count or calendar date if known
+* time of day
+* approximate hour/minute if known
+* current period label
+* elapsed time this turn
+* last recovery tick
+* active deadlines
+* last long rest
+* weather period
+
+Time of day labels:
+
+* dawn
+* morning
+* midday
+* afternoon
+* evening
+* night
+* late night
+
+Precise time can exist if the story provides it.
+
+Example:
+
+“The bell tolls midnight.”
+
+Set time to midnight if reliable.
+
+Example:
+
+“After three hours of walking…”
+
+Advance time by three hours.
+
+Example:
+
+“Later…”
+
+Advance vague time, maybe one scene step or a flexible amount depending context.
+
+The system should support both exact and vague time.
+
+⸻
+
+5. Time precision levels
+
+Every time update should have precision.
+
+Exact
+
+The output gives exact time.
+
+Examples:
+
+* “after one hour”
+* “at midnight”
+* “three days later”
+* “by sunset”
+* “ten minutes pass”
+
+Exact time can update clock/calendar strongly.
+
+Approximate
+
+The output gives rough time.
+
+Examples:
+
+* “after a while”
+* “later that afternoon”
+* “by nightfall”
+* “after some time”
+* “you spend the morning”
+
+Approximate time can update period/day, but should avoid fake precision.
+
+Implied
+
+Time likely passed, but amount is unclear.
+
+Examples:
+
+* travel progressed
+* crafting continued
+* a conversation lasted
+* searching a room
+* training session
+* rest scene
+
+Implied time can create small or moderate passage depending activity.
+
+No time passage
+
+Some text does not advance time meaningfully.
+
+Examples:
+
+* immediate reaction
+* dialogue line
+* single attack exchange
+* looking around
+* thinking
+* command response
+* quoted event
+* dream/flashback unless explicitly time-consuming in real world
+
+The system should not advance time from every output.
+
+⸻
+
+6. Time passage categories
+
+Use categories before exact numbers.
+
+Moment
+
+Seconds to a minute.
+
+Examples:
+
+* dodge
+* swing
+* glance
+* quick reply
+* grab item
+
+Usually no meaningful time tick.
+
+Short
+
+A few minutes.
+
+Examples:
+
+* quick search
+* brief conversation
+* bandage wound
+* check door
+* light rest
+* prepare item
+
+May affect deadlines only if tight.
+
+Moderate
+
+10–60 minutes.
+
+Examples:
+
+* careful room search
+* short travel
+* training session
+* meal
+* basic repair
+* interrogation
+* short rest
+
+Can trigger recovery, fatigue, deadline progress.
+
+Long
+
+1–6 hours.
+
+Examples:
+
+* afternoon training
+* extended travel
+* crafting work
+* labor shift
+* stakeout
+* full investigation scene
+
+Likely affects recovery, deadlines, weather, projects.
+
+Full rest / overnight
+
+Several hours to a night.
+
+Examples:
+
+* sleep through night
+* long rest
+* camp until morning
+
+Triggers major recovery tick if safe.
+
+Day-scale
+
+One or more days.
+
+Examples:
+
+* three days of travel
+* week of work
+* waiting until festival
+* project montage
+
+Triggers deadlines, recovery, projects, rumors, weather, NPC schedules.
+
+⸻
+
+7. Time advancement validation
+
+Accept time passage if:
+
+* output explicitly says time passed
+* travel/crafting/rest/training/work supports it
+* scene transition implies passage
+* command/manual event advances time
+* prior intent was to wait/rest/travel/work
+* duplicate operation has not already advanced this time
+
+Reject time passage if:
+
+* text is quoted
+* text is dream/vision/flashback and does not affect real time
+* text is hypothetical
+* player only says they intend to wait
+* output does not confirm waiting happened
+* output is repeated/duplicate
+* time phrase is metaphorical
+* output contradicts current established time without explanation
+
+Pending time if:
+
+* the player starts waiting/traveling/resting but completion not confirmed
+* an event is scheduled for later
+* a deadline is created but not reached
+
+Soft-fail time if:
+
+* attempted rest is interrupted
+* travel starts but stops early
+* crafting session is cut short
+* training is interrupted
+* waiting is interrupted by encounter
+
+Hard-deny time if:
+
+* card text, debug text, or fake example tries to advance time
+* impossible time jump from polluted source
+* duplicate output attempts to apply same time passage again
+
+⸻
+
+8. Duplicate time protection
+
+Time is especially vulnerable to duplicate application.
+
+If the output says:
+
+“After two hours, you arrive at the chapel.”
+
+The system may propose:
+
+* time.pass two hours
+* travel.arrive
+* currentLocation.change
+
+If the same output is processed twice, time must not advance four hours.
+
+OperationLedger must block duplicate time operations.
+
+Time operation keys should include:
+
+* source output hash
+* event type
+* amount or time category
+* target travel/scene/project
+* normalized reason
+
+Time passage should be idempotent.
+
+Same output = same time effect once.
+
+⸻
+
+9. Travel model
+
+Travel is movement from one location toward another.
+
+Travel should have stages:
+
+* intent
+* started
+* en route
+* interrupted
+* arrived
+* failed
+* cancelled
+* lost
+* returned
+* archived/resolved
+
+Travel requires:
+
+* origin
+* destination if known
+* route if known
+* travel mode
+* party
+* time estimate if known
+* hazards
+* weather
+* resource cost
+* deadline link if any
+
+Travel does not always need a full record for very short movement.
+
+Example:
+
+“You step into the next room.”
+
+This may be scene transition, not formal travel.
+
+Example:
+
+“You set out from Greyford toward the old chapel.”
+
+This should create travel state.
+
+⸻
+
+10. Travel intent versus arrival
+
+This distinction is critical.
+
+Input:
+
+“I head toward the old chapel.”
+
+Result:
+
+* travel intent or travel start
+* current location does not change yet unless output confirms departure/arrival
+
+Output:
+
+“You leave Greyford and begin following Blackwood Road.”
+
+Result:
+
+* travel started
+* current location may become Blackwood Road / en route depending design
+* not Old Chapel yet
+
+Output:
+
+“After an hour, you arrive at the old chapel.”
+
+Result:
+
+* travel arrived
+* current location changes to Old Chapel
+* time passes
+
+Travel intent is not arrival.
+
+Starting travel is not arrival.
+
+Being en route is not destination.
+
+⸻
+
+11. Travel state model
+
+A travel record should track:
+
+* travel ID
+* origin
+* destination
+* current route
+* current travel state
+* mode
+* party members present
+* followers/summons if relevant
+* start time
+* expected duration
+* elapsed duration
+* remaining duration
+* hazards
+* weather
+* interruptions
+* resource cost
+* deadline link
+* quest link
+* source/evidence
+* last updated turn
+
+Travel states:
+
+Planned
+
+The player intends to travel.
+
+No departure confirmed.
+
+Departed
+
+The player has left origin.
+
+En route
+
+The player is traveling.
+
+Current location may be route/intermediate location.
+
+Paused
+
+The player stopped temporarily.
+
+Examples:
+
+* camped
+* rested
+* searched
+* hid
+* waited
+
+Interrupted
+
+Travel is disrupted.
+
+Examples:
+
+* ambush
+* storm
+* broken bridge
+* injury
+* lost trail
+* blocked road
+
+Lost
+
+Destination not reached; route unclear.
+
+Arrived
+
+Destination reached.
+
+Current location changes.
+
+Cancelled
+
+Player abandons travel.
+
+Failed
+
+Travel objective cannot be completed through current route.
+
+Examples:
+
+* bridge destroyed
+* route sealed
+* deadline missed and destination irrelevant
+* forced return
+
+Returned
+
+Player returns to origin or previous location.
+
+⸻
+
+12. Travel modes
+
+Travel mode affects time, EP cost, risk, and Context.
+
+Common travel modes:
+
+* walking
+* running
+* riding
+* wagon
+* caravan
+* boat
+* ship
+* climbing
+* swimming
+* flying
+* stealth travel
+* forced march
+* magical travel
+* teleportation
+* escorted travel
+* army movement
+* domain caravan
+
+Examples:
+
+Walking:
+
+* normal EP cost
+* normal speed
+
+Running:
+
+* faster
+* higher EP cost
+* fatigue risk
+
+Stealth travel:
+
+* slower
+* lower encounter risk maybe
+* higher focus/EP cost
+* depends on SPD/INT/Stealth domain
+
+Forced march:
+
+* faster over long distance
+* high EP/fatigue/injury risk
+* recovery penalty
+
+Magical travel:
+
+* MP cost
+* risk depends on ability rank
+* may bypass routes if ability supports it
+* may have arrival uncertainty
+
+⸻
+
+13. Travel cost
+
+Travel may cost:
+
+* time
+* EP
+* MP if magical
+* HP if hazardous or extreme
+* food/water
+* mount stamina
+* follower morale
+* equipment condition
+* opportunity
+* deadline pressure
+
+Ordinary short safe travel may cost only time.
+
+Dangerous travel may cost EP, conditions, HP, or encounters.
+
+Travel cost depends on:
+
+* distance
+* route difficulty
+* weather
+* terrain
+* speed
+* load
+* injuries
+* party size
+* mounts/vehicles
+* hazards
+* enemy presence
+* time of day
+* travel mode
+* survival/domain ranks
+
+⸻
+
+14. Travel interruption
+
+Travel can be interrupted by:
+
+* combat
+* weather
+* hazard
+* blocked route
+* lost trail
+* NPC encounter
+* injury
+* exhaustion
+* broken equipment
+* companion issue
+* faction checkpoint
+* ambush
+* discovery
+* quest event
+* domain event
+* time deadline
+
+Interruption should not erase travel.
+
+It should change travel state.
+
+Example:
+
+The player is traveling to Old Chapel.
+
+Ambush occurs halfway.
+
+Travel state:
+
+* en route
+* interrupted by goblin ambush
+* current scene: Blackwood Road ambush site
+* destination remains Old Chapel
+* current location may become route/intermediate scene
+
+After ambush, player may resume, retreat, rest, or change destination.
+
+⸻
+
+15. Current location during travel
+
+There are two design options.
+
+Option A — Current location becomes route/intermediate scene
+
+Example:
+
+Current location: Blackwood Road.
+
+Destination: Old Chapel.
+
+Travel state: en route.
+
+This is best if route scenes matter.
+
+Option B — Current location remains origin until arrival
+
+Example:
+
+Current location: Greyford.
+
+Travel state: traveling toward Old Chapel.
+
+This is simpler but less realistic.
+
+Recommended model:
+
+Use route/intermediate scene when the output confirms departure and active travel.
+
+Use origin if only intent exists.
+
+Use destination only when arrival is confirmed.
+
+Example:
+
+Input:
+
+“I head for the chapel.”
+
+Current location stays Greyford until output confirms departure.
+
+Output:
+
+“You leave Greyford and walk along Blackwood Road.”
+
+Current location becomes Blackwood Road / en route.
+
+Output:
+
+“You arrive at the old chapel.”
+
+Current location becomes Old Chapel.
+
+⸻
+
+16. Scene state
+
+Scene state is the current immediate situation.
+
+Scene state should track:
+
+* current location
+* current sub-location or room
+* active scene type
+* present actors
+* present party members
+* active enemies
+* nearby objects
+* local exits
+* local hazards
+* weather/light if relevant
+* current activity
+* active travel state
+* active combat state
+* active crafting/rest/investigation state
+* immediate objective
+* unresolved tension
+* last scene change turn
+
+Scene state is immediate and temporary.
+
+It should update often.
+
+It should not become permanent memory unless facts are important.
+
+⸻
+
+17. Scene types
+
+Scene type helps Context know what to include.
+
+Common scene types:
+
+* exploration
+* dialogue
+* combat
+* travel
+* rest
+* crafting
+* investigation
+* shopping
+* contract/service
+* domain management
+* labor/project
+* stealth
+* chase
+* social/public
+* trial/legal
+* downtime
+* dream/vision
+* flashback
+
+Scene type can affect validation.
+
+Example:
+
+In dream/vision scene, physical inventory and location should not change unless dream mechanics are canon.
+
+In shopping scene, price quotes and transactions are more likely.
+
+In combat scene, damage/exertion events are more likely.
+
+In rest scene, recovery ticks are more likely.
+
+⸻
+
+18. Scene transitions
+
+A scene transition occurs when the immediate situation changes.
+
+Examples:
+
+* entering a room
+* leaving a building
+* arriving at a location
+* combat starts
+* combat ends
+* sleep begins
+* waking up
+* conversation ends
+* crafting session begins
+* travel starts
+* ambush interrupts travel
+
+Scene transition can update:
+
+* scene type
+* present actors
+* local hazards
+* local exits
+* current activity
+* Context packets
+
+Scene transition should not always create a new place record.
+
+Example:
+
+“You step into the back room.”
+
+If this back room is not important, it is sub-location scene state.
+
+Do not create “Back Room” card unless it becomes important.
+
+⸻
+
+19. Scene state versus place memory
+
+Scene state:
+
+* immediate
+* temporary
+* current
+* what is happening now
+
+Place memory:
+
+* durable
+* stable
+* what is known about a location over time
+
+Example:
+
+Current scene:
+
+You are in the forge. Rain hits the roof. Mara is present. The sword is on the workbench. The north door is open.
+
+Place memory:
+
+Mara’s Forge is a blacksmith shop in Greyford owned by Mara. It provides repair services. It was damaged by fire once. It has a back room and forge yard if important.
+
+Scene details should promote to place memory only if:
+
+* repeated
+* important
+* persistent
+* linked to quest/contract/domain/case
+* changed in a lasting way
+* associated with item/actor/hazard
+
+⸻
+
+20. Local exits
+
+Local exits are immediate ways out of the scene.
+
+Examples:
+
+* north door
+* broken window
+* cellar stairs
+* trapdoor
+* alley
+* forest path
+* bridge
+* tunnel
+* shrine archway
+
+Exit records should track:
+
+* display name
+* direction
+* destination if known
+* status
+* locked/unlocked
+* blocked/open
+* hidden/revealed
+* key/item required
+* hazard
+* source/evidence
+
+Exit states:
+
+* open
+* closed
+* locked
+* barred
+* blocked
+* hidden
+* collapsed
+* guarded
+* trapped
+* unknown
+
+Exits can become routes if they connect durable places.
+
+Example:
+
+The hidden tunnel beneath the forge connects to the shrine cellar.
+
+That should become a route if confirmed.
+
+⸻
+
+21. Local hazards
+
+Local hazards are immediate dangers in the current scene.
+
+Examples:
+
+* fire
+* smoke
+* poison gas
+* unstable floor
+* collapsing ceiling
+* active trap
+* magical ward
+* enemy patrol
+* floodwater
+* freezing wind
+* darkness
+* cursed fog
+* disease cloud
+* exposed ledge
+* lava
+* aggressive crowd
+
+Hazard records should track:
+
+* type
+* severity
+* source
+* location
+* active/inactive
+* duration
+* affected actions
+* resource effects
+* removal condition
+* linked place/route
+* linked objective if any
+
+Hazards affect validation.
+
+Example:
+
+If the scene has smoke and fire, resting is unsafe.
+
+If the bridge is collapsed, travel route is blocked.
+
+If poison gas is active, armor may not protect unless sealed.
+
+⸻
+
+22. Weather
+
+Weather is environmental state with scope and duration.
+
+Weather can affect:
+
+* travel time
+* travel risk
+* visibility
+* stealth
+* combat
+* ranged attacks
+* fire magic
+* cold/heat conditions
+* recovery
+* crafting outdoors
+* morale
+* domain projects
+* route hazards
+* local scene mood
+
+Weather should have:
+
+* type
+* severity
+* scope
+* duration
+* source
+* current location relevance
+* mechanical effects if any
+
+Weather types:
+
+* clear
+* cloudy
+* rain
+* heavy rain
+* storm
+* thunderstorm
+* snow
+* blizzard
+* fog
+* cursed fog
+* heatwave
+* cold snap
+* wind
+* ashfall
+* magical storm
+* sandstorm
+* eclipse/strange sky if setting supports
+
+⸻
+
+23. Weather scope
+
+Weather can be scoped.
+
+Scene weather
+
+Only current scene.
+
+Example:
+
+Smoke-filled room.
+
+Local weather
+
+Current area or town.
+
+Example:
+
+Rain in Greyford.
+
+Route weather
+
+Travel route condition.
+
+Example:
+
+Blackwood Road is foggy.
+
+Regional weather
+
+Large area.
+
+Example:
+
+A blizzard grips the northern valley.
+
+Magical/world weather
+
+May be tied to world entity or domain event.
+
+Example:
+
+Cursed red snow falls wherever the Ashen Court walks.
+
+Scope prevents weather from applying everywhere.
+
+Rain in Greyford should not automatically mean rain in a distant desert unless region supports it.
+
+⸻
+
+24. Weather validation
+
+Accept weather change if:
+
+* output directly describes current weather
+* source is direct scene narration
+* travel/weather event supports it
+* weather is linked to known region/route
+* magical weather is validated
+* duplicate not applied
+
+Reject weather change if:
+
+* weather is only metaphorical
+* dream/vision/quote
+* rumor unless stored as forecast/rumor
+* random mention from unrelated place
+* card/debug text
+* contradicts current stable weather without transition, unless sudden weather is plausible
+
+Pending weather if:
+
+* forecast
+* rumor of storm
+* clouds gathering
+* possible blizzard
+* distant thunder
+
+Soft-fail weather interaction if:
+
+* player tries to rest but storm prevents good recovery
+* travel slowed by rain
+* fire crafting fails due to wet wood
+
+⸻
+
+25. Weather effects table
+
+Light rain
+
+Possible effects:
+
+* slower travel slightly
+* harder fire starting
+* tracking easier or harder depending context
+* minor discomfort
+
+Heavy rain
+
+Possible effects:
+
+* travel slower
+* visibility reduced
+* fire harder
+* ranged attacks less reliable
+* EP cost higher
+* tracks may wash away
+* outdoor rest worse
+
+Storm
+
+Possible effects:
+
+* travel dangerous
+* lightning hazard
+* shelter needed
+* mounts/followers nervous
+* deadlines threatened
+* noise covers stealth
+
+Snow
+
+Possible effects:
+
+* travel slower
+* cold exposure
+* tracks visible
+* stealth easier visually if whiteout
+* EP cost higher
+
+Blizzard
+
+Possible effects:
+
+* severe travel danger
+* exposure condition
+* lost route risk
+* recovery blocked outdoors
+* visibility low
+* death-boundary possible if severe and prolonged
+
+Fog
+
+Possible effects:
+
+* visibility low
+* stealth changes
+* ranged attacks harder
+* ambush risk
+* travel/navigation risk
+
+Heatwave
+
+Possible effects:
+
+* thirst
+* EP drain
+* travel danger
+* armor burden
+* food/water relevance
+
+Magical storm
+
+Possible effects:
+
+* MP instability
+* spell risk
+* strange hazards
+* route changes
+* world entity link
+* investigation clues
+
+Weather should affect only relevant systems.
+
+Do not apply every weather effect every turn.
+
+⸻
+
+26. Deadlines
+
+Deadlines are time-based obligations or consequences.
+
+Deadlines may attach to:
+
+* quests
+* contracts
+* domain projects
+* labor tasks
+* travel objectives
+* investigation cases
+* legal events
+* recovery windows
+* enemy plans
+* weather windows
+* market opportunities
+
+Deadline record should track:
+
+* deadline ID
+* owner system
+* linked objective
+* target time
+* precision
+* current state
+* warning threshold
+* consequence if missed
+* consequence if met
+* extension rules
+* source/evidence
+* last checked turn
+
+Deadline states:
+
+* pending
+* active
+* approaching
+* urgent
+* met
+* missed
+* extended
+* cancelled
+* archived
+
+⸻
+
+27. Deadline creation
+
+Create deadline when story gives clear time pressure.
+
+Examples:
+
+* “Return before sunset.”
+* “Mira will finish by morning.”
+* “The caravan leaves at dawn.”
+* “The execution is tomorrow.”
+* “The wall must be repaired before the raiders arrive in three days.”
+
+Do not create deadline from vague urgency unless useful.
+
+Example:
+
+“Hurry” may create urgency note, not exact deadline.
+
+“Soon” may create approximate deadline if objective depends on it, but keep precision low.
+
+Deadline must be linked to an owner.
+
+TimeReducer tracks timing.
+
+Quest/Contract/Domain/Investigation decides consequences.
+
+⸻
+
+28. Deadline ticking
+
+When time passes, deadlines should update.
+
+If time passes near deadline:
+
+* state may become approaching or urgent
+
+If time passes beyond deadline:
+
+* deadline becomes missed
+* owner receives deadline.miss proposal
+* owner validates consequence
+
+Example:
+
+Contract deadline:
+
+Mira promised sword by morning.
+
+Morning arrives.
+
+ContractReducer checks whether repair completed.
+
+If not:
+
+* contract may be overdue
+* relationship/reputation/economy consequences possible
+
+Example:
+
+Quest deadline:
+
+Return before sunset.
+
+Sunset passes before return.
+
+QuestReducer may fail or branch objective.
+
+But only if deadline was real and time passage was accepted.
+
+Duplicate time passage must not miss deadline twice.
+
+⸻
+
+29. Recovery ticks
+
+Recovery ticks happen when time/rest/treatment allows body/resource recovery.
+
+TimeReducer owns tick timing.
+
+BodyReducer owns recovery effects.
+
+Recovery tick triggers:
+
+* short rest
+* full rest
+* sleep
+* medical treatment
+* magical healing period
+* downtime
+* safe travel break
+* long time passage
+
+Recovery tick may restore:
+
+* EP
+* MP
+* HP
+* condition severity
+* injury progress
+* fatigue level
+
+Recovery tick may worsen:
+
+* poison
+* bleeding
+* disease
+* untreated wounds
+* exposure
+* hunger/thirst
+* curses
+
+Recovery depends on:
+
+* rest quality
+* safety
+* food/water
+* shelter
+* treatment
+* injury severity
+* conditions
+* weather
+* species/traits
+* magic
+* time length
+
+⸻
+
+30. Recovery tick categories
+
+No recovery tick
+
+Use when:
+
+* no meaningful time passes
+* combat continues
+* travel remains harsh
+* rest is interrupted immediately
+* scene is only dialogue
+* output is duplicate
+
+Minor recovery tick
+
+Use when:
+
+* brief rest
+* safe pause
+* light treatment
+* short downtime
+
+Effects:
+
+* small EP recovery
+* tiny MP recovery
+* no major HP recovery unless minor injury
+
+Moderate recovery tick
+
+Use when:
+
+* short rest
+* meal and rest
+* treatment period
+* travel break
+* several hours of downtime
+
+Effects:
+
+* moderate EP
+* some MP
+* small HP if appropriate
+* fatigue reduction
+
+Major recovery tick
+
+Use when:
+
+* full sleep
+* safe long rest
+* magical healing session
+* medical care over hours
+
+Effects:
+
+* large EP recovery
+* meaningful MP recovery
+* HP recovery if wounds can heal
+* condition/injury progress
+
+Full downtime tick
+
+Use when:
+
+* days pass
+* recovery montage
+* safe settlement rest
+* long treatment
+
+Effects:
+
+* major recovery
+* injuries improve
+* conditions may resolve
+* deadlines/projects/rumors also tick
+
+⸻
+
+31. Recovery blockers
+
+Recovery may be blocked or reduced by:
+
+* active combat
+* danger nearby
+* bad weather
+* no shelter
+* no food/water
+* poison
+* bleeding
+* disease
+* curse
+* interrupted sleep
+* severe pain
+* unsafe location
+* hostile environment
+* armor worn while sleeping
+* stress/fear
+* magical disturbance
+* untreated injury
+
+Example:
+
+The player sleeps in freezing rain with no shelter.
+
+Recovery should be reduced.
+
+Exposure condition may worsen.
+
+Example:
+
+The player sleeps in warm inn with bandaged wounds.
+
+Recovery should be strong.
+
+⸻
+
+32. Rest versus wait
+
+Rest and wait are different.
+
+Wait
+
+Time passes.
+
+No guarantee of recovery.
+
+Example:
+
+“You wait outside the gate.”
+
+May advance time.
+
+May affect deadlines.
+
+May not restore EP unless actually resting safely.
+
+Rest
+
+The player reduces activity to recover.
+
+Example:
+
+“You sit by the fire and rest.”
+
+May recover EP/MP if safe.
+
+Sleep
+
+Longer rest state.
+
+Can recover more, trigger overnight time, affect deadlines.
+
+Treatment
+
+Medical/magical action.
+
+Can recover HP/injury/conditions more directly.
+
+The system should not give recovery just because time passed if the player was marching, fighting, or standing in freezing rain.
+
+⸻
+
+33. Time and projects
+
+Time passage may advance:
+
+* crafting projects
+* labor tasks
+* domain projects
+* contracts
+* travel
+* recovery
+* rumors
+* weather
+* NPC schedules
+
+But project advancement should require the project owner to validate.
+
+Example:
+
+Three days pass.
+
+Domain project may progress if:
+
+* workers assigned
+* materials available
+* project active
+* no blockers
+* weather/attacks do not interrupt
+
+If workers were unpaid or no timber existed, time passing should not magically repair the wall.
+
+TimeReducer says time passed.
+
+DomainReducer decides progress.
+
+⸻
+
+34. Time and NPC availability
+
+Actors may move or become unavailable over time.
+
+Examples:
+
+* merchant closes shop at night
+* caravan leaves at dawn
+* witness goes missing
+* guard patrol changes
+* companion returns from scouting
+* smith finishes repair
+* villain escapes
+* workers stop at sunset
+
+NPC availability should be event-driven, not over-simulated every turn.
+
+If a deadline or schedule exists, time passing can trigger updates.
+
+Otherwise, avoid randomly moving actors without story support.
+
+⸻
+
+35. Time and rumors
+
+Rumors may spread over time if relevant.
+
+Time passing may:
+
+* increase rumor spread
+* reduce rumor freshness
+* allow reports to reach authorities
+* worsen false accusations
+* change reputation
+* trigger faction reactions
+
+ReputationReducer owns rumor/reputation state.
+
+TimeReducer only creates time passage that may trigger rumor update proposals.
+
+Do not update every rumor every turn.
+
+Only important active rumors need ticking.
+
+⸻
+
+36. Time and weather progression
+
+Weather may persist, change, worsen, or clear over time.
+
+Weather changes should be:
+
+* narrated
+* forecasted
+* regionally plausible
+* tied to magical/world events
+* random only if the design later allows random simulation
+
+Weather states should avoid chaotic turn-by-turn changes.
+
+Example:
+
+If heavy rain begins, it should usually last for a scene or time block unless the output changes it.
+
+If the player travels to a different region, weather may change by location.
+
+Weather should not flip from blizzard to heatwave without explanation.
+
+⸻
+
+37. Time contradictions
+
+AI Dungeon may contradict time.
+
+Examples:
+
+* it was night, then suddenly noon without time passing
+* same sunset happens twice
+* morning comes immediately after morning
+* three days pass despite urgent scene
+* player is at old chapel while still in Greyford
+
+The system should handle contradictions safely.
+
+Possible responses:
+
+* accept if story clearly transitions
+* soften to approximate passage
+* flag time contradiction
+* preserve previous time if new text is weak
+* treat as scene error if dream/flashback
+* allow manual correction
+* show in /debuglast
+
+Do not blindly rewrite time from weak contradictions.
+
+Example:
+
+Output:
+
+“The midday sun beats down.”
+
+State:
+
+It is midnight inside a cave.
+
+If no transition happened, this may be metaphor, hallucination, or AI error.
+
+Reject or flag rather than set noon.
+
+⸻
+
+38. Location contradictions
+
+Location contradictions are also common.
+
+Examples:
+
+* AI says player is in town while state says dungeon
+* absent companion appears
+* player arrives somewhere without travel
+* current location changes from a quote
+* dream scene treated as real
+
+Rules:
+
+Accept location change if:
+
+* direct transition
+* travel/arrival confirmed
+* teleportation confirmed
+* scene setup explicitly moves player
+* manual override
+
+Reject or flag if:
+
+* mere mention
+* quote
+* dream/vision
+* hypothetical
+* contradiction with no transition
+* impossible without travel/magic
+* card text
+* duplicate
+
+If AI strongly changes scene without travel, the system may accept as scene jump only if narrative clearly moved the player.
+
+Example:
+
+“Hours later, back in Greyford…”
+
+Accept time/location transition if context allows.
+
+Example:
+
+“Mara says, ‘When you reach Greyford…’”
+
+Do not change location.
+
+⸻
+
+39. Scene correction philosophy
+
+AIDRPG should not constantly fight AI Dungeon.
+
+If AI Dungeon makes a small location/time inconsistency, the system should prefer subtle Context correction over visible interruption.
+
+Example:
+
+State says sword is with Mira.
+
+AI says player draws sword.
+
+The system can reject equip/use and Context can remind AI:
+
+“Your iron sword is still with Mira for repair.”
+
+For major contradictions, debug/audit should reveal them.
+
+Manual override should exist for player correction.
+
+⸻
+
+40. Context behavior for time/travel/scene
+
+Context should include current situation truth.
+
+Good Context should include:
+
+* current location
+* current scene type
+* immediate active hazard
+* current travel state
+* destination if traveling
+* urgent deadline
+* active weather if relevant
+* low HP/MP/EP if relevant
+* rest/recovery blocker if relevant
+* important local exits
+* present key actors
+* absent important actors if the AI may confuse them
+* current objective if relevant
+
+Good Context example:
+
+“You are traveling along Blackwood Road toward the old chapel. Heavy fog reduces visibility, and your EP is low after two hours of walking. Mara is not with you; she remained in Greyford.”
+
+Good Context example:
+
+“You are inside Mara’s Forge in Greyford. The north door leads to the alley, and smoke from the damaged roof makes staying here dangerous.”
+
+Bad Context example:
+
+Dumping full calendar, all routes, all weather history, every old deadline, every known place, every actor location, and every hazard from archived scenes.
+
+Context should be compact and immediate.
+
+⸻
+
+41. Story Card behavior for time/travel/scene
+
+Most time and scene state should not become Story Cards.
+
+Do not create cards for:
+
+* every day
+* every hour
+* every weather change
+* every short rest
+* every temporary scene
+* every local exit
+* every passing hazard
+* every travel step
+
+Cards may be appropriate for:
+
+* important recurring route
+* major place
+* active major deadline
+* domain project deadline
+* major weather/world event
+* player base status
+* long-term hazard on route/place
+* important travel route
+* current campaign calendar summary if needed
+
+Protected summaries may include:
+
+* Time & Travel Summary
+* Active Deadlines
+* Domain & Projects
+* Current Location / Player Sheet if needed
+
+Generated route/place/world entity cards may mirror stable important travel/weather/hazard facts.
+
+Example:
+
+Blackwood Road has cursed fog that persists and affects travel.
+
+This may be card-eligible as route/world hazard.
+
+Example:
+
+It rains for one scene.
+
+No card.
+
+⸻
+
+42. Time, travel, and scene validation outcomes
+
+Accept
+
+Use when time, travel, location, weather, hazard, rest, or deadline update is directly confirmed.
+
+Examples:
+
+* “After one hour…”
+* “You arrive at the chapel.”
+* “Rain begins to fall.”
+* “You sleep through the night.”
+* “The bridge collapses.”
+
+Reject
+
+Use when the proposed update is unsupported.
+
+Examples:
+
+* “I head to the chapel” treated as arrival
+* quote mentions arrival
+* rumor says storm destroyed road
+* dream location treated as real
+* vague phrase tries to complete deadline
+
+Pending
+
+Use when update may happen later.
+
+Examples:
+
+* travel planned
+* storm forecast
+* deadline created
+* route rumored
+* rest begins but not completed
+* caravan scheduled to leave
+
+Soft_fail
+
+Use when attempt partially happens or is interrupted.
+
+Examples:
+
+* rest interrupted
+* travel blocked
+* route lost
+* sleep disturbed
+* crafting session cut short
+* recovery reduced by weather
+
+Hard_deny
+
+Use when update comes from unsafe source.
+
+Examples:
+
+* card text changes current location
+* debug text advances time
+* fake example creates deadline
+* dream/vision treated as real
+* duplicate time/location operation
+
+⸻
+
+43. Safety rules
+
+43.1 Travel intent is not arrival
+
+“I go to the chapel” does not mean current location becomes chapel unless output confirms arrival.
+
+43.2 Time does not advance from every line
+
+Dialogue or immediate action may not advance meaningful time.
+
+43.3 Duplicate output cannot advance time twice
+
+OperationLedger must dedupe time and travel.
+
+43.4 Current location has one real value
+
+The player cannot be in two real places at once unless multi-protagonist/split-state supports it.
+
+43.5 Dream/vision/flashback does not change real state unless canon rules allow it
+
+Dream scene may have separate scene state.
+
+43.6 Weather has scope
+
+Weather in one area does not automatically apply globally.
+
+43.7 Recovery requires rest or suitable time
+
+Time passing during combat or forced march does not provide normal recovery.
+
+43.8 Deadlines require clear source
+
+Do not create exact deadlines from vague urgency.
+
+43.9 Deadline consequences belong to objective owners
+
+TimeReducer does not fail quests directly.
+
+43.10 Scene state is not place memory
+
+Do not save every temporary detail permanently.
+
+43.11 Exits are not always places
+
+“north door” is an exit unless it becomes important.
+
+43.12 Hazards require confirmation
+
+Rumored hazard is not active hazard.
+
+43.13 Route discovery is not route arrival
+
+Knowing a route exists is not traveling it.
+
+43.14 Time contradictions should be flagged, not blindly accepted
+
+Weak contradictory time should not rewrite state.
+
+43.15 Card text cannot move the player
+
+Cards mirror world state. They do not change current location or time.
+
+⸻
+
+44. Example scenarios
+
+Example 1 — Travel intent
+
+Input:
+
+“I head toward the old chapel.”
+
+Expected:
+
+* travel intent or planned travel
+* current location unchanged unless output confirms departure/arrival
+* no time passage unless output confirms it
+
+Example 2 — Travel starts
+
+Output:
+
+“You leave Greyford and follow Blackwood Road into the trees.”
+
+Expected:
+
+* travel.started
+* current location may become Blackwood Road / en route
+* origin Greyford
+* destination Old Chapel if known
+* no arrival yet
+
+Example 3 — Travel arrival
+
+Output:
+
+“After an hour of walking, you arrive at the old chapel.”
+
+Expected:
+
+* time.pass one hour
+* travel.arrive
+* current location Old Chapel
+* route memory updated
+* duplicate-safe
+
+Example 4 — Travel interrupted
+
+Output:
+
+“Halfway down Blackwood Road, goblins spring from the fog.”
+
+Expected:
+
+* travel interrupted
+* current scene Blackwood Road ambush
+* destination remains Old Chapel
+* combat starts
+* no arrival
+
+Example 5 — Rest interrupted
+
+Input:
+
+“I rest by the fire.”
+
+Output:
+
+“You barely close your eyes before wolves howl nearby.”
+
+Expected:
+
+* rest soft_fail/interrupted
+* little or no recovery
+* time may pass only briefly
+* threat/hazard added
+
+Example 6 — Successful short rest
+
+Output:
+
+“You sit by the fire for half an hour, catching your breath.”
+
+Expected:
+
+* time.pass thirty minutes
+* minor/moderate recovery tick
+* EP recovery
+* maybe small MP recovery
+* no major HP recovery unless appropriate
+
+Example 7 — Overnight sleep
+
+Output:
+
+“You sleep through the night in the warm inn.”
+
+Expected:
+
+* time.pass overnight
+* major recovery tick
+* EP recovers strongly
+* MP recovers
+* HP/injuries improve if appropriate
+* deadlines tick
+
+Example 8 — Bad weather blocks recovery
+
+Output:
+
+“You try to sleep beneath the open sky, but freezing rain soaks through your cloak.”
+
+Expected:
+
+* time may pass
+* recovery reduced or blocked
+* EP may not recover fully
+* cold/exposure condition possible
+
+Example 9 — Deadline created
+
+Output:
+
+“The caravan leaves at dawn.”
+
+Expected:
+
+* deadline created
+* linked to caravan/travel/quest/contract if relevant
+* no immediate failure
+
+Example 10 — Deadline missed
+
+State:
+
+Caravan leaves at dawn.
+
+Output:
+
+“You wake at midday.”
+
+Expected:
+
+* time advances past dawn
+* deadline.missed proposed
+* objective owner decides consequence
+* caravan may have left if validated
+
+Example 11 — Weather forecast
+
+Output:
+
+“The farmer warns that a storm may hit tonight.”
+
+Expected:
+
+* pending weather/forecast
+* no active storm yet
+
+Example 12 — Weather begins
+
+Output:
+
+“By nightfall, the storm breaks over Greyford.”
+
+Expected:
+
+* weather.active storm
+* scope Greyford/local
+* time advances to nightfall if appropriate
+* travel/rest effects possible
+
+Example 13 — Dream location
+
+Output:
+
+“In your dream, you stand in the old chapel.”
+
+Expected:
+
+* dream scene maybe
+* real current location unchanged
+* no real arrival
+
+Example 14 — Quoted travel
+
+Output:
+
+“Mara says, ‘When you arrive at the chapel, look for the altar.’”
+
+Expected:
+
+* no arrival
+* possible quest/objective hint
+* current location unchanged
+
+Example 15 — Scene transition without durable place
+
+Output:
+
+“You step into the back room.”
+
+Expected:
+
+* scene sub-location updates
+* no generated place card unless back room becomes important
+
+⸻
+
+45. Commands related to Chunk 14
+
+/time should show
+
+* current day/date if known
+* time of day
+* precision
+* last time passage
+* active deadlines
+* recent time contradictions if any
+
+/travel should show
+
+* current location
+* travel state
+* origin
+* destination
+* route
+* elapsed/remaining time if known
+* hazards
+* weather
+* party presence
+* interruptions
+
+/scene should show
+
+* current scene type
+* current location/sub-location
+* present actors
+* party present/absent
+* local exits
+* local hazards
+* active weather/light
+* current activity
+
+/deadlines should show
+
+* active deadlines
+* linked objective
+* time remaining if known
+* precision
+* consequence if known
+* status
+
+/weather should show, if included
+
+* current local weather
+* severity
+* scope
+* forecast/pending weather
+* travel/recovery effects if relevant
+
+/debuglast should show
+
+* proposed time/travel/weather/scene events
+* validation outcomes
+* duplicate time protection
+* current location changes
+* recovery tick decisions
+* deadline tick results
+* contradictions/flags
+
+⸻
+
+46. Chunk 14 acceptance tests
+
+Test 1 — travel intent does not move player
+
+Given:
+
+Player says “I go to the chapel.”
+
+Expected:
+
+* travel intent/planned travel
+* current location unchanged until departure/arrival is confirmed
+
+Test 2 — departure creates en route state
+
+Given:
+
+Output says player leaves Greyford and follows Blackwood Road.
+
+Expected:
+
+* travel started
+* current scene/location en route or Blackwood Road
+* not Old Chapel yet
+
+Test 3 — arrival changes location
+
+Given:
+
+Output says player arrives at Old Chapel after one hour.
+
+Expected:
+
+* current location Old Chapel
+* time advanced one hour
+* travel resolved
+* duplicate output does not apply twice
+
+Test 4 — travel interruption preserves destination
+
+Given:
+
+Ambush interrupts travel to Old Chapel.
+
+Expected:
+
+* travel state interrupted
+* destination still Old Chapel
+* current scene ambush site
+* no arrival
+
+Test 5 — time passage deduped
+
+Given:
+
+Same “three hours pass” output processed twice.
+
+Expected:
+
+* time advances three hours once
+* duplicate skip logged
+
+Test 6 — vague dialogue does not advance time
+
+Given:
+
+NPC says one sentence.
+
+Expected:
+
+* no meaningful time passage unless output indicates extended conversation
+
+Test 7 — rest requires safety
+
+Given:
+
+Player tries to rest but is attacked immediately.
+
+Expected:
+
+* little or no recovery
+* rest interrupted
+
+Test 8 — overnight rest triggers recovery
+
+Given:
+
+Player sleeps safely through night.
+
+Expected:
+
+* time advances overnight
+* major recovery tick
+* deadlines tick
+
+Test 9 — recovery blocked by exposure
+
+Given:
+
+Player sleeps in freezing rain.
+
+Expected:
+
+* reduced recovery
+* possible cold/exposure condition
+* weather considered
+
+Test 10 — deadline created from clear source
+
+Given:
+
+NPC says caravan leaves at dawn.
+
+Expected:
+
+* deadline active
+* linked objective if relevant
+
+Test 11 — deadline not created from vague urgency
+
+Given:
+
+NPC says “hurry.”
+
+Expected:
+
+* urgency note maybe
+* no exact deadline unless context supports it
+
+Test 12 — deadline miss routes to owner
+
+Given:
+
+Quest deadline passes.
+
+Expected:
+
+* TimeReducer detects deadline passed
+* QuestReducer decides consequence
+* TimeReducer does not directly fail quest
+
+Test 13 — dream does not move real location
+
+Given:
+
+Player dreams of Old Chapel.
+
+Expected:
+
+* real current location unchanged
+* dream scene may be tracked separately if needed
+
+Test 14 — weather scoped locally
+
+Given:
+
+Rain starts in Greyford.
+
+Expected:
+
+* Greyford/local weather updated
+* distant desert weather unchanged
+
+Test 15 — local hazard validated
+
+Given:
+
+Output says fire spreads in forge.
+
+Expected:
+
+* local hazard fire active
+* place/building status may update
+* Context warns if relevant
+
+Test 16 — rumored hazard not active
+
+Given:
+
+Rumor says bridge is cursed.
+
+Expected:
+
+* pending hazard/rumor
+* route not blocked unless confirmed
+
+Test 17 — scene state does not create place card
+
+Given:
+
+Player enters generic back room.
+
+Expected:
+
+* scene state updates
+* no generated place card
+
+Test 18 — location contradiction flagged
+
+Given:
+
+State says player is in dungeon, weak output says midday in town without transition.
+
+Expected:
+
+* reject/flag contradiction or require transition
+* do not blindly teleport
+
+⸻
+
+47. Final Chunk 14 doctrine
+
+Time makes consequences move.
+
+Travel connects places.
+
+Scene state describes the immediate situation.
+
+Place memory preserves durable location truth.
+
+Travel intent is not arrival.
+
+Departure is not destination.
+
+Arrival changes current location.
+
+Time passage must be validated and deduped.
+
+Recovery requires rest, safety, time, and body conditions.
+
+Weather has scope, severity, and duration.
+
+Hazards affect actions only when active and relevant.
+
+Deadlines tick when time passes, but objective owners decide consequences.
+
+Scene details should not become permanent memory unless important.
+
+Context should tell the AI where the player is, what is happening now, what dangers exist, and what immediate time/travel/deadline facts matter.
+
+Cards should mirror only stable important time, route, place, domain, or world-event truth.
+
+The goal is to make the world feel continuous, not to trap the player in clock math.
+

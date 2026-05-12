@@ -1,0 +1,2394 @@
+AIDRPG Design Bible — Chunk 11: Quests, Contracts, Labor, Domain Projects, and Objectives
+
+1. Purpose of this chunk
+
+Chunk 11 defines how AIDRPG handles objectives.
+
+This chunk answers:
+
+What is a quest?
+
+What is a contract?
+
+What is labor?
+
+What is a worker?
+
+What is a foreman?
+
+What is a domain project?
+
+How does the system decide whether something is a quest, contract, investigation, crafting job, labor order, or domain project?
+
+How do objectives start, progress, complete, fail, archive, and reward the player?
+
+How do deadlines work?
+
+How does AIDRPG avoid turning every task into five overlapping systems?
+
+The central rule is:
+
+Objectives must have a clear primary type.
+
+A single story situation can link multiple systems, but each objective should have one main owner.
+
+⸻
+
+2. Core philosophy
+
+AIDRPG should help AI Dungeon remember what the player is trying to accomplish.
+
+It should track:
+
+* active quests
+* accepted tasks
+* quest objectives
+* promised rewards
+* deadlines
+* contracts
+* obligations
+* worker assignments
+* domain projects
+* progress
+* blockers
+* completion
+* failure
+* archives
+
+But it should not turn every casual request into a quest.
+
+It should not create domain projects from every mention of a building.
+
+It should not create contracts from every conversation.
+
+It should not create labor systems from every helpful NPC.
+
+It should not complete objectives from rumors, vague claims, or quoted dialogue.
+
+The goal is objective clarity, not objective spam.
+
+⸻
+
+3. Ownership boundaries
+
+Objectives touch many systems, but each type has a main owner.
+
+QuestReducer owns
+
+* quest offers
+* accepted quests
+* active quests
+* quest objectives
+* quest progress
+* quest completion
+* quest failure
+* quest abandonment
+* quest archive
+* quest rewards as proposals
+* quest links to actors, places, items, cases, contracts, and deadlines
+
+ContractReducer owns
+
+* explicit agreements
+* parties
+* terms
+* payment obligations
+* service obligations
+* delivery obligations
+* item custody obligations
+* deadlines
+* breach
+* fulfillment
+* cancellation
+* contract archive
+
+LaborReducer owns
+
+* workers
+* worker groups
+* work orders
+* assigned tasks
+* foremen
+* morale
+* wages
+* productivity
+* injuries/casualties if relevant
+* labor availability
+
+DomainReducer owns
+
+* bases
+* holdings
+* settlements
+* workshops
+* walls
+* roads
+* farms
+* domain assets
+* domain resources
+* domain projects
+* construction/repair progress
+* project blockers
+* project completion/archive
+
+InvestigationReducer owns
+
+* cases
+* clues
+* evidence
+* suspects
+* solved-case archive
+
+A mystery objective may link to a quest, but the case evidence belongs to InvestigationReducer.
+
+InventoryReducer owns
+
+* quest items
+* materials
+* payment items
+* custody items
+* rewards once granted
+
+EconomyReducer owns
+
+* payments
+* prices
+* wages
+* fees
+* debt
+* rewards involving currency
+
+TimeReducer owns
+
+* deadlines
+* elapsed time
+* project timing
+* travel time
+* recovery ticks
+
+ProgressionReducer owns
+
+* XP rewards
+* domain XP
+* stat XP
+* level rewards
+* anti-farm reward control
+
+ReputationReducer owns
+
+* public reputation
+* faction reaction
+* witness knowledge
+* titles
+* legal/social consequences
+
+CardSync owns
+
+* quest cards
+* contract cards
+* domain cards
+* protected summaries
+* only after objective state is stable and important
+
+The rule is:
+
+QuestReducer does not directly add items.
+
+ContractReducer does not directly spend coins.
+
+DomainReducer does not directly award XP.
+
+Each owner proposes follow-up events for the correct owner.
+
+⸻
+
+4. Objective type decision table
+
+This is one of the most important parts of the whole design.
+
+When the story presents a task, AIDRPG must classify it correctly.
+
+Quest
+
+A quest is a personal or adventure objective.
+
+Examples:
+
+* find the missing ring
+* rescue the trapped miner
+* defeat the graveyard beast
+* deliver the sealed letter
+* escort Mara to the old chapel
+* retrieve the stolen relic
+* investigate the haunted tower
+* reach Northwatch before sunset
+
+Quest features:
+
+* objective-focused
+* story/adventure driven
+* may have a giver
+* may have reward
+* may have deadline
+* may link to actors, places, items, cases, contracts, reputation, or combat
+
+Primary owner:
+
+* QuestReducer
+
+Contract
+
+A contract is an agreement with terms between parties.
+
+Examples:
+
+* Mira repairs your sword for 5 silver by morning
+* you agree to deliver a crate for payment
+* you hire guards for 2 silver each
+* you rent a horse until sunset
+* the guild lends you 20 silver due next week
+* a merchant agrees to buy wolf pelts at 1 silver each
+
+Contract features:
+
+* parties
+* terms
+* obligation
+* payment or exchange
+* fulfillment/breach
+* deadline or condition
+* custody or service often involved
+
+Primary owner:
+
+* ContractReducer
+
+Labor
+
+Labor is work performed by workers or worker groups.
+
+Examples:
+
+* five carpenters repair the wall
+* workers haul timber
+* miners clear a blocked tunnel
+* apprentices brew potions under supervision
+* guards patrol the road
+* villagers dig a trench
+
+Labor features:
+
+* worker count
+* role
+* task
+* morale
+* productivity
+* pay/contract link
+* foreman or leader
+* possible domain/project link
+
+Primary owner:
+
+* LaborReducer
+
+Domain project
+
+A domain project is a managed base, holding, settlement, infrastructure, or organization objective.
+
+Examples:
+
+* repair the north wall
+* restore Northwatch Keep
+* build a forge
+* clear farmland
+* improve the road
+* establish a watchtower
+* stock the domain warehouse
+* train militia
+* rebuild the bridge
+* expand the village shrine
+
+Domain project features:
+
+* large or managed objective
+* tied to holding/base/settlement/resource
+* progresses over time
+* may require labor, materials, money, contracts, and deadlines
+* affects the world beyond one personal item
+
+Primary owner:
+
+* DomainReducer
+
+Investigation case
+
+An investigation case is a mystery, crime, secret, or evidence-driven problem.
+
+Examples:
+
+* determine who stole the ring
+* prove Mara’s innocence
+* identify the poisoner
+* find what caused the fires
+* solve the missing workers case
+* uncover the spy in the guild
+
+Case features:
+
+* leads
+* clues
+* evidence
+* suspects
+* witness knowledge
+* contradictions
+* solved/archive state
+
+Primary owner:
+
+* InvestigationReducer
+
+Crafting project
+
+A crafting project is making, repairing, upgrading, or altering an item.
+
+Examples:
+
+* forge a dagger
+* repair shield
+* brew antidote
+* enchant cloak
+* make lockpicks
+
+Primary owner:
+
+* CraftingReducer for workflow
+* InventoryReducer for final item truth
+
+Travel objective
+
+A travel objective is movement to a place.
+
+Examples:
+
+* reach the old chapel
+* travel to Greyford
+* cross the Blackwood Road
+* escape the burning inn
+
+Primary owner:
+
+* TimeReducer for travel/time
+* PlaceReducer for current location/place truth
+* QuestReducer only if it is a quest objective
+
+⸻
+
+5. Objective classification examples
+
+“Find the missing ring.”
+
+Primary type:
+
+* Quest
+
+May link to:
+
+* Investigation if mystery exists
+* Inventory if ring is found
+* Actor if owner/giver matters
+* Reputation if public
+
+“Determine who stole the missing ring.”
+
+Primary type:
+
+* Investigation case
+
+May link to:
+
+* Quest if someone assigned it
+* Reputation if accusation becomes public
+* Inventory if evidence items exist
+
+“Bring the missing ring back to Mara.”
+
+Primary type:
+
+* Quest objective
+
+May link to:
+
+* Inventory item
+* Actor Mara
+* Place where Mara is
+
+“Mira repairs your sword for 5 silver by morning.”
+
+Primary type:
+
+* Contract
+
+May link to:
+
+* Inventory custody
+* Economy payment
+* Crafting/repair workflow
+* Time deadline
+
+“Five carpenters repair the wall.”
+
+Primary type:
+
+* Labor
+
+May link to:
+
+* Domain project
+* Contract/wages
+* Materials
+* Time
+
+“Repair the north wall of your keep.”
+
+Primary type:
+
+* Domain project
+
+May link to:
+
+* Labor
+* Materials
+* Economy
+* Contract
+* Time
+* Reputation if public
+
+“Make a healing potion.”
+
+Primary type:
+
+* Crafting project
+
+May link to:
+
+* Quest if requested by NPC
+* Inventory/materials
+* Ability if magical
+* Progression
+
+“Deliver a crate to the mill for 3 silver.”
+
+Primary type:
+
+* Contract if payment/terms explicit
+
+May also be:
+
+* Quest if story/adventure framing matters
+
+Design decision:
+
+Use contract as primary if the terms/payment/obligation are central.
+
+Use quest as primary if adventure objective is central.
+
+They may be linked.
+
+⸻
+
+6. Quest model
+
+A quest is a structured adventure objective.
+
+A quest should track:
+
+* quest ID
+* title
+* status
+* giver
+* accepted by whom
+* objective list
+* current objective
+* optional deadline
+* reward promise
+* actual rewards granted
+* linked actors
+* linked places
+* linked items
+* linked cases
+* linked contracts
+* linked domain projects
+* progress notes
+* blockers
+* failure conditions
+* completion evidence
+* archive summary
+* source/evidence text
+* last updated turn
+* card eligibility
+
+Quest statuses:
+
+* offered
+* pending acceptance
+* active
+* progressing
+* blocked
+* ready to complete
+* completed
+* failed
+* abandoned
+* archived
+
+⸻
+
+7. Quest lifecycle
+
+7.1 Quest hook
+
+A quest hook is a possible task.
+
+Example:
+
+“Mara says someone stole her ring.”
+
+This may create:
+
+* quest hook
+* investigation lead
+* actor memory
+
+It does not automatically create an accepted quest.
+
+7.2 Quest offer
+
+A quest offer is when an NPC, situation, or story clearly presents an objective.
+
+Example:
+
+“Mara asks you to find her missing ring.”
+
+Status:
+
+* offered
+
+Still not accepted unless the player agrees or the story assigns it clearly.
+
+7.3 Quest acceptance
+
+Quest acceptance requires:
+
+* player agrees
+* story clearly assigns the task
+* player takes responsibility
+* command/manual acceptance if used
+* scenario setup grants quest
+
+Example:
+
+“You promise Mara you will find the ring.”
+
+Status:
+
+* active
+
+7.4 Quest progress
+
+Quest progress is partial movement toward completion.
+
+Examples:
+
+* found a clue
+* reached a location
+* recovered required item
+* defeated a blocking enemy
+* spoke to witness
+* delivered first part
+* discovered suspect
+* opened locked path
+
+Quest progress should be tied to validated events.
+
+7.5 Quest blocked
+
+A quest is blocked when progress cannot continue until condition changes.
+
+Examples:
+
+* missing key
+* NPC absent
+* road blocked
+* evidence missing
+* item stolen
+* deadline pressure
+* contract failed
+* player lacks material
+* enemy too strong
+
+Blocked quests should appear in commands, not always in Context unless relevant.
+
+7.6 Ready to complete
+
+The quest objective appears fulfilled, but reward/turn-in may not have occurred.
+
+Example:
+
+The player found the ring but has not returned it.
+
+Status:
+
+* ready to complete or objective complete
+* not fully completed
+
+7.7 Quest completion
+
+Quest completion requires validated fulfillment.
+
+Examples:
+
+* item delivered
+* enemy defeated
+* person rescued
+* message delivered
+* case solved and reported
+* destination reached
+* contract fulfilled if linked
+
+Quest completion may emit:
+
+* progression.xp.gain
+* inventory.item.gain
+* inventory.coins.gain
+* reputation.public.change
+* actor.relationship.update
+* quest.archive
+* card.dirty
+
+QuestReducer does not directly write those other states.
+
+7.8 Quest failure
+
+Quest failure occurs when the objective cannot be completed or is explicitly failed.
+
+Examples:
+
+* target dies
+* deadline missed
+* item destroyed
+* player refuses after accepting
+* enemy escapes permanently
+* contract breached
+* NPC no longer trusts player
+* place destroyed
+
+Failure should require clear evidence.
+
+Do not fail quests from vague narration.
+
+7.9 Quest abandonment
+
+Abandonment occurs when the player intentionally drops the quest or leaves it inactive long enough under explicit rules.
+
+Abandonment should be player-driven or strongly story-confirmed.
+
+Do not silently abandon quests because they were not mentioned for a few turns.
+
+7.10 Quest archive
+
+Completed, failed, or abandoned quests should move to archive.
+
+Archive should preserve:
+
+* result
+* important choices
+* rewards
+* consequences
+* linked actors/places/items
+* date/time if available
+
+Archived quests should not appear as active Context unless relevant.
+
+⸻
+
+8. Quest validation rules
+
+Accept quest offer if
+
+* NPC or story clearly presents objective
+* objective is understandable
+* source is direct narration/dialogue
+* not dream/rumor unless quest is specifically about a rumor
+* not debug/card text
+* not duplicate
+
+Accept quest acceptance if
+
+* player agrees
+* player promises
+* player takes task
+* story explicitly assigns task
+* scenario setup starts with quest active
+* command accepts offered quest
+
+Reject quest acceptance if
+
+* NPC only mentions problem
+* player only thinks about helping
+* offer is refused
+* statement is quoted by someone else
+* dream/vision only
+* no clear objective
+
+Accept quest progress if
+
+* objective-related event is confirmed
+* target item found/taken
+* enemy defeated
+* witness spoken to
+* location reached
+* clue/evidence discovered
+* required action done
+
+Reject quest progress if
+
+* result is rumor
+* result is only planned
+* action failed
+* item not actually acquired
+* enemy not actually defeated
+* wrong target
+* duplicate output
+
+Accept quest completion if
+
+* final objective fulfilled
+* required turn-in/report happens if needed
+* completion is directly narrated
+* quest state supports completion
+* duplicate reward blocked
+
+Reject quest completion if
+
+* someone merely says it is done
+* rumor says it is done
+* player intends to finish
+* partial objective completed
+* required item not delivered
+* wrong quest/objective
+* duplicate completion
+
+⸻
+
+9. Contract model
+
+A contract is an agreement with obligations.
+
+A contract should track:
+
+* contract ID
+* parties
+* status
+* terms
+* service or item involved
+* payment
+* payment status
+* custody status
+* deadline
+* location
+* penalties
+* collateral
+* linked quest
+* linked item
+* linked worker group
+* linked domain project
+* fulfillment conditions
+* breach conditions
+* source/evidence
+* archive summary
+
+Contract statuses:
+
+* proposed
+* offered
+* agreed
+* active
+* pending payment
+* pending custody
+* in progress
+* fulfilled
+* breached
+* cancelled
+* failed
+* archived
+
+⸻
+
+10. Contract lifecycle
+
+10.1 Contract proposal
+
+A possible agreement is discussed.
+
+Example:
+
+“Mira says she could repair the sword for 5 silver.”
+
+Not active yet.
+
+10.2 Contract offer
+
+One side offers terms.
+
+Example:
+
+“I’ll repair it for 5 silver by dawn.”
+
+Status:
+
+* offered
+
+10.3 Agreement
+
+Both sides agree.
+
+Example:
+
+“You agree to Mira’s price.”
+
+Status:
+
+* agreed or active, depending whether service begins
+
+10.4 Payment/custody setup
+
+Contracts often require payment or item transfer.
+
+Example:
+
+Mira needs the sword.
+
+Inventory custody changes only when the sword is actually handed over.
+
+10.5 Active contract
+
+Work or obligation is underway.
+
+Example:
+
+Mira has the sword and is repairing it.
+
+10.6 Fulfillment
+
+The terms are satisfied.
+
+Example:
+
+Mira returns the repaired sword.
+
+Contract fulfilled.
+
+10.7 Breach
+
+A party violates terms.
+
+Examples:
+
+* Mira keeps the sword
+* player refuses agreed payment
+* hired guards abandon job
+* courier loses package
+* merchant delivers fake item
+
+Breach may emit:
+
+* reputation event
+* quest event
+* economy/debt event
+* inventory custody event
+* actor relationship event
+
+10.8 Cancellation
+
+The contract ends without breach if both sides cancel or terms allow cancellation.
+
+10.9 Archive
+
+Fulfilled, breached, cancelled, or failed contracts move to archive.
+
+⸻
+
+11. Contract versus quest
+
+This distinction must be strict.
+
+A quest is about achieving a story objective.
+
+A contract is about fulfilling agreed terms.
+
+Example:
+
+“Mara asks you to find the missing ring.”
+
+Quest.
+
+“Mara agrees to pay you 5 silver if you return the ring.”
+
+Contract link or reward promise.
+
+If the agreement/payment terms matter, create a linked contract or reward obligation.
+
+If the adventure objective matters most, the quest remains primary.
+
+Example:
+
+“Deliver this crate to Greyford by sunset for 3 silver.”
+
+This can be both:
+
+* Quest: deliver crate to Greyford
+* Contract: delivery agreement for 3 silver by sunset
+
+But the primary type should depend on gameplay framing.
+
+If it is a paid job with terms, primary contract.
+
+If it is a story mission with reward, primary quest.
+
+⸻
+
+12. Labor model
+
+Labor is organized work by people or groups.
+
+A labor record should track:
+
+* worker group ID
+* display name
+* count
+* worker type
+* skill level
+* morale
+* loyalty
+* wage
+* contract link
+* current task
+* assigned location
+* foreman
+* tools/materials
+* productivity
+* status
+* casualties/injuries if relevant
+* progress contribution
+* source/evidence
+* last updated turn
+
+Worker statuses:
+
+* available
+* hired
+* assigned
+* working
+* idle
+* blocked
+* tired
+* injured
+* unpaid
+* refusing
+* absent
+* completed task
+* dismissed
+* dead/disbanded
+
+⸻
+
+13. Workers
+
+Workers are people or groups who perform labor.
+
+Examples:
+
+* carpenters
+* masons
+* miners
+* guards
+* scouts
+* farmers
+* cooks
+* smiths
+* alchemists
+* apprentices
+* porters
+* soldiers
+* laborers
+* healers
+* scribes
+
+Workers may be:
+
+* hired
+* assigned
+* volunteering
+* conscripted
+* faction-provided
+* contract-bound
+* companion-led
+* domain residents
+
+Workers should usually be grouped.
+
+Do not create individual actor records for every worker.
+
+Promote an individual worker to actor only if named and important.
+
+Example:
+
+“Five carpenters” = worker group.
+
+“Harlan, the foreman of the carpenters” = actor.
+
+⸻
+
+14. Foremen
+
+A foreman is a named or role-based leader responsible for a worker group.
+
+Foremen affect:
+
+* productivity
+* morale
+* communication
+* discipline
+* task quality
+* safety
+* worker loyalty
+* progress reporting
+* conflict resolution
+
+Foreman record may link to:
+
+* ActorReducer if named
+* LaborReducer as group leader
+* DomainReducer if tied to project
+* ContractReducer if hired
+
+Example:
+
+Harlan leads five carpenters repairing the wall.
+
+Harlan is an actor if named and recurring.
+
+The carpenters are a worker group.
+
+The wall repair is a domain project.
+
+The wage agreement is a contract/economy record.
+
+⸻
+
+15. Labor lifecycle
+
+15.1 Labor need identified
+
+Example:
+
+“The wall needs repair.”
+
+This may create domain project need.
+
+No workers yet.
+
+15.2 Workers found
+
+Example:
+
+“You find five carpenters willing to work.”
+
+Creates possible worker group.
+
+May be pending until hired/assigned.
+
+15.3 Workers hired or assigned
+
+Requires:
+
+* agreement
+* authority
+* payment or obligation
+* task clarity
+
+Creates labor group active/assigned.
+
+15.4 Work begins
+
+Workers start task.
+
+Time, materials, tools, and morale matter.
+
+15.5 Progress
+
+Workers contribute progress over time.
+
+Progress may be slowed by:
+
+* missing materials
+* weather
+* danger
+* low morale
+* poor tools
+* no foreman
+* lack of pay
+* injury
+* attack
+* bad orders
+
+15.6 Labor blocked
+
+Work cannot continue.
+
+Examples:
+
+* no timber
+* rain ruins mortar
+* workers unpaid
+* monster attacks
+* foreman injured
+* tools broken
+
+15.7 Task complete
+
+Labor objective finished.
+
+May update domain project, contract, economy, reputation, or inventory.
+
+15.8 Workers dismissed / reassigned
+
+Worker group remains, leaves, or takes new task depending state.
+
+⸻
+
+16. Domain project model
+
+A domain project is a managed improvement or operation tied to base/holding/settlement/assets.
+
+A domain project should track:
+
+* project ID
+* title
+* status
+* domain/holding
+* location
+* objective
+* scale
+* progress
+* required materials
+* required labor
+* required money
+* required time
+* assigned workers
+* foreman/manager
+* blockers
+* risks
+* deadline
+* benefits
+* linked contracts
+* linked quests
+* linked inventory/materials
+* linked actors/factions
+* source/evidence
+* archive summary
+
+Domain project statuses:
+
+* proposed
+* planned
+* active
+* blocked
+* paused
+* endangered
+* completed
+* failed
+* abandoned
+* archived
+
+⸻
+
+17. Domain project examples
+
+Repair north wall
+
+Primary owner:
+
+* DomainReducer
+
+Links:
+
+* Labor: carpenters/masons
+* Inventory: timber/stone
+* Economy: wages
+* Time: days of work
+* Reputation: villagers feel safer
+* Place: Northwatch Keep wall
+
+Build forge
+
+Primary owner:
+
+* DomainReducer
+
+Links:
+
+* Labor
+* Materials
+* Economy
+* Crafting station unlocked
+* Place memory
+* Possible card if important
+
+Train militia
+
+Primary owner:
+
+* DomainReducer or LaborReducer depending framing
+
+Links:
+
+* Leadership Domain
+* worker/follower group
+* equipment inventory
+* time
+* reputation/security
+
+Restore old inn
+
+Primary owner:
+
+* DomainReducer if player owns/manages it
+
+Links:
+
+* Labor
+* Economy
+* Place
+* Contract
+* Reputation
+* possible income later
+
+Clear haunted mine
+
+Primary owner:
+
+* Quest or Domain depending framing
+
+If the objective is adventure danger:
+
+* Quest primary
+
+If the objective is domain resource restoration:
+
+* Domain project primary
+
+Can link both.
+
+⸻
+
+18. Domain versus quest
+
+This distinction matters.
+
+A quest is about the player doing an adventure objective.
+
+A domain project is about managing an asset or operation.
+
+Example:
+
+“Kill the spiders in the mine.”
+
+Quest.
+
+“Reopen the mine and restore production.”
+
+Domain project.
+
+The quest may be a step in the domain project.
+
+Example relationship:
+
+Domain project: Reopen Greyrock Mine.
+
+Linked quest: Clear spiders from lower tunnel.
+
+Linked labor: miners repair supports.
+
+Linked contract: hire guards.
+
+Linked economy: pay wages.
+
+Linked inventory: timber supports.
+
+This is how systems speak to each other without merging.
+
+⸻
+
+19. Domain versus labor
+
+Labor is the workers and work effort.
+
+Domain project is the managed objective.
+
+Example:
+
+Domain project:
+
+* repair north wall
+
+Labor:
+
+* five masons assigned
+* two carpenters assigned
+* Harlan foreman
+
+If workers leave, labor changes.
+
+The project may remain blocked.
+
+If project completes, labor can be reassigned.
+
+⸻
+
+20. Objective progress model
+
+Progress can be tracked differently depending on objective type.
+
+Quest progress
+
+Use objective stages.
+
+Example:
+
+* speak to Mara
+* search the room
+* find clue
+* recover ring
+* return ring
+
+Contract progress
+
+Use terms.
+
+Example:
+
+* payment received
+* item custody transferred
+* repair completed
+* item returned
+
+Labor progress
+
+Use work contribution over time.
+
+Example:
+
+* workers repaired 30% of wall
+
+Domain project progress
+
+Use percentage, stages, or milestones.
+
+Example:
+
+* materials gathered
+* foundation cleared
+* wall repaired 50%
+* gate reinforced
+* completed
+
+Investigation progress
+
+Use clue/evidence/case status.
+
+Example:
+
+* lead found
+* suspect identified
+* evidence confirmed
+* culprit proven
+
+The guide should avoid using one progress model for all objectives.
+
+⸻
+
+21. Objective blockers
+
+Blockers are reasons progress cannot continue.
+
+Common blockers:
+
+* missing item
+* missing material
+* missing worker
+* missing payment
+* missing evidence
+* locked location
+* enemy threat
+* injury/fatigue
+* bad weather
+* deadline pressure
+* NPC absent
+* route unavailable
+* low reputation
+* contract dispute
+* insufficient authority
+* unsafe conditions
+* unresolved prerequisite quest
+
+Blockers should be explicit and helpful.
+
+Example:
+
+Quest blocked:
+
+“Need the rusted iron key to open the shrine door.”
+
+Domain project blocked:
+
+“Need 20 timber and at least 4 workers.”
+
+Contract blocked:
+
+“Mira cannot repair the sword until you deliver the mana crystal.”
+
+Good blockers help the player know what to do.
+
+Bad blockers silently stop progress without explanation.
+
+⸻
+
+22. Deadlines
+
+Deadlines can attach to:
+
+* quests
+* contracts
+* labor tasks
+* domain projects
+* travel objectives
+* investigations
+* reputation/legal events
+
+TimeReducer owns deadline timing.
+
+The objective owner owns what deadline means.
+
+Deadline states:
+
+* active
+* approaching
+* urgent
+* missed
+* extended
+* completed
+* cancelled
+
+Examples:
+
+Quest deadline:
+
+* return before sunset
+
+Contract deadline:
+
+* deliver crate by dawn
+
+Domain deadline:
+
+* repair gate before raiders arrive
+
+Investigation deadline:
+
+* prove innocence before execution
+
+Deadline effects:
+
+* failure
+* reduced reward
+* reputation loss
+* enemy advancement
+* contract breach
+* extra cost
+* new quest branch
+
+Deadlines should not be invented too freely.
+
+They should be explicit or strongly implied.
+
+⸻
+
+23. Objective rewards
+
+Rewards are proposed by objective owners but committed by proper systems.
+
+Reward types:
+
+* Level XP
+* Domain XP
+* Stat XP
+* Ability evidence
+* coins
+* items
+* reputation
+* title
+* actor relationship
+* access/unlock
+* contract fulfillment
+* domain resource
+* faction standing
+* information
+* route/place access
+
+QuestReducer may propose rewards.
+
+ProgressionReducer commits XP.
+
+InventoryReducer commits items/coins.
+
+ReputationReducer commits reputation/title.
+
+ActorReducer commits relationship/memory.
+
+PlaceReducer commits access/place changes.
+
+DomainReducer commits domain resource changes.
+
+Reward validation must check:
+
+* objective completed
+* reward promised or story-granted
+* reward actually given if physical
+* duplicate operation not applied
+* correct recipient
+* no weak rumor source
+
+⸻
+
+24. Objective reward timing
+
+Rewards may be immediate or delayed.
+
+Immediate reward
+
+Example:
+
+“Mara gives you 5 silver.”
+
+Commit coins if accepted.
+
+Promised reward
+
+Example:
+
+“Mara promises to pay you tomorrow.”
+
+Create pending reward or contract obligation.
+
+Do not add coins yet.
+
+Conditional reward
+
+Example:
+
+“The guild will pay if you bring proof.”
+
+Reward remains pending until proof delivered.
+
+Reputation reward
+
+Example:
+
+“The crowd cheers your rescue.”
+
+Reputation may change immediately if public and witnessed.
+
+Hidden reward
+
+Example:
+
+“The old man silently marks you as trustworthy.”
+
+May update actor relationship or hidden reputation, not public fame.
+
+⸻
+
+25. Objective failure consequences
+
+Failure can create consequences.
+
+Possible failure consequences:
+
+* no reward
+* reduced reward
+* reputation loss
+* actor trust loss
+* contract breach
+* debt
+* item loss
+* deadline missed
+* quest branch changes
+* enemy strengthened
+* domain damage
+* worker morale loss
+* legal trouble
+* case suspect escapes
+* companion relationship damage
+
+Failure should be validated.
+
+Do not fail major objectives from vague narration.
+
+Example:
+
+“You worry you may be too late.”
+
+Not failure.
+
+“The sun sets before you reach the gate, and the caravan leaves without you.”
+
+Deadline missed if deadline existed.
+
+⸻
+
+26. Objective archive
+
+Archived objectives should preserve history.
+
+Archive records should include:
+
+* title
+* type
+* result
+* major choices
+* rewards
+* failures
+* linked actors
+* linked places
+* linked items
+* linked cases/contracts/domain projects
+* completion/failure time if available
+* consequences
+* summary
+
+Archive should not clutter active Context.
+
+But archive may matter later.
+
+Examples:
+
+A completed quest may affect reputation.
+
+A breached contract may affect trust.
+
+A failed domain project may leave ruins.
+
+A solved case may create a title.
+
+A completed labor project may improve holding.
+
+⸻
+
+27. Objective and Context behavior
+
+Context should include objectives when relevant.
+
+Context may include:
+
+* active immediate quest
+* current objective
+* urgent deadline
+* blocker
+* active contract custody issue
+* current labor/domain project if scene involves it
+* case objective if investigating
+* reward promise if relevant
+* NPC obligation if interacting with them
+
+Context should not include:
+
+* every archived quest
+* every old contract
+* every inactive domain project
+* every worker assignment when traveling elsewhere
+* full quest history
+* old reward logs
+
+Good Context example:
+
+“You promised Mara to find her missing ring. You have found the ring, but still need to return it to her.”
+
+Good Context example:
+
+“Mira has custody of your iron sword for repair and promised it by morning.”
+
+Bad Context example:
+
+“Active quests: 17 entries including all old tasks, archived missions, completed contracts, old rumors…”
+
+Objective Context must be compact and current.
+
+⸻
+
+28. Objective and Story Card behavior
+
+Story Cards should mirror stable important objectives.
+
+Protected cards may include:
+
+* Quest Log
+* Domain & Contracts
+* Investigation & Evidence
+* Party & Companions if objective involves party
+* Time & Travel if deadlines matter
+
+Generated cards may be allowed for:
+
+* important active quest
+* important contract
+* major domain project
+* important case
+* major faction/domain objective
+
+Do not generate cards for:
+
+* tiny errands
+* vague hooks
+* every offered task
+* every worker order
+* every minor payment
+* every completed mundane transaction
+* failed low-importance objectives
+* old archive clutter
+
+Card updates should happen when:
+
+* quest accepted
+* objective changes
+* quest completed/failed
+* contract terms change
+* item custody changes
+* domain project progresses meaningfully
+* deadline changes
+* blocker resolved
+* objective archived
+
+Cards mirror state.
+
+Cards do not create objective truth.
+
+⸻
+
+29. Objective validation outcomes
+
+All objective events use the five validation outcomes.
+
+Accept
+
+Use when objective state change is directly confirmed.
+
+Examples:
+
+* player accepts quest
+* item delivered
+* contract agreed
+* workers begin task
+* project reaches milestone
+* quest completed
+* contract fulfilled
+
+Reject
+
+Use when objective change is unsupported.
+
+Examples:
+
+* NPC only mentions problem
+* player only considers helping
+* rumor says objective completed
+* quote describes completion
+* work was planned but not started
+* wrong item delivered
+
+Pending
+
+Use when objective may matter later.
+
+Examples:
+
+* quest hook
+* possible job offer
+* promised reward
+* workers may be available
+* project idea
+* contract proposal
+* possible deadline
+
+Soft_fail
+
+Use when real attempt makes partial progress but not full completion.
+
+Examples:
+
+* player searches but finds only clue
+* workers repair part of wall
+* delivery delayed but not failed
+* negotiation fails but terms are clarified
+* crafting service starts but item not complete
+
+Hard_deny
+
+Use when objective event comes from unsafe source.
+
+Examples:
+
+* pretend quest completion
+* dream contract
+* debug/card text
+* fake reward
+* impossible domain completion from one line
+* junk objective name
+* explicit failure parsed as success
+
+⸻
+
+30. Objective safety rules
+
+30.1 No quest from every problem mention
+
+An NPC saying “my ring is missing” is a hook, not necessarily accepted quest.
+
+30.2 No acceptance without agreement or clear assignment
+
+The player must agree, promise, be assigned, or otherwise take responsibility.
+
+30.3 No completion from rumor
+
+“People say you solved it” does not complete quest/case.
+
+30.4 No reward before reward is granted
+
+Promised reward is pending.
+
+Physical reward requires handoff/payment.
+
+30.5 No domain project from casual place description
+
+“The wall is old” does not create repair project.
+
+30.6 No labor group from vague help
+
+“People offer to help” is not five hired workers unless count/commitment is clear.
+
+30.7 No contract without terms
+
+A contract needs parties and obligation.
+
+Payment is common but not always required; terms are required.
+
+30.8 No direct cross-owner reward
+
+QuestReducer does not directly add coins/items/XP.
+
+30.9 No duplicate completion/reward
+
+OperationLedger prevents repeated objective rewards.
+
+30.10 No silent archive loss
+
+Completed/failed objectives should archive, not vanish.
+
+30.11 No card-created objectives
+
+Story Card text does not create active quests/contracts/domain projects.
+
+30.12 No overactive Context
+
+Only relevant active objectives should be injected.
+
+⸻
+
+31. Example scenarios
+
+Example 1 — Quest hook only
+
+Output:
+
+“Mara says her ring is missing.”
+
+Expected:
+
+* possible quest hook
+* possible investigation lead
+* no accepted quest yet unless the player agrees or story assigns it
+
+Example 2 — Quest accepted
+
+Input:
+
+“I promise Mara I’ll find her ring.”
+
+Output:
+
+“Mara grips your hands and thanks you for agreeing to help.”
+
+Expected:
+
+* quest.accept
+* active quest: find Mara’s missing ring
+* actor link: Mara
+* possible reward pending only if stated
+
+Example 3 — Quest progress
+
+Output:
+
+“You find a silver thread caught on the windowsill.”
+
+Expected:
+
+* investigation clue/evidence depending context
+* quest progress if clue relates to missing ring
+* no quest completion yet
+
+Example 4 — Quest ready to complete
+
+Output:
+
+“You recover Mara’s missing ring from beneath the floorboards.”
+
+Expected:
+
+* item.gain missing ring
+* quest objective recovered ring complete
+* quest not fully complete unless return is required
+
+Example 5 — Quest completed
+
+Output:
+
+“You place the ring in Mara’s palm. She breaks into tears and thanks you.”
+
+Expected:
+
+* quest.complete
+* item custody/ownership transfer if ring returned
+* possible actor relationship change
+* reward only if given/promised fulfilled
+* quest archive
+
+Example 6 — Reward promised
+
+Output:
+
+“Mara promises to pay you 5 silver tomorrow.”
+
+Expected:
+
+* pending reward or contract obligation
+* no coin gain yet
+
+Example 7 — Reward granted
+
+Output:
+
+“Mara hands you 5 silver.”
+
+Expected:
+
+* coins.gain 5 silver
+* reward fulfilled
+* duplicate-safe
+
+Example 8 — Contract repair
+
+Output:
+
+“Mira agrees to repair your sword for 5 silver by morning.”
+
+Expected:
+
+* contract.create
+* payment obligation
+* deadline
+* no custody transfer unless sword is handed over
+
+Example 9 — Contract active through custody
+
+Output:
+
+“You give Mira the sword, and she sets it on her workbench.”
+
+Expected:
+
+* inventory.custody.transfer to Mira
+* contract active
+* access unavailable
+
+Example 10 — Contract fulfilled
+
+Output:
+
+“Mira returns the repaired sword.”
+
+Expected:
+
+* item condition improved
+* custody player
+* contract fulfilled
+* payment handled if due/paid
+
+Example 11 — Labor hired
+
+Output:
+
+“You hire five carpenters to repair the north wall.”
+
+Expected:
+
+* labor.workerGroup.create
+* contract/economy wage terms if stated
+* domain project link if north wall project exists or is created from clear objective
+
+Example 12 — Domain project created
+
+Output:
+
+“You decide to restore Northwatch Keep’s broken north wall and assign workers to begin repairs.”
+
+Expected:
+
+* domain.project.create: repair north wall
+* labor assignment if workers exist
+* materials/time requirements
+* no instant completion
+
+Example 13 — Domain project progress
+
+Output:
+
+“By sunset, the workers have replaced a third of the broken supports.”
+
+Expected:
+
+* domain progress about 33%
+* time passes
+* worker fatigue/morale maybe
+* no full completion
+
+Example 14 — Domain project blocked
+
+Output:
+
+“The workers stop. There is no more timber.”
+
+Expected:
+
+* domain project blocked
+* blocker: timber needed
+* Context may mention if relevant
+
+Example 15 — Rumored completion
+
+Output:
+
+“People say the wall is already repaired.”
+
+Expected:
+
+* no domain completion unless directly verified
+* possible rumor
+* maybe pending verification
+
+⸻
+
+32. Commands related to Chunk 11
+
+/quests should show
+
+* active quests
+* current objectives
+* blockers
+* ready-to-complete quests
+* failed/completed archive summary
+* linked items/actors/places
+* promised rewards if relevant
+
+/contracts should show
+
+* active contracts
+* parties
+* terms
+* payment status
+* custody status
+* deadlines
+* breached/fulfilled/archive summary
+
+/labor should show, if included
+
+* worker groups
+* current tasks
+* morale
+* wages
+* assigned projects
+* blockers
+* foremen
+
+/domain should show
+
+* holdings/base
+* active domain projects
+* project progress
+* materials
+* workers
+* blockers
+* deadlines
+* completed/failed projects
+
+/debuglast should show
+
+* proposed objective events
+* validation outcomes
+* quest/contract/domain routing
+* rewards proposed
+* rewards committed by owner reducers
+* duplicate skips
+* card dirty targets
+
+⸻
+
+33. Chunk 11 acceptance tests
+
+Test 1 — problem mention is not accepted quest
+
+Given:
+
+NPC says her ring is missing.
+
+Expected:
+
+* hook or possible quest
+* not active accepted quest unless player agrees or story assigns it
+
+Test 2 — accepted quest requires commitment
+
+Given:
+
+Player promises to find ring.
+
+Expected:
+
+* quest active
+* objective clear
+* actor link to giver
+
+Test 3 — item recovery is progress, not completion if turn-in needed
+
+Given:
+
+Player finds missing ring.
+
+Expected:
+
+* item gained
+* quest objective progress
+* quest not completed until returned if return is required
+
+Test 4 — quest completion requires confirmed fulfillment
+
+Given:
+
+Player returns ring to Mara.
+
+Expected:
+
+* quest complete
+* archive created
+* reward events proposed if applicable
+
+Test 5 — rumor does not complete quest
+
+Given:
+
+People say the ring was returned.
+
+Expected:
+
+* no quest completion
+* possible rumor/pending verification
+
+Test 6 — promised reward does not grant coins
+
+Given:
+
+NPC promises 5 silver tomorrow.
+
+Expected:
+
+* pending reward/obligation
+* no coins gained yet
+
+Test 7 — reward handoff grants coins once
+
+Given:
+
+NPC hands player 5 silver.
+
+Expected:
+
+* coins gained once
+* duplicate output skipped
+
+Test 8 — contract requires terms
+
+Given:
+
+NPC says “I might help you someday.”
+
+Expected:
+
+* no contract
+
+Given:
+
+NPC agrees to repair sword for 5 silver by morning.
+
+Expected:
+
+* contract offered/agreed depending player response
+
+Test 9 — repair contract separates custody
+
+Given:
+
+Player gives sword to smith.
+
+Expected:
+
+* ownership player
+* custody smith
+* access unavailable
+* contract active
+
+Test 10 — labor group is summarized
+
+Given:
+
+Player hires five carpenters.
+
+Expected:
+
+* one worker group
+* not five actor cards
+
+Test 11 — domain project not completed instantly
+
+Given:
+
+Workers begin repairing wall.
+
+Expected:
+
+* project active/progress started
+* not completed unless completion confirmed
+
+Test 12 — domain blocker recorded
+
+Given:
+
+Workers cannot continue due to missing timber.
+
+Expected:
+
+* project blocked
+* blocker visible in /domain
+
+Test 13 — contract breach affects related systems
+
+Given:
+
+Smith refuses to return sword.
+
+Expected:
+
+* contract breached
+* custody remains smith/stolen/disputed
+* possible reputation/quest event
+* sword not deleted
+
+Test 14 — rewards route through owners
+
+Given:
+
+Quest gives XP and ring.
+
+Expected:
+
+* QuestReducer completes quest
+* ProgressionReducer awards XP
+* InventoryReducer adds ring
+* no direct cross-write
+
+Test 15 — card text cannot create objective
+
+Given:
+
+Story Card says “Quest: slay the dragon.”
+
+Expected:
+
+* no active quest unless state/manual override/event validates it
+
+⸻
+
+34. Final Chunk 11 doctrine
+
+Objectives need clear primary types.
+
+Quests are adventure objectives.
+
+Contracts are agreements with terms.
+
+Labor is work done by workers or worker groups.
+
+Domain projects are managed improvements to holdings, bases, infrastructure, or organizations.
+
+Investigation cases are evidence-driven mysteries.
+
+Crafting projects create or modify items.
+
+Travel objectives move the player through the world.
+
+One story situation can link several systems, but each truth has one owner.
+
+A quest hook is not an accepted quest.
+
+A promise is not a reward.
+
+A price is not a transaction.
+
+A worker offer is not hired labor.
+
+A wall needing repair is not automatically a domain project.
+
+Progress is not completion.
+
+Completion requires confirmed fulfillment.
+
+Failure requires clear evidence.
+
+Rewards must be routed through the proper owner.
+
+Archives preserve history without cluttering active play.
+
+Context should show the current useful objective, not every old task.
+
+Cards should mirror only stable important objectives.
+
+The goal is to make the player’s goals, obligations, workers, projects, and rewards coherent without turning every passing conversation into system bloat.
+

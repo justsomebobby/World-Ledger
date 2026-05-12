@@ -1,0 +1,2220 @@
+AIDRPG Design Bible — Chunk 3: Event Taxonomy and Validation Outcomes
+
+1. Purpose of this chunk
+
+Chunk 1 defined the canon law.
+
+Chunk 2 defined who owns each type of truth.
+
+Chunk 3 defines how freeform text becomes structured gameplay possibility.
+
+This chunk is about events.
+
+AIDRPG should not let every subsystem invent its own event names, payload shapes, or validation rules. If that happens, the project becomes unstable again.
+
+The purpose of this chunk is to define:
+
+* what an event is
+* where events come from
+* what event stages exist
+* what event families exist
+* what validation outcomes mean
+* how events move through the pipeline
+* what metadata every event should carry
+* how event proposals avoid becoming accidental canon
+* how accepted events reach reducers
+* how rejected events stay useful for debugging
+
+The clean-core reference says parsers create event proposals only, validation is the only canon gate, and reducers are the only state writers. It also defines the five validation outcomes: accept, reject, pending, soft_fail, and hard_deny.  ￼
+
+⸻
+
+2. The core event law
+
+The event law is:
+
+Text does not mutate state. Text proposes events.
+
+An event is not automatically true.
+
+An event is a structured claim that something may have happened.
+
+Example:
+
+Player input:
+
+“I take the rusted iron key.”
+
+This may create an input intent event:
+
+* intent.pickup
+* target: rusted iron key
+* actor: player
+* source: player input
+
+It does not add the key.
+
+AI output:
+
+“Mara places the rusted iron key in your hand.”
+
+This may create an output consequence event:
+
+* inventory.item.gain
+* item: rusted iron key
+* source: NPC handoff
+* actor: Mara
+* target: player
+
+It still does not add the key until CanonValidator accepts it and InventoryReducer commits it.
+
+This is the difference between a proposal and canon.
+
+⸻
+
+3. What an event is
+
+An AIDRPG event is a normalized record of possible gameplay meaning.
+
+It should answer:
+
+* what type of thing may have happened?
+* who did it?
+* who or what was affected?
+* what object, place, ability, quest, or actor is involved?
+* where did the evidence come from?
+* how strong is the evidence?
+* is this input intent, output consequence, manual command, migration, cleanup, or card operation?
+* which reducer owns it if accepted?
+* what validation result did it receive?
+* what operation key prevents duplication?
+
+An event is the bridge between messy story prose and clean RPG state.
+
+⸻
+
+4. Event stages
+
+Events should move through stages.
+
+4.1 Raw text
+
+Raw text is the original player input or AI output.
+
+Examples:
+
+* “I try to form Mana Slash.”
+* “The wolf bites your arm, and blood runs down your sleeve.”
+* “Mara says, ‘You pick up the key.’”
+* “After an hour, you arrive at the old chapel.”
+
+Raw text is never canon by itself.
+
+4.2 Parsed signal
+
+A parsed signal is an early detection that something might matter.
+
+Examples:
+
+* the text mentions pickup language
+* the text mentions injury language
+* the text mentions travel arrival language
+* the text mentions ability attempt language
+* the text mentions quest acceptance language
+
+Parsed signals are not yet events.
+
+They are low-level clues used by EventPipeline.
+
+4.3 Event proposal
+
+An event proposal is the first structured event.
+
+Examples:
+
+* inventory.item.gain
+* body.damage
+* ability.attempt
+* travel.arrive
+* quest.accept
+
+Event proposals are still not canon.
+
+They must go to CanonValidator.
+
+The clean-core reference gives examples of event proposals such as training.practice, ability.attempt, item.gain, actor.mention, place.visit, and time.pass, and says they must not directly add items, award XP, create cards, damage HP, stabilize abilities, or create actor/place cards.  ￼
+
+4.4 Validated event
+
+A validated event has one of the five validation outcomes:
+
+* accept
+* reject
+* pending
+* soft_fail
+* hard_deny
+
+Only accepted events normally commit state.
+
+Pending and soft-failed events may create limited non-canon or partial records depending on owner rules.
+
+Rejected and hard-denied events should not mutate gameplay truth.
+
+4.5 Committed operation
+
+A committed operation is an accepted event that a reducer actually wrote into state.
+
+Example:
+
+* InventoryReducer added rusted iron key
+* BodyReducer added wolf-bite injury
+* TimeReducer advanced one hour
+* QuestReducer marked quest active
+
+Every committed operation must get an operation key to prevent duplicates.
+
+Your compiled safeguards state that each committed event should receive a durable operation key using turn, output hash, event type, target, and normalized reason, and that replayed outputs must not duplicate XP, item gains, ability evidence, quest progress, damage, card writes, actor/place mentions, or contract/domain progress.  ￼
+
+4.6 Dirty update
+
+A dirty update is not gameplay truth.
+
+It is a signal that Context or CardSync needs refreshing.
+
+Examples:
+
+* dirty.player
+* dirty.inventory
+* dirty.abilities
+* dirty.quests
+* dirty.cards.actor.mara
+* dirty.context.scene
+
+Dirty updates are how state changes tell output layers what to refresh without rebuilding the entire world every turn. Your compiled notes say dirty queues mark changed player, ability, inventory, quest, actor, place, time, card, and context records, keeping card updates budgeted and context efficient.  ￼
+
+⸻
+
+5. Event sources
+
+Every event must record its source.
+
+The source matters because validation depends on it.
+
+5.1 Player input source
+
+Player input usually creates intent events.
+
+Examples:
+
+* intent.attack
+* intent.pickup
+* intent.travel
+* intent.search
+* intent.train
+* intent.cast
+* intent.talk
+* intent.buy
+* intent.sell
+* intent.rest
+* intent.craft
+
+Input events usually do not directly change state.
+
+Exceptions:
+
+* slash commands
+* manual override commands
+* settings commands
+* debug commands
+
+5.2 AI output source
+
+AI output creates consequence proposals.
+
+Examples:
+
+* body.damage
+* inventory.item.gain
+* quest.progress
+* ability.attempt
+* travel.arrive
+* actor.mention
+* reputation.rumor.add
+
+AI output is stronger than input, but still must be validated.
+
+5.3 Command source
+
+Commands are explicit player-system interactions.
+
+Examples:
+
+* /sheet
+* /inventory
+* /debuglast
+* /cleanup
+* /override
+* /settings
+
+Most commands should be read-only.
+
+Mutating commands must be explicit, logged, and idempotent.
+
+5.4 Manual override source
+
+Manual override events are deliberate corrections.
+
+Examples:
+
+* manual.player.name.set
+* manual.player.hp.set
+* manual.inventory.add
+* manual.location.set
+
+Manual override can bypass normal story confirmation, but it should still pass safety rules, field limits, and logging.
+
+5.5 Migration source
+
+Migration events come from old-save upgrade logic.
+
+Examples:
+
+* migration.bucket.create
+* migration.item.normalize
+* migration.actor.quarantine
+* migration.card.neutralize
+
+Migration should preserve valid old data but must not invent gameplay truth.
+
+5.6 Cleanup source
+
+Cleanup events remove, compress, archive, or neutralize old junk.
+
+Examples:
+
+* cleanup.actorCandidate.expire
+* cleanup.placeFragment.remove
+* cleanup.log.prune
+* cleanup.card.neutralize
+* cleanup.alias.merge
+
+Cleanup must not become a gameplay writer.
+
+The clean-core reference allows cleanup to remove stale candidates, junk fragments, old dirty rows, and old logs, but says cleanup may not invent new gameplay truth.  ￼
+
+5.7 CardSync source
+
+CardSync events mirror state into cards.
+
+Examples:
+
+* card.protected.update
+* card.generated.create
+* card.generated.update
+* card.duplicate.neutralize
+* card.tombstone.record
+
+CardSync events should only affect card state and Story Cards.
+
+They must not create gameplay canon.
+
+The clean-core reference says CardSync may create or update protected summaries, promoted actor/place cards, stabilized ability cards, important item cards, and active quest/contract/domain cards, but must never create canon from raw prose or read duplicate/quarantine cards as truth.  ￼
+
+⸻
+
+6. Required event metadata
+
+Every event proposal should carry enough metadata to validate, audit, dedupe, and debug it.
+
+The exact implementation can be designed later, but the design contract should require these fields conceptually.
+
+6.1 Event type
+
+The event type tells the system what kind of event this is.
+
+Examples:
+
+* body.damage
+* inventory.item.gain
+* ability.attempt
+* quest.progress
+* time.pass
+
+Event types should be stable and consistent.
+
+Do not allow many names for the same thing.
+
+Bad:
+
+* gainItem
+* itemGain
+* pickupItem
+* inventoryAdd
+* addToBag
+
+Good:
+
+* inventory.item.gain
+
+6.2 Event family
+
+The event family groups related event types.
+
+Examples:
+
+* player
+* body
+* progression
+* ability
+* inventory
+* economy
+* crafting
+* quest
+* contract
+* domain
+* investigation
+* reputation
+* actor
+* place
+* time
+* travel
+* party
+* scale
+* card
+* cleanup
+* manual
+* audit
+
+Event family helps route events to the correct owner.
+
+6.3 Source hook
+
+The event should know whether it came from:
+
+* input
+* context
+* output
+* command
+* migration
+* cleanup
+* manual override
+* CardSync
+
+This matters because input intent is not the same as output confirmation.
+
+6.4 Source text / evidence text
+
+The event should preserve the short text that caused it.
+
+Example:
+
+“Mara places the rusted iron key in your hand.”
+
+This helps validation, debugging, and audit.
+
+Do not store giant history blobs in every event. Store a short evidence excerpt.
+
+6.5 Actor / subject
+
+Who performed the action?
+
+Examples:
+
+* player
+* Mara
+* wolf
+* guard
+* unknown attacker
+* worker group
+
+6.6 Target
+
+Who or what was affected?
+
+Examples:
+
+* player
+* rusted iron key
+* Mara
+* north wall
+* missing-ring quest
+* old chapel
+
+6.7 Object or payload
+
+What object, resource, status, amount, or consequence is involved?
+
+Examples:
+
+* 5 XP
+* 2 copper
+* rusted iron key
+* wolf-bite injury
+* one hour
+* Mana Slash evidence
+* clue: muddy footprint
+
+6.8 Confidence
+
+Each event should have an initial confidence level.
+
+Suggested levels:
+
+* very_low
+* low
+* medium
+* high
+* confirmed
+
+Confidence does not replace validation. It helps validation.
+
+Example:
+
+A direct handoff has high confidence.
+
+A rumor has low truth confidence but may have high rumor confidence.
+
+6.9 Negation / denial flags
+
+Events should record whether the source text includes denial or failure language.
+
+Examples:
+
+* “but fails”
+* “does not happen”
+* “almost”
+* “tries to”
+* “cannot”
+* “refuses”
+* “pretends”
+* “dreams”
+* “rumor says”
+
+This is critical for avoiding false positives.
+
+6.10 Quote / dialogue flags
+
+Events should record whether the relevant phrase is inside quoted speech or dialogue instruction.
+
+Example:
+
+“She says, ‘You pick up the key.’”
+
+The phrase “you pick up the key” should not grant the key.
+
+Your older test feedback specifically tested that quoted second-person pickups and dialogue instructions do not grant keys or items, while confirmed dialogue handoffs do grant them.  ￼
+
+6.11 Related intent
+
+Output events should be able to link back to the player’s previous input intent when possible.
+
+Example:
+
+Input intent:
+
+“I try to pick up the key.”
+
+Output:
+
+“Mara lets you take it.”
+
+The output consequence is easier to validate if it matches the prior intent.
+
+6.12 Target owner reducer
+
+Each event should have a target owner.
+
+Examples:
+
+* body.damage → BodyReducer
+* progression.xp.gain → ProgressionReducer
+* ability.attempt → AbilityReducer
+* inventory.item.gain → InventoryReducer / ItemAuthority
+* quest.progress → QuestReducer
+* reputation.rumor.add → ReputationReducer
+* card.generated.update → CardSync
+
+Accepted events go only to the proper reducer. Your compiled safeguards list the same routing pattern: item.gain to InventoryReducer, body.damage to BodyReducer, xp.gain to ProgressionReducer, ability.attempt to AbilityReducer, quest.progress to QuestReducer, case.evidence to InvestigationReducer, reputation.publicGain to ReputationReducer, time.pass to TimeReducer, and card.write to CardSync.  ￼
+
+6.13 Operation key seed
+
+Each event should contain enough information to form an operation key.
+
+The operation key should include:
+
+* turn
+* output hash or source hash
+* event type
+* normalized target
+* normalized payload or reason
+
+This prevents duplicate application.
+
+6.14 Validation result
+
+After CanonValidator runs, the event receives:
+
+* accept
+* reject
+* pending
+* soft_fail
+* hard_deny
+
+6.15 Validation reason
+
+Every non-accepted event should record why it was not accepted.
+
+Examples:
+
+* quoted dialogue
+* rumor only
+* failed attempt
+* pretend action
+* no confirmed acquisition
+* target invalid
+* duplicate operation
+* impossible without leverage
+* junk name
+* insufficient evidence
+
+Accepted events may also include a validation reason.
+
+Example:
+
+“direct NPC handoff accepted.”
+
+6.16 Dirty targets
+
+If accepted and committed, the event should define what gets marked dirty.
+
+Examples:
+
+* player context
+* inventory context
+* ability context
+* quest card
+* player sheet card
+* generated actor card
+* time packet
+
+⸻
+
+7. Validation outcomes
+
+Every event must end with one validation outcome.
+
+The outcomes are not vibes. They are design states with specific consequences.
+
+7.1 Accept
+
+Accept means the event is confirmed enough to commit normally.
+
+Accepted events go to the owner reducer.
+
+Examples:
+
+* direct item handoff
+* confirmed injury
+* confirmed arrival
+* completed purchase
+* accepted quest
+* public crowd reaction
+* solved case with direct confession
+
+Accept should require:
+
+* valid event type
+* valid target
+* sufficient evidence
+* no blocking negation
+* no quote-only source
+* no dream/rumor/hypothetical unless the event itself is a rumor/dream record
+* correct owner path
+* duplicate check
+
+Example:
+
+“Mara places the rusted iron key in your hand, and you accept it.”
+
+Validation:
+
+* inventory.item.gain → accept
+
+7.2 Reject
+
+Reject means the event was proposed but should not commit.
+
+Reject is used when the event is understandable but false, unsupported, or not confirmed.
+
+Examples:
+
+* quoted key pickup
+* near miss
+* refused offer
+* attempted pickup that failed
+* rumor treated as physical fact
+* suggested quest not accepted
+* travel started but arrival not confirmed
+
+Reject should usually log a reason.
+
+Example:
+
+“She says, ‘You pick up the key.’”
+
+Validation:
+
+* inventory.item.gain → reject
+* reason: quoted dialogue, no actual handoff
+
+7.3 Pending
+
+Pending means the information may matter later, but is not yet canon.
+
+Pending records are useful for leads, promises, possible routes, possible actors, possible places, possible quests, and uncertain facts.
+
+Examples:
+
+* NPC promises payment tomorrow
+* old man says chapel may contain a sealed door
+* player starts traveling but has not arrived
+* suspect may be involved
+* possible ability name appears
+* quest is offered but not accepted
+
+Pending should not grant rewards, create stable cards, complete objectives, or become active truth.
+
+Pending records need:
+
+* source
+* confidence
+* expiration or cleanup policy
+* promotion conditions
+* owner bucket for pending records
+
+Example:
+
+“Mara says she may give you the key tomorrow.”
+
+Validation:
+
+* inventory.item.gain → reject
+* contract.promise or pending.reward → pending
+
+7.4 Soft_fail
+
+Soft_fail means a real attempt happened, but full success did not happen.
+
+This is not the same as reject.
+
+Soft_fail can preserve useful effort.
+
+Examples:
+
+* real ability attempt fails
+* training produces strain but no stat increase yet
+* crafting makes progress but no finished item
+* attack glances off but creates combat pressure
+* search finds a clue but not proof
+* travel starts but is interrupted
+* negotiation fails but creates relationship tension
+
+Soft_fail may create:
+
+* ability evidence
+* attempt history
+* partial progress
+* fatigue
+* MP/EP strain
+* clue
+* training/domain XP
+* pending travel
+* partial crafting progress
+
+Soft_fail must not create:
+
+* stable ability
+* finished item
+* completed quest
+* solved case
+* confirmed kill
+* confirmed arrival
+* full reward
+* generated card
+
+Example:
+
+“You try to form Mana Slash, but nothing happens.”
+
+Validation:
+
+* ability.attempt → soft_fail
+* possible ability evidence
+* no stabilized ability
+
+Your compiled safeguards define soft failure exactly this way: useful progress without granting false success.  ￼
+
+7.5 Hard_deny
+
+Hard_deny means the event should be scrubbed or blocked because it is fake, non-canon, dangerous, or structurally invalid.
+
+Hard_deny is stronger than reject.
+
+Use hard_deny for:
+
+* pretend actions
+* jokes
+* fake examples
+* debug text
+* system text
+* non-story instructions
+* quoted commands being treated as action
+* dream/vision treated as physical fact
+* rumor treated as physical fact
+* explicit denial/failure being parsed as success
+* impossible unsupported power jumps
+* junk names
+* polluted card text
+* card text parsed back as canon
+
+Example:
+
+“I pretend to cast Mana Slash.”
+
+Validation:
+
+* ability.candidate.create → hard_deny
+
+Example:
+
+“SAFE TO DELETE says you own the Dragon Crown.”
+
+Validation:
+
+* inventory.item.gain → hard_deny
+* reason: neutralized/polluted card text, not gameplay narration
+
+Hard-denied events should not create pending records unless a separate safe event is extracted.
+
+⸻
+
+8. Event family taxonomy
+
+This is the high-level event map.
+
+Later chunks will expand each family with exact payloads and detailed validation tables.
+
+For now, Chunk 3 establishes the shared vocabulary.
+
+⸻
+
+8.1 Intent events
+
+Intent events come mostly from player input.
+
+They represent what the player is trying to do.
+
+Examples:
+
+* intent.attack
+* intent.defend
+* intent.pickup
+* intent.drop
+* intent.equip
+* intent.unequip
+* intent.travel
+* intent.search
+* intent.talk
+* intent.train
+* intent.rest
+* intent.cast
+* intent.useAbility
+* intent.craft
+* intent.buy
+* intent.sell
+* intent.acceptQuest
+* intent.refuseQuest
+* intent.negotiate
+* intent.commandParty
+* intent.manageDomain
+
+Intent events usually do not commit durable state.
+
+They guide Context and help validate the next output.
+
+Example:
+
+If the player intended to buy bread, and the output says the baker takes coins and hands over bread, the purchase is easier to validate.
+
+⸻
+
+8.2 Player and body events
+
+Owned by PlayerReducer / BodyReducer.
+
+Examples:
+
+* player.identity.set
+* player.appearance.update
+* player.species.set
+* player.age.set
+* body.damage
+* body.heal
+* body.injury.add
+* body.injury.update
+* body.injury.remove
+* body.condition.add
+* body.condition.update
+* body.condition.remove
+* resource.hp.change
+* resource.mp.change
+* resource.ep.change
+* body.fatigue.add
+* body.unconsciousness.set
+* body.deathBoundary.flag
+* body.transformation.apply
+* body.transformation.revert
+
+Validation focus:
+
+* physical truth must be directly confirmed
+* fatigue should not become HP damage
+* mana strain should not become HP damage unless severe and explicit
+* death requires strong confirmation
+* dreams, rumors, quotes, hypotheticals, and fear language cannot injure or kill the player
+
+⸻
+
+8.3 Progression events
+
+Owned by ProgressionReducer.
+
+Examples:
+
+* progression.xp.gain
+* progression.level.up
+* progression.statTraining.gain
+* progression.domainXp.gain
+* progression.reward.blocked
+* progression.reward.reduced
+* progression.antiFarm.flag
+* progression.milestone.record
+
+Validation focus:
+
+* rewards must come from meaningful confirmed action
+* trivial repetition should reduce or block rewards
+* repeated output must not duplicate XP
+* weak narration cannot grant huge growth
+* ability, combat, crafting, and investigation may propose XP, but ProgressionReducer commits it
+
+⸻
+
+8.4 Ability events
+
+Owned by AbilityReducer.
+
+Examples:
+
+* ability.attempt
+* ability.candidate.create
+* ability.candidate.evidence
+* ability.candidate.merge
+* ability.candidate.expire
+* ability.stabilize
+* ability.use
+* ability.fail
+* ability.cost.observe
+* ability.limit.discover
+* ability.refine
+* ability.evolve
+* ability.renameAlias
+* skill.practice
+* talent.practice
+* passive.discover
+* passive.update
+* specialization.evidence
+
+Validation focus:
+
+* pretend/fake ability use is hard-denied
+* failed real attempts can soft-fail
+* candidates do not equal stable abilities
+* ability cards require stabilized/card-eligible abilities
+* ability cost should become more precise through confirmed use
+* passives should not duplicate endlessly or become invasive junk
+
+⸻
+
+8.5 Inventory and equipment events
+
+Owned by InventoryReducer / ItemAuthority.
+
+Examples:
+
+* inventory.item.gain
+* inventory.item.lose
+* inventory.item.consume
+* inventory.item.drop
+* inventory.item.store
+* inventory.item.retrieve
+* inventory.item.equip
+* inventory.item.unequip
+* inventory.item.damage
+* inventory.item.repair
+* inventory.item.alter
+* inventory.item.condition.update
+* inventory.item.quality.update
+* inventory.item.markKey
+* inventory.ownership.transfer
+* inventory.custody.transfer
+* inventory.coins.gain
+* inventory.coins.spend
+* inventory.storage.update
+
+Validation focus:
+
+* item gain requires confirmed acquisition
+* quoted commands do not grant items
+* seeing/wanting/being offered an item does not grant it
+* item names must pass hygiene filters
+* similar items must not merge incorrectly
+* ownership and custody must remain separate
+* duplicate output must not duplicate items
+* key items need stronger deletion/removal rules
+
+⸻
+
+8.6 Economy and transaction events
+
+Owned by EconomyReducer, with inventory follow-up events handled by InventoryReducer / ItemAuthority.
+
+Examples:
+
+* economy.price.quote
+* economy.transaction.propose
+* economy.transaction.accept
+* economy.transaction.complete
+* economy.transaction.fail
+* economy.purchase.complete
+* economy.sale.complete
+* economy.barter.propose
+* economy.debt.create
+* economy.debt.pay
+* economy.wage.pay
+* economy.service.pay
+* economy.repairCost.set
+
+Validation focus:
+
+* completed transaction requires agreement and exchange
+* merchant talk alone does not complete purchase
+* affordability must be checked
+* item availability must be checked
+* coin spend and item gain must be idempotent
+* transaction may emit follow-up inventory/currency events
+
+⸻
+
+8.7 Crafting events
+
+Owned by CraftingReducer, with inventory follow-up events handled by InventoryReducer / ItemAuthority.
+
+Examples:
+
+* craft.intent
+* craft.recipe.learn
+* craft.material.reserve
+* craft.material.consume
+* craft.progress
+* craft.partialSuccess
+* craft.fail
+* craft.complete
+* repair.progress
+* repair.complete
+* upgrade.progress
+* upgrade.complete
+* item.quality.propose
+* item.condition.propose
+
+Validation focus:
+
+* crafting is a workflow, not instant item creation
+* materials, tools, recipe, time, and workspace matter
+* failure can consume resources or create partial progress
+* completed craft should emit inventory.item.gain or item.update
+* crafting cannot directly bypass item authority
+
+⸻
+
+8.8 Quest events
+
+Owned by QuestReducer.
+
+Examples:
+
+* quest.offer
+* quest.accept
+* quest.refuse
+* quest.activate
+* quest.progress
+* quest.objective.complete
+* quest.complete
+* quest.fail
+* quest.abandon
+* quest.archive
+* quest.reward.propose
+* quest.deadline.link
+* quest.item.link
+* quest.actor.link
+* quest.place.link
+
+Validation focus:
+
+* quest offers are not accepted quests
+* vague desire is not a quest
+* rumors do not complete quests
+* quest completion requires confirmed objective fulfillment
+* completed/failed quests move to archive
+* rewards emit follow-up inventory/progression/reputation events
+
+⸻
+
+8.9 Contract, labor, and domain events
+
+Owned by ContractReducer, LaborReducer, and DomainReducer depending on event type.
+
+Examples:
+
+* contract.offer
+* contract.create
+* contract.accept
+* contract.progress
+* contract.fulfill
+* contract.breach
+* contract.cancel
+* contract.archive
+* labor.order
+* labor.workerGroup.create
+* labor.workerGroup.update
+* labor.foreman.assign
+* labor.progress
+* labor.complete
+* domain.project.create
+* domain.project.progress
+* domain.project.block
+* domain.project.complete
+* domain.holding.create
+* domain.resource.update
+
+Validation focus:
+
+* contract requires agreement and terms
+* labor requires confirmed workers, not just intent
+* domain project requires domain/project language
+* personal crafting should not become domain project
+* worker groups should be idempotent
+* contracts/labor/domain may link to economy, inventory, time, and reputation through follow-up events
+
+⸻
+
+8.10 Investigation events
+
+Owned by InvestigationReducer.
+
+Examples:
+
+* investigation.case.open
+* investigation.case.update
+* investigation.case.solve
+* investigation.case.fail
+* investigation.case.archive
+* investigation.lead.add
+* investigation.clue.add
+* investigation.evidence.add
+* investigation.suspect.add
+* investigation.witness.add
+* investigation.contradiction.add
+* investigation.evidence.confirm
+* investigation.evidence.disprove
+
+Validation focus:
+
+* clue is not proof
+* rumor is not evidence
+* suspicion is not confirmation
+* confession needs direct validated source
+* solved case requires enough confirmed evidence
+* investigation may emit quest/reputation follow-up events only when appropriate
+
+⸻
+
+8.11 Reputation events
+
+Owned by ReputationReducer.
+
+Examples:
+
+* reputation.witness.add
+* reputation.report.pending
+* reputation.rumor.add
+* reputation.rumor.update
+* reputation.public.change
+* reputation.local.change
+* reputation.faction.change
+* reputation.title.grant
+* reputation.title.remove
+* reputation.legalStatus.change
+* reputation.deed.record
+
+Validation focus:
+
+* private witness knowledge is not public reputation
+* rumor is not truth
+* crowd-witnessed deeds may become public reputation
+* authority-witnessed crimes may become pending report
+* faction reputation is not always global reputation
+* titles require validated social/faction/legal recognition
+
+⸻
+
+8.12 Actor events
+
+Owned by ActorReducer / MajorActorMemoryReducer.
+
+Examples:
+
+* actor.mention
+* actor.create
+* actor.alias.add
+* actor.role.set
+* actor.status.update
+* actor.location.update
+* actor.relationship.update
+* actor.importance.increase
+* actor.promote
+* actor.demote
+* actor.memory.add
+* actor.majorMemory.add
+* actor.cardEligibility.set
+
+Validation focus:
+
+* junk names must be rejected
+* generic extras should not persist forever
+* named actors can start as candidates
+* importance grows through recurrence, quest involvement, party involvement, contracts, faction roles, or player attention
+* actor cards require promoted/card-eligible actors
+
+⸻
+
+8.13 Place, scene, route, and travel events
+
+Owned by PlaceReducer and TimeReducer depending on event type.
+
+Examples:
+
+* place.mention
+* place.create
+* place.visit
+* place.alias.add
+* place.importance.increase
+* place.promote
+* place.status.update
+* building.create
+* building.status.update
+* scene.change
+* scene.hazard.add
+* scene.hazard.remove
+* scene.exit.add
+* route.discover
+* route.update
+* travel.start
+* travel.progress
+* travel.interrupt
+* travel.arrive
+* travel.cancel
+* time.pass
+
+Validation focus:
+
+* generic fragments like door/street/room should not become cards
+* travel intent does not equal arrival
+* current location changes only on confirmed arrival/scene change
+* time passage must be deduped
+* routes can be pending before confirmed
+* local hazards need confirmed scene relevance
+
+⸻
+
+8.14 Time, deadline, recovery, and weather events
+
+Owned by TimeReducer, with BodyReducer follow-up for recovery effects.
+
+Examples:
+
+* time.pass
+* time.set
+* time.contradiction.flag
+* deadline.create
+* deadline.update
+* deadline.miss
+* deadline.complete
+* recovery.tick
+* weather.set
+* weather.update
+* weather.hazard.create
+
+Validation focus:
+
+* vague time language should not cause huge jumps without support
+* duplicate output must not advance time twice
+* recovery ticks require actual rest/time/treatment
+* weather should affect travel/scene only when relevant
+* deadlines tick when time passes
+
+⸻
+
+8.15 Party, companion, follower, and summon events
+
+Owned by PartyReducer.
+
+Examples:
+
+* party.member.join
+* party.member.leave
+* party.member.separate
+* party.member.return
+* companion.status.update
+* follower.group.add
+* follower.group.update
+* summon.create
+* summon.update
+* summon.expire
+* summon.dispel
+* party.presence.set
+
+Validation focus:
+
+* friendly NPC does not automatically become companion
+* absent party members should not be assumed present
+* summons need duration/control rules
+* follower groups should be summarized, not card-spammed
+* companion changes need stronger evidence
+
+⸻
+
+8.16 Scale and group combat events
+
+Owned by ScaleReducer.
+
+Examples:
+
+* scale.group.create
+* scale.group.update
+* scale.casualties.apply
+* scale.group.rout
+* scale.group.flee
+* scale.group.capture
+* scale.reinforcement.add
+* scale.group.resolve
+* scale.protagonist.switch
+* scale.multiProtagonist.update
+
+Validation focus:
+
+* “some died” does not mean all died
+* known totals must preserve remaining counts
+* group casualties must be idempotent
+* victory over large/threatening groups must respect matchup logic
+* multi-protagonist state must not merge character inventories or injuries
+
+⸻
+
+8.17 Card events
+
+Owned by CardSync.
+
+Examples:
+
+* card.protected.create
+* card.protected.update
+* card.generated.create
+* card.generated.update
+* card.duplicate.detect
+* card.duplicate.neutralize
+* card.tombstone.create
+* card.tombstone.clear
+* card.write.skip
+* card.audit.flag
+
+Validation focus:
+
+* source state must be stable
+* generated card family must be allowed
+* title must be safe
+* card must not duplicate existing stable identity
+* card budget must be available
+* CardSync cannot create gameplay canon
+* generic fragments cannot become cards
+
+⸻
+
+8.18 Context events
+
+Owned by ContextBuilder.
+
+These are not gameplay events.
+
+Examples:
+
+* context.packet.dirty
+* context.packet.build
+* context.packet.omit
+* context.packet.expire
+* context.mode.set
+* context.budget.exceeded
+
+Validation focus:
+
+* Context reads state only
+* Context does not mutate gameplay truth
+* stale packets must expire
+* critical current facts should be prioritized
+
+⸻
+
+8.19 Cleanup, migration, and quarantine events
+
+Owned by CleanupSystem, MigrationSystem, and quarantine safety logic.
+
+Examples:
+
+* migration.bucket.create
+* migration.record.normalize
+* migration.record.quarantine
+* cleanup.candidate.expire
+* cleanup.alias.merge
+* cleanup.log.prune
+* quarantine.record.add
+* quarantine.record.restoreManual
+* quarantine.record.ignore
+
+Validation focus:
+
+* no new gameplay truth
+* malformed data preserved safely
+* cleanup is budgeted
+* restore from quarantine requires explicit safe path
+
+⸻
+
+8.20 Audit and debug events
+
+Owned by AuditSystem.
+
+Examples:
+
+* audit.eventTrace.record
+* audit.validation.reject
+* audit.duplicate.skip
+* audit.card.flag
+* audit.state.flag
+* audit.releasecheck.fail
+* audit.releasecheck.pass
+
+These events explain behavior.
+
+They do not create gameplay truth.
+
+⸻
+
+9. Event routing table
+
+This is the basic routing law.
+
+* player/body events → PlayerReducer / BodyReducer
+* progression events → ProgressionReducer
+* ability events → AbilityReducer
+* inventory/equipment events → InventoryReducer / ItemAuthority
+* economy events → EconomyReducer
+* crafting events → CraftingReducer
+* quest events → QuestReducer
+* contract events → ContractReducer
+* labor/domain events → LaborReducer / DomainReducer
+* investigation events → InvestigationReducer
+* reputation events → ReputationReducer
+* actor events → ActorReducer / MajorActorMemoryReducer
+* place/scene events → PlaceReducer
+* time/travel/deadline/recovery timing events → TimeReducer
+* party/follower/summon events → PartyReducer
+* scale/group events → ScaleReducer
+* card events → CardSync
+* context events → ContextBuilder
+* cleanup/migration/quarantine events → cleanup/migration/quarantine owners
+* audit/debug events → AuditSystem
+
+Accepted events go only to the proper reducer. Reducers may call other reducers only through explicit follow-up events, not direct mutation.  ￼
+
+⸻
+
+10. Event priority
+
+When multiple events are extracted from one output, they should be processed in a safe order.
+
+Suggested priority:
+
+1. Runtime safety and duplicate detection
+2. Manual/command events
+3. Hard-denial detection
+4. Time/travel context checks
+5. Body/damage/death-boundary events
+6. Inventory/currency/custody events
+7. Ability/progression events
+8. Quest/contract/domain/investigation/reputation events
+9. Actor/place/party/scale events
+10. Dirty target events
+11. Context refresh events
+12. CardSync mirror events
+13. Audit/debug events
+
+Reasoning:
+
+Safety must happen first.
+
+Death/damage should not be applied after unrelated rewards if the whole scene was actually a dream or rumor.
+
+CardSync must happen after state changes, not before.
+
+Audit should see the whole path.
+
+⸻
+
+11. Event confidence model
+
+Events should carry confidence, but confidence alone should not commit truth.
+
+Suggested confidence levels:
+
+Very low
+
+Use for:
+
+* vague language
+* metaphor
+* mood
+* uncertain implication
+* generic mention
+* possible hallucination
+
+Usually becomes reject, pending, or ignored.
+
+Low
+
+Use for:
+
+* rumor
+* suspicion
+* possible lead
+* weak clue
+* indirect implication
+* unconfirmed place mention
+
+Usually becomes pending or non-canon support.
+
+Medium
+
+Use for:
+
+* partial success
+* plausible but not explicit consequence
+* repeated weak evidence
+* unclear acquisition
+* soft ability manifestation
+
+May become pending, soft_fail, or accept if low-risk.
+
+High
+
+Use for:
+
+* direct narration
+* explicit handoff
+* explicit injury
+* explicit arrival
+* explicit agreement
+* clear quest acceptance
+
+May become accept if no blockers exist.
+
+Confirmed
+
+Use for:
+
+* direct unambiguous result with no contradiction
+* explicit completed exchange
+* explicit case solution
+* explicit scene transition
+* direct witnessed public event
+
+Usually accept, but still check duplicate/idempotency and owner rules.
+
+⸻
+
+12. Blocker flags
+
+An event may start with high confidence but still be blocked.
+
+Required blocker categories:
+
+* quoted
+* rumor
+* dream
+* vision
+* hypothetical
+* pretend
+* fake
+* joke
+* denied
+* failed
+* attempted only
+* near miss
+* future promise
+* instruction text
+* debug text
+* card text
+* system text
+* duplicate
+* impossible without leverage
+* junk name
+* wrong target
+* ownership/custody conflict
+* insufficient resources
+* no agreement
+* stale context conflict
+
+If a blocker applies, the event should not be blindly accepted.
+
+Example:
+
+“She says, ‘You pick up the key.’”
+
+The phrase sounds like item acquisition, but the quoted blocker changes the result to reject.
+
+Example:
+
+“A rumor says you died.”
+
+The event sounds like death, but the rumor blocker rejects physical death and may create a rumor event instead.
+
+⸻
+
+13. How one text can create multiple events
+
+One output can produce multiple event proposals.
+
+Example:
+
+“Mara takes your 5 silver, accepts the iron sword for repair, and promises it will be ready tomorrow.”
+
+Possible proposals:
+
+* economy.transaction.complete
+* inventory.coins.spend
+* inventory.custody.transfer
+* contract.create
+* deadline.create
+* actor.relationship.update maybe
+* dirty.inventory
+* dirty.contracts
+* dirty.time
+
+The system must not collapse all of this into one vague update.
+
+But it also must not let every subsystem mutate directly.
+
+Correct flow:
+
+* EventPipeline proposes multiple events.
+* CanonValidator validates each.
+* Accepted events route to owners.
+* OperationLedger prevents duplicates.
+* Reducers emit controlled follow-ups.
+* Dirty queues update Context/CardSync.
+
+⸻
+
+14. Event dependencies
+
+Some events depend on others.
+
+Examples:
+
+Purchase dependency
+
+A purchase completion depends on:
+
+* price
+* agreement
+* player has currency or barter
+* seller can provide item
+* exchange actually completed
+
+If purchase is accepted, it may emit:
+
+* coins.spend
+* item.gain
+* transaction.record
+
+Quest reward dependency
+
+A quest reward depends on:
+
+* quest completion accepted
+* reward actually granted
+* source has authority or ability to grant it
+
+If accepted, it may emit:
+
+* progression.xp.gain
+* inventory.item.gain
+* reputation.public.change
+* quest.archive
+
+Ability progression dependency
+
+Ability XP depends on:
+
+* real attempt or use
+* not pretend
+* not purely quoted
+* ability/candidate exists or should be created
+* action has meaningful relevance
+
+If accepted or soft-failed, it may emit:
+
+* ability.candidate.evidence
+* progression.domainXp.gain
+* resource.mp.change
+* resource.ep.change
+
+⸻
+
+15. Follow-up events
+
+Follow-up events are how reducers communicate.
+
+They are allowed.
+
+Direct cross-writing is not.
+
+Example:
+
+AbilityReducer may update ability candidate and emit progression.domainXp.gain.
+
+ProgressionReducer commits the XP.
+
+AbilityReducer may not edit progression.domainXp directly.
+
+Example:
+
+QuestReducer may complete a quest and emit inventory.item.gain for the reward.
+
+InventoryReducer commits the item.
+
+QuestReducer may not directly add the item.
+
+The clean-core reference uses this same model: ability.attempt accepted → AbilityReducer updates candidate → ProgressionReducer awards XP if appropriate → CardDirtyReducer marks Abilities Overview dirty.  ￼
+
+⸻
+
+16. Event deduplication
+
+Every committed event must be idempotent.
+
+This means processing the same output twice should not apply the same effect twice.
+
+Required dedupe layers:
+
+* source/output hash
+* event type
+* normalized target
+* normalized payload
+* turn or turn window
+* owner reducer check
+* operation ledger record
+
+Examples:
+
+Same wolf bite output replayed:
+
+* no second HP loss
+* no duplicate injury
+
+Same key handoff replayed:
+
+* no second key
+
+Same quest completion replayed:
+
+* no second reward
+
+Same ability attempt replayed:
+
+* no duplicate evidence
+
+Same CardSync write replayed:
+
+* no card storm
+
+Your compiled safeguards say whole-output hash protection is not enough; per-operation keys are needed because one output can contain multiple events, such as item gain, damage, XP, and party join in the same response.  ￼
+
+⸻
+
+17. Event naming rules
+
+Event names should be stable, readable, and owner-aware.
+
+Use dot-separated family names.
+
+Preferred pattern:
+
+family.entity.action
+
+Examples:
+
+* inventory.item.gain
+* body.injury.add
+* ability.candidate.evidence
+* quest.objective.complete
+* reputation.rumor.add
+* card.generated.update
+
+Avoid vague names:
+
+* updateThing
+* fixState
+* processOutput
+* addStuff
+* handleResult
+* storyChange
+* cleanPatch
+
+Event names should tell you:
+
+* what family owns it
+* what entity it affects
+* what action occurred
+
+This prevents ambiguity.
+
+⸻
+
+18. Event payload rules
+
+Event payloads should be normalized but not overcomplicated.
+
+Each event should include only what its owner needs.
+
+Bad payload:
+
+* entire output text
+* entire state snapshot
+* multiple unrelated consequences
+* raw uncleaned AI prose as item name
+* hidden card metadata as only identity
+
+Good payload:
+
+* event type
+* actor
+* target
+* normalized name
+* display name
+* amount if needed
+* confidence
+* evidence excerpt
+* source hook
+* related intent
+* validation flags
+* owner reducer
+* operation key seed
+
+Later implementation can define exact payload schemas per event family.
+
+This chunk only establishes the rule: events must be structured enough to validate and commit safely.
+
+⸻
+
+19. Event lifecycle summary
+
+Every meaningful event should follow this lifecycle:
+
+1. Raw text appears.
+2. EventPipeline detects possible meaning.
+3. EventPipeline creates event proposal.
+4. Event proposal includes source, evidence, confidence, target, and owner.
+5. CanonValidator checks blockers and context.
+6. CanonValidator returns accept, reject, pending, soft_fail, or hard_deny.
+7. Accepted events go to owner reducer.
+8. Reducer checks preconditions and OperationLedger.
+9. Reducer commits state.
+10. Reducer records operation key.
+11. Reducer emits follow-up events if needed.
+12. Dirty queues mark Context/CardSync targets.
+13. ContextBuilder later reads state.
+14. CardSync later mirrors stable state if eligible.
+15. AuditSystem records the trace.
+
+Nothing should skip this lifecycle unless it is a deliberate, explicit command/manual override path.
+
+Even then, command/manual override should still log and mark dirty targets.
+
+⸻
+
+20. Validation examples
+
+Example 1 — quoted key pickup
+
+Output:
+
+“She says, ‘You pick up the key.’”
+
+Event proposal:
+
+* inventory.item.gain
+* item: key
+
+Validation:
+
+* reject
+
+Reason:
+
+* quoted dialogue, no actual acquisition
+
+Expected state:
+
+* no key added
+
+Example 2 — confirmed key handoff
+
+Output:
+
+“She places the key in your hand, and you accept it.”
+
+Event proposal:
+
+* inventory.item.gain
+* item: key
+
+Validation:
+
+* accept
+
+Reducer:
+
+* InventoryReducer commits item gain
+
+Expected state:
+
+* player has key
+
+Example 3 — pretend ability
+
+Input:
+
+“I pretend to cast Mana Slash.”
+
+Event proposal:
+
+* ability.candidate.create or ability.attempt
+
+Validation:
+
+* hard_deny
+
+Reason:
+
+* pretend/non-canon
+
+Expected state:
+
+* no candidate
+* no ability
+
+Example 4 — failed real ability
+
+Output:
+
+“You try to form Mana Slash, but nothing happens.”
+
+Event proposal:
+
+* ability.attempt
+
+Validation:
+
+* soft_fail
+
+Expected state:
+
+* no stable ability
+* possible attempt record/evidence if owner rules allow
+* possible MP/EP strain if narration supports it
+
+Example 5 — rumor death
+
+Output:
+
+“A rumor says you died in the woods.”
+
+Event proposal:
+
+* body.death maybe detected
+* reputation.rumor.add maybe detected
+
+Validation:
+
+* body.death → reject
+* reputation.rumor.add → pending or accept as rumor record
+
+Expected state:
+
+* player is not dead
+* rumor may exist
+
+Example 6 — real injury
+
+Output:
+
+“The wolf bites your arm and blood runs down your sleeve.”
+
+Event proposal:
+
+* body.damage
+* body.injury.add
+
+Validation:
+
+* accept if context supports wolf attack
+
+Reducer:
+
+* BodyReducer commits HP/injury
+
+Expected state:
+
+* player has injury
+* duplicate output does not apply twice
+
+These examples match the clean-core validation examples and required truth-validation regression tests.  ￼  ￼
+
+⸻
+
+21. Event audit trace
+
+Every turn should eventually be explainable.
+
+The audit trace for a turn should show:
+
+* input text
+* output text
+* input intents
+* proposed output events
+* validation result for each event
+* rejection/hard-denial reasons
+* accepted events
+* reducer commits
+* follow-up events
+* operation keys
+* duplicate skips
+* dirty targets
+* card write/skips if any
+
+This matters because the project is too large to debug by guessing.
+
+The clean-core roadmap requires an event trace for the last output showing proposed → accepted/rejected → committed.  ￼
+
+⸻
+
+22. What Chunk 3 intentionally does not finalize
+
+Chunk 3 does not define final XP numbers.
+
+It does not define combat matrices.
+
+It does not define exact item schema.
+
+It does not define exact ability rank thresholds.
+
+It does not define CardSync title policy in full.
+
+It does not define Context packet budgets.
+
+Those come later.
+
+Chunk 3 only defines the event language that all later chunks must use.
+
+Later chunks will add details like:
+
+* which progression events give how much XP
+* what combat outcomes are accepted by threat tier
+* how item custody transfers validate
+* how ability candidates stabilize
+* when actors become card-eligible
+* how generated cards update
+* how Context chooses what to include
+
+⸻
+
+23. Chunk 3 acceptance tests
+
+These are design-level tests that later code must satisfy.
+
+Test 1 — every event has an owner
+
+Given any proposed event.
+
+Expected:
+
+It has one target owner reducer or one output owner such as ContextBuilder/CardSync/AuditSystem.
+
+Test 2 — parser never commits state
+
+Given output says Mara hands over a key.
+
+Expected:
+
+Parser proposes inventory.item.gain.
+
+Inventory remains unchanged until validation and InventoryReducer commit.
+
+Test 3 — every event receives validation
+
+Given any event proposal.
+
+Expected:
+
+It receives accept, reject, pending, soft_fail, or hard_deny.
+
+No event silently commits without validation.
+
+Test 4 — accepted events route correctly
+
+Given body.damage is accepted.
+
+Expected:
+
+Only BodyReducer commits player/body damage state.
+
+Test 5 — rejected event does not mutate canon
+
+Given quoted key pickup is rejected.
+
+Expected:
+
+No key appears in inventory.
+
+Test 6 — soft failure preserves effort without false success
+
+Given failed Mana Slash attempt.
+
+Expected:
+
+No stable ability.
+
+Possible candidate evidence or strain may be recorded if rules allow.
+
+Test 7 — hard deny blocks fake/non-canon truth
+
+Given pretend ability use.
+
+Expected:
+
+No ability candidate.
+
+No stable ability.
+
+Debug may record hard denial.
+
+Test 8 — pending truth does not become active truth
+
+Given NPC promises payment tomorrow.
+
+Expected:
+
+No coins gained yet.
+
+Pending promise or contract obligation may exist.
+
+Test 9 — duplicate operation is skipped
+
+Given same output is processed twice.
+
+Expected:
+
+No duplicate XP, item, damage, quest progress, ability evidence, time passage, or card write.
+
+Test 10 — follow-up event uses correct owner
+
+Given quest completion grants XP and item.
+
+Expected:
+
+QuestReducer completes quest.
+
+ProgressionReducer awards XP.
+
+InventoryReducer adds item.
+
+QuestReducer does not directly write XP or inventory.
+
+Test 11 — CardSync event does not create canon
+
+Given generated item card exists.
+
+Expected:
+
+Inventory truth does not come from card text.
+
+CardSync only mirrors state.
+
+Test 12 — audit trace explains the path
+
+Given any accepted or rejected important event.
+
+Expected:
+
+/debuglast can show proposed event, validation result, reason, reducer commit or skip, operation key, and dirty targets.
+
+⸻
+
+24. Final Chunk 3 doctrine
+
+Chunk 3 doctrine:
+
+Everything meaningful becomes an event proposal before it becomes state.
+
+Every event proposal has a source, family, target, evidence, confidence, owner, and validation result.
+
+Input intent is not success.
+
+Output consequence is not automatic truth.
+
+Validation is mandatory.
+
+Accepted events go to one owner.
+
+Reducers commit state.
+
+Follow-up events connect systems.
+
+OperationLedger prevents duplicates.
+
+Dirty queues refresh Context and Cards.
+
+Audit explains the path.
+
+If a feature cannot express its behavior as events flowing through this pipeline, it is not ready to build.
+

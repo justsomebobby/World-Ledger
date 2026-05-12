@@ -1,0 +1,88 @@
+# WorldLedger 9.12A Source Map
+
+Source: `WorldLedger_CleanCore_Build9_12A_LoreWorldBibleAuthorityImportLayer.txt`
+
+## New 9.12A symbols
+- `LoreAuthoritySystem` — line 12
+- `LoreAuthorityReducer` — line 137
+- `detectLoreAuthorityCandidates` — line 3514
+- `LoreAuthority912ASelfTest` — line 12036
+- `build912acheck` — line 57
+- `lore` — line 13
+
+## Key source regions
+- line 78: 01. [WL-BOOT] Header / version / hard constants
+- line 146: 02. [WL-BOOT] Feature flags / safe mode / platform caps
+- line 230: 03. [WL-BOOT] Utility helpers
+- line 349: 04. [WL-BOOT] Schema defaults and migrations
+- line 472: 05. [WL-BOOT] StateManager and quarantine
+- line 825: 06. [WL-RUNTIME] Runtime hooks and source classification
+- line 827: Owner note: SourceGuard classifies text before any canon proposal. Commands, context, and managed-card echoes stay non-canon.
+- line 847: Owner note: Runtime is the only hook orchestration path. Do not add side observers around hooks.
+- line 938: Owner note: PlayerProfileSystem imports safe setup identity only; it must not grant mechanics from setup prose.
+- line 1024: Owner note: RaceRegistry resolves chosen race/source-card summaries; 9.7A will add trait candidates without stat grants.
+- line 1077: Owner note: RaceTraitSystem owns race/species trait candidates only; it never grants stats, resources, body formulas, or abilities.
+- line 1278: Owner note: BodyFormulaSystem owns bounded derived body formulas and constraints. It does not grant base stats, XP, inventory, or automatic success.
+- line 1445: Owner note: SocialTreatmentSystem owns race/body/social treatment evidence only; it does not mutate reputation, law, XP, stats, inventory, or social outcomes automatically.
+- line 1574: Owner note: PartyFollowerSystem owns persistent companion/follower membership. It must not grant stats, summons, items, or automatic combat outcomes.
+- line 1672: Owner note: SummonSystem owns temporary or bound summoned entities. It must not create party members, pets/mounts/vehicles, inventory, XP, stats, or automatic combat outcomes.
+- line 1800: Owner note: ControlledEntitySystem owns pets, mounts, and vehicles. It must not create party members, summons, inventory items, XP, stats, or automatic outcomes.
+- line 1957: Owner note: FormTransformationSystem owns true/current form separation, disguise, illusion, injuries, and conditions.
+- line 2115: Owner note: AbilityCostSystem estimates and hardens costs; passives have no activation cost.
+- line 2337: Owner note: AbilityDevelopmentMatrix derives candidate/practice/stability stage from observed use.
+- line 2370: Owner note: AbilityGrowthSystem owns 9.9D mastery/cost growth records. It strengthens the existing ability inbox/cost matrix path instead of wrapping or replacing AbilityLifecycleSystem.
+- line 2525: Owner note: ProgressionSystem owns XP/stat/domain lanes and never scales the world to the player.
+- line 2527: Owner note: ProgressionFormulaSystem owns 9.9A XP economy, level thresholds, and bounded level-up application.
+- line 2529: Owner note: XPBudgetSystem owns anti-farm training/reward budgets. It may dampen XP application through ProgressionFormulaSystem, but it does not create XP by itself, resolve combat rewards, or replace stat formulas.
+- line 2828: Owner note: StatFormulaSystem owns ATK/DEF/SPD/INT/LCK derived formulas and action-fit display. It records stat effects without XP grants, direct damage mutation, or combat outcomes.
+- line 3063: Owner note: AbilityLifecycleSystem keeps ability-like concepts in the inbox/candidate path before stable transfer.
+- line 3297: 07. [WL-PIPELINE] EventScanner / ProposalBuilder / CanonValidator / ReducerRegistry
+- line 3299: Pipeline note: EventScanner observes text only. It must not mutate canon.
+- line 6057: Pipeline note: ProposalBuilder turns scanner events into structured claims without committing them.
+- line 6092: Pipeline note: CanonValidator is the eligibility boundary between claims and reducers.
+- line 6333: Pipeline note: ReducerRegistry is the only commit dispatcher for accepted validations.
+- line 6375: Owner note: InventoryEquipmentSystem owns possession/equipment/currency commits and idempotency.
+- line 6542: Owner note: ItemIdentitySystem keeps item names stable and prevents parser suffix pollution.
+- line 6659: Owner note: StackPolicy controls stacking and duplicate suppression for inventory records.
+- line 6684: Owner note: QuestObjectiveRewardSystem owns quest lifecycle and promised-vs-paid rewards.
+- line 6950: Owner note: TimeTravelSystem owns clock, routes, base durations, delays, deadlines, rest, and timeskips.
+- line 7068: Owner note: WorldStructureSystem owns specific durable places, layouts, rooms, relations, and contradictions.
+- line 7178: Owner note: ActorSocialSystem owns important actors and relationships; generic extras stay light.
+- line 7240: Owner note: InvestigationCaseSystem records crime/clue evidence without omniscient punishment.
+- line 7392: Owner note: RumorPropagationSystem records scoped information travel, not instant universal knowledge.
+- line 7476: Owner note: FactionLawSystem records law/response evidence without automatic legal outcomes.
+- line 7586: Owner note: SocialConsequenceSystem composes presence, witnesses, reputation, rumors, crime, clues, and law evidence.
+- line 7914: Owner note: CombatThreatSystem owns world-side threat profiles, group counts, and no rubber-band scaling.
+- line 8107: Owner note: ThreatTierSystem owns 9.10C creature tier/stat-band library records. It reads world-side threat evidence and existing CombatThreatSystem estimates; it does not scale enemies to player level, grant XP, mutate HP, or resolve rewards.
+- line 8216: Owner note: CombatRewardResolver owns 9.10D danger/contribution/threat reward estimates. It can hand bounded XP to ProgressionFormulaSystem/XPBudgetSystem, but it does not create loot, mutate HP, or scale enemies to the player.
+- line 8346: Owner note: MatchupSystem owns 9.10B body/equipment/terrain/surprise/numbers/magic matchup weights. It records tactical evidence only; it does not mutate HP, grant XP, resolve rewards, or replace CombatOutcomeSystem.
+- line 8449: Owner note: CombatOutcomeSystem owns 9.10A combat outcome events. It records resolved attacks/defense/dodges/captures/downed/flee/overwhelming evidence without rewards, matchup weights, or automatic HP mutation.
+- line 8570: Owner note: ContractSystem owns agreements distinct from quests and inventory.
+- line 8687: Owner note: LaborSystem owns worker records, assignments, refusals, and contract links.
+- line 8749: Owner note: DomainProjectSystem owns construction/project requirements, progress, materials, time, and completion evidence.
+- line 8862: Owner note: DomainAssetSystem owns completed assets, holdings, rooms, control claims, tax evidence, and upkeep evidence.
+- line 9012: Owner note: EconomyTransactionSystem owns quotes, debts, failed purchases, wage/service evidence, and payment records.
+- line 9110: Owner note: CraftingSystem owns recipe/material/quality/repair evidence. It never grants crafted items or spends inventory directly.
+- line 9249: Owner note: WarfareSystem owns force records, casualties, morale, logistics, and control claims as evidence.
+- line 9386: Owner note: EvolutionAbsorptionSystem owns bounded absorption/evolution candidates and threshold evidence only.
+- line 9532: Owner note: LoreAuthoritySystem owns revealed vs hidden lore authority and source-card refs only.
+- line 9653: Owner note: AdvancedBoundarySystem keeps legacy advanced shells; absorption/evolution are now owned by EvolutionAbsorptionSystem.
+- line 9842: Owner note: DirtyQueue marks mirrors for context/card refresh; it is not a gameplay owner.
+- line 9885: 08. [WL-PIPELINE] OperationLedger and Diagnostics
+- line 9887: Owner note: OperationLedger dedupes side effects by operation keys.
+- line 9904: Owner note: Diagnostics stores compact audit/debug records only.
+- line 9916: 09. [WL-MIRRORS] ContextBudgeter and Card Mirror Systems
+- line 9918: Mirror note: ContextBudgeter builds bounded next-turn truth packets. Context is read-only.
+- line 10155: Mirror note: ContextSystem exposes ContextBudgeter without mutating canon.
+- line 10163: Mirror note: WorldGraphIndex provides compact relationship links for context/cards.
+- line 10262: Mirror note: CardCandidateRegistry scores durable card candidates and rejects broad junk identities.
+- line 10329: Mirror note: CardRegistry defines protected/generated card identity surfaces.
+- line 10360: Mirror note: CardRenderer formats truth safely; it does not create gameplay truth from prose.
+- line 10564: Mirror note: GeneratedCardPolicy controls human-readable generated cards and trigger safety.
+- line 10591: Mirror note: CardApiAdapter is the safe Story Card API boundary.
+- line 10657: Mirror note: CardSync flushes dirty card mirrors after reducers commit accepted changes.
+- line 11291: 10. [WL-COMMANDS] Self-tests, CommandRouter, and CommandRenderer
+- line 12114: Command note: CommandRouter is read-only/control UI and must not commit gameplay mechanics.
+- line 12130: Command note: CommandRenderer displays state honestly; PASS text is not gameplay proof.
+- line 13139: 11. [WL-TESTS] Assertions / SourceAudit / SelfTest
+- line 14710: 12. [WL-EXPORT] AI Dungeon hook binding

@@ -1,0 +1,2402 @@
+AIDRPG Design Bible — Chunk 9: Inventory, Equipment, Ownership, Custody, Economy, and Transactions
+
+1. Purpose of this chunk
+
+Chunk 9 defines how AIDRPG handles things the player can possess, use, lose, buy, sell, equip, store, damage, repair, borrow, steal, or transfer.
+
+This chunk answers:
+
+What is an item?
+
+What is inventory?
+
+What is equipment?
+
+What is the difference between owning an item and physically having it?
+
+What is custody?
+
+What is access?
+
+How should the system prevent duplicate items?
+
+How should similar item names be handled?
+
+How should coins and currency work?
+
+How should purchases, sales, barter, debt, wages, and service payments work?
+
+How do transactions prevent double-spending and duplicate rewards?
+
+How do item condition, item quality, and key items fit into the system?
+
+The central rule is:
+
+Inventory is not flavor text. It is canon possession state.
+
+If the player has an item, it should exist in state.aidrpg.inventory.
+
+If the player does not have an item, it should not appear just because text mentioned it.
+
+⸻
+
+2. Core philosophy
+
+Inventory should feel useful, not bloated.
+
+The system should remember important things:
+
+* weapons
+* armor
+* tools
+* key items
+* quest items
+* evidence items
+* artifacts
+* currency
+* materials
+* consumables
+* equipped gear
+* stored items
+* borrowed items
+* stolen items
+* items under repair
+* items held by companions
+* items lost, damaged, broken, or upgraded
+
+The system should avoid tracking useless junk:
+
+* every pebble
+* every stick
+* every generic cup
+* every floorboard
+* every random dropped knife
+* every coin as an individual object
+* every enemy’s equipment after combat unless collected
+* every decorative object mentioned in prose
+
+The goal is not to turn AI Dungeon into inventory micromanagement.
+
+The goal is to make important possessions persistent and trustworthy.
+
+⸻
+
+3. Ownership boundaries
+
+Inventory-related truth has several owners.
+
+InventoryReducer / ItemAuthority owns
+
+* item records
+* item identity
+* item quantity
+* item ownership
+* item custody
+* item access
+* equipment slots
+* item condition
+* item quality
+* key item flags
+* storage locations
+* player-held coins
+* available materials
+* item aliases
+* item duplication control
+
+EconomyReducer owns
+
+* prices
+* market logic
+* purchase validation
+* sale validation
+* barter logic
+* debt logic
+* wages
+* service costs
+* transaction negotiation
+* merchant interactions
+
+ContractReducer owns
+
+* agreed service terms
+* repair contracts
+* delivery contracts
+* rental contracts
+* custody obligations
+* payment obligations
+* breach/fulfillment status
+
+CraftingReducer owns
+
+* crafting progress
+* recipes
+* material requirements
+* repair workflow
+* upgrade workflow
+* proposed quality/condition changes
+
+QuestReducer owns
+
+* quest links to items
+* quest item requirements
+* quest reward proposals
+
+InvestigationReducer owns
+
+* evidence meaning of items
+
+CardSync owns
+
+* generated item cards only after item state is stable and important
+
+The main rule:
+
+Only InventoryReducer / ItemAuthority writes item truth.
+
+Other systems may propose item changes.
+
+⸻
+
+4. What an item is
+
+An item is a structured object or stack of objects that can be possessed, used, equipped, transferred, consumed, stored, sold, damaged, repaired, or referenced.
+
+Examples:
+
+* rusted iron key
+* iron sword
+* cracked shield
+* healing potion
+* sealed letter
+* silver ring
+* wolf pelt
+* mana crystal
+* royal writ
+* lockpicks
+* leather armor
+* torch
+* evidence dagger
+* cursed amulet
+* bundle of herbs
+* 10 iron ingots
+
+Not every noun is an item.
+
+Examples that should not automatically become items:
+
+* door
+* room
+* warmth
+* sleep
+* your hand
+* pain
+* the floor
+* the street
+* the sky
+* the sound of bells
+* a rumor
+* a memory
+* “take the key” as quoted speech
+
+⸻
+
+5. Item record model
+
+Every important item should have a structured record.
+
+The guide should eventually define exact field names, but conceptually an item should track:
+
+* item ID
+* display name
+* canonical key
+* aliases
+* item type
+* quantity
+* stackable or unique
+* owner
+* custody holder
+* current location
+* access state
+* equipped slot if equipped
+* condition
+* quality
+* material
+* notable descriptors
+* magical traits if any
+* curse/blessing if any
+* key item flag
+* quest links
+* contract links
+* evidence links
+* crafting/material tags
+* value estimate
+* last updated turn
+* card eligibility
+* source/evidence
+* operation history summary
+
+The important part is that the item has an identity separate from its display name.
+
+Display name is what the player sees.
+
+Canonical key is what the system uses to prevent duplicates.
+
+Example:
+
+Display name: rusted iron key.
+
+Canonical key: rusted_iron_key.
+
+Aliases: old iron key, rusty key.
+
+Item type: key.
+
+Owner: player.
+
+Custody: player.
+
+Access: available.
+
+Condition: rusted but usable.
+
+Quest link: missing ring quest, if applicable.
+
+Card eligible: yes if key item.
+
+⸻
+
+6. Display name versus canonical identity
+
+The system must separate visible names from machine identity.
+
+This prevents duplicates like:
+
+* Rusted Iron Key
+* rusted iron key
+* rusty iron key
+* old iron key
+* the key
+* AIDRPG_ITEM_RUSTED_KEY
+
+The visible name should stay clean and natural.
+
+The canonical key should be normalized.
+
+Rules:
+
+* preserve the original display name when possible
+* normalize internally for matching
+* keep aliases separately
+* do not show internal IDs to the player
+* do not use system prefixes in visible names
+* do not merge items just because names are similar
+
+Important example:
+
+“rusted iron key” and “iron keyring” are not the same item.
+
+If the output says:
+
+“You take the rusted iron key, not the iron keyring.”
+
+Correct result:
+
+* gain rusted iron key
+* do not gain iron keyring
+
+This exact kind of similar-name failure is one of the problems this system must prevent.
+
+⸻
+
+7. Item name hygiene
+
+Before an item is created, its name must pass hygiene checks.
+
+Reject item names that are:
+
+* empty
+* too long
+* entire sentences
+* commands
+* system/debug text
+* card labels
+* body parts unless explicitly itemized
+* generic places
+* vague feelings
+* abstract conditions
+* pure adjectives
+* pronouns
+* actor names unless clearly an item
+* quoted player commands
+* obvious parser fragments
+
+Reject examples:
+
+* take
+* grab
+* inventory
+* quest log
+* SAFE TO DELETE
+* AIDRPG
+* your hand
+* the room
+* something
+* nothing
+* pain
+* warmth
+* a thing
+* item gained
+* pick up the key
+* the floor
+
+Accept examples:
+
+* rusted iron key
+* sealed letter
+* cracked mana crystal
+* iron sword
+* Mira’s repair token
+* silver-threaded cloak pin
+* wolf pelt
+* royal signet ring
+* bloodstained dagger
+* bundle of frost herbs
+
+The rule:
+
+If the item name would look absurd in /inventory, do not create it.
+
+⸻
+
+8. Item categories
+
+AIDRPG should classify items.
+
+Common categories:
+
+Weapon
+
+Examples:
+
+* sword
+* dagger
+* bow
+* spear
+* staff
+* axe
+* mace
+
+Relevant to:
+
+* combat
+* equipment
+* damage
+* ability requirements
+* item condition
+
+Armor
+
+Examples:
+
+* leather armor
+* chain shirt
+* breastplate
+* cloak
+* helmet
+* shield
+
+Relevant to:
+
+* DEF
+* damage reduction
+* EP burden
+* equipment condition
+
+Tool
+
+Examples:
+
+* lockpicks
+* hammer
+* rope
+* lantern
+* shovel
+* compass
+* map
+
+Relevant to:
+
+* crafting
+* travel
+* investigation
+* domain work
+
+Consumable
+
+Examples:
+
+* potion
+* food
+* torch
+* scroll
+* bomb
+* bandage
+
+Relevant to:
+
+* use/consume events
+* quantity
+* crafting
+* recovery
+
+Material
+
+Examples:
+
+* herbs
+* iron ingots
+* timber
+* cloth
+* wolf pelt
+* mana crystal
+
+Relevant to:
+
+* crafting
+* repairs
+* domain projects
+* trade
+
+Key item
+
+Examples:
+
+* rusted iron key
+* royal seal
+* cursed amulet
+* evidence letter
+* heirloom sword
+* guild writ
+
+Relevant to:
+
+* quests
+* locks
+* story continuity
+* CardSync
+* deletion protection
+
+Currency
+
+Examples:
+
+* copper
+* silver
+* gold
+* tokens
+* gems used as money
+
+Relevant to:
+
+* economy
+* transactions
+* rewards
+* payments
+
+Evidence item
+
+Examples:
+
+* bloodstained dagger
+* torn blue cloth
+* signed confession
+* ledger page
+* silver thread
+
+Relevant to:
+
+* investigation
+* quests
+* reputation
+* legal consequences
+
+Contract item
+
+Examples:
+
+* sword held for repair
+* delivery parcel
+* rented horse
+* borrowed cloak
+* collateral token
+
+Relevant to:
+
+* custody
+* ownership
+* contracts
+* deadlines
+
+Artifact / magical item
+
+Examples:
+
+* dragon crown
+* cursed blade
+* mana lantern
+* living ring
+* divine relic
+
+Relevant to:
+
+* abilities
+* passives
+* curses
+* cards
+* major story memory
+
+⸻
+
+9. Ownership
+
+Ownership answers:
+
+Who legally, morally, or canonically owns the item?
+
+Possible ownership states:
+
+* player-owned
+* party-owned
+* companion-owned
+* NPC-owned
+* faction-owned
+* shop-owned
+* stolen
+* borrowed
+* rented
+* quest-owned
+* disputed
+* unknown owner
+* abandoned
+* domain-owned
+
+Ownership should not change just because the player touches an item.
+
+Example:
+
+The player picks up the noble’s ring from the table.
+
+Custody may change to player.
+
+Ownership may remain noble-owned or stolen.
+
+This matters for:
+
+* reputation
+* legality
+* quests
+* contracts
+* economy
+* social consequences
+* item return
+* theft
+* faction reaction
+
+Ownership transfer requires stronger evidence.
+
+Examples of ownership transfer:
+
+* purchase completed
+* item gifted
+* reward granted
+* owner abandons claim
+* contract transfers ownership
+* theft becomes accepted as stolen state, not legitimate ownership
+* faction grants item
+
+⸻
+
+10. Custody
+
+Custody answers:
+
+Who physically has or controls the item right now?
+
+Custody states:
+
+* player carrying
+* player equipped
+* player storage
+* companion carrying
+* NPC holding
+* merchant stock
+* smith repairing
+* chest/storage
+* lost
+* stolen by actor
+* dropped at location
+* locked away
+* destroyed
+* unknown location
+
+Custody determines access.
+
+Example:
+
+The player owns a sword.
+
+Mira has custody because she is repairing it.
+
+The player cannot equip it right now.
+
+The sword is still player-owned.
+
+If Mira returns it:
+
+* custody returns to player
+
+If Mira steals it:
+
+* custody becomes Mira
+* ownership may become disputed/stolen
+* contract may breach
+* reputation/quest event may occur
+
+Custody is one of the most important safeguards because it prevents the system from treating every owned item as currently usable.
+
+⸻
+
+11. Access
+
+Access answers:
+
+Can the player use the item right now?
+
+Access states:
+
+* available
+* equipped
+* carried but not ready
+* stored nearby
+* stored elsewhere
+* held by companion
+* held by NPC
+* locked away
+* lost
+* stolen
+* broken/unusable
+* consumed
+* destroyed
+* unavailable due to contract
+* unknown
+
+Examples:
+
+A sword in the player’s hand:
+
+* owned by player
+* custody player
+* access available/equipped
+
+A sword at home:
+
+* owned by player
+* custody player storage
+* access unavailable in current scene
+
+A sword with Mira for repair:
+
+* owned by player
+* custody Mira
+* access unavailable
+
+A stolen sword carried by a bandit:
+
+* owner player or disputed
+* custody bandit
+* access unavailable
+
+Access should affect Context and validation.
+
+If the player tries to use a sword that is with Mira, the system should reject or flag the attempt unless the story returns the sword.
+
+⸻
+
+12. Ownership versus custody versus access
+
+These three must never be collapsed.
+
+Example table:
+
+Bought sword
+
+Ownership: player.
+
+Custody: player.
+
+Access: available.
+
+Borrowed sword
+
+Ownership: NPC.
+
+Custody: player.
+
+Access: available.
+
+Legal/reputation risk if not returned.
+
+Sword with smith
+
+Ownership: player.
+
+Custody: smith.
+
+Access: unavailable.
+
+Contract link active.
+
+Stolen ring in player pack
+
+Ownership: noble or disputed.
+
+Custody: player.
+
+Access: available.
+
+Reputation/legal risk.
+
+Stored armor at home
+
+Ownership: player.
+
+Custody: player storage.
+
+Access: unavailable in current scene unless home.
+
+Companion carries potion
+
+Ownership: player or companion depending story.
+
+Custody: companion.
+
+Access: available only if companion is present and willing.
+
+This distinction is required for believable inventory behavior.
+
+⸻
+
+13. Equipment
+
+Equipment is the subset of inventory currently worn, wielded, slotted, or readied.
+
+Equipment should use slots.
+
+Recommended default slots:
+
+* main hand
+* off hand
+* head
+* body
+* hands
+* legs
+* feet
+* accessory 1
+* accessory 2
+* cloak/back
+* pack
+* tool ready slot
+* mount/vehicle if needed
+
+Equipment rules:
+
+* item must exist
+* item must be accessible
+* item must be compatible with slot
+* equipping may unequip conflicting items
+* broken items may not equip or may be ineffective
+* oversized/undersized items may have penalties
+* cursed items may resist unequipping
+* borrowed/stolen items can be equipped but retain ownership status
+* equipping should update Context if relevant
+
+Examples:
+
+A shield uses off hand.
+
+A two-handed sword uses main hand and off hand.
+
+A helmet uses head.
+
+A ring uses accessory.
+
+A backpack uses pack.
+
+A torch may use main hand, off hand, or tool slot depending context.
+
+Equipment affects:
+
+* combat
+* DEF
+* ATK
+* SPD
+* EP burden
+* ability requirements
+* appearance
+* stealth
+* travel
+* social/reputation
+* item damage
+* Context
+
+⸻
+
+14. Equipment validation
+
+Equipping should be validated.
+
+Accept equip if:
+
+* player has custody/access
+* item exists
+* item is usable
+* slot is compatible
+* no blocker exists
+* output or command confirms equip
+
+Reject equip if:
+
+* item does not exist
+* item is not accessible
+* item is held by someone else
+* item is broken beyond use
+* item is too large/small without workaround
+* item is not equipment
+* player only mentions wanting to equip it
+* quote/dream/rumor describes equip
+
+Examples:
+
+“I draw my iron sword.”
+
+If sword is carried and usable:
+
+* equip main hand accepted
+
+“I draw my iron sword.”
+
+If sword is with Mira for repair:
+
+* reject or flag unavailable item
+
+“The guard says, ‘You equip the crown.’”
+
+* reject if quoted dialogue only
+
+⸻
+
+15. Item condition
+
+Item condition describes physical or functional state.
+
+Common conditions:
+
+* pristine
+* good
+* worn
+* chipped
+* cracked
+* bent
+* rusted
+* torn
+* bloodied
+* scorched
+* cursed
+* unstable
+* damaged
+* broken
+* repaired
+* reinforced
+* enchanted
+* depleted
+
+Condition affects:
+
+* usefulness
+* value
+* combat performance
+* repair needs
+* crafting
+* safety
+* CardSync for important items
+* Context if item is important and currently relevant
+
+Condition should change only through validated events.
+
+Examples:
+
+“The troll’s club cracks your shield.”
+
+* item.condition.update: shield cracked
+
+“The sword is old and rusted.”
+
+* condition: rusted if confirmed on item creation or inspection
+
+“The blade looks fragile.”
+
+* maybe pending or descriptor, not broken unless clear
+
+Condition should not drift from random adjectives every turn.
+
+⸻
+
+16. Item quality
+
+Item quality describes workmanship, grade, refinement, magical stability, or overall effectiveness.
+
+Common quality levels:
+
+* crude
+* poor
+* common
+* sturdy
+* fine
+* masterwork
+* exceptional
+* legendary
+* flawed
+* unstable
+* cursed
+* enchanted
+
+Quality affects:
+
+* value
+* durability
+* combat effect
+* crafting result
+* repair difficulty
+* social impression
+* magical reliability
+
+Quality is different from condition.
+
+Example:
+
+A masterwork sword can be damaged.
+
+A crude spear can be pristine.
+
+A cursed amulet can be physically fine but spiritually dangerous.
+
+Quality changes through:
+
+* crafting
+* repair
+* upgrade
+* enchantment
+* degradation
+* appraisal
+* curse/blessing
+* damage if severe
+
+Chunk 10 will define crafting quality in more detail.
+
+⸻
+
+17. Key items
+
+Key items are important items tied to story continuity.
+
+Examples:
+
+* rusted iron key
+* royal seal
+* missing ring
+* sealed confession
+* dragon scale
+* cursed amulet
+* heirloom sword
+* guild writ
+* map fragment
+* contract token
+* evidence dagger
+
+Key item rules:
+
+* require stronger validation before removal
+* should not be casually consumed or sold
+* should not be deleted by cleanup
+* should appear in Context when relevant
+* may be card-eligible
+* should preserve exact identity and aliases
+* should link to quests, cases, contracts, places, actors, or domain state
+* should not duplicate from repeated output
+
+If a key item is lost, stolen, destroyed, or transferred, the system should record it clearly.
+
+Example:
+
+The rusted iron key is stolen by bandits.
+
+Correct result:
+
+* item still exists
+* owner may remain player
+* custody changes to bandits
+* access unavailable
+* quest may update
+* Context may mention key is stolen if relevant
+
+Incorrect result:
+
+* key silently disappears from inventory with no record
+
+⸻
+
+18. Stackable versus unique items
+
+Items can be stackable or unique.
+
+Stackable
+
+Examples:
+
+* arrows
+* herbs
+* iron ingots
+* coins
+* torches
+* rations
+* bandages
+
+Stackable items use quantity.
+
+Unique
+
+Examples:
+
+* named sword
+* royal seal
+* signed letter
+* cursed amulet
+* evidence dagger
+* specific key
+* artifact
+
+Unique items should not merge with similar items unless clearly identical.
+
+Example:
+
+Two healing potions may stack.
+
+Two different sealed letters should not stack.
+
+Two silver rings may stack only if they are ordinary identical rings.
+
+A “missing ring” quest item should remain unique.
+
+⸻
+
+19. Currency and coins
+
+Currency is spendable value.
+
+Coins are concrete denominations.
+
+Default denominations:
+
+* copper
+* silver
+* gold
+
+Optional future denominations:
+
+* platinum
+* trade bars
+* gems
+* tokens
+* faction scrip
+* domain treasury units
+
+Coin rules:
+
+* coin counts should not be negative unless debt system allows it
+* coins should be structured by denomination
+* coins should not become individual item clutter unless special coins matter
+* coin changes require validated gain/spend events
+* duplicate output must not double coins
+* transactions should record why coins changed
+
+Example:
+
+“The mayor gives you 5 silver.”
+
+Accept:
+
+* coins.gain silver +5
+
+Example:
+
+“The baker says bread costs 2 copper.”
+
+This is price quote, not spend.
+
+Example:
+
+“You pay 2 copper and take the bread.”
+
+Accept:
+
+* coins.spend copper 2
+* item.gain bread
+* transaction.complete
+
+⸻
+
+20. Currency conversion
+
+Currency conversion should be optional and configurable.
+
+Default fantasy conversion suggestion:
+
+* 100 copper = 1 silver
+* 100 silver = 1 gold
+
+Or simpler:
+
+* 10 copper = 1 silver
+* 10 silver = 1 gold
+
+The guide should choose one later in economy balancing.
+
+For now, the important rule is:
+
+Do not normalize currency in a way that surprises the player unless the setting defines it.
+
+If the game says the player has 3 silver and 12 copper, it should display that clearly.
+
+⸻
+
+21. Economy philosophy
+
+Economy should track confirmed prices and transactions first.
+
+It should not invent a full market simulation too early.
+
+Economy v1 should handle:
+
+* price quotes
+* completed purchases
+* completed sales
+* wages
+* service costs
+* repair costs
+* debt promises
+* barter agreements
+* contract payments
+* rewards
+* fees
+* inn stays
+* storage fees
+* hiring costs
+
+Economy should avoid:
+
+* generating prices for every object mentioned
+* enforcing strict realism when not needed
+* creating debt from vague promises
+* completing purchases from merchant chatter
+* adding items before payment/exchange is confirmed
+* subtracting coins twice
+* assuming every NPC can sell every item
+
+The system should prefer confirmed transactions over guessed prices.
+
+⸻
+
+22. Price quotes
+
+A price quote is not a transaction.
+
+Example:
+
+“The baker says the bread costs 2 copper.”
+
+This creates:
+
+* economy.price.quote
+
+It does not spend coins.
+
+It does not add bread.
+
+Price quotes may expire or remain linked to merchant/item.
+
+If the player later buys:
+
+“You hand over 2 copper and take the bread.”
+
+Then transaction completes.
+
+⸻
+
+23. Transaction lifecycle
+
+Transactions should have stages.
+
+23.1 Proposed
+
+A possible exchange is discussed.
+
+Example:
+
+“Mira says she can repair the sword for 5 silver.”
+
+No payment yet.
+
+No custody transfer unless stated.
+
+23.2 Agreed
+
+Both sides agree to terms.
+
+Example:
+
+“You agree to pay Mira 5 silver for the repair.”
+
+Still may not be paid or transferred.
+
+23.3 Pending payment
+
+The agreement exists, but payment has not occurred.
+
+Example:
+
+“Mira will start after you pay.”
+
+23.4 Pending custody
+
+An item must be handed over.
+
+Example:
+
+“Mira needs the sword before she can repair it.”
+
+23.5 Active
+
+Payment and/or custody has been transferred, and the service/work is underway.
+
+Example:
+
+“Mira takes the sword and begins the repair.”
+
+23.6 Completed
+
+Exchange finished.
+
+Example:
+
+“You pay 2 copper and receive bread.”
+
+Or:
+
+“Mira returns the repaired sword.”
+
+23.7 Failed
+
+Transaction fails.
+
+Examples:
+
+* not enough coins
+* merchant refuses
+* item unavailable
+* player backs out
+* fraud exposed
+* barter rejected
+
+23.8 Breached
+
+One side violates terms.
+
+Examples:
+
+* smith keeps sword
+* player refuses payment
+* merchant gives fake item
+* worker abandons job
+
+23.9 Cancelled
+
+Both sides end the agreement or player cancels before completion.
+
+23.10 Archived
+
+Completed, failed, breached, or cancelled transaction is no longer active but remains in history if important.
+
+⸻
+
+24. Transaction record model
+
+A transaction should track:
+
+* transaction ID
+* type
+* parties
+* item(s)
+* currency amount
+* barter items
+* service
+* ownership changes
+* custody changes
+* payment status
+* fulfillment status
+* deadline if any
+* contract link if any
+* quest link if any
+* source/evidence
+* current status
+* operation keys
+* audit summary
+
+Transaction types:
+
+* purchase
+* sale
+* barter
+* wage
+* fee
+* repair
+* rental
+* loan
+* deposit
+* withdrawal
+* reward
+* bribe
+* fine
+* tax
+* contract payment
+* service payment
+* debt creation
+* debt repayment
+
+Transactions are safety records.
+
+They prevent double-spending, double rewards, and confused custody.
+
+⸻
+
+25. Buying
+
+Buying requires:
+
+* item or service available
+* price or agreed exchange
+* player has enough currency/barter
+* exchange is confirmed
+* seller can transfer item/service
+* no blocker exists
+* duplicate operation not already committed
+
+Buying may create:
+
+* coins.spend
+* item.gain
+* ownership.transfer
+* custody.transfer
+* transaction.complete
+* reputation/social event if relevant
+
+Merchant offer alone does not complete purchase.
+
+Example:
+
+“The merchant offers a dagger for 5 silver.”
+
+Result:
+
+* price quote
+* no item gain
+* no coin spend
+
+Example:
+
+“You pay the 5 silver and take the dagger.”
+
+Result:
+
+* spend 5 silver
+* gain dagger
+* ownership player
+* custody player
+* transaction complete
+
+⸻
+
+26. Selling
+
+Selling requires:
+
+* player owns or has right to sell item
+* player has custody/access
+* buyer agrees
+* price or barter agreed
+* exchange is confirmed
+
+Selling may create:
+
+* item.lose or ownership.transfer
+* custody.transfer
+* coins.gain
+* transaction.complete
+* reputation/legal event if item was stolen
+
+If player sells stolen item:
+
+* transaction may complete
+* ownership legality may remain risky
+* reputation/legal consequences may occur
+
+Selling should not be accepted if:
+
+* item is not owned or sellable
+* item is with smith/storage elsewhere
+* buyer only asks about it
+* offer is not accepted
+* item is key/protected and no strong confirmation exists
+
+⸻
+
+27. Barter
+
+Barter exchanges item(s) or services instead of coins.
+
+Barter requires:
+
+* both sides agree
+* both sides have custody/access to offered goods
+* terms are clear enough
+* exchange is confirmed
+
+Example:
+
+“You trade the wolf pelt for three healing herbs.”
+
+Accepted:
+
+* lose wolf pelt or transfer custody/ownership
+* gain healing herbs
+* transaction complete
+
+Barter should not happen from vague negotiation.
+
+Example:
+
+“She considers trading herbs for the pelt.”
+
+Pending negotiation, not exchange.
+
+⸻
+
+28. Debt
+
+Debt means payment owed later.
+
+Debt should be explicit.
+
+Examples:
+
+* “You owe Mira 5 silver by dawn.”
+* “The innkeeper lets you stay on credit.”
+* “You borrow 20 silver from the guild.”
+
+Debt record should track:
+
+* creditor
+* debtor
+* amount
+* due time
+* interest/penalty if any
+* collateral if any
+* contract link
+* reputation/legal risk
+* status
+
+Debt should not be created from vague kindness unless the story states it.
+
+Example:
+
+“Pay me back later.”
+
+May create debt if amount/service is clear.
+
+“Don’t worry about it.”
+
+No debt unless contradicted.
+
+⸻
+
+29. Wages and hiring
+
+Wages apply to workers, guards, companions-for-hire, guides, laborers, and services.
+
+Hiring requires:
+
+* worker/group exists or arrives
+* terms agreed
+* pay amount or compensation
+* duration or task
+* role
+* start confirmation
+
+Hiring may create:
+
+* contract
+* labor/follower group
+* wage obligation
+* coin spend
+* domain project link
+
+Example:
+
+“You hire five carpenters for 2 silver each to repair the wall.”
+
+Events:
+
+* contract.create
+* labor.workerGroup.create
+* economy.wage.obligation or coins.spend if paid now
+* domain.project.link if wall repair exists
+
+The system must distinguish:
+
+* intent to hire
+* steward promising to look into hiring
+* workers actually arriving
+* workers agreeing
+* workers being paid
+* workers starting work
+
+⸻
+
+30. Repair and service transactions
+
+Repair is a transaction plus custody workflow.
+
+Example:
+
+“Mira repairs your sword for 5 silver.”
+
+This may involve:
+
+* contract.create
+* payment obligation
+* item.custody.transfer to Mira
+* repair.active
+* deadline
+* repair.complete later
+* item.condition.update
+* item.custody.transfer back to player
+* contract.fulfill
+
+The sword should not remain available while Mira has custody.
+
+If the player tries to equip it during repair, validation should reject.
+
+If Mira returns it:
+
+* custody returns to player
+* condition improves
+* contract completes
+
+If Mira steals it:
+
+* contract breached
+* custody remains Mira/stolen
+* quest/reputation may update
+
+⸻
+
+31. Storage
+
+Storage is a custody/location state.
+
+Storage types:
+
+* player home
+* inn chest
+* bank
+* guild vault
+* companion pack
+* wagon
+* domain warehouse
+* hidden cache
+* shop storage
+* repair shop
+
+Stored items may be owned by player but not currently accessible.
+
+Storage records should track:
+
+* item
+* location
+* owner
+* custody holder
+* access condition
+* fee if any
+* security risk
+* retrieval rules
+
+Example:
+
+The player stores armor at the inn.
+
+Ownership: player.
+
+Custody: inn storage or player storage at inn.
+
+Access: unavailable unless at inn and allowed.
+
+⸻
+
+32. Item gain validation
+
+Accept item gain if:
+
+* direct pickup succeeds
+* NPC hands item over and player accepts
+* completed purchase
+* completed reward
+* confirmed loot collection
+* crafting completes
+* storage retrieval confirmed
+* companion gives item
+* contract returns item
+
+Reject item gain if:
+
+* item is only seen
+* player only tries
+* attempt fails
+* NPC only offers
+* merchant only quotes price
+* item is mentioned in dialogue
+* item appears in rumor/dream/vision
+* item is in quoted command
+* item name is junk
+* duplicate operation
+* item is not accessible
+* another similar item was explicitly excluded
+
+Pending item if:
+
+* item is nearby but not taken
+* NPC promises future reward
+* loot is available but not collected
+* item is held for possible purchase
+* item is discovered but inaccessible
+
+Hard-deny item if:
+
+* fake/system/debug/card text
+* impossible placeholder
+* polluted card source
+* pretend action
+* invalid name
+
+⸻
+
+33. Item loss validation
+
+Accept item loss if:
+
+* item is consumed
+* item is sold
+* item is destroyed
+* item is dropped and left
+* item is stolen
+* item is transferred
+* item is used as material
+* item is spent as payment
+* item is handed over to contract/custody
+* item breaks beyond use
+
+Reject item loss if:
+
+* vague “you lose yourself” style wording
+* dream/rumor/quote
+* item is only threatened
+* item is almost lost
+* item is key/protected and evidence is weak
+* wrong item matched
+* duplicate operation
+
+Pending item loss if:
+
+* item may have been dropped
+* thief may have taken it
+* item is missing but not confirmed
+* uncertain inventory check
+
+Key items require stronger loss validation.
+
+⸻
+
+34. Item condition validation
+
+Accept condition change if:
+
+* narration directly describes damage/repair
+* crafting/repair event completes
+* combat block damages item
+* item is exposed to clear hazard
+* item is appraised
+* curse/enchantment confirmed
+
+Reject condition change if:
+
+* adjective is vague
+* metaphorical description
+* rumor/dream/quote
+* item not identified
+* item not present
+* duplicate damage/repair
+
+Example:
+
+“The shield cracks under the troll’s blow.”
+
+Accepted:
+
+* shield condition cracked
+
+Example:
+
+“Your sword feels tired.”
+
+Rejected as condition change unless magical sentient sword context supports it.
+
+⸻
+
+35. Similar item safeguards
+
+The system must protect against confusing similar names.
+
+Examples of distinct items:
+
+* iron key
+* iron keyring
+* rusted iron key
+* silver key
+* royal ring
+* missing ring
+* signet ring
+* plain silver ring
+* sealed letter
+* torn letter
+* evidence letter
+* letter from Mara
+
+Rules:
+
+* exact named quest/key items should not merge with generic items
+* aliases require evidence
+* negation must be respected
+* item type matters
+* current scene matters
+* ownership/custody matters
+* quest links matter
+* descriptor differences may matter
+
+Example:
+
+Output:
+
+“You take the rusted iron key, not the keyring.”
+
+Correct:
+
+* rusted iron key gained
+* keyring excluded
+
+Output:
+
+“You pick up the ring.”
+
+If both “missing ring” and “plain silver ring” are present:
+
+* event may be pending/ambiguous
+* do not guess unless context strongly identifies it
+
+⸻
+
+36. Inventory and Context
+
+Context should include inventory facts only when useful.
+
+Context should include:
+
+* currently equipped weapon/armor
+* key item relevant to scene
+* missing/unavailable important item
+* item held by NPC if relevant
+* active contract item
+* item needed for quest/lock
+* low currency if buying
+* important damaged equipment
+
+Context should not include:
+
+* every mundane item
+* every material count
+* every coin detail unless relevant
+* every stored item
+* old consumed items
+* debug item IDs
+
+Good Context examples:
+
+“You have the rusted iron key, which may fit the locked shrine door.”
+
+“Your iron sword is with Mira for repair, so you cannot draw it.”
+
+“Your shield is cracked from the troll’s blow.”
+
+“You carry only 1 silver and 3 copper.”
+
+Bad Context example:
+
+“You own: stick, cup, pebble, rusty nail, string, bread, spoon, apple core, 2 copper, 1 silver, 0 gold…”
+
+Inventory Context should be compact and relevance-based.
+
+⸻
+
+37. Inventory and Story Cards
+
+Cards should mirror important stable inventory truth only.
+
+Protected summary cards may include:
+
+* Inventory Overview
+* Equipment Overview
+* Player Sheet
+* Domain & Contracts, if item custody/contract matters
+
+Generated item cards may be allowed for:
+
+* artifacts
+* key items
+* quest items
+* evidence items
+* named weapons
+* cursed items
+* important magical items
+* important contract/custody items
+* heirlooms
+* major equipment tied to identity
+
+Do not generate cards for:
+
+* every coin
+* every loaf of bread
+* every stick
+* every mundane knife
+* every material
+* every temporary consumable
+* every dropped enemy weapon
+* every shop item
+
+Generated item cards should update when:
+
+* ownership changes
+* custody changes
+* condition changes
+* quality changes
+* curse/enchantment changes
+* quest/evidence relevance changes
+* item is lost/stolen/destroyed
+* item is repaired/upgraded
+* item becomes no longer important
+
+CardSync mirrors InventoryReducer / ItemAuthority state.
+
+CardSync does not create items.
+
+⸻
+
+38. Inventory commands
+
+/inventory should show
+
+* carried items
+* key items
+* consumables
+* materials if relevant
+* currency
+* unavailable owned items
+* stored items summary
+* custody notes
+* damaged important items
+
+/equipment should show
+
+* equipped slots
+* weapon
+* armor
+* shield
+* accessories
+* ready tools
+* equipment condition
+* equipment burden notes
+
+/economy should show, if included
+
+* currency
+* recent transactions
+* active debts
+* active price quotes
+* active payments
+* wages/contracts summary
+
+/contracts should show
+
+* active repair/service/custody agreements
+* payment owed
+* item held by whom
+* deadline/status
+
+/debuglast should show
+
+* proposed item events
+* validation outcomes
+* similar-name handling
+* ownership/custody changes
+* transaction operations
+* duplicate skips
+
+⸻
+
+39. Transaction safety rules
+
+39.1 No double spending
+
+Same purchase output cannot subtract coins twice.
+
+39.2 No double reward
+
+Same quest reward cannot grant coins/items twice.
+
+39.3 No item from price quote
+
+Price quote does not equal purchase.
+
+39.4 No purchase without payment or barter unless credit/debt is explicit
+
+If no payment occurs, transaction may be pending or debt-based, not automatically complete.
+
+39.5 No sale without losing/transferring item
+
+Selling means item ownership/custody should change or sale should fail.
+
+39.6 No using unavailable items
+
+Owned items with someone else cannot be used unless retrieved.
+
+39.7 No cleanup deleting key items
+
+Cleanup may not remove key items unless archived/destroyed through validated state.
+
+39.8 No card-created inventory
+
+Card text does not add items.
+
+39.9 No duplicate item from repeated output
+
+OperationLedger and item identity checks must block duplicates.
+
+39.10 No wrong similar item
+
+Negation, descriptors, scene context, and quest links must be respected.
+
+⸻
+
+40. Example scenarios
+
+Example 1 — Confirmed handoff
+
+Output:
+
+“Mara places the rusted iron key in your hand.”
+
+Expected:
+
+* inventory.item.gain accepted
+* item created or existing pending item moved to player
+* owner player or gifted depending context
+* custody player
+* access available
+* key item if relevant
+* inventory dirty
+* card dirty only if important
+
+Example 2 — Quoted pickup
+
+Output:
+
+“Mara says, ‘You pick up the key.’”
+
+Expected:
+
+* item gain rejected
+* no key added
+* debug reason: quoted dialogue
+
+Example 3 — Price quote only
+
+Output:
+
+“The baker says the bread costs 2 copper.”
+
+Expected:
+
+* price quote recorded if useful
+* no coins spent
+* no bread gained
+
+Example 4 — Purchase completed
+
+Output:
+
+“You hand the baker 2 copper and take the bread.”
+
+Expected:
+
+* coins.spend 2 copper
+* item.gain bread
+* transaction.complete
+* duplicate-safe
+
+Example 5 — Smith repair custody
+
+Output:
+
+“Mira takes your sword and says she will repair it by morning for 5 silver.”
+
+Expected:
+
+* contract created or proposed
+* sword custody transfers to Mira
+* player still owns sword
+* access unavailable
+* repair deadline maybe created
+* no repaired sword yet
+
+Example 6 — Trying to use unavailable sword
+
+State:
+
+Sword is with Mira.
+
+Input:
+
+“I draw my sword.”
+
+Expected:
+
+* rejected or blocked
+* Context/debug may say sword is with Mira for repair
+
+Example 7 — Sword returned
+
+Output:
+
+“Mira returns your repaired sword.”
+
+Expected:
+
+* custody player
+* condition improved
+* contract fulfilled
+* access available
+
+Example 8 — Similar item negation
+
+Output:
+
+“You take the rusted iron key, not the keyring.”
+
+Expected:
+
+* gain rusted iron key
+* do not gain keyring
+
+Example 9 — Loot available but not taken
+
+Output:
+
+“The dead bandit’s dagger lies in the dust.”
+
+Expected:
+
+* possible available item/pending loot
+* no inventory gain yet
+
+Example 10 — Loot collected
+
+Output:
+
+“You pick up the bandit’s dagger and slide it into your belt.”
+
+Expected:
+
+* item.gain dagger
+* custody player
+* access available/carried
+
+Example 11 — Key item stolen
+
+Output:
+
+“The thief snatches the royal seal from your pouch and vanishes.”
+
+Expected:
+
+* item custody changes to thief/unknown
+* ownership remains player/quest/faction depending state
+* access unavailable
+* quest/reputation may update
+* item not deleted
+
+Example 12 — Card says item exists
+
+Card text:
+
+“Player owns Dragon Crown.”
+
+State:
+
+No Dragon Crown.
+
+Expected:
+
+* no item created
+* card may be audited as stale/polluted
+* inventory unchanged
+
+⸻
+
+41. Chunk 9 acceptance tests
+
+Test 1 — direct handoff grants item
+
+Given:
+
+NPC places key in player’s hand.
+
+Expected:
+
+* item.gain accepted
+* key appears once
+* custody player
+* access available
+
+Test 2 — quoted handoff rejected
+
+Given:
+
+NPC says, “You take the key.”
+
+Expected:
+
+* no item gain
+* rejection reason recorded
+
+Test 3 — price quote does not buy
+
+Given:
+
+Merchant says sword costs 10 silver.
+
+Expected:
+
+* price quote only
+* no coin spend
+* no sword gained
+
+Test 4 — purchase spends and gains once
+
+Given:
+
+Player pays 10 silver and takes sword.
+
+Expected:
+
+* coins decrease once
+* sword gained once
+* transaction complete
+* duplicate replay skipped
+
+Test 5 — insufficient funds blocks purchase
+
+Given:
+
+Player has 1 silver and tries to buy item for 10 silver.
+
+Expected:
+
+* transaction fails or becomes debt only if explicit
+* no item gained
+* no negative coins unless debt allowed
+
+Test 6 — ownership and custody separate
+
+Given:
+
+Player gives sword to Mira for repair.
+
+Expected:
+
+* owner remains player
+* custody Mira
+* access unavailable
+
+Test 7 — unavailable item cannot be equipped
+
+Given:
+
+Sword is with Mira.
+
+Expected:
+
+* equip/draw sword rejected unless sword returned
+
+Test 8 — key item not casually deleted
+
+Given:
+
+Vague output says “you lose your things.”
+
+Expected:
+
+* key item not removed without stronger confirmation
+* possible pending loss or audit warning
+
+Test 9 — similar item preserved
+
+Given:
+
+Rusted iron key and iron keyring both exist.
+
+Output says player takes rusted iron key, not keyring.
+
+Expected:
+
+* correct item gained
+* keyring not gained
+
+Test 10 — item condition changes from direct evidence
+
+Given:
+
+Troll cracks shield.
+
+Expected:
+
+* shield condition updated
+* InventoryReducer owns condition change
+
+Test 11 — generic item junk rejected
+
+Given:
+
+Parser detects “your hand” or “the room” as item.
+
+Expected:
+
+* hard deny / reject
+* no inventory record
+
+Test 12 — loot not automatic
+
+Given:
+
+Enemy drops dagger.
+
+Expected:
+
+* dagger available/pending
+* not added until player takes it
+
+Test 13 — storage preserves ownership
+
+Given:
+
+Player stores armor at inn.
+
+Expected:
+
+* player owns armor
+* custody/storage location inn
+* access unavailable unless at inn/retrieved
+
+Test 14 — card text cannot create item
+
+Given:
+
+Story Card says player owns artifact.
+
+Expected:
+
+* no inventory change unless validated state/manual override
+
+Test 15 — transaction record explains exchange
+
+Given:
+
+Player buys bread.
+
+Expected:
+
+* transaction ledger shows parties, cost, item, status, and operation key
+
+⸻
+
+42. Final Chunk 9 doctrine
+
+Inventory is canon possession state.
+
+Items need identity, not just names.
+
+Display names are for the player.
+
+Canonical keys are for the system.
+
+Ownership, custody, and access are different.
+
+Equipment is accessible inventory assigned to slots.
+
+Condition and quality affect usefulness.
+
+Key items require stronger protection.
+
+Currency is structured value, not endless coin objects.
+
+Economy tracks confirmed prices and exchanges.
+
+A price quote is not a purchase.
+
+A transaction is not complete until exchange is confirmed.
+
+Buying, selling, barter, repair, wages, debt, and custody transfers must be idempotent.
+
+Loot must be collected before it enters inventory.
+
+Cards mirror important item state but never create items.
+
+Context should mention relevant inventory truth, not dump everything.
+
+The goal is to make possessions reliable enough that the player can trust them, without turning the story into inventory clutter.
+
