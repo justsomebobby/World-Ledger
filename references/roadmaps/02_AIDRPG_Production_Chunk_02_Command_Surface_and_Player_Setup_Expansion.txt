@@ -1,0 +1,237 @@
+# AIDRPG Production Chunk 02 — Command Surface and Player Setup Expansion
+
+## Document status
+
+Production sequence: 02 of 25.
+Build target: WorldLedger V0.17.1 foundation accepted freeze.
+Purpose: Improve command readability, setup inspection, player identity display, and disabled-system messaging without unsafe mutation commands.
+
+## Doctrine
+
+```text
+Commands explain truth.
+Commands do not create truth.
+Setup inspects and confirms.
+Setup does not overwrite locked identity.
+Displays must separate confirmed, candidate, pending, visible, promised, and deferred states.
+```
+
+## Why this comes before gameplay expansion
+
+If commands show visible items as owned, candidates as stable, promised rewards as paid, or travel intent as arrival, later testing becomes unreliable. This chunk makes command outputs honest before deeper systems build on them.
+
+## Allowed changes
+
+```text
+CommandRouter
+Command aliases
+Command renderers
+Help text
+Version/build status display
+Setup/startup inspection display
+Sheet/status/inventory/abilities/quests/actors/location/time displays
+State audit display
+ReleaseCheck command honesty gates
+Disabled command messages
+```
+
+Forbidden:
+
+```text
+manual mutation commands
+admin mutation commands
+feature activation commands
+generated card commands
+live card write commands
+unsafe character creation mutation flow
+```
+
+## Setup philosophy
+
+Allowed read-only setup commands:
+
+```text
+/startup /startupaudit /setup /setupcheck /sheet /version /foundationcheck
+```
+
+They may show what is known, unknown, locked, confirmed, or pending. They must not overwrite protected identity.
+
+Controlled setup confirmation may only accept structured startup facts before gameplay lock. Post-lock identity changes require a future manual override spec.
+
+Forbidden examples:
+
+```text
+/playername Bob mutates locked identity casually
+/race Dragon instantly changes body logic
+/setform Wolf overwrites true identity
+/addlineage Angel-Demon grants powers
+```
+
+## Player identity display requirements
+
+`/sheet` must separate:
+
+```text
+Confirmed identity
+Current form
+Body form / body type
+Race/species/lineage
+Origin / outsider status
+Disguise / illusion / temporary presentation
+Candidate or pending traits
+Unknown fields
+Deferred systems
+```
+
+True identity is not current form. Current form is not disguise. Disguise is not body truth. Candidate lineage is not confirmed lineage.
+
+## Origin and world knowledge display
+
+Do not assume human, native, chosen, central, powerful, or omniscient. Display:
+
+```text
+Origin: unknown / outsider / native / world-emerged / scenario-defined
+World knowledge: limited unless discovered
+Narrative role: not automatically center of reality
+Integration: grows through action, recognition, and consequence
+```
+
+## Command output standard
+
+Every command response must:
+
+```text
+start with [AIDRPG]
+be clearly non-canon
+avoid prose that looks like story output
+avoid wording that EventScannerLite might treat as a completed event
+avoid raw JSON dumps unless diagnostic mode asks
+be capped for AI Dungeon context limits
+```
+
+Diagnostics should include: `No gameplay state was changed.`
+
+## Shared command formatter
+
+Add/verify helper responsibilities:
+
+```text
+prefix command output
+standardize section headings
+standardize empty-state lines
+standardize confirmed/candidate/pending/deferred labels
+standardize no-mutation footer
+escape or avoid story-like lines
+cap command length
+```
+
+## Command requirements
+
+`/help` shows active commands, diagnostics, build checks, disabled categories, current stage, and where to start.
+
+`/version` shows WorldLedger engine, AIDRPG project bridge, version, schema, stage, root key, foundation accepted/frozen status, release profile, safe/deferred flag summary.
+
+`/sheet` separates confirmed identity, origin, current form, body truth, race/species, lineage, disguise/illusion, candidate/pending traits, protected fields, unknown fields.
+
+`/status` separates resources, fatigue/exhaustion, active conditions, injuries, recovery/resolved conditions, death boundary, warnings.
+
+`/inventory` separates owned/carried, equipped, stored, visible nearby, available loot, NPC custody, lost/consumed/destroyed history, currency, warnings.
+
+`/abilities` separates stable, unstable, candidate, hints, failed/collapsed attempts, sealed/unavailable, recent evidence, warnings.
+
+`/quests` separates active, offered/rumored, objectives, ready-to-turn-in, completed, failed/abandoned, promised rewards, paid rewards.
+
+`/actors` separates present important actors, scene-only actors, persistent actors, absent/reference-only actors, witness memories, relationship notes.
+
+`/location` separates current location, current scene, travel intent, nearby/visible references, route/interstitial references, known places.
+
+`/time` displays current time text, turn/sequence if used, last accepted time advance, deadlines, pending/nonliteral claims, warnings. It never advances time.
+
+## Disabled command messages
+
+Forbidden commands must return safe disabled messages and no mutation:
+
+```text
+/additem /setlevel /payreward /completequest /giveability /teleport
+/livecards /generatedcards /craft /buy /sell /reputation /domain
+/absorb /evolve /partycontrol /warfare
+```
+
+Each message should explain the system is disabled, why, planned production chunk, and that no gameplay state changed.
+
+## PC02 ReleaseCheck gates
+
+```text
+PC02-G01 all listed active commands route through CommandRouter
+PC02-G02 all command output starts with [AIDRPG]
+PC02-G03 commands are inspect-only
+PC02-G04 disabled command messages exist for forbidden command families
+PC02-G05 /sheet separates identity/current form/disguise/candidate traits
+PC02-G06 /status separates fatigued/exhausted/injured/death boundary
+PC02-G07 /inventory separates owned/equipped/visible/available/custody/lost/consumed/currency
+PC02-G08 /abilities separates stable/unstable/candidate/hint/failed/sealed
+PC02-G09 /quests separates offered/active/objectives/promised/ready/paid/completed
+PC02-G10 /actors separates present/scene-only/persistent/absent/reference-only/memory
+PC02-G11 /location separates current/travel intent/nearby/visible/route
+PC02-G12 /time does not advance time and shows pending/nonliteral claims safely
+PC02-G13 setup/startup display does not mutate locked identity
+PC02-G14 aliases do not bypass command suppression
+PC02-G15 command output parser-safety cues present
+```
+
+## Required tests
+
+```text
+PC02-001 Help is honest
+PC02-002 Version bridge clear
+PC02-003 Sheet separates identity and form
+PC02-004 Unknown race is not assumed human
+PC02-005 Status separates fatigue and death boundary
+PC02-006 Inventory separates visible and owned
+PC02-007 Abilities separate candidate and stable
+PC02-008 Quests separate promise and payment
+PC02-009 Actors separate reference-only
+PC02-010 Location separates travel intent
+PC02-011 Time command does not advance time
+PC02-012 Disabled mutation command safe
+PC02-013 Alias safety
+PC02-014 Command output cannot become canon
+PC02-015 Setup display does not unlock identity
+```
+
+## Implementation order
+
+```text
+1. Copy accepted foundation baseline to V0.17.2 command-surface working file.
+2. Add shared command formatting helper.
+3. Update /help and /version.
+4. Update /sheet, /status, /inventory, /abilities, /quests, /actors, /location, /time.
+5. Add setup display/checklist.
+6. Add disabled command messages.
+7. Add PC02 ReleaseCheck gates.
+8. Add PC02 regression tests.
+9. Feed command outputs back through Output hook to prove non-canon behavior.
+10. Save as WorldLedgerV0.17.2_COMMAND_SURFACE_ACCEPTED.txt.
+```
+
+## Pass / warn / fail
+
+PASS if all active commands route safely, all command output is prefixed, commands are inspect-only, core displays are honest, setup is non-mutating, disabled commands are safe, aliases do not bypass suppression, and PC02 tests pass.
+
+WARN if setupcheck is folded into sheet/startupaudit, advanced display sections are empty because deferred, or CardSync controls are display-only.
+
+FAIL if any command mutates gameplay, command output lacks suppression cues, manual mutation is active, candidate ability displays as stable, visible item displays as owned, promised reward displays as paid, travel intent displays as current location, unknown race defaults to human, setup overwrites locked identity, or command output becomes canon.
+
+## Final doctrine
+
+```text
+If it is confirmed, label it confirmed.
+If it is candidate, label it candidate.
+If it is pending, label it pending.
+If it is visible, do not show it as owned.
+If it is promised, do not show it as paid.
+If it is intended, do not show it as arrived.
+If it is unknown, say unknown.
+If it is disabled, say disabled.
+Commands explain the world; they do not change it.
+```

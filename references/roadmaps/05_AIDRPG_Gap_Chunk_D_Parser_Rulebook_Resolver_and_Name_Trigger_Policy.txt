@@ -1,0 +1,2313 @@
+AIDRPG Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy
+Purpose: Define the exact parser, resolver, name-safety, and trigger-safety rules needed before event scanning and entity/card promotion are coded.
+Status: Pre-code blocker.
+Applies after: Gap Chunk C — Story Card API Adapter and Protected Singleton Contract.
+Applies before: EventScannerLite coding, ProposalBuilder expansion, InventoryReducer automation, ActorReducer persistence, PlaceResolver, AbilityReducer automation, QuestReducer automation, and Generated CardSync beta.
+This document does not contain final script code.
+
+This chunk exists because previous AIDRPG/TASIS versions had many false-positive and identity bugs:
+
+* visible items became owned inventory
+* quoted commands became real actions
+* failed ability attempts became stable abilities
+* dreams/rumors/hypotheticals became canon
+* similar item names resolved incorrectly
+* actor relationships overwrote actor identity
+* generic NPCs became permanent actors
+* generic places became durable cards
+* junk names became entities
+* broad Story Card triggers activated constantly
+* vague AI output caused permanent state changes
+
+The parser must be conservative.
+
+The resolver must be cautious.
+
+Names and triggers must be sanitized before persistence or card creation.
+
+⸻
+
+1. Parser doctrine
+
+The parser does not create truth.
+
+The parser creates possible hits.
+
+The required path is:
+
+raw text -> parser hit -> EventProposal -> CanonValidator -> owner reducer
+
+Forbidden path:
+
+raw text -> direct state mutation
+
+The parser should prefer missing a minor update over corrupting state.
+
+If the text is ambiguous, the parser should mark it pending, soft_fail, or audit-only rather than commit.
+
+⸻
+
+2. Parser source authority
+
+Every parser hit must record its source.
+
+Allowed parse sources:
+
+input
+output
+manual
+migration
+setup
+
+MVP parser should actively scan only:
+
+input
+output
+
+with different rules for each.
+
+2.1 Input source rule
+
+Player input usually creates intent, not completed action.
+
+Input can produce:
+
+* attempt
+* intent
+* request
+* command
+* target reference
+* planned action
+
+Input should not by itself produce:
+
+* acquired item
+* killed enemy
+* completed quest
+* paid reward
+* gained XP
+* stable ability
+* confirmed arrival
+
+2.2 Output source rule
+
+AI output may create completed consequences if:
+
+* action is clearly completed
+* source is not command/context/card/debug text
+* action is not negated
+* action is not hypothetical
+* action is not only quoted speech
+* action is not dream/vision unless scenario says real
+* resolver confidence is high enough
+* CanonValidator approves
+
+2.3 Non-canon source rule
+
+Never parse as gameplay source:
+
+* Context packet text
+* Story Card text
+* protected card text
+* generated card text
+* command output
+* debug output
+* help text
+* audit text
+* old logs
+* example text
+* archived summaries
+
+⸻
+
+3. Universal parser hit schema
+
+Every parser hit must include these fields before it becomes an EventProposal.
+
+ParserHit {
+  hitId: string,
+  sourceHook: 'input' | 'output' | 'manual' | 'migration' | 'setup',
+  rawText: string,
+  normalizedText: string,
+  matchedText: string,
+  eventFamily: string,
+  eventType: string,
+  subjectText?: string,
+  objectText?: string,
+  actorText?: string,
+  itemText?: string,
+  placeText?: string,
+  questText?: string,
+  abilityText?: string,
+  completedAction: boolean,
+  attemptOnly: boolean,
+  negated: boolean,
+  hypothetical: boolean,
+  quotedSpeech: boolean,
+  dreamOrVision: boolean,
+  rumorOrClaim: boolean,
+  failedOrRevoked: boolean,
+  conditional: boolean,
+  futureIntent: boolean,
+  confidence: number,
+  truthStatus: string,
+  evidenceType: string,
+  parserNotes: string[]
+}
+
+3.1 Required boolean flags
+
+A hit must not omit these flags:
+
+completedAction
+attemptOnly
+negated
+hypothetical
+quotedSpeech
+dreamOrVision
+rumorOrClaim
+failedOrRevoked
+conditional
+futureIntent
+
+If unknown, default to safer value.
+
+Example:
+
+completedAction = false if unclear
+
+⸻
+
+4. Text normalization rules
+
+4.1 Normalize for matching
+
+Normalize by:
+
+* trimming whitespace
+* collapsing repeated spaces
+* preserving original raw text for audit
+* lowercasing only matching copy
+* normalizing curly quotes to plain quotes for detection
+* preserving punctuation that affects meaning
+
+4.2 Do not destroy meaning
+
+Do not remove words like:
+
+* not
+* never
+* no
+* without
+* almost
+* could
+* might
+* try
+* failed
+* dream
+* rumor
+* says
+
+These words are safety markers.
+
+4.3 Sentence windows
+
+Parser should work in sentence/window units, not the entire output as one blob.
+
+Recommended:
+
+* split into sentences/clauses
+* preserve quoted spans
+* process each event candidate separately
+
+This avoids one completed sentence accidentally completing another attempted sentence.
+
+⸻
+
+5. Safety flag detection
+
+5.1 Negation markers
+
+Set negated = true if the event clause contains markers like:
+
+not
+never
+no longer
+doesn't
+didn't
+do not
+don't
+cannot
+can't
+without taking
+refuse
+refuses
+decline
+declines
+avoid
+avoids
+stop short of
+fail to
+fails to
+
+Examples:
+
+You do not take the sword.
+You never pick up the ring.
+Mara refuses to hand you the key.
+You fail to open the chest.
+
+Negated acquisition, success, payment, ability use, or quest completion must not commit as completed success.
+
+5.2 Hypothetical markers
+
+Set hypothetical = true if the event clause contains:
+
+could
+might
+may
+would
+should
+if you wanted
+possible
+possibly
+perhaps
+maybe
+imagine
+suppose
+in theory
+
+Examples:
+
+You could take the jeweled cup.
+You might be able to learn Shadow Step.
+Perhaps Old Bren would pay you later.
+
+Hypothetical text does not create owned items, stable abilities, paid rewards, completed quests, or confirmed locations.
+
+5.3 Attempt markers
+
+Set attemptOnly = true and usually completedAction = false if the clause says:
+
+try to
+tries to
+attempt to
+attempts to
+reach for
+start to
+begin to
+prepare to
+move to
+aim to
+plan to
+intend to
+head toward
+set out for
+
+Examples:
+
+You try to pick up the gem.
+You reach for the sword.
+You begin casting Fireball.
+You head toward the chapel.
+
+Attempts require output confirmation before completed consequences.
+
+5.4 Failure/revocation markers
+
+Set failedOrRevoked = true if the clause says:
+
+fails
+failed
+fizzles
+nothing happens
+no effect
+collapses
+breaks apart
+slips away
+drops before you can take it
+vanishes before you touch it
+refuses
+backfires
+is interrupted
+is stopped
+is blocked
+is denied
+
+Examples:
+
+The spell fizzles.
+Nothing happens.
+The key slips from your hand before you can take it.
+Your teleport collapses halfway.
+
+Failure may create evidence, damage, fatigue, or soft-fail notes, but not full success.
+
+5.5 Quoted speech markers
+
+Set quotedSpeech = true when event text appears inside direct quotation or reported speech.
+
+Examples:
+
+Mara says, "Take the key."
+The scroll reads, "Fire bends to your will."
+Old Bren says, "I paid you already."
+
+Quoted speech creates claim/request/information, not completed truth.
+
+5.6 Rumor/claim markers
+
+Set rumorOrClaim = true if text uses:
+
+rumor
+people say
+it is said
+claims
+claimed
+says
+said
+tells you
+mentions
+heard that
+supposedly
+allegedly
+believed to be
+
+Examples:
+
+People say Lord Veyr killed Dalen.
+Mara claims she once served the guild.
+The innkeeper mentions wolves near the mill.
+
+Claims must keep truthStatus as claimed, rumored, suspected, or disputed unless independently confirmed.
+
+5.7 Dream/vision markers
+
+Set dreamOrVision = true if text includes:
+
+dream
+vision
+hallucination
+memory flash
+prophecy
+nightmare
+illusion
+imagines
+in your mind
+symbolic
+
+Dream/vision events do not mutate real inventory, location, body, or quest state unless the scenario explicitly supports real prophetic/vision mechanics and validation approves.
+
+5.8 Conditional markers
+
+Set conditional = true if text depends on a condition not yet confirmed:
+
+if
+unless
+when you
+once you
+provided that
+as long as
+should you
+
+Examples:
+
+Old Bren will pay you 15 gold if you clear the wolves.
+The gate opens once you bring the seal.
+
+Conditional promises can create promisedRewards or requirements, not immediate reward/payment/completion.
+
+5.9 Future intent markers
+
+Set futureIntent = true for future plans:
+
+will
+shall
+going to
+later
+tomorrow
+soon
+next time
+
+Examples:
+
+Mara will give you the sword tomorrow.
+Old Bren says he will pay you later.
+
+Future intent is not current completion.
+
+⸻
+
+6. Confidence defaults
+
+Base confidence before validation:
+
+Source / Situation	Base Confidence
+clear AI output completed action	0.75
+player input intent	0.50
+player input claimed success	0.35
+quoted speech claim	0.35
+rumor	0.25
+hypothetical	0.20
+dream/vision	0.20
+negated event	0.05 for success, maybe 0.60 for denial fact
+command output	0.00 as gameplay source
+context/card text	0.00 as gameplay source
+
+6.1 Confidence modifiers
+
+Increase confidence if:
+
+* entity is present in scene
+* item is available loot
+* actor is present
+* action matches prior input intent
+* output confirms completion
+* resolver finds exact match
+* no contradiction exists
+
+Decrease confidence if:
+
+* entity name is generic
+* multiple candidates exist
+* source is quoted/rumored/hypothetical
+* actor is absent
+* item is inaccessible
+* action is too large-scale
+* event implies deferred system
+* output contradicts state
+
+6.2 Confidence cannot override hard blockers
+
+Even high confidence cannot bypass:
+
+* duplicate operation key
+* non-canon source
+* generated cards disabled
+* absent actor action
+* inaccessible item use
+* candidate ability treated as stable
+* promised reward treated as paid
+* Story Card text as source
+
+⸻
+
+7. Parser families
+
+The parser should be divided into explicit families.
+
+ItemParser
+HandoffParser
+AbilityParser
+BodyParser
+QuestParser
+RewardParser
+ActorParser
+PlaceParser
+TimeParser
+ProgressionParser
+CommandSuppressionParser
+NonCanonSuppressionParser
+
+No parser family may commit state directly.
+
+⸻
+
+8. Item parser rules
+
+8.1 Visible item detection
+
+Text patterns:
+
+you see X
+there is X
+X lies on the table
+X rests nearby
+X is visible
+X glints in the grass
+
+Default event:
+
+inventory.scene_item_visible
+completedAction: true
+truthStatus: observed
+
+Result after validation:
+
+* scene item may be visible
+* not player inventory
+
+8.2 Available loot detection
+
+Text patterns:
+
+X drops Y
+Y falls from X
+Y clatters to the ground
+X leaves behind Y
+Y is left behind
+
+Default event:
+
+inventory.scene_item_available_loot
+
+Result:
+
+* available loot
+* not player inventory
+
+8.3 Completed pickup detection
+
+Accepted only when unquoted and completed:
+
+you pick up X
+you take X
+you collect X
+you gather X
+you scoop up X
+you retrieve X
+you claim X
+you put X in your bag
+you tuck X into your pouch
+you accept X
+
+Event:
+
+inventory.item_pickup
+completedAction: true
+
+Validation still checks:
+
+* item exists or can be safely created from clear output
+* access allows pickup
+* not duplicate
+* item name passes sanitizer
+
+8.4 Rejected pickup cases
+
+Do not commit pickup for:
+
+you see X
+you could take X
+you might take X
+you try to take X
+you reach for X
+you almost take X
+you do not take X
+you refuse X
+you dream you take X
+Mara says, "take X"
+
+8.5 Drop/loss detection
+
+Accepted patterns:
+
+you drop X
+you leave X behind
+you lose X
+X falls from your hand
+X breaks beyond use
+X is destroyed
+you sell X
+you consume X
+
+Validation checks:
+
+* item exists
+* item is accessible/custodied by player unless event is external loss
+* duplicate/loss key not already applied
+
+8.6 Item parser required tests
+
+* visible ring not inventory
+* available dagger not inventory
+* pickup dagger moves once
+* quote “take the key” rejected
+* dream sword rejected
+* refused item rejected
+* sold item cannot be equipped
+
+⸻
+
+9. Natural handoff parser rules
+
+9.1 Accepted handoff patterns
+
+Accepted only if unquoted and transfer is actual:
+
+Mara hands you X
+Mara gives you X
+Mara passes you X
+Mara places X in your hand
+Mara slips X into your pouch
+Mara returns X to you
+Old Bren pays you X
+You accept X from Mara
+You receive X from Mara
+
+Event may be:
+
+inventory.item_pickup
+inventory.item_transfer_custody
+inventory.currency_gain_simple
+quest.reward_paid
+
+depending context.
+
+9.2 Rejected handoff patterns
+
+Reject as completed acquisition:
+
+Mara says, "take X"
+Mara tells you to take X
+Mara offers X, but you refuse
+Mara promises X later
+Mara will give X tomorrow
+You imagine Mara giving you X
+You dream she gives you X
+She almost hands you X
+She reaches for X
+
+9.3 Handoff resolver requirement
+
+Handoff parser must resolve:
+
+* giver actor
+* recipient, usually player
+* item/currency
+* custody change
+* reward context if payment
+
+If unresolved, mark pending or soft-fail.
+
+9.4 Required tests
+
+* actual handoff accepted
+* quoted handoff rejected
+* promised future handoff not current item
+* refused item not acquired
+* repeated handoff does not duplicate
+
+⸻
+
+10. Ability parser rules
+
+10.1 Ability attempt detection
+
+Patterns:
+
+you try to use X
+you attempt X
+you focus on X
+you begin casting X
+you reach for the power of X
+
+Input usually creates:
+
+ability.use_attempt
+completedAction: false
+
+10.2 Ability success detection
+
+Patterns:
+
+you cast X successfully
+X erupts from your hand
+X takes effect
+X strikes the target
+X activates
+
+Output may create:
+
+ability.use_confirmed
+
+Validation checks:
+
+* ability exists or candidate can be created
+* status allows use
+* cost can be paid
+* equipment/body requirements pass
+* effect plausible
+
+10.3 Ability failure detection
+
+Patterns:
+
+X fizzles
+nothing happens
+X fails
+X collapses
+X backfires
+X sputters out
+You cannot form X
+The spell refuses to answer
+
+May create:
+
+ability.evidence_gain
+body.resource_cost
+body.condition_add
+
+Must not create:
+
+stable ability
+full effect
+ability card
+
+10.4 Unknown ability rule
+
+If ability name is unknown:
+
+* player input alone cannot create stable ability
+* AI output failure can create hint/candidate if context supports
+* clear repeated evidence may create candidate/unstable through AbilityReducer
+* stable requires evidence threshold and cost/limit identified
+
+10.5 Ability parser required tests
+
+* unknown power not mastered
+* failed spell does not stabilize
+* candidate teleport not reliable
+* stable ability costs resource
+* sealed ability rejected
+* required equipment absent blocks use
+
+⸻
+
+11. Body parser rules
+
+11.1 Damage detection
+
+Patterns:
+
+X hits you
+X strikes you
+You are cut
+You are burned
+The arrow pierces your arm
+You take a heavy blow
+
+Event:
+
+body.damage
+body.injury_add maybe
+
+Validation checks:
+
+* source exists or is scene hazard
+* damage not duplicate
+* severity plausible
+* dream/illusion not real unless scenario supports
+
+11.2 Healing/recovery detection
+
+Patterns:
+
+you recover
+your wound closes
+you regain MP
+you catch your breath
+you rest
+you sleep
+
+Event:
+
+body.heal
+body.resource_recover
+time.rest maybe
+
+Validation checks:
+
+* healing source plausible
+* severe injury not erased by weak healing
+* repeated rest not double-applied
+
+11.3 Condition detection
+
+Patterns:
+
+you are poisoned
+you are bleeding
+you are stunned
+you are exhausted
+
+Event:
+
+body.condition_add
+body.fatigue_change
+
+Advanced body compatibility deferred.
+
+11.4 Required tests
+
+* dream injury not real
+* confirmed wound adds injury
+* weak rest does not erase severe injury
+* repeated output does not double damage
+
+⸻
+
+12. Quest parser rules
+
+12.1 Rumor detection
+
+Patterns:
+
+people say wolves are near the mill
+rumor has it
+someone mentions a problem
+it is said that
+
+Event:
+
+quest.rumor
+
+Must not create active quest by default.
+
+12.2 Offer detection
+
+Patterns:
+
+Old Bren asks you to clear the wolves
+Mara requests that you deliver the letter
+The captain offers you a job
+
+Event:
+
+quest.offer
+
+May include promised reward if explicit.
+
+12.3 Acceptance detection
+
+Patterns:
+
+you accept the job
+you agree to help
+you take the contract
+you promise to do it
+
+Input alone may be intent.
+
+Output confirmation can activate quest.
+
+12.4 Objective progress detection
+
+Patterns:
+
+you collect one wolf pelt
+the first seal is broken
+you rescue the child
+the last wolf flees
+
+Validation checks quest link and duplicate objective keys.
+
+12.5 Completion detection
+
+Patterns:
+
+the mill is safe
+you have completed the job
+Old Bren thanks you for clearing the wolves
+
+Completion does not automatically pay reward.
+
+12.6 Quest parser required tests
+
+* rumor not active quest
+* offer not acceptance
+* acceptance activates only after confirmation
+* objective completion not payment
+* duplicate objective skip
+
+⸻
+
+13. Reward parser rules
+
+13.1 Promised reward detection
+
+Patterns:
+
+Old Bren promises 15 gold
+he offers 15 gold if you clear the wolves
+she says she will pay you later
+
+Event:
+
+quest.reward_promised
+
+Must not add currency.
+
+13.2 Paid reward detection
+
+Patterns:
+
+Old Bren pays you 15 gold
+he hands you your reward
+she gives you the promised payment
+coins are placed in your palm as payment
+
+Event:
+
+quest.reward_paid
+inventory.currency_gain_simple
+
+Validation checks:
+
+* payer/reward context
+* stored promised reward if vague
+* duplicate reward key
+* not just quoted speech
+* not future promise
+
+13.3 Rejected payment cases
+
+Do not pay for:
+
+Old Bren says, "I will pay you 15 gold"
+Old Bren promises to pay later
+You imagine being paid
+People say he paid you
+He almost pays you
+He refuses to pay
+
+13.4 Required tests
+
+* promised not paid
+* payment once
+* vague promised payment resolves to stored reward
+* refused payment not paid
+* repeated payment output skipped
+
+⸻
+
+14. Actor parser rules
+
+14.1 Scene actor detection
+
+Patterns:
+
+a guard approaches
+a woman waves
+the innkeeper smiles
+Captain Mora enters
+Mara stands beside you
+
+Rules:
+
+* generic unnamed actors become scene actors only
+* named important actors may persist
+* companion presence updates only if actor resolved
+
+14.2 Actor speech/claim detection
+
+Patterns:
+
+Mara says X
+Mara claims X
+Mara tells you X
+
+Event:
+
+actor.memory_add
+truthStatus: claimed
+
+Claims do not become confirmed facts.
+
+14.3 Actor status detection
+
+Patterns:
+
+Mara is wounded
+Mara falls unconscious
+Mara dies
+
+Validation checks:
+
+* actor resolution
+* source reliability
+* dream/rumor/quote flags
+* duplicate/death boundary
+
+14.4 Actor relation rule
+
+Phrases like:
+
+Mara's sister
+Mara's captain
+Joren's son
+
+must not resolve as the base actor.
+
+They are relation candidates.
+
+14.5 Required tests
+
+* generic guard scene-only
+* Captain Mora persists
+* Mara’s sister not Mara
+* rumor death not dead
+* quoted claim remains claimed
+
+⸻
+
+15. Place parser rules
+
+15.1 Location intent detection
+
+Patterns:
+
+you head toward X
+you set out for X
+you begin walking to X
+you travel toward X
+
+Event:
+
+place.location_intent
+completedAction: false
+
+Does not change current location.
+
+15.2 Arrival detection
+
+Patterns:
+
+you arrive at X
+you reach X
+after a walk, you stand before X
+you enter X
+
+Event:
+
+place.location_arrive
+completedAction: true
+
+Validation checks:
+
+* not dream/vision
+* not hypothetical
+* not duplicate
+* place name passes sanitizer/resolver
+
+15.3 Scene update detection
+
+Patterns:
+
+the room is dark
+rain lashes the road
+there are exits north and east
+spikes line the floor
+
+Event:
+
+place.scene_update
+place.hazard_note
+place.visible_exit
+
+Temporary scene details do not automatically create durable place records/cards.
+
+15.4 Required tests
+
+* head toward chapel not arrival
+* confirmed arrival updates place
+* dream arrival rejected
+* Old Chapel Road not Old Chapel
+* generic room not durable place
+
+⸻
+
+16. Time parser rules
+
+16.1 Time intent
+
+Patterns:
+
+you plan to rest
+you intend to wait
+you decide to sleep later
+
+No time advance.
+
+16.2 Confirmed time passage
+
+Patterns:
+
+an hour passes
+minutes later
+after a short walk
+you sleep through the night
+morning comes
+
+Event:
+
+time.advance_text
+time.rest
+
+Validation checks:
+
+* duplicate output
+* not hypothetical
+* not planned only
+
+16.3 Required tests
+
+* plan to rest no time advance
+* confirmed sleep advances time
+* output replay does not advance time twice
+
+⸻
+
+17. Progression parser rules
+
+MVP should be conservative with XP.
+
+17.1 XP detection
+
+Accepted patterns only when clearly system-like or reward-like:
+
+you gain 20 XP
+your experience increases
+completing the quest earns you XP
+
+Validation checks:
+
+* event allowed
+* duplicate key
+* challenge/quest context if available
+* anti-farm later
+
+17.2 Rejected XP cases
+
+Do not award XP for:
+
+you feel experienced
+this was a learning experience
+people say you are experienced
+you imagine gaining power
+
+17.3 Required tests
+
+* explicit XP applies once
+* repeated XP output skipped
+* vague “learning experience” no XP
+
+⸻
+
+18. Resolver doctrine
+
+Resolvers identify existing canon targets.
+
+They do not create truth by themselves.
+
+A resolver returns candidates and confidence.
+
+CanonValidator decides whether unresolved/ambiguous references can proceed.
+
+⸻
+
+19. ResolverResult schema
+
+ResolverResult {
+  resolverType: 'item' | 'actor' | 'place' | 'quest' | 'ability' | 'generic',
+  queryText: string,
+  normalizedQuery: string,
+  matchedId?: string,
+  confidence: number,
+  ambiguous: boolean,
+  candidates: ResolverCandidate[],
+  rejectedCandidates: ResolverRejectedCandidate[],
+  matchType: string,
+  reason: string,
+  safeToCreateCandidate: boolean
+}
+
+19.1 ResolverCandidate
+
+ResolverCandidate {
+  id: string,
+  name: string,
+  score: number,
+  reasons: string[],
+  penalties: string[]
+}
+
+19.2 Rejected candidate
+
+ResolverRejectedCandidate {
+  id: string,
+  name: string,
+  reason: string
+}
+
+⸻
+
+20. Resolver scoring rules
+
+Default score components:
+
+Match Factor	Score
+exact canonical key	+100
+exact normalized name	+80
+exact alias	+70
+current scene presence	+30
+player custody/access for use action	+25
+scene availability for pickup action	+25
+quest link	+20
+recent mention	+15
+role/type match	+10
+fuzzy spelling match	+5 to +20
+
+Penalties:
+
+Penalty	Score
+generic name	-40
+substring-only match	-30
+relation phrase mismatch	-60
+absent actor for current action	-30
+inaccessible item for use action	-25
+multiple same-score candidates	ambiguity
+junk name	reject
+negated candidate	reject for selected action
+
+20.1 Confidence mapping
+
+Suggested:
+
+score >= 90 = confidence 0.90+
+score 70-89 = confidence 0.75-0.89
+score 50-69 = confidence 0.55-0.74
+score 30-49 = confidence 0.35-0.54
+below 30 = unresolved/low confidence
+
+Ambiguity lowers final confidence.
+
+⸻
+
+21. Item resolver rules
+
+21.1 Access-aware matching
+
+For pickup actions, prioritize:
+
+1. available_loot in current scene
+2. visible item in current scene, if pickup confirmed
+3. held/stored/equipped item only if action is use/equip/drop
+4. npc_custody item only for correction, not use
+
+21.2 Similar item safety
+
+Must not confuse:
+
+* iron key / iron keyring
+* silver ring / silver keyring
+* sword / sword hilt
+* broken sword / iron sword
+* potion / empty potion bottle
+* crown / crown emblem
+
+21.3 Negated item exclusion
+
+If text says:
+
+Take the iron key, not the keyring.
+
+The keyring must be explicitly rejected.
+
+21.4 Required tests
+
+* iron key not keyring
+* sword hilt not sword
+* NPC custody item resolves for correction only
+* ambiguous sword does not randomly choose
+
+⸻
+
+22. Actor resolver rules
+
+22.1 Presence-aware matching
+
+For current scene action, prioritize:
+
+1. actors present
+2. nearby actors
+3. scene actors
+4. companions present
+5. elsewhere actors only for remote communication/mentions/correction
+
+22.2 Relation phrase safety
+
+Do not resolve relation phrase as base actor.
+
+Examples:
+
+Mara's sister != Mara
+Joren's son != Joren
+Captain Mora's guard != Captain Mora
+
+22.3 Generic actor safety
+
+Generic actor references like:
+
+the guard
+a man
+a woman
+a stranger
+someone
+
+should become scene actors only unless promoted.
+
+22.4 Required tests
+
+* Mara’s sister not Mara
+* generic guard scene-only
+* present Mara resolves for dialogue
+* absent Mara action rejected or correction
+
+⸻
+
+23. Place resolver rules
+
+23.1 Full phrase before substring
+
+Always test full phrase first.
+
+Examples:
+
+Old Chapel Road
+
+must not resolve to:
+
+Old Chapel
+
+unless context explicitly refers to the chapel building.
+
+23.2 Generic place safety
+
+Generic place names like:
+
+road
+street
+room
+door
+forest
+town
+shop
+
+should remain scene descriptions unless specific enough.
+
+23.3 Route/place distinction
+
+Routes and places may be separate.
+
+Example:
+
+Old Chapel Road = route/place route
+Old Chapel = building/place
+
+23.4 Required tests
+
+* Old Chapel Road not Old Chapel
+* generic room not durable place
+* named inn accepted after promotion
+
+⸻
+
+24. Ability resolver rules
+
+24.1 Exact ability before alias
+
+Prioritize exact stable/candidate ability name.
+
+24.2 Candidate/stable distinction
+
+Resolving a candidate ability does not make it stable.
+
+24.3 Variant safety
+
+Do not automatically create new abilities for small wording variants.
+
+Examples:
+
+Mana Slash
+Mana Blade Slash
+Arc Mana Slash
+
+May be alias/variant if evidence supports.
+
+24.4 Required tests
+
+* Mana Slash resolves to existing ability
+* Mana Blade Slash does not create duplicate without evidence
+* candidate Shadow Step remains candidate
+
+⸻
+
+25. Quest resolver rules
+
+25.1 Quest title and objective matching
+
+Resolve by:
+
+* exact quest title
+* quest giver
+* objective target
+* reward context
+* recent active quest
+
+25.2 Avoid over-resolving rumors
+
+Rumor about wolves near mill may link to existing quest only if evidence supports.
+
+25.3 Required tests
+
+* Old Bren payment resolves to correct quest reward
+* generic wolf rumor not complete quest
+* active quest objective updates once
+
+⸻
+
+26. Name sanitizer doctrine
+
+Only clean, specific, useful names may become persistent records or card titles.
+
+The sanitizer does not decide canon.
+
+It decides whether a name is safe enough to persist/promote.
+
+⸻
+
+27. Universal junk name rejection
+
+Reject names that are:
+
+* empty
+* one-character unless meaningful symbol/name
+* pure punctuation
+* pure number unless setting supports it
+* too long
+* command text
+* debug text
+* schema text
+* system labels
+* generic pronouns
+* raw sentence fragments
+* broad common nouns
+* unsafe card namespace fragments
+
+Examples to reject:
+
+you
+me
+him
+her
+they
+someone
+something
+nothing
+unknown
+AIDRPG
+state
+schema
+inventory
+quest log
+SAFE TO DELETE
+managed card
+debug
+turn
+output
+
+⸻
+
+28. Actor name policy
+
+28.1 Reject actor names
+
+Reject as persistent actor names:
+
+man
+woman
+guard
+stranger
+someone
+voice
+shadow
+figure
+person
+people
+crowd
+bandit
+wolf
+goblin
+merchant
+innkeeper
+player
+you
+narrator
+system
+
+Unless promoted with specific identity.
+
+28.2 Accept actor names
+
+Accept if specific:
+
+Mara
+Captain Mora
+Old Bren
+Frostmaw
+Sister Elian
+The Ashen Knight
+Joren Blackhand
+
+28.3 Generic title with name
+
+Accept:
+
+Captain Mora
+Old Bren
+Sister Elian
+
+Reject or scene-only:
+
+the captain
+the old man
+the sister
+the knight
+
+unless clearly recurring/promoted.
+
+⸻
+
+29. Place name policy
+
+29.1 Reject standalone generic places
+
+Reject as durable places/cards:
+
+street
+road
+room
+door
+floor
+wall
+table
+house
+shop
+town
+city
+forest
+field
+cave
+hallway
+staircase
+
+29.2 Accept specific places
+
+Accept:
+
+Old Chapel
+Old Chapel Road
+Greyford Tavern
+Mira's Forge
+Northwatch Gate
+The Ash Shrine
+Blackwood Forest
+The Broken Bridge
+
+29.3 Scene-only generic locations
+
+Generic places may exist as scene descriptions, not durable records.
+
+Example:
+
+a small room
+
+can be current scene summary, but not generated place card.
+
+⸻
+
+30. Item name policy
+
+30.1 Reject item names
+
+Reject:
+
+your hand
+hand
+pain
+warmth
+blood, unless specific sample/evidence item
+something
+nothing
+the room
+the floor
+inventory
+quest log
+text
+voice
+
+30.2 Accept item names
+
+Accept if concrete:
+
+Iron Key
+Rusty Dagger
+Silver Ring
+Sealed Letter
+Crown of Dawn
+Wolf Pelt
+Mara's Iron Sword
+
+30.3 Evidence/body material exception
+
+Some normally generic substances can be items if context itemizes them:
+
+blood sample
+ash sample
+broken fang
+scale fragment
+
+⸻
+
+31. Ability name policy
+
+31.1 Reject ability names
+
+Reject:
+
+magic
+skill
+ability
+power
+attack
+spell
+move
+thing
+it
+system
+AIDRPG
+
+unless part of specific ability title.
+
+31.2 Accept ability names
+
+Accept:
+
+Mana Slash
+Shadow Step
+Dragon Roar
+Iron Skin
+Lesser Heal
+Ember Bolt
+
+31.3 Overlong ability names
+
+Very long anime-style ability names may be allowed if clearly deliberate, but should be sanitized and maybe shortened for canonical key.
+
+Example:
+
+Display:
+
+Void Emperor Oblivion Wave
+
+Canonical key:
+
+void_emperor_oblivion_wave
+
+Still candidate unless validated.
+
+⸻
+
+32. Quest name policy
+
+32.1 Reject vague quest names
+
+Reject as durable quest titles:
+
+Help
+Job
+Task
+Problem
+Quest
+The thing
+Wolves
+Danger
+
+unless the system generates a clearer title.
+
+32.2 Accept generated clear titles
+
+Allowed generated quest titles:
+
+Clear the Mill Wolves
+Deliver Mara's Letter
+Find the Missing Seal
+Escort Old Bren to Greyford
+Investigate the Ash Shrine
+
+Quest titles may be generated from objective/giver/place if explicit.
+
+⸻
+
+33. Trigger safety doctrine
+
+Story Card triggers are more dangerous than entity names because they activate context.
+
+A trigger must be:
+
+* specific
+* unlikely to appear constantly
+* tied to a promoted entity
+* not a broad noun
+* not a system word
+* not a common item/monster type
+
+MVP generated cards are disabled, but trigger policy must exist before beta.
+
+⸻
+
+34. Forbidden card triggers
+
+Reject standalone triggers:
+
+wolf
+sword
+key
+ring
+road
+street
+town
+city
+forest
+guard
+merchant
+inn
+shop
+magic
+spell
+skill
+ability
+quest
+item
+inventory
+player
+you
+body
+status
+AIDRPG
+state
+debug
+
+34.1 Protected card trigger exception
+
+Protected cards may use artificial anchor triggers like:
+
+AIDRPG_PLAYER_SHEET
+AIDRPG_BODY_STATUS
+
+These are controlled non-natural anchors, not story triggers.
+
+⸻
+
+35. Accepted trigger examples
+
+Accepted if entity is promoted and generated cards are enabled later:
+
+Mara of Greyford
+Captain Mora
+Old Bren
+Frostmaw
+Old Chapel Road
+The Ash Shrine
+Crown of Dawn
+Mana Slash
+Shadow Step
+
+35.1 Trigger alias limits
+
+Generated cards should have limited aliases.
+
+Example:
+
+Frostmaw card may use:
+
+Frostmaw
+Frostmaw the White Wolf
+
+Do not add:
+
+wolf
+white wolf
+monster
+
+unless extremely safe and specific in scenario.
+
+⸻
+
+36. Promotion rules
+
+A parsed entity is not automatically persistent.
+
+36.1 Actor promotion
+
+Promote actor if:
+
+* named and recurring
+* companion
+* quest giver
+* quest target
+* item custodian
+* major enemy
+* important witness
+* relationship-changing actor
+
+Do not promote:
+
+* random guard
+* unnamed merchant
+* passerby
+* crowd member
+* one-line scene NPC
+
+36.2 Place promotion
+
+Promote place if:
+
+* named
+* revisitable
+* current important location
+* quest-linked
+* contains important actor/item/objective
+* repeated across scenes
+
+Do not promote:
+
+* generic room
+* random road
+* doorway
+* hallway
+* table
+
+36.3 Item promotion
+
+Promote item if:
+
+* owned/held/equipped/stored by player
+* quest item
+* named item
+* unique item
+* important custody item
+* proof/evidence item later
+
+Do not promote:
+
+* visible-only clutter
+* generic coin unless currency
+* scene decoration
+
+36.4 Ability promotion
+
+Promote ability if:
+
+* stable
+* important passive/talent
+* candidate with repeated evidence but still not card-eligible
+
+Generated ability cards require stable ability later.
+
+⸻
+
+37. Parser-to-resolver handoff
+
+Parser hit should not choose final entity by itself.
+
+Required flow:
+
+ParserHit extracts text spans
+Resolver resolves spans to candidates
+ProposalBuilder creates EventProposal with resolver results
+CanonValidator decides accept/reject/pending
+Reducer commits if accepted
+
+37.1 Unresolved references
+
+If resolver cannot resolve:
+
+* if creation is safe and event supports it, create scene candidate only
+* otherwise pending/soft_fail/audit
+
+Example:
+
+You see a silver ring.
+
+May create scene item candidate.
+
+You use the Crown of Dawn.
+
+If Crown unknown/unowned, reject/pending.
+
+⸻
+
+38. Required parser/resolver tests
+
+D001 — Visible item is not inventory
+
+Output:
+
+You see a silver ring on the table.
+
+Expected:
+
+* scene visible item
+* no inventory item
+
+D002 — Available loot is not inventory
+
+Output:
+
+The goblin drops a rusty dagger.
+
+Expected:
+
+* available loot
+* no inventory item until pickup
+
+D003 — Actual pickup accepted once
+
+Output:
+
+You pick up the rusty dagger.
+
+Expected:
+
+* item acquired once if available/valid
+* duplicate replay skipped
+
+D004 — Quoted pickup rejected
+
+Output:
+
+Mara says, "Take the iron key."
+
+Expected:
+
+* actor claim/request only
+* no key acquired
+
+D005 — Negated pickup rejected
+
+Output:
+
+You do not take the sword.
+
+Expected:
+
+* no sword acquired
+
+D006 — Hypothetical item rejected
+
+Output:
+
+You could take the jeweled cup if you wanted.
+
+Expected:
+
+* no owned cup
+
+D007 — Dream item rejected
+
+Output:
+
+In a dream, you receive the Crown of Dawn.
+
+Expected:
+
+* no real Crown in inventory
+
+D008 — Handoff accepted
+
+Output:
+
+Mara hands you the iron key.
+
+Expected:
+
+* item transfer/acquisition if valid
+
+D009 — Future handoff not accepted
+
+Output:
+
+Mara says she will give you the sword tomorrow.
+
+Expected:
+
+* future promise/note only
+* no sword acquired
+
+D010 — Failed ability not stable
+
+Output:
+
+You attempt Shadow Step, but nothing happens.
+
+Expected:
+
+* evidence or failed attempt possible
+* no stable Shadow Step
+
+D011 — Candidate ability not reliable
+
+State:
+
+Shadow Step status = candidate
+
+Output:
+
+You teleport perfectly behind him.
+
+Expected:
+
+* soft_fail or partial unless validated by evidence/status
+
+D012 — Iron key not keyring
+
+State:
+
+iron key
+iron keyring
+
+Input:
+
+Take the iron key, not the keyring.
+
+Expected:
+
+* iron key selected
+* keyring rejected
+
+D013 — Mara’s sister not Mara
+
+State:
+
+Mara exists
+
+Output:
+
+Mara's sister appears.
+
+Expected:
+
+* sister not resolved as Mara
+
+D014 — Old Chapel Road not Old Chapel
+
+State:
+
+Old Chapel
+Old Chapel Road
+
+Output:
+
+You walk along Old Chapel Road.
+
+Expected:
+
+* road selected
+* chapel building not selected
+
+D015 — Generic guard scene-only
+
+Output:
+
+A guard waves you through.
+
+Expected:
+
+* scene actor only
+* no persistent actor card/state unless promoted later
+
+D016 — Named captain persists
+
+Output:
+
+Captain Mora, the guard captain, stops you and says she remembers you.
+
+Expected:
+
+* persistent actor candidate/record
+* no generated card in MVP
+
+D017 — Rumor death not confirmed
+
+Output:
+
+People say Lord Veyr killed Dalen.
+
+Expected:
+
+* rumor/claim only
+* no confirmed murder fact
+
+D018 — Travel intent not arrival
+
+Input:
+
+I head toward the chapel.
+
+Expected:
+
+* location intent only
+* no location change
+
+D019 — Confirmed arrival changes location
+
+Output:
+
+After a short walk, you arrive at the chapel.
+
+Expected:
+
+* location arrival proposal
+* state update if valid
+
+D020 — Bad trigger rejected
+
+Generated card proposal later:
+
+trigger = sword
+
+Expected:
+
+* rejected trigger
+
+D021 — Junk actor name rejected
+
+Potential actor name:
+
+someone
+
+Expected:
+
+* not persistent actor
+
+D022 — Junk item name rejected
+
+Potential item:
+
+your hand
+
+Expected:
+
+* not item
+
+D023 — Stable ability exact resolve
+
+State:
+
+Mana Slash stable
+
+Output:
+
+You use Mana Slash.
+
+Expected:
+
+* resolves to existing ability
+* no duplicate ability
+
+D024 — Vague XP rejected
+
+Output:
+
+This was a learning experience.
+
+Expected:
+
+* no XP
+
+D025 — Explicit XP applies once
+
+Output:
+
+You gain 20 XP.
+
+Expected:
+
+* XP proposal accepted if allowed
+* duplicate replay skipped
+
+⸻
+
+39. Releasecheck parser/resolver requirements
+
+/releasecheck must fail if:
+
+* parser can mutate state directly
+* parser omits safety flags
+* command output can be parsed
+* context/card text can be parsed
+* resolver does not report ambiguity
+* generic names can become generated cards
+* broad triggers are allowed
+* candidate ability can become stable from one failed attempt
+* visible items can enter inventory without pickup
+
+/releasecheck should warn if:
+
+* parser phrase tables are incomplete
+* name sanitizer disabled
+* resolver confidence thresholds not configured
+* bad trigger list missing
+
+⸻
+
+40. Gap Chunk D completion checklist
+
+Gap Chunk D is complete when:
+
+* universal parser hit schema is defined
+* safety flags are defined
+* source authority rules are defined
+* item parser rules are defined
+* handoff rules are defined
+* ability parser rules are defined
+* body parser rules are defined
+* quest/reward parser rules are defined
+* actor/place/time/progression parser rules are defined
+* resolver result schema is defined
+* scoring rules are defined
+* item/actor/place/ability/quest resolver rules are defined
+* name sanitizer policy is defined
+* trigger safety policy is defined
+* promotion rules are defined
+* tests D001–D025 are accepted
+
+⸻
+
+41. Final Gap Chunk D doctrine
+
+The parser is not a truth machine.
+
+The resolver is not a creator of canon.
+
+Names are not safe just because text contains them.
+
+Triggers are not safe just because they work.
+
+The final rule is:
+
+Parse cautiously.
+Resolve cautiously.
+Promote rarely.
+Validate always.
+Commit only through owner reducers.
+
+Next required gap chunk:
+
+Gap Chunk E — Migration + ReleaseCheck + Command Honesty Spec

@@ -1,0 +1,1683 @@
+AIDRPG Build Chunk 4 — Command Output Format Lock
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 4 — Command Output Format Lock
+Build target: AIDRPG Core MVP v0.1
+Purpose: Lock the exact command output formats for MVP commands before command rendering code is generated.
+Status: Practical build document.
+Follows: Build Chunk 3 — State Schema Lock.
+This document does not contain final script code.
+
+This chunk exists because commands are one of the main ways the player will inspect whether the system is working.
+
+Commands must be:
+
+* readable
+* honest
+* consistent
+* non-mutating
+* safe from parser feedback
+* clear about disabled systems
+* useful for testing
+* useful for debugging
+
+Command output must not become gameplay truth.
+
+⸻
+
+1. Command output doctrine
+
+The doctrine is:
+
+Commands inspect.
+Commands explain.
+Commands do not play the game.
+Commands do not mutate gameplay state.
+Command output is non-canon.
+
+A command may display:
+
+* inventory items
+* quest rewards
+* ability names
+* actor names
+* card warnings
+* migration warnings
+* debug reasons
+
+But that displayed text must not create or alter state.
+
+Example:
+
+/inventory displays Rusty Dagger.
+
+This must not add another Rusty Dagger.
+
+Example:
+
+/quests displays Reward: 15 gold promised.
+
+This must not pay 15 gold.
+
+Example:
+
+/abilities displays Shadow Step — candidate.
+
+This must not make Shadow Step stable.
+
+⸻
+
+2. Required command suppression rule
+
+Every command output must set or preserve:
+
+runtime.commandActive = true
+runtime.suppressEventScanForCommandOutput = true
+runtime.lastCommandName = commandName
+runtime.lastCommandHash = hash(commandOutput)
+runtime.lastCommandTurn = runtime.currentTurn
+
+The Output hook must recognize command output and suppress event scanning.
+
+If command output is later passed through Output hook, it must be ignored as story.
+
+⸻
+
+3. Global command format rules
+
+All command outputs should follow this general style:
+
+[AIDRPG] Command Name
+Status: <short status>
+<section heading>
+- <line>
+- <line>
+Notes:
+- <line>
+
+3.1 Required prefix
+
+Every command output should begin with:
+
+[AIDRPG]
+
+This helps identify command output for suppression.
+
+3.2 Required non-canon reminder for diagnostics
+
+Diagnostic commands should include a compact note:
+
+Command output is non-canon and does not change story state.
+
+Normal player-facing commands do not need to repeat this every time unless helpful.
+
+3.3 No raw giant dumps
+
+Commands must not dump full raw state by default.
+
+Allowed:
+
+* concise summary
+* counts
+* important records
+* warnings
+* recent audit entries
+
+Forbidden by default:
+
+* full state.aidrpg JSON
+* huge arrays
+* every audit line
+* every operation key
+* every old log
+* every card body
+
+3.4 Empty-state output
+
+Every command must handle empty state gracefully.
+
+Example:
+
+No active quests.
+
+not:
+
+undefined
+null
+[object Object]
+
+3.5 Unknown/malformed state output
+
+If a bucket is missing or malformed, commands should say:
+
+Warning: <bucket> data was missing or repaired. Run /stateaudit for details.
+
+Commands should not crash.
+
+⸻
+
+4. Output length rules
+
+Command output must be compact enough for AI Dungeon use.
+
+Recommended maximums:
+
+/help: 2000 characters
+/version: 1200 characters
+/sheet: 1500 characters
+/status: 1200 characters
+/inventory: 1800 characters
+/abilities: 1800 characters
+/quests: 2200 characters
+/actors: 1800 characters
+/location: 1500 characters
+/time: 900 characters
+/debuglast: 2500 characters
+/cardaudit: 2500 characters
+/contextaudit: 2200 characters
+/stateaudit: 2500 characters
+/ledger: 1800 characters
+/dirty: 1800 characters
+/migration: 1800 characters
+/quarantine: 2200 characters
+/releasecheck: 3000 characters
+/startupaudit: 1800 characters
+
+If output exceeds the limit:
+
+* show highest priority lines
+* summarize the rest
+* say how many entries were omitted
+
+Example:
+
+Showing 10 of 34 inventory entries. Use a future filtered command when available.
+
+MVP does not need advanced pagination unless later specified.
+
+⸻
+
+5. Required MVP commands
+
+Core MVP v0.1 must support these commands:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+/startupaudit
+
+Each command is inspect-only or diagnostic-only.
+
+None of these commands may mutate gameplay state.
+
+⸻
+
+6. Disabled/deferred commands
+
+Any disabled command must return a safe disabled message.
+
+Required disabled command format:
+
+[AIDRPG] <Command Name>
+Status: Disabled in Core MVP v0.1
+This system is not active yet.
+Required before activation: <required mini-spec or build phase>.
+No gameplay state was changed.
+
+6.1 Required disabled systems
+
+Commands for these systems must be disabled in MVP:
+
+economy
+shop
+buy
+sell
+craft
+recipes
+materials
+cases
+clues
+evidence
+reputation
+factions
+domain
+workers
+projects
+absorb
+evolve
+devour
+party advanced controls
+summons
+warfare
+scale
+battlefield
+protagonists
+players
+cardsync live on
+generatecards
+manual mutation commands
+
+⸻
+
+7. Alias command output rules
+
+Old aliases should route safely.
+
+If an alias maps to an active command, output may show the active command name and alias note.
+
+Example:
+
+[AIDRPG] Quest Log
+Alias: /questlog -> /quests
+Status: Active
+
+If an alias maps to a disabled system, output the disabled command format.
+
+⸻
+
+8. /help format
+
+8.1 Purpose
+
+Show what the current build can do and what is disabled.
+
+8.2 Required format
+
+[AIDRPG] Help
+Status: Core MVP v0.1 Foundation
+Active Player Commands:
+- /sheet — show player identity, level, stats, and build summary
+- /status — show HP, MP, EP, injuries, conditions, fatigue
+- /inventory — show equipped, owned, nearby, and unavailable items
+- /abilities — show stable, unstable, candidate, passive, and sealed abilities
+- /quests — show quest states and reward status
+- /actors — show important actors, companions, presence, and social notes
+- /location — show current location, scene, hazards, exits, and visible key items
+- /time — show current time text, last time advance, and deadlines
+Diagnostic Commands:
+- /version — show build and feature flags
+- /debuglast — show last runtime/proposal/validation summary
+- /cardaudit — show Story Card sync status
+- /contextaudit — show context packet status
+- /stateaudit — show schema and integrity status
+- /ledger — show duplicate-prevention ledger summary
+- /dirty — show pending mirror/context update targets
+- /migration — show migration status
+- /quarantine — show unsafe legacy data held for review
+- /releasecheck — run readiness checks
+- /startupaudit — show startup import and setup-lock status
+Disabled in MVP:
+- generated cards
+- economy, shop, buying, selling
+- crafting and materials projects
+- investigation cases/evidence
+- reputation and faction automation
+- domain/labor systems
+- absorption/evolution mechanics
+- advanced combat, warfare, and multi-protagonist systems
+- manual mutation commands
+Safety Notes:
+- Commands inspect only.
+- Command output is non-canon.
+- Story Cards mirror state only.
+- Context is read-only.
+- Candidate abilities are not stable abilities.
+- Promised rewards are not paid rewards.
+- Visible items are not inventory until acquired.
+
+8.3 Required honesty
+
+/help must not claim disabled systems are active.
+
+If a system is shell-only, say shell-only.
+
+⸻
+
+9. /version format
+
+9.1 Purpose
+
+Show the build identity and feature flags.
+
+9.2 Required format
+
+[AIDRPG] Version
+Status: Foundation Build
+Build:
+- Project: AIDRPG
+- Build Name: AIDRPG Core MVP v0.1
+- Build Stage: core_mvp_v0_1_foundation
+- Schema Version: 1
+- Authority: v1.3 roadmap gap aligned
+Feature Flags:
+- Generated Cards: disabled
+- Protected Card Writes: disabled or dry-run only
+- CardSync Mode: dry-run / safe mode
+- Economy: disabled
+- Crafting: disabled
+- Investigation: disabled
+- Reputation/Factions: disabled
+- Domain/Labor: disabled
+- Absorption/Evolution: disabled
+- Multi-Protagonist: disabled
+- Advanced Combat: disabled
+- Manual Mutation Commands: disabled
+Migration:
+- Status: <migrationStatus>
+- Quarantine: <unresolvedCount> unresolved
+Last Release Check:
+- Result: <unknown/PASS/WARN/FAIL/BLOCKED>
+
+9.3 Empty/missing values
+
+If values are missing:
+
+Warning: version data incomplete. Run /stateaudit.
+
+⸻
+
+10. /sheet format
+
+10.1 Purpose
+
+Show protected player identity and progression summary.
+
+10.2 Required format
+
+[AIDRPG] Player Sheet
+Status: Active
+Identity:
+- Name: <player.name>
+- Race/Species: <player.raceSpecies>
+- Age: <player.age>
+- Body Type: <player.bodyType>
+- Appearance: <player.appearance>
+- Origin: <player.origin or none>
+Build:
+- Build Identity: <player.buildIdentity>
+- Specialization: <player.specialization>
+- Titles: <titles or none>
+- Nicknames: <nicknames or none>
+Progression:
+- Level: <level>
+- XP: <currentXP> / <xpToNext>
+- Total XP: <totalXP>
+Stats:
+- ATK: <ATK>
+- DEF: <DEF>
+- SPD: <SPD>
+- INT: <INT>
+- LCK: <LCK>
+Temporary Identity Effects:
+- Disguise: <activeDisguise or none>
+- Illusion: <activeIllusion or none>
+- Temporary Appearance: <temporaryAppearance or none>
+Notes:
+- Candidate abilities, inventory, and conditions are shown in their own commands.
+
+10.3 Safety requirements
+
+/sheet must separate:
+
+* name from title
+* appearance from disguise
+* permanent species from dream/illusion state
+
+It must not update the player.
+
+⸻
+
+11. /status format
+
+11.1 Purpose
+
+Show body/resources, injuries, conditions, fatigue, and death boundary.
+
+11.2 Required format
+
+[AIDRPG] Status
+Status: Active
+Resources:
+- HP: <current>/<max>
+- MP: <current>/<max>
+- EP: <current>/<max>
+Body State:
+- Fatigue: <fatigue>
+- Death Boundary: <deathBoundary>
+- Body Traits: <bodyTraits or none>
+Injuries:
+- <name> — <severity>, <location>, <status>
+- none
+Conditions:
+- <name> — <severity>, <status>
+- none
+Warnings:
+- <bodyWarnings or none>
+
+11.3 Safety requirements
+
+/status must not heal, damage, resolve, or worsen conditions.
+
+It only displays state.
+
+⸻
+
+12. /inventory format
+
+12.1 Purpose
+
+Show owned items, equipped items, nearby available/visible scene items, unavailable/custody items, and currency.
+
+12.2 Required format
+
+[AIDRPG] Inventory
+Status: Active
+Currency:
+- Copper: <copper>
+- Silver: <silver>
+- Gold: <gold>
+- Abstract Value: <abstractValue if used>
+Equipped:
+- <slot>: <item name> (<condition>)
+- none
+Inventory:
+- <item name> x<quantity> — <accessState>, <condition>
+- none
+Available Nearby:
+- <scene item name> x<quantity> — <visible/available_loot>, at <location/scene>
+- none
+Unavailable / In Custody:
+- <item name> — custody: <actor/place>, access: <accessState>
+- none
+Lost / Sold / Destroyed / Consumed:
+- <item name> — <accessState>
+- none
+Warnings:
+- Visible items are not owned inventory until acquired.
+- Available loot is not usable until picked up.
+
+12.3 Item display priority
+
+If output is long, show in this priority:
+
+1. equipped
+2. quest-linked inventory
+3. important owned items
+4. unavailable/custody warnings
+5. nearby available loot
+6. other items summarized
+
+12.4 Safety requirements
+
+/inventory must not:
+
+* add displayed items
+* move available loot into inventory
+* equip items
+* resolve custody
+* pay or spend currency
+
+⸻
+
+13. /abilities format
+
+13.1 Purpose
+
+Show abilities by status and prevent candidate/stable confusion.
+
+13.2 Required format
+
+[AIDRPG] Abilities
+Status: Active
+Stable Abilities:
+- <name> — <category>, cost: <costLabel>, reliability: stable
+- none
+Unstable Abilities:
+- <name> — <category>, reliability: <low/medium/high>, notes: <short note>
+- none
+Candidate / Hinted Abilities:
+- <name> — status: <candidate/hint>, evidence: <count>, reliability: not reliable
+- none
+Passives / Talents:
+- <name> — <category>, status: <stable/candidate/etc.>
+- none
+Sealed / Unavailable:
+- <name> — reason: <sealedReason>
+- none
+Safety Notes:
+- Candidate abilities are not stable.
+- Failed attempts may add evidence, but they do not create mastered abilities.
+
+13.3 Safety requirements
+
+/abilities must not:
+
+* stabilize candidates
+* create abilities from display text
+* spend resources
+* clear cooldowns
+* unseal abilities
+
+⸻
+
+14. /quests format
+
+14.1 Purpose
+
+Show quest states and reward states clearly.
+
+14.2 Required format
+
+[AIDRPG] Quests
+Status: Active
+Rumored / Offered:
+- <title> — <status>, giver: <actor or unknown>
+- none
+Active:
+- <title>
+  Status: active
+  Objective: <objective text> (<progressCurrent>/<progressRequired>, <objective status>)
+  Giver: <giver or unknown>
+  Deadline: <deadline or none>
+  Reward: <description> — <rewardStatus>
+- none
+Blocked:
+- <title> — blocked by <reason or unknown>
+- none
+Ready to Turn In:
+- <title> — reward: <description>, status: <ready/promised>
+- none
+Completed / Rewarded:
+- <title> — quest status: <completed/rewarded>, reward: <paid/disputed/denied/etc.>
+- none
+Failed / Abandoned / Archived:
+- <title> — <status>
+- none
+Safety Notes:
+- Rumored quests are not active quests.
+- Offered quests are not accepted quests.
+- Promised rewards are not paid rewards.
+- Completing an objective does not automatically pay the reward.
+
+14.3 Safety requirements
+
+/quests must not:
+
+* activate offered quests
+* complete objectives
+* pay rewards
+* add currency
+* archive quests
+
+⸻
+
+15. /actors format
+
+15.1 Purpose
+
+Show important actors, companions, presence, relationship notes, and custody notes.
+
+15.2 Required format
+
+[AIDRPG] Actors
+Status: Active
+Companions / Familiar Actors:
+- <name> — presence: <presence>, relationship: <relationshipToPlayer>, status: <status>
+- none
+Important Actors:
+- <name> — type: <actorType>, importance: <importance>, presence: <presence>
+  Relationship: <relationshipToPlayer>
+  Notes: <short confirmed/claimed note>
+- none
+Scene-Only Actors:
+- <name> — temporary scene actor, expires on scene change
+- none
+Custody Notes:
+- <actor> has custody of <item>
+- none
+Uncertain / Claimed Information:
+- <actor>: <claim> — truthStatus: <claimed/rumored/suspected>
+- none
+Safety Notes:
+- Absent actors cannot act in the current scene.
+- Generic scene actors do not become permanent by default.
+
+15.3 Safety requirements
+
+/actors must not:
+
+* make absent actors present
+* promote scene actors
+* confirm rumors
+* change relationships
+* transfer custody
+
+⸻
+
+16. /location format
+
+16.1 Purpose
+
+Show current location, scene, actors present, visible/available items, hazards, exits, and travel intent.
+
+16.2 Required format
+
+[AIDRPG] Location
+Status: Active
+Current Location:
+- Name: <currentLocation.name>
+- Confidence: <confirmed/likely/unknown>
+Current Scene:
+- Summary: <currentScene.summary>
+- Present Actors: <names or none>
+- Visible / Available Items: <names or none>
+- Hazards: <hazards or none>
+- Exits: <exits or none>
+Travel Intent:
+- Destination: <destinationText or none>
+- Status: <intended/in_progress/interrupted/arrived/cancelled or none>
+Safety Notes:
+- Heading toward a place is not the same as arriving there.
+- Visible items are not owned inventory.
+
+16.3 Safety requirements
+
+/location must not:
+
+* change current location
+* mark travel as arrived
+* add visible items to inventory
+* promote generic rooms/roads/doors
+
+⸻
+
+17. /time format
+
+17.1 Purpose
+
+Show current campaign time text, turn, last time advance, and deadlines.
+
+17.2 Required format
+
+[AIDRPG] Time
+Status: Active
+Current Time:
+- Text: <time.text>
+- Turn: <time.turn>
+Last Advance:
+- <amountText or none>
+- Reason: <reason or none>
+Deadlines:
+- <deadline text> — linked quest: <quest title/id>, status: <status>
+- none
+Safety Notes:
+- Planning to wait/rest/travel does not advance time.
+- Confirmed time passage applies once.
+
+17.3 Safety requirements
+
+/time must not:
+
+* advance time
+* rest the player
+* expire deadlines
+* age the player
+
+⸻
+
+18. /debuglast format
+
+18.1 Purpose
+
+Show last turn processing summary for troubleshooting.
+
+18.2 Required format
+
+[AIDRPG] Debug Last
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Turn Summary:
+- Turn: <turn or none>
+- Input Hash: <short hash or none>
+- Output Hash: <short hash or none>
+- Proposals Created: <count>
+- Accepted: <count>
+- Rejected: <count>
+- Duplicate Skipped: <count>
+- Dirty Targets: <count/list>
+Recent Proposals:
+- <event family/type> — <outcome or pending>, reason: <short reason>
+- none
+Recent Validation:
+- <event family/type> — <accepted/rejected/pending>, reason: <short reason>
+- none
+Runtime Warnings:
+- <warning>
+- none
+Notes:
+- Parser pipeline may be shell-only in early v0.1.
+
+18.3 Safety requirements
+
+/debuglast must not:
+
+* replay events
+* commit pending proposals
+* resolve rejected events
+* mutate state
+
+⸻
+
+19. /cardaudit format
+
+19.1 Purpose
+
+Show Story Card sync status, protected registry status, duplicate warnings, dirty cards, and generated-card suppression.
+
+19.2 Required format
+
+[AIDRPG] Card Audit
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+CardSync Mode:
+- Dry Run: <true/false>
+- Safe Mode: <true/false>
+- Live Writes Enabled: <true/false>
+- Protected Writes Enabled: <true/false>
+- Generated Cards Enabled: <true/false>
+API Status:
+- Capabilities Checked: <true/false>
+- Available: <true/false>
+- Supports List/Add/Update/Remove/Disable: <summary>
+Protected Cards:
+- Registered: <count>/7
+- Dirty: <dirty protected card keys or none>
+- Missing: <missing protected card keys or none>
+Duplicate Warnings:
+- <warning>
+- none
+Tombstones:
+- <tombstone summary>
+- none
+Recent Card Audit:
+- <audit line>
+- none
+Safety Notes:
+- Story Cards mirror state only.
+- Story Card text is not canon.
+- Generated cards are disabled in MVP.
+
+19.3 Safety requirements
+
+/cardaudit must not:
+
+* create cards
+* update cards
+* delete cards
+* import card text
+* enable generated cards
+
+⸻
+
+20. /contextaudit format
+
+20.1 Purpose
+
+Show context packet selection, skipped packets, budget, and read-only status.
+
+20.2 Required format
+
+[AIDRPG] Context Audit
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Context Mode:
+- ContextBuilder: <inactive/shell/active>
+- Read-Only Guard: <present/missing>
+- Last Context Hash: <short hash or none>
+Budget:
+- Characters Used: <used>/<max or unknown>
+- Packets Selected: <count>
+- Packets Skipped: <count>
+Selected Packets:
+- <family> — priority <number>, reason: <reason>
+- none
+Skipped Packets:
+- <family> — reason: <skipReason>
+- none
+Safety Notes:
+- Context may remind the AI of state.
+- Context may not mutate gameplay state.
+
+20.3 Safety requirements
+
+/contextaudit must not:
+
+* generate gameplay state
+* mark actors present
+* add items
+* update quests
+* create context as canon
+
+⸻
+
+21. /stateaudit format
+
+21.1 Purpose
+
+Show schema integrity, missing/ repaired buckets, state caps, migration/quarantine warnings, dirty/cleanup health.
+
+21.2 Required format
+
+[AIDRPG] State Audit
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Schema:
+- Root: <present/missing/repaired>
+- Schema Version: <number>
+- Required Buckets: <complete/missing/repaired>
+Integrity:
+- Warnings: <count>
+- Errors: <count>
+- Runtime Errors: <count>
+State Size:
+- Audit Entries: <summary>
+- Dirty Targets: <count>/<max>
+- Quarantine Records: <count>
+- Recent Operation Keys: <count>/<max>
+Migration:
+- Status: <migrationStatus>
+- Imported: <count>
+- Repaired: <count>
+- Quarantined: <count>
+Cleanup:
+- Last Cleanup: <turn/type or none>
+- Warnings: <cleanup warnings or none>
+Important Warnings:
+- <warning>
+- none
+
+21.3 Safety requirements
+
+/stateaudit must not:
+
+* repair gameplay truth unless StateManager already does safe structural repair
+* import card prose
+* resolve quarantine
+* delete records
+
+⸻
+
+22. /ledger format
+
+22.1 Purpose
+
+Show duplicate-prevention ledger health without dumping all keys.
+
+22.2 Required format
+
+[AIDRPG] Operation Ledger
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Ledger Buckets:
+- Permanent Keys: <count>
+- Recent Keys: <count>/<max>
+- Reward Keys: <count>
+- Card Keys: <count>
+- Source Use Keys: <count>
+Recent Duplicate Skips:
+- <key/reason summary>
+- none
+Warnings:
+- <ledgerWarnings or none>
+Safety Notes:
+- Operation keys prevent duplicate effects.
+- This command does not create or replay operations.
+
+22.3 Safety requirements
+
+/ledger must not:
+
+* add keys
+* remove keys
+* replay operations
+* clear duplicate blocks
+
+⸻
+
+23. /dirty format
+
+23.1 Purpose
+
+Show pending mirror/context/audit update targets.
+
+23.2 Required format
+
+[AIDRPG] Dirty Queue
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Queue:
+- Total Targets: <count>/<max>
+- Queued: <count>
+- Processed Recently: <count>
+- Blocked/Error: <count>
+Highest Priority Targets:
+- <family> — priority <number>, reason: <reason>, status: <status>
+- none
+Dirty Protected Cards:
+- <protected card key>
+- none
+Context Dirty Reasons:
+- <reason>
+- none
+Warnings:
+- <dirtyWarnings or none>
+
+23.3 Safety requirements
+
+/dirty must not:
+
+* process dirty targets unless a future safe command explicitly allows it
+* update cards
+* generate context
+* create gameplay state
+
+⸻
+
+24. /migration format
+
+24.1 Purpose
+
+Show migration status and old-data handling.
+
+24.2 Required format
+
+[AIDRPG] Migration
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Migration Status:
+- Current Migration Version: <currentMigrationVersion>
+- Status: <migrationStatus>
+- Last Migration Turn: <lastMigrationTurn>
+Counts:
+- Imported: <count>
+- Repaired: <count>
+- Quarantined: <count>
+- Ignored: <count>
+- Neutralized Cards: <count>
+- Duplicate Cards: <count>
+Warnings:
+- <warning>
+- none
+Errors:
+- <error>
+- none
+Safety Notes:
+- Old Story Card prose is not imported as canon.
+- Unsafe old data is quarantined, not guessed into state.
+
+24.3 Safety requirements
+
+/migration must not:
+
+* run aggressive migration unless future command allows
+* import quarantined data
+* create items/quests/abilities from card text
+
+⸻
+
+25. /quarantine format
+
+25.1 Purpose
+
+Show unsafe legacy or uncertain records held outside gameplay truth.
+
+25.2 Required format
+
+[AIDRPG] Quarantine
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Summary:
+- Unresolved Records: <count>
+- Warnings: <count>
+Records:
+- <quarantineId> — source: <source>, severity: <severity>
+  Preview: <originalPreview>
+  Reason: <reason>
+  Suggested Action: <suggestedAction>
+- none
+Safety Notes:
+- Quarantined records are not active gameplay truth.
+- A quarantined item is not inventory.
+- A quarantined quest is not active.
+- A quarantined ability is not usable.
+
+25.3 Output cap
+
+Show highest severity first.
+
+If many records:
+
+Showing 10 of <count> quarantine records.
+
+25.4 Safety requirements
+
+/quarantine must not:
+
+* resolve quarantine
+* import records
+* delete records
+* create gameplay truth
+
+⸻
+
+26. /releasecheck format
+
+26.1 Purpose
+
+Show whether the current build is safe for its claimed stage.
+
+26.2 Required format
+
+[AIDRPG] Release Check
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Build:
+- Build Name: <buildName>
+- Build Stage: <buildStage>
+- Schema Version: <schemaVersion>
+Result: <PASS/WARN/FAIL/BLOCKED>
+Sections:
+- Build/Version: <PASS/WARN/FAIL>
+- Runtime Hooks: <PASS/WARN/FAIL>
+- State Schema: <PASS/WARN/FAIL>
+- Command Safety: <PASS/WARN/FAIL>
+- Parser Safety: <PASS/WARN/FAIL/BLOCKED>
+- Canon Validation: <PASS/WARN/FAIL/BLOCKED>
+- Reducer Ownership: <PASS/WARN/FAIL/BLOCKED>
+- OperationLedger: <PASS/WARN/FAIL>
+- Inventory/Custody: <PASS/WARN/FAIL>
+- Ability Candidate Safety: <PASS/WARN/FAIL>
+- Quest/Reward Safety: <PASS/WARN/FAIL>
+- Actor/Place Safety: <PASS/WARN/FAIL>
+- Context No-Write: <PASS/WARN/FAIL>
+- CardSync Safety: <PASS/WARN/FAIL>
+- Migration/Quarantine: <PASS/WARN/FAIL>
+- Cleanup/Dirty Queue: <PASS/WARN/FAIL>
+- Deferred Systems: <PASS/WARN/FAIL>
+Failures:
+- <failure line>
+- none
+Warnings:
+- <warning line>
+- none
+Blockers:
+- <blocker line>
+- none
+Required Fixes:
+1. <fix>
+2. <fix>
+- none
+
+26.3 Result rules
+
+PASS only if all required checks pass.
+
+WARN if non-blocking risk exists.
+
+FAIL if active safety rule is violated.
+
+BLOCKED if a requested/claimed system is missing its required spec/build phase.
+
+26.4 Safety requirements
+
+/releasecheck must not:
+
+* fix gameplay state
+* enable disabled features
+* clear warnings by itself
+* claim success falsely
+
+⸻
+
+27. /startupaudit format
+
+27.1 Purpose
+
+Show startup import and setup lock status.
+
+27.2 Required format
+
+[AIDRPG] Startup Audit
+Status: Diagnostic
+Command output is non-canon and does not change story state.
+Startup Status:
+- Setup Status: <setupStatus>
+- Setup Imported: <true/false>
+- Gameplay Started: <true/false>
+- Setup Locked Turn: <turn>
+- Setup Source Hash: <short hash or none>
+Imported Fields:
+- <field>: <valuePreview> — source: <source>, confidence: <confidence>
+- none
+Rejected Fields:
+- <field>: <rejectedValuePreview> — reason: <reason>, severity: <severity>
+- none
+Warnings:
+- <warning>
+- none
+Safety Notes:
+- Startup import runs once.
+- Setup cannot casually overwrite player identity after gameplay lock.
+
+27.3 Safety requirements
+
+/startupaudit must not:
+
+* import setup data
+* rerun startup
+* unlock setup
+* overwrite identity
+
+⸻
+
+28. Disabled command output examples
+
+28.1 /craft
+
+[AIDRPG] Crafting
+Status: Disabled in Core MVP v0.1
+Crafting is not active yet.
+Required before activation: Crafting / Materials Mini-Spec and later build phase.
+No gameplay state was changed.
+
+28.2 /shop or /buy
+
+[AIDRPG] Economy
+Status: Disabled in Core MVP v0.1
+Economy/shop automation is not active yet.
+Simple currency display may exist, but buying, selling, debt, barter, and shop stock require Economy / Transaction Ledger Mini-Spec.
+No gameplay state was changed.
+
+28.3 /cardsync live on
+
+[AIDRPG] CardSync Live Mode
+Status: Disabled in Core MVP v0.1
+Generated cards and unrestricted live CardSync are not active yet.
+Protected card dry-run/audit may exist, but live writes require Story Card API Adapter tests and later build approval.
+No gameplay state was changed.
+
+28.4 /additem Crown of Dawn
+
+[AIDRPG] Manual Mutation Command
+Status: Disabled in Core MVP v0.1
+Manual mutation commands are not active yet.
+Required before activation: Manual Override Spec, confirmation rules, audit path, and operation keys.
+No gameplay state was changed.
+
+⸻
+
+29. Required alias behavior
+
+29.1 Active aliases
+
+/questlog -> /quests
+/finalcheck -> /releasecheck
+/finalrelease -> /releasecheck
+/rc -> /releasecheck
+/cardedits -> /cardaudit
+/tombstones -> /cardaudit
+/startup -> /startupaudit
+
+Alias output may include:
+
+Alias: /questlog -> /quests
+
+29.2 Disabled aliases
+
+/scale -> disabled until Scale / Group Combat Spec
+/warfare -> disabled until Scale / Group Combat Spec
+/groups -> disabled until Party/Scale Spec
+/battlefield -> disabled until Scale Spec
+/protagonists -> disabled until Multi-Protagonist Spec
+/players -> disabled until Multi-Protagonist Spec
+/party -> limited or disabled until Party Spec; if basic companions shown, map to /actors
+/reputation -> disabled until Reputation / Faction / Titles Spec
+/combat -> disabled or status-only until Combat/Progression v0.2
+/threat -> disabled until Combat/Threat Spec
+/continuity -> map to /stateaudit or /contextaudit
+
+⸻
+
+30. Unknown command format
+
+Unknown commands must not crash.
+
+Required format:
+
+[AIDRPG] Unknown Command
+Status: Not Recognized
+Command: /<command>
+Use /help to see active MVP commands.
+No gameplay state was changed.
+
+Unknown commands must set command output suppression.
+
+⸻
+
+31. Formatting edge cases
+
+31.1 Missing bucket
+
+If a command needs a missing bucket:
+
+Warning: <bucket> data was missing or unavailable. StateManager should repair this. Run /stateaudit.
+
+31.2 Empty bucket
+
+Say:
+
+none
+
+or:
+
+No active records.
+
+Do not show undefined/null.
+
+31.3 Too many records
+
+Say:
+
+Showing <shown> of <total>. Lower-priority entries omitted for command length.
+
+31.4 Malformed record
+
+Say:
+
+Warning: one record could not be displayed safely and was omitted. Run /stateaudit.
+
+Do not crash.
+
+⸻
+
+32. Command renderer ownership
+
+Command renderers may read state and format output.
+
+They may not:
+
+* call reducers
+* call EventScanner
+* call ProposalBuilder
+* call CanonValidator to commit anything
+* call CardSync live writes
+* call cleanup destructive actions
+* resolve quarantine
+* enable features
+
+The only acceptable mutation from a command path is diagnostic metadata such as command suppression and optional audit that the command ran.
+
+⸻
+
+33. ReleaseCheck requirements for command formats
+
+/releasecheck must verify command safety.
+
+It must fail if:
+
+* command output suppression missing
+* commands can mutate gameplay state in MVP
+* /help claims disabled systems are active
+* /releasecheck is missing
+* /version is missing build stage
+* /inventory cannot separate visible/owned items
+* /abilities cannot separate candidate/stable abilities
+* /quests cannot separate promised/paid rewards
+* disabled commands activate deferred systems
+
+It may warn if:
+
+* command output is too long
+* aliases are incomplete
+* diagnostic commands are shell-only
+* command cap behavior is not fully implemented
+
+⸻
+
+34. Command output tests
+
+BC4-001 — /help honest
+
+Run:
+
+/help
+
+Expected:
+
+* active commands listed
+* disabled systems listed
+* generated cards disabled
+* no false claim that crafting/economy/etc. are active
+
+Fail if:
+
+* /help lies or omits major disabled systems
+
+⸻
+
+BC4-002 — /version displays flags
+
+Expected:
+
+* build name
+* schema version
+* build stage
+* generated cards disabled
+* deferred systems disabled
+
+Fail if:
+
+* version output hides unsafe flags
+
+⸻
+
+BC4-003 — /inventory separates visible from owned
+
+State:
+
+* owned Iron Sword
+* visible Silver Ring
+* available Rusty Dagger
+
+Expected:
+
+* Iron Sword under Inventory/Equipped
+* Silver Ring/Rusty Dagger under Available Nearby
+* warning that visible/available is not owned
+
+Fail if:
+
+* visible item displayed as owned inventory
+
+⸻
+
+BC4-004 — /abilities separates candidate from stable
+
+State:
+
+* Mana Slash stable
+* Shadow Step candidate
+
+Expected:
+
+* Mana Slash under Stable
+* Shadow Step under Candidate
+* safety note candidate not stable
+
+Fail if:
+
+* candidate shown as stable
+
+⸻
+
+BC4-005 — /quests separates promised from paid
+
+State:
+
+* quest reward promised 15 gold
+
+Expected:
+
+* reward status promised
+* no currency added
+* safety note promised not paid
+
+Fail if:
+
+* command output pays reward or marks paid
+
+⸻
+
+BC4-006 — /actors shows absent actor safely
+
+State:
+
+* Mara presence elsewhere
+
+Expected:
+
+* Mara shown as elsewhere
+* safety note absent/elsewhere actors cannot act now
+
+Fail if:
+
+* command makes Mara present
+
+⸻
+
+BC4-007 — /location separates travel intent from arrival
+
+State:
+
+* current location: Old Mill
+* travelIntent: chapel
+
+Expected:
+
+* current location remains Old Mill
+* travel intent chapel displayed separately
+
+Fail if:
+
+* command displays chapel as current location
+
+⸻
+
+BC4-008 — /cardaudit shows generated cards disabled
+
+Expected:
+
+* generatedCardsEnabled false
+* max generated creates/updates zero
+* card text not canon note
+
+Fail if:
+
+* generated card status hidden or enabled
+
+⸻
+
+BC4-009 — /contextaudit says read-only
+
+Expected:
+
+* read-only guard displayed
+* no gameplay state changed
+
+Fail if:
+
+* context audit mutates state
+
+⸻
+
+BC4-010 — /releasecheck fails unsafe generated cards
+
+Set generatedCardsEnabled true in test.
+
+Expected:
+
+* releasecheck result FAIL
+* clear failure line
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+BC4-011 — Disabled /craft safe
+
+Run:
+
+/craft sword
+
+Expected:
+
+* disabled message
+* no crafting project
+* no item created
+
+Fail if:
+
+* crafting activates
+
+⸻
+
+BC4-012 — Unknown command safe
+
+Run:
+
+/banana
+
+Expected:
+
+* unknown command message
+* no crash
+* command suppression set
+
+Fail if:
+
+* crash or gameplay mutation
+
+⸻
+
+BC4-013 — Alias /questlog maps to /quests
+
+Expected:
+
+* outputs quests format
+* optional alias note
+* no mutation
+
+Fail if:
+
+* command unknown or mutates quest state
+
+⸻
+
+BC4-014 — Command output suppression prevents item duplication
+
+State:
+
+* one Rusty Dagger in inventory
+
+Run:
+
+/inventory
+
+Then simulate command output through Output hook.
+
+Expected:
+
+* still one Rusty Dagger
+
+Fail if:
+
+* duplicate dagger created
+
+⸻
+
+BC4-015 — Command output suppression prevents reward payment
+
+State:
+
+* quest promised reward 15 gold
+
+Run:
+
+/quests
+
+Then simulate command output through Output hook.
+
+Expected:
+
+* reward still promised
+* currency unchanged
+
+Fail if:
+
+* 15 gold paid from command output
+
+⸻
+
+35. Relationship to previous build chunks
+
+Build Chunk 4 uses:
+
+* Build Chunk 1 for active/forbidden systems
+* Build Chunk 2 for command renderer section ownership
+* Build Chunk 3 for exact bucket names and state fields
+* Gap Chunk E for migration/releasecheck/command honesty
+* Gap Chunk F for context/dirty/cleanup audit formatting
+* Gap Chunk G for startup audit and identity safety notes
+
+⸻
+
+36. What Build Chunk 5 should do next
+
+Next build document:
+
+Build Chunk 5 — StateManager Plan
+
+Build Chunk 5 should plan the exact StateManager implementation:
+
+* initialization flow
+* default bucket creation
+* missing-field repair
+* safe migration shell
+* state integrity checks
+* startup lock helpers
+* preservation rules
+* repair audit behavior
+* first runtime tests
+
+After Build Chunk 5, the project will be ready to begin the first real code foundation chunks soon.
+
+⸻
+
+37. Final Build Chunk 4 doctrine
+
+Commands are the player’s window into the system.
+
+If commands lie, the player cannot trust the script.
+
+If commands mutate state, the script becomes unsafe.
+
+If command output is parsed as story, old bugs return.
+
+Final rule:
+
+Commands must be honest.
+Commands must be readable.
+Commands must be non-canon.
+Commands must not mutate gameplay.
+Commands must clearly separate active, unavailable, promised, candidate, visible, and confirmed states.
+
+With command formats locked, the next safe step is to plan StateManager.

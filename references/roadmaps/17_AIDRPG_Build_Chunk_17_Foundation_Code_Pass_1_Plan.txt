@@ -1,0 +1,970 @@
+AIDRPG Build Chunk 17 — Foundation Code Pass 1 Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 17 — Foundation Code Pass 1 Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact first real script generation scope, assembly order, shell boundaries, disabled systems, test order, package strategy, and no-overbuild limits before actual code is created.
+Status: Final pre-code planning chunk.
+Follows: Build Chunk 16 — ReleaseCheck and Regression Matrix Lock.
+This document does not contain final script code.
+
+This chunk is the transition point from planning into implementation.
+
+The purpose of Code Pass 1 is not to build the entire final dream system.
+
+The purpose of Code Pass 1 is to build the safe foundation that prevents old failure classes from returning.
+
+If Code Pass 1 is too ambitious, it will become another patch pile.
+
+If Code Pass 1 is too vague, it will repeat old bugs.
+
+This plan defines the exact safe middle path.
+
+⸻
+
+1. Code Pass 1 doctrine
+
+Build the foundation first.
+Make unsafe systems impossible by default.
+Make every command honest.
+Make every hook fail softly.
+Make every state bucket stable.
+Make parser/proposal/validator/reducer boundaries real.
+Make support layers non-canon.
+Make ReleaseCheck tell the truth.
+Do not overbuild deferred systems.
+
+Code Pass 1 should create a working, installable, inspectable script foundation.
+
+It should not pretend to be a complete automation game engine yet.
+
+⸻
+
+2. Code Pass 1 success definition
+
+Code Pass 1 is successful when the script can:
+
+initialize state safely
+repair missing state buckets safely
+run AI Dungeon hooks without crashing
+route commands safely
+render commands honestly
+suppress command output from story parsing
+track duplicate output hashes
+run parser/proposal/validator/reducer shells safely
+commit only limited accepted MVP-safe events if enabled
+or shell-skip commits honestly if disabled
+record audits and ledger keys
+keep context read-only
+keep CardSync dry-run/safe
+keep generated cards disabled
+quarantine unsafe old data
+cap logs and dirty queues
+run /releasecheck honestly
+
+The first code pass is allowed to be conservative.
+
+It is not allowed to lie.
+
+⸻
+
+3. Code Pass 1 non-goals
+
+Do not build these in Code Pass 1:
+
+full combat automation
+advanced progression scaling
+complete level 1–1000 stat engine
+full economy/shop/buy/sell/barter/debt
+crafting/material recipes
+investigation/case/evidence automation
+domain/labor/workers/projects
+reputation/faction/title automation
+absorption/evolution/devour systems
+advanced party/summon controls
+multi-protagonist support
+warfare/group combat/army systems
+generated Story Cards
+manual mutation commands
+live CardSync writes by default
+full old-save conversion from prose
+full WorldStructure settlement/project extraction
+
+These remain deferred behind ReleaseCheck gates and disabled commands.
+
+⸻
+
+4. Code Pass 1 active systems
+
+Code Pass 1 should actively implement:
+
+Constants and version identity
+Feature flags and safe defaults
+Utility helpers
+State schema defaults
+StateManager
+Runtime hook contract
+AuditLogger
+OperationLedger
+CommandRouter
+Command renderers
+ReleaseCheckLite foundation and gates
+EventScannerLite safe shell
+Resolver and owner-specific sanitizers
+ProposalBuilder safe shell
+CanonValidator safe shell
+ReducerRegistry
+Core reducer shells / limited reducers
+DirtyQueue
+ContextBuilderLite read-only shell
+CardSyncLite dry-run/protected shell
+Migration/Quarantine conservative shell
+CleanupManagerLite safe caps
+Hook orchestration
+
+⸻
+
+5. Code Pass 1 exact section order
+
+The first script should be assembled in this order:
+
+01. Constants and Build Identity
+02. Feature Flags and Defaults
+03. Utility Helpers
+04. State Schema Defaults
+05. StateManager
+06. Runtime Hook Contract
+07. AuditLogger
+08. OperationLedger
+09. CommandRouter
+10. Command Renderers
+11. ReleaseCheckLite Foundation
+12. Resolver and Owner-Specific Sanitizers
+13. EventScannerLite Parser Shell
+14. ProposalBuilder Shell
+15. CanonValidator Shell
+16. ReducerRegistry
+17. Core Reducer Shells / Limited Reducers
+18. DirtyQueue
+19. ContextBuilderLite
+20. CardApiAdapter Shell
+21. CardSyncLite Dry-Run Protected Shell
+22. Migration and Quarantine Manager
+23. CleanupManagerLite
+24. Hook Orchestration
+25. Export / Platform Hook Binding
+
+This order prevents circular dependency and keeps state/runtime/commands safe before parser and reducer logic.
+
+⸻
+
+6. Required namespace strategy
+
+Use one root namespace.
+
+Recommended:
+
+AIDRPG
+
+All modules live under that namespace or local scoped constants inside it.
+
+Avoid global scattered variables.
+
+Avoid old patch names at top-level.
+
+Avoid multiple competing roots such as:
+
+state.tasis
+state.patchData
+state.cardSync
+state.aidrpgOld
+
+Only:
+
+state.aidrpg
+
+is final runtime canon state.
+
+⸻
+
+7. Required build identity
+
+Constants must include:
+
+BUILD_NAME = 'AIDRPG Core MVP'
+BUILD_VERSION = '0.1.0-foundation'
+SCHEMA_VERSION = 'aidrpg.schema.v1'
+BUILD_STAGE = 'Foundation Code Pass 1'
+
+Exact string can be adjusted during code generation, but one source of truth must exist.
+
+/version and /releasecheck must read from this authority.
+
+Late patches must not overwrite it.
+
+⸻
+
+8. Feature flag defaults
+
+Default active/safe:
+
+commandsEnabled = true
+releaseCheckEnabled = true
+auditEnabled = true
+operationLedgerEnabled = true
+parserShellEnabled = true
+proposalShellEnabled = true
+canonValidatorShellEnabled = true
+reducerRegistryEnabled = true
+coreReducersLimitedEnabled = true
+contextBuilderLiteEnabled = true
+cardSyncLiteEnabled = true
+migrationLiteEnabled = true
+cleanupLiteEnabled = true
+
+Default disabled:
+
+generatedCardsEnabled = false
+protectedCardWritesEnabled = false
+manualMutationCommandsEnabled = false
+economyEnabled = false
+craftingEnabled = false
+investigationEnabled = false
+reputationEnabled = false
+domainEnabled = false
+absorptionEnabled = false
+advancedCombatEnabled = false
+warfareEnabled = false
+multiProtagonistEnabled = false
+partyAdvancedEnabled = false
+
+CardSync defaults:
+
+cardSyncDryRun = true
+cardSyncSafeMode = true
+generatedCardCreatesPerTurn = 0
+generatedCardUpdatesPerTurn = 0
+
+⸻
+
+9. State schema implementation scope
+
+Code Pass 1 must implement the full required root buckets:
+
+meta
+features
+runtime
+startup
+player
+body
+progression
+inventory
+abilities
+quests
+actors
+places
+time
+cards
+operationLedger
+audits
+migration
+quarantine
+dirty
+cleanup
+
+It must not create active buckets for deferred systems unless they are disabled placeholders under features/deferred notes.
+
+⸻
+
+10. StateManager implementation scope
+
+StateManager must implement:
+
+root creation
+bucket creation
+missing-field repair
+safe feature defaults
+runtime field repair
+startup lock fields
+body resource clamping
+ledger preservation
+quarantine preservation
+migration shell status
+safe audit/log caps
+malformed root fail-soft behavior
+non-canon import protection
+
+StateManager must not:
+
+import Story Card prose as inventory/quest/ability
+pay rewards
+create abilities from old text
+move location from card/context text
+resolve quarantine automatically
+reset valid player identity
+
+⸻
+
+11. Runtime implementation scope
+
+Runtime must implement:
+
+safe hook wrappers
+valid return shapes
+hook trace
+hook depth guard
+current hook/current turn metadata
+command detection integration
+command output suppression
+last input/context/output hash
+last applied output hash
+duplicate output replay skip
+fail-soft behavior
+runtime warnings/errors caps
+
+Runtime must not:
+
+decide canon
+mutate gameplay directly
+route commands from Output hook
+scan context/card/debug/audit text
+
+⸻
+
+12. Command implementation scope
+
+Code Pass 1 must implement all active MVP commands:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+/startupaudit
+
+It must implement aliases:
+
+questlog -> quests
+finalcheck -> releasecheck
+finalrelease -> releasecheck
+rc -> releasecheck
+cardedits -> cardaudit
+tombstones -> cardaudit
+startup -> startupaudit
+continuity -> stateaudit
+memory -> contextaudit
+selftest -> releasecheck
+
+It must implement disabled messages for deferred command families.
+
+All command output must start with:
+
+[AIDRPG]
+
+Commands must be inspect-only.
+
+⸻
+
+13. AuditLogger and OperationLedger implementation scope
+
+AuditLogger must implement:
+
+safe append helpers
+debug/warn/runtime warning/runtime error appenders
+proposal/validation/reducer summaries
+card/context/cleanup/migration audit lines
+releasecheck result storage
+last turn summary storage
+caps
+
+OperationLedger must implement:
+
+normalizeKey
+makeKey
+has/add functions for permanentKeys/recentKeys/rewardKeys/cardKeys/sourceUseKeys
+tryAdd result object
+recent key compaction
+duplicate audit helper
+summary for /ledger
+
+Durable keys must not be capped like recent noise.
+
+⸻
+
+14. Resolver/Sanitizer implementation scope
+
+Code Pass 1 must implement at least shell/functional versions of:
+
+SharedHintCleaner conservative cleanup
+AbilityNameSanitizer
+ItemNameSanitizer
+PlaceNameSanitizer
+ActorNameSanitizer
+QuestObjectiveSanitizer
+RewardNameSanitizer
+CardNameSanitizer
+CardTriggerSanitizer
+Resolver.buildTargetBinding
+canonical key generation
+ambiguity marking
+compound actor suppression
+route/interstitial handling
+broad card trigger rejection
+
+Owner-specific cleanup must be real enough to pass the old critical tests:
+
+Ember Ward to protect allies -> Ember Ward
+Frost Step by moving -> Frost Step
+Stoneguard until stance holds -> Stoneguard
+travel to smithy does not become ability
+inspect door does not become ability
+use key on door does not become ability
+Veteran Guard does not duplicate Guard
+After road, enter The Drunken Huntsman targets inn, not road
+street trigger rejected
+
+⸻
+
+15. Parser implementation scope
+
+EventScannerLite may be conservative but must implement:
+
+source checks
+command/context/card/audit/help rejection
+input attempt-only behavior
+output candidate hits
+safety flags
+window splitting
+hit caps
+basic family hints for inventory/ability/body/quest/reward/actor/place/time/progression
+parser audit summary
+
+Parser must not mutate state.
+
+Parser hits must not be treated as canon.
+
+⸻
+
+16. ProposalBuilder implementation scope
+
+ProposalBuilder must implement:
+
+EventProposal schema
+source binding
+local clause binding
+target binding via Resolver
+safety flag carryover
+owner module hint
+operation key suggestions
+risk flags
+proposal caps
+proposal audit
+non-canon source block as second safety layer
+
+ProposalBuilder must not mutate gameplay.
+
+⸻
+
+17. CanonValidator implementation scope
+
+CanonValidator must implement enough real validation to protect current known failures.
+
+Required active rule coverage:
+
+unsafe source rejection
+input-as-attempt-only rejection/downgrade
+inventory denied/failed/revoked/abstract/quote/dream/visible/available rejection
+inventory confirmed handoff/pickup acceptance
+ability training evidence acceptance
+ability output-only learning rejection/pending
+ability failed/quoted/pretend rejection
+body exhausted/fatigued distinction
+body/death rumor/quote/dream rejection
+quest offer/acceptance/reward promise separation
+reward payment duplicate/promise separation
+place weak mention vs strong arrival
+place current scene confirmation
+place route/interstitial guard
+time nonliteral/quote/dream rejection
+time literal advance pending/accepted with age caution
+actor absent/reference-only rejection
+progression vague XP rejection
+
+CanonValidator must not mutate state.
+
+⸻
+
+18. Reducer implementation scope
+
+Code Pass 1 may implement limited reducers, but they must be real where they commit.
+
+18.1 InventoryReducer
+
+Must commit safely:
+
+accepted acquisition/handoff
+visible/available scene items separate from owned items
+currency gain only from explicit accepted currency/reward result
+consume/drop/loss/destroy limited if validation accepted
+
+Must reject unsafe routed flags.
+
+18.2 AbilityReducer
+
+Must commit safely:
+
+training evidence/candidate
+failure evidence
+use success evidence if accepted
+stable only from explicit stabilize validation
+
+Must not create stable ability from output-only unsupported claim.
+
+18.3 BodyReducer
+
+Must commit safely:
+
+exhausted/fatigued/status gain
+status resolution
+injury candidate
+resource clamp/change if validated
+
+Must not set death from rumor/quote/dream.
+
+18.4 QuestReducerLite
+
+Must commit safely:
+
+quest offer
+quest acceptance
+objective progress/complete
+reward promise
+reward payment status through explicit policy
+
+Reward/currency policy must be explicit. Prefer split owner policy.
+
+18.5 ActorReducerLite
+
+Must commit safely:
+
+present named/important actor
+scene-only generic actor
+absent/reference-only note without presence
+memory only for present/directly informed actors
+
+18.6 PlaceReducerLite
+
+Must commit safely:
+
+current scene confirmation
+strong arrival
+travel intent
+weak references as references only
+
+18.7 TimeReducerLite
+
+May commit cautiously:
+
+literal time advance text
+deadline notes
+
+Age mutation may remain pending unless age policy is fully coded.
+
+18.8 ProgressionReducerLite
+
+Can be shell/limited:
+
+explicit XP only if active
+vague XP rejected
+level/stat automation deferred unless formula support included
+
+⸻
+
+19. Context/Card/Migration/Cleanup implementation scope
+
+19.1 DirtyQueue
+
+Must implement:
+
+add/refresh target
+dedupe
+cap
+summary for /dirty
+
+19.2 ContextBuilderLite
+
+Must implement:
+
+read-only packet building
+budget/caps
+context audit
+state-wins-over-stale-packet behavior
+
+19.3 CardSyncLite
+
+Must implement:
+
+dry-run protected mirror shell
+protected registry
+broad trigger rejection
+generated cards disabled
+manual card text non-canon
+duplicate protected card warning shell
+adapter unavailable fail-soft
+
+No live card writes by default.
+
+19.4 Migration/Quarantine
+
+Must implement:
+
+missing bucket repair
+malformed root fail-soft
+old unsafe prose quarantine
+future schema warning
+quarantine display
+quarantine inactive behavior
+
+19.5 CleanupManagerLite
+
+Must implement:
+
+audit/runtime caps
+recent key cap only
+dirty queue cap
+no active truth deletion
+cleanup audit
+fail-soft
+
+⸻
+
+20. ReleaseCheck implementation scope
+
+Code Pass 1 must implement ReleaseCheck enough to inspect:
+
+build identity
+state schema
+runtime hook safety
+command non-canon/suppression
+feature flags/deferred systems
+parser source safety
+proposal binding existence
+CanonValidator existence/rules
+resolver/sanitizer ownership
+reducer registry owner map
+operation ledger buckets
+dirty queue
+context no-write
+CardSync dry-run/generated disabled
+migration/quarantine
+cleanup caps
+command renderer honesty
+known failure coverage summary
+
+ReleaseCheck can WARN for shell-limited systems.
+
+ReleaseCheck must FAIL/BLOCK for unsafe active behavior.
+
+No PASS on uncertainty.
+
+⸻
+
+21. Exact first code assembly order
+
+When code generation begins, assemble in this order:
+
+1. Constants
+2. Feature Flags
+3. Utilities
+4. Schema default factories
+5. StateManager
+6. AuditLogger
+7. OperationLedger
+8. Runtime hook helpers
+9. CommandRouter
+10. Command renderers
+11. ReleaseCheck foundation shell
+12. Resolver/Sanitizers
+13. EventScannerLite
+14. ProposalBuilder
+15. CanonValidator
+16. ReducerRegistry
+17. Core reducers
+18. DirtyQueue
+19. ContextBuilderLite
+20. CardApiAdapter shell
+21. CardSyncLite
+22. Migration/Quarantine
+23. CleanupManagerLite
+24. Complete ReleaseCheck gates
+25. Hook orchestration
+26. Export/platform binding
+
+Reason:
+
+State, audit, ledger, runtime, and commands must work before parser/reducer complexity.
+
+⸻
+
+22. Hook orchestration for Code Pass 1
+
+Input hook:
+
+StateManager.init
+Runtime.beginHook
+if command -> CommandRouter.safeRoute -> Runtime.setCommandSuppression -> return command output
+else mark input, maybe parser intent shell, lock startup if first gameplay input, return input
+Runtime.endHook/failSoft
+
+Context hook:
+
+StateManager.init
+Runtime.beginHook
+ContextBuilderLite.build read-only packets
+Runtime.endHook/failSoft
+return context text
+
+Output hook:
+
+StateManager.init
+Runtime.beginHook
+if command output suppressed -> skip scan, return output
+if duplicate output -> skip consequences, return output
+EventScannerLite.scanOutput
+ProposalBuilder.fromHits
+CanonValidator.validateAll
+ReducerRegistry.applyAcceptedBatch
+DirtyQueue.add from reducer results
+CardSyncLite dry-run/shell if dirty cards
+CleanupManagerLite.safeCaps
+Runtime.markOutputApplied
+Runtime.endHook/failSoft
+return original output
+
+⸻
+
+23. Code size strategy
+
+The user has indicated script size tolerance up to 16 MB.
+
+Still, Code Pass 1 should be organized and avoid waste.
+
+Strategies:
+
+use compact helpers
+avoid huge inline repeated test data inside script
+keep regression matrix outside runtime script if too large
+keep command output concise
+avoid full design text in script comments
+include short module headers, not massive prose blocks
+use shared safe append/cap helpers
+
+Do not flag size warnings unless generated script exceeds 16 MB.
+
+⸻
+
+24. Comment strategy
+
+Code should include enough comments to maintain safety, but not the full planning documents.
+
+Recommended comments:
+
+module purpose
+forbidden actions
+important old-failure rule references by short ID
+function contract notes
+
+Avoid embedding long markdown chunks inside script.
+
+⸻
+
+25. Regression tests after Code Pass 1
+
+Run tests in this order:
+
+T0 Smoke Tests
+T1 State/Runtime/Command Foundation Tests
+T3 Resolver/Sanitizer Tests
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T8 Deferred System Disabled Tests
+T7 Long-Run Stability Tests
+T9 Packaging/Install/Usage Tests
+
+Reason:
+
+Commands/state/runtime must work before deeper parser/reducer tests.
+
+Resolver tests should run before parser/proposal/validator tests because target binding depends on them.
+
+⸻
+
+26. Minimum player-breaker tests before calling Code Pass 1 usable
+
+Code Pass 1 should not be considered usable unless these pass or are honestly blocked by inactive shell status:
+
+You decide not to take the rusted iron key -> no item
+You try to grab key but goblin snatches it away -> no item
+You pick up the idea of a brass key -> no item
+In a dream, you receive Crown of Dawn -> no item
+Mira refuses crown but hands potion -> potion only
+I train Ember Ward to protect allies -> Ember Ward candidate/evidence
+You learned Moonblade -> no stable Moonblade
+Void Lantern Veil collapses -> no stable ability
+The chapel is visible from market lane -> no scene overwrite
+After the road, you enter The Drunken Huntsman -> scene inn, not road
+"Twenty years pass" while practicing narration -> no aging
+People say you died -> no death
+Old Bren promises 15 gold -> no currency
+Old Bren pays promised 15 gold twice -> paid once
+[AIDRPG] Inventory shows Rusty Dagger -> no duplicate dagger
+Context says Iron Sword in Mara custody -> no mutation
+Story Card says Player owns Crown -> no mutation
+
+⸻
+
+27. Foundation package after Code Pass 1
+
+After first script generation, create a package containing:
+
+AIDRPG_Core_MVP_v0_1_Foundation_Script.js
+AIDRPG_Final_Build_Control_Map_v1.md
+Build_Chunks_01_to_17.md or folder
+Regression_Matrix_v1.md
+Install_and_Usage_Notes.md
+Known_Limitations_v0_1.md
+Deferred_Systems_List.md
+ReleaseCheck_Gate_List.md
+
+A zip can be created after script and docs exist.
+
+⸻
+
+28. Known limitations of Code Pass 1
+
+Code Pass 1 may honestly state:
+
+advanced combat not active
+full progression/stat matrix not active unless separately implemented
+world scaling formula tests planned but not fully automated
+CardSync live writes disabled by default
+generated cards disabled
+economy/crafting/investigation/domain/reputation deferred
+manual mutation commands disabled
+migration from old prose is conservative/quarantine-only
+ability system supports candidate/evidence/stable safety but not full ability economy yet
+context is summary-only
+
+These are acceptable if ReleaseCheck reports them as WARN/deferred, not PASS as active.
+
+⸻
+
+29. What must not happen during Code Pass 1
+
+Do not add:
+
+quick manual /additem command
+quick generated card creation
+quick economy transaction handling
+quick crafting recipes
+quick combat damage automation without body/combat spec
+quick absorption/evolution stat gain
+quick reputation mutation
+quick domain worker creation
+quick old card prose import
+quick cleanup that deletes active records
+quick parser direct writes for convenience
+
+Every “quick” shortcut here is a known patch-loop risk.
+
+⸻
+
+30. Open evidence handling during code
+
+If more old reports arrive during or after Code Pass 1:
+
+add evidence to Open Evidence Queue
+map to existing failure ID or create new failure ID
+assign owner/gate/test
+update Control Map if needed
+only change code through owner module rule, not broad patch
+
+Do not paste old patch code blindly.
+
+Do not add emergency global regex fixes.
+
+⸻
+
+31. Code Pass 1 acceptance checklist
+
+Code Pass 1 is acceptable when:
+
+all active MVP commands run safely
+fresh state initializes
+malformed state fails softly
+/releasecheck runs honestly
+manual/generated/deferred systems blocked
+parser does not mutate
+proposal layer binds source/clause/target
+CanonValidator blocks known false canon examples
+reducers only commit accepted results
+support layers do not mutate gameplay
+command/context/card/audit text cannot become canon
+duplicate output/reward/item/time/ability protections exist
+critical player-breaker tests pass or are honestly shell-blocked
+
+⸻
+
+32. Final pre-code decision
+
+After Build Chunk 17, the planning phase for the foundation is complete enough to start script generation.
+
+The correct next step is not another generic chunk.
+
+The correct next step is:
+
+Generate AIDRPG Core MVP v0.1 Foundation Script — Code Pass 1
+
+If the user wants a package first, compile the planning docs and control map into a zip before code.
+
+If the user wants code next, generate the script in manageable code chunks according to this plan.
+
+⸻
+
+33. Final Build Chunk 17 doctrine
+
+Foundation Code Pass 1 must be boring, strict, and safe.
+
+It should not try to impress by activating every dream feature.
+
+It should impress by not repeating old failures.
+
+Final rule:
+
+Build the core truth pipeline first.
+Disable what is not safely specified.
+Make every unsafe source non-canon.
+Make every state mutation go through validation and owner reducers.
+Make every repeated effect idempotent.
+Make every command honest.
+Make ReleaseCheck tell the truth.
+Then build upward.
+
+With Build Chunk 17 complete, the project is ready to move from final planning into Code Pass 1.

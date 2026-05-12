@@ -1,0 +1,1065 @@
+# AIDRPG Production Chunk 22 — Pets, Mounts, Summons, Vehicles, and Controlled-Entity Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 22 — Pets, Mounts, Summons, Vehicles, and Controlled-Entity Boundaries  
+**Production sequence:** 22 of 25 production chunks  
+**Build target:** WorldLedger V0.17.21 romance/companion accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Define and secure pets, mounts, summons, vehicles, controlled entities, cargo, riding, boarding, entity commands, autonomy, duration, despawn, and owner-routed consequences without fake ownership, forced obedience, or state bleed between actor, inventory, travel, combat, party, and vehicle systems.  
+**Status:** Advanced gameplay boundary production chunk.  
+**Follows:** Production Chunk 21 — Romance, Loyalty, Companions, Party State, and Consent/Boundary Safety.  
+**This document does not contain final script code.**
+
+Production Chunk 22 exists because pets, mounts, summons, vehicles, and controlled entities all look deceptively similar in prose.
+
+AI Dungeon may say:
+
+```text
+a wolf follows you
+you ride the horse
+the horse is yours
+you summon a raven
+the raven obeys
+you board the wagon
+the cart carries your supplies
+the ship takes you north
+```
+
+Those are not the same kind of state.
+
+The final script must never again collapse them into one vague “companion” or “inventory” concept.
+
+A pet is not automatically a controlled combat unit.
+A mount is not automatically owned.
+A summoned creature is not automatically permanent.
+A vehicle boarded by the player is not automatically player property.
+Cargo is not carried inventory.
+A command is not a successful response.
+A ride is not arrival.
+A summon attempt is not a summon.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+A nearby animal is not a pet.
+A tame animal is not always owned.
+A pet is not a puppet.
+A mount is not ownership.
+Riding is not travel arrival.
+Boarding is not vehicle ownership.
+Cargo is not carried inventory.
+A summon attempt is not an active summon.
+A summoned entity is not permanent unless duration rules validate it.
+A command is not obedience.
+Obedience is not success.
+Control is not ownership.
+Presence is not control.
+Death/despawn is not loot.
+```
+
+Controlled-entity gameplay should be fun because entities matter in the scene.
+It must be safe because every entity has its own owner, control state, autonomy, duration, and consequences.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 21 separated romance, loyalty, companion autonomy, party membership, and consent boundaries.
+
+Pets, mounts, summons, and vehicles come next because they connect to:
+
+```text
+actor presence and social memory
+party state and companion boundaries
+inventory custody and cargo
+travel/location/arrival
+combat event routing
+creature ecology and bestiary rules
+form/body constraints
+quests and escort/delivery objectives
+base/domain assets later
+advanced combat activation later
+```
+
+If controlled entities are not secured before large-scale assets and advanced combat, later features will duplicate mounts, auto-own vehicles, merge cargo into inventory, and force pets/summons to obey impossible commands.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 22 may change:
+
+```text
+ControlledEntity schema helpers
+Pet/Mount/Summon/Vehicle helpers
+ControlLink helper
+EntityCommandIntent helper
+EntityResponse/Compliance helper
+Ride/Boarding/Cargo helpers
+SummonDuration helper
+CanonValidator controlled-entity rules
+ProposalBuilder controlled-entity events
+EventScannerLite controlled-entity hints
+CommandRenderers /pets /mounts /summons /vehicles or equivalent
+ContextBuilder controlled-entity packet
+OperationLedger controlled-entity keys
+DirtyQueue controlled-entity targets
+IntegrityChecker controlled-entity checks
+ReleaseCheck PC22 gates
+Regression/player-breaker controlled-entity tests
+```
+
+Production Chunk 22 may add:
+
+```text
+ControlledEntityRecord
+PetBondRecord
+MountRecord
+SummonRecord
+VehicleRecord
+ControlLinkRecord
+EntityCommandIntentRecord
+EntityResponseRecord
+RideStateRecord
+BoardingStateRecord
+CargoRecord
+SummonDurationRecord
+DespawnRecord
+EntityAutonomyRecord
+EntityCapabilityRecord
+EntityCustodyRecord
+VehicleAccessRecord
+ControlledEntityAuditRecord
+```
+
+Production Chunk 22 may not add:
+
+```text
+full party combat AI
+full summon combat engine
+full vehicle travel simulation
+full ship/base/domain system
+automatic pet obedience
+automatic mount ownership
+automatic vehicle ownership
+automatic cargo-to-inventory conversion
+manual /summon /mount /ownvehicle mutation commands
+live card writes
+```
+
+Advanced coordination remains gated in Production Chunk 24.
+
+---
+
+# 4. Required state model
+
+Controlled entities should live in a dedicated owner bucket or equivalent bridge.
+
+Recommended shape:
+
+```text
+controlledEntities: {
+  records: {},
+  pets: {},
+  mounts: {},
+  summons: {},
+  vehicles: {},
+  controlLinks: {},
+  commands: {},
+  responses: {},
+  rideStates: {},
+  boardingStates: {},
+  cargo: {},
+  durations: {},
+  despawns: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Do not store all of these only in actors, inventory, or party state.
+
+ActorReducer may know a creature/driver/horse exists.
+InventoryReducer may know cargo/item custody.
+PlaceReducer may know vehicle location.
+CombatReducer may know a mount or summon participated.
+But ControlledEntity logic owns the control relationship and category distinction.
+
+---
+
+# 5. ControlledEntityRecord schema
+
+Required shape:
+
+```text
+ControlledEntityRecord {
+  id,
+  key,
+  displayName,
+  entityType,
+  status,
+  actorKey,
+  creatureKey,
+  vehicleKey,
+  ownerActorKey,
+  controllerActorKey,
+  autonomyLevel,
+  presenceStatus,
+  currentPlaceKey,
+  currentSceneKey,
+  accessStatus,
+  controlStatus,
+  durationKey,
+  capabilityKeys,
+  cargoKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  lastSeenTurn,
+  warnings,
+  notes
+}
+```
+
+Entity types:
+
+```text
+pet
+mount
+summon
+vehicle
+construct_deferred
+familiar_deferred
+hireling_deferred
+wild_creature
+ridden_creature
+boarded_vehicle
+cargo_holder
+unknown
+```
+
+Statuses:
+
+```text
+candidate
+present
+bonded
+tamed
+owned
+rented
+borrowed
+controlled
+uncontrolled
+commanded
+responding
+lost
+released
+despawned
+dead_pending
+dead_confirmed
+unknown
+```
+
+Rules:
+
+```text
+entityType must not silently change ownership category
+owned is not controlled
+controlled is not owned
+present is not bonded
+wild_creature is not pet
+boarded_vehicle is not owned vehicle
+```
+
+---
+
+# 6. PetBondRecord schema
+
+Pets require a relationship/bond record, not just animal presence.
+
+Required shape:
+
+```text
+PetBondRecord {
+  id,
+  entityKey,
+  bondStatus,
+  trustLevelLabel,
+  ownerActorKey,
+  autonomyLevel,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Bond statuses:
+
+```text
+candidate
+friendly
+bonded
+tamed
+trained
+loyal_deferred
+estranged
+lost
+released
+unknown
+```
+
+Rules:
+
+```text
+friendly animal is not owned pet
+bonded pet can still disobey or flee
+training improves evidence, not perfect control
+pet inventory remains separate unless cargo/custody event validates it
+```
+
+---
+
+# 7. MountRecord schema
+
+Mounts are ride-capable entities.
+
+Required shape:
+
+```text
+MountRecord {
+  id,
+  entityKey,
+  mountStatus,
+  rideability,
+  saddleState,
+  riderActorKey,
+  ownerActorKey,
+  controlStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Mount statuses:
+
+```text
+visible_mount
+available_mount
+ridden
+owned_mount
+borrowed_mount
+rented_mount
+wild_mount
+lost
+injured
+dead_pending
+unknown
+```
+
+Rules:
+
+```text
+rideable does not mean owned
+riding does not mean arrival
+mount injury/death routes through combat/body/creature owner systems
+mount equipment/cargo routes through inventory/cargo owner systems
+```
+
+---
+
+# 8. SummonRecord schema
+
+Summons require source, duration, control, and despawn behavior.
+
+Required shape:
+
+```text
+SummonRecord {
+  id,
+  entityKey,
+  summonType,
+  summonStatus,
+  summonerActorKey,
+  controllerActorKey,
+  durationKey,
+  controlLinkKey,
+  sourceAbilityKey,
+  sourceItemKey,
+  sourceOperationKey,
+  createdTurn,
+  expiresTurn,
+  endedTurn,
+  notes
+}
+```
+
+Summon types:
+
+```text
+spell_summon
+ritual_summon
+familiar_deferred
+construct_deferred
+spirit_deferred
+undead_deferred
+illusion_deferred
+unknown
+```
+
+Summon statuses:
+
+```text
+attempted
+active
+unstable
+controlled
+uncontrolled
+refused
+failed
+despawned
+destroyed
+expired
+unknown
+```
+
+Rules:
+
+```text
+attempted summon is not active summon
+active summon is not permanent
+controlled summon is not owned pet
+summon death/despawn does not create loot by default
+summon cannot grant ability/XP unless owner systems validate separately
+```
+
+---
+
+# 9. VehicleRecord schema
+
+Vehicles are travel/cargo/scene assets, not inventory items by default.
+
+Required shape:
+
+```text
+VehicleRecord {
+  id,
+  key,
+  displayName,
+  vehicleType,
+  status,
+  ownerActorKey,
+  controllerActorKey,
+  operatorActorKey,
+  currentPlaceKey,
+  boardingStateKey,
+  cargoKeys,
+  accessStatus,
+  travelState,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Vehicle types:
+
+```text
+cart
+wagon
+carriage
+horse_cart
+boat
+ship
+airship_deferred
+sled
+vehicle_object
+unknown
+```
+
+Vehicle statuses:
+
+```text
+visible
+available
+boarded
+ridden
+owned
+rented
+borrowed
+hired_transport
+in_motion
+arrived
+damaged
+lost
+destroyed
+unknown
+```
+
+Rules:
+
+```text
+boarding is not ownership
+riding in hired transport is not ownership
+vehicle cargo is not player carried inventory
+vehicle arrival requires PlaceReducer travel/arrival validation
+vehicle damage routes through appropriate object/asset owner, not random inventory fields
+```
+
+---
+
+# 10. ControlLinkRecord schema
+
+Control links describe who can direct an entity and how reliable that control is.
+
+Required shape:
+
+```text
+ControlLinkRecord {
+  id,
+  key,
+  controllerActorKey,
+  entityKey,
+  controlType,
+  authorityLevel,
+  reliabilityLabel,
+  consentOrBondBasis,
+  durationKey,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Control types:
+
+```text
+trained_pet
+mounted_control
+reins
+voice_command
+summon_binding
+contract_service
+vehicle_operation
+crew_command_deferred
+magical_compulsion_deferred
+unknown
+```
+
+Authority levels:
+
+```text
+none
+request
+trained_signal
+partial_control
+strong_control
+absolute_deferred
+unknown
+```
+
+Rules:
+
+```text
+request does not ensure obedience
+partial control can fail
+absolute control is deferred unless future spec validates it
+compulsion is not consent or loyalty
+```
+
+---
+
+# 11. EntityCommandIntentRecord and EntityResponseRecord schemas
+
+Commands and responses must be separate.
+
+```text
+EntityCommandIntentRecord {
+  id,
+  key,
+  entityKey,
+  controllerActorKey,
+  commandText,
+  commandType,
+  sourceOperationKey,
+  createdTurn,
+  status,
+  notes
+}
+```
+
+```text
+EntityResponseRecord {
+  id,
+  key,
+  commandKey,
+  entityKey,
+  responseType,
+  successStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Command types:
+
+```text
+follow
+stay
+fetch
+attack
+defend
+carry
+ride_move
+vehicle_drive
+return
+dismiss
+unknown
+```
+
+Response types:
+
+```text
+obeys
+partially_obeys
+refuses
+fails
+misunderstands
+is_unable
+panics
+ignores
+unknown
+```
+
+Rules:
+
+```text
+command intent does not mutate outcome
+response success may update control evidence
+failed command does not perform action
+attack command does not apply damage
+ride_move command does not change location until PlaceReducer validates movement/arrival
+```
+
+---
+
+# 12. Ride, boarding, cargo, duration, and despawn records
+
+## RideStateRecord
+
+```text
+RideStateRecord {
+  id,
+  mountEntityKey,
+  riderActorKey,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  endedTurn,
+  notes
+}
+```
+
+Statuses:
+
+```text
+attempting_to_mount
+mounted
+riding
+thrown
+dismounted
+failed
+unknown
+```
+
+## BoardingStateRecord
+
+```text
+BoardingStateRecord {
+  id,
+  vehicleKey,
+  actorKey,
+  status,
+  accessBasis,
+  sourceOperationKey,
+  createdTurn,
+  endedTurn,
+  notes
+}
+```
+
+Statuses:
+
+```text
+attempting_to_board
+aboard
+passenger
+operator
+crew_deferred
+disembarked
+denied
+unknown
+```
+
+## CargoRecord
+
+```text
+CargoRecord {
+  id,
+  key,
+  holderEntityKey,
+  itemKey,
+  quantity,
+  custodyStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Custody statuses:
+
+```text
+loaded
+stored
+secured
+visible_cargo
+claimed_cargo
+transferred_to_player
+lost
+destroyed
+unknown
+```
+
+## SummonDurationRecord
+
+```text
+SummonDurationRecord {
+  id,
+  entityKey,
+  durationType,
+  expiresTurn,
+  expiresOnSceneChange,
+  expiresOnRest,
+  expiresOnDismissal,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## DespawnRecord
+
+```text
+DespawnRecord {
+  id,
+  entityKey,
+  despawnType,
+  sourceOperationKey,
+  createdTurn,
+  effectsRouted,
+  notes
+}
+```
+
+Rules:
+
+```text
+cargo does not become player inventory until InventoryReducer validates transfer
+duration expiry deactivates summon/control links without deleting history
+despawn is not death unless death boundary validates it
+dismissal is not loot
+```
+
+---
+
+# 13. CanonValidator rules
+
+Accept pet/tame/bond events only when safe output confirms a relationship or taming result.
+
+Reject pet state when:
+
+```text
+animal merely appears nearby
+animal follows once without bond
+rumor says animal belongs to player
+Story Card says pet exists
+command/context/cardaudit text says pet exists
+```
+
+Accept mount/riding only when output confirms mounting/riding.
+Reject ownership unless purchase/gift/ownership validation exists.
+
+Accept summon only when output confirms active summon manifestation.
+Reject summon when:
+
+```text
+player only attempts to summon
+spell fizzles
+summon is dreamed/quoted/described in lore
+summon is card/context output
+```
+
+Accept vehicle boarding when output confirms boarding or being aboard.
+Reject ownership unless economy/property/vehicle ownership validation exists.
+
+Accept command intent from player input, but commit outcome only from safe output response.
+
+---
+
+# 14. Owner-routing contracts
+
+ControlledEntity logic must not steal ownership from other systems.
+
+```text
+InventoryReducer owns item/cargo transfer into player inventory.
+PlaceReducer owns travel and arrival.
+CombatReducer owns attack/hit/damage events.
+ActorReducer owns presence/social memory.
+Creature ecology owns species facts.
+QuestReducer owns objective progress/completion.
+Economy owns rental, purchase, fee, service contract, and debt.
+Party/companion logic owns party membership.
+ControlledEntity owns control relationship, entity category, command/response, ride/board/cargo association, and summon duration.
+```
+
+If an owner system is missing, record safe deferred state instead of mutating random fields.
+
+---
+
+# 15. Command and display rules
+
+Commands may include:
+
+```text
+/pets
+/mounts
+/summons
+/vehicles
+/controlled
+```
+
+or folded display sections in `/actors`, `/inventory`, `/location`, and `/status`.
+
+Display must separate:
+
+```text
+Owned pets
+Friendly animals
+Visible/wild creatures
+Mounts being ridden
+Available mounts
+Summons active / attempted / failed / expired
+Vehicles boarded / owned / rented / visible
+Cargo loaded / player carried / transferred
+Recent commands and responses
+Warnings
+```
+
+Do not display:
+
+```text
+visible horse as owned mount
+summon attempt as active summon
+cargo as carried inventory
+riding as arrived
+command as success
+```
+
+---
+
+# 16. Context rules
+
+Context should include controlled entities only when relevant.
+
+Safe wording examples:
+
+```text
+Your wolf companion is friendly but autonomous; it is not guaranteed to obey every command.
+You are riding a borrowed horse; the horse is not confirmed owned.
+A raven summon is active until scene end; it is not permanent.
+You are aboard a hired wagon; cargo in the wagon is not carried inventory.
+```
+
+Forbidden wording:
+
+```text
+The horse is yours.
+The summon obeys perfectly.
+The wagon cargo is in your backpack.
+The mount carries you to the city.
+```
+
+unless owner state truly confirms those facts.
+
+---
+
+# 17. Operation keys
+
+Required keys:
+
+```text
+entity.pet.bond.<entityKey>.<sourceHash>
+entity.mount.ride.<entityKey>.<riderKey>.<sourceHash>
+entity.mount.ownership.<entityKey>.<sourceHash>
+entity.summon.attempt.<summonerKey>.<summonKey>.<sourceHash>
+entity.summon.active.<summonerKey>.<summonKey>.<sourceHash>
+entity.summon.despawn.<entityKey>.<sourceHash>
+entity.vehicle.board.<vehicleKey>.<actorKey>.<sourceHash>
+entity.vehicle.ownership.<vehicleKey>.<sourceHash>
+entity.command.<entityKey>.<commandType>.<sourceHash>
+entity.response.<entityKey>.<responseType>.<sourceHash>
+entity.cargo.load.<holderKey>.<itemKey>.<sourceHash>
+entity.cargo.transfer.<holderKey>.<itemKey>.<sourceHash>
+```
+
+Damage, travel, inventory, economy, and quest effects use their own owner keys and cross-reference the controlled-entity key.
+
+---
+
+# 18. ReleaseCheck gates
+
+```text
+PC22-G01 ControlledEntityRecord schema exists.
+PC22-G02 PetBondRecord, MountRecord, SummonRecord, and VehicleRecord exist or equivalents exist.
+PC22-G03 ControlLinkRecord exists and separates control from ownership.
+PC22-G04 EntityCommandIntentRecord and EntityResponseRecord exist and separate command from outcome.
+PC22-G05 RideStateRecord and BoardingStateRecord exist and separate riding/boarding from ownership/arrival.
+PC22-G06 CargoRecord exists and separates cargo from player inventory.
+PC22-G07 SummonDurationRecord and DespawnRecord exist and preserve duration/expiry/despawn history.
+PC22-G08 CanonValidator rejects visible/wild creatures as pets.
+PC22-G09 CanonValidator rejects summon attempts as active summons.
+PC22-G10 CanonValidator rejects boarded/rented vehicles as owned vehicles.
+PC22-G11 Commands do not force obedience, travel, damage, or success.
+PC22-G12 ControlledEntity owner-routing contracts are intact.
+PC22-G13 Duplicate entity/control/cargo/summon keys exist.
+PC22-G14 Command/context/card controlled-entity text cannot become canon.
+PC22-G15 Display separates owned/friendly/visible/ridden/boarded/cargo states honestly.
+PC22-G16 Cleanup preserves active summons, mounts, cargo, vehicles, control links, and duration keys.
+PC22-G17 Advanced party/summon combat remains deferred unless PC24 gates activate it.
+PC22-G18 Manual controlled-entity mutation commands are disabled.
+PC22-G19 Vehicle/domain/base ownership remains deferred to correct owner systems.
+PC22-G20 Player-breaker tests registered.
+```
+
+---
+
+# 19. Required tests
+
+```text
+PC22-001 Nearby wolf does not become pet.
+PC22-002 Wolf follows once becomes candidate/friendly only, not owned pet.
+PC22-003 Taming output can create PetBondRecord if validated.
+PC22-004 Pet command "stay" creates command intent only.
+PC22-005 Output refusal records response and no action success.
+PC22-006 Attack command does not apply damage without Combat validation.
+PC22-007 Horse visible in stable is available/visible, not owned.
+PC22-008 Riding a horse creates RideState, not ownership.
+PC22-009 Riding toward town does not set arrival.
+PC22-010 Arrival while mounted routes through PlaceReducer.
+PC22-011 Buying a horse requires Economy + ownership validation.
+PC22-012 Summon attempt alone does not create active summon.
+PC22-013 Failed summon records failed attempt and no active entity.
+PC22-014 Active summon creates SummonRecord with duration if output validates.
+PC22-015 Summon despawn deactivates summon without loot.
+PC22-016 Duplicate summon output does not duplicate entity.
+PC22-017 Boarded wagon does not become owned vehicle.
+PC22-018 Hired carriage creates service/boarding link, not ownership.
+PC22-019 Cargo loaded in wagon is not carried inventory.
+PC22-020 Cargo transfer to player requires InventoryReducer acquisition.
+PC22-021 Vehicle travel in progress does not equal arrival.
+PC22-022 Vehicle arrival routes through PlaceReducer.
+PC22-023 Vehicle damage does not delete player inventory.
+PC22-024 Story Card pet claim is non-canon.
+PC22-025 Context summon claim is non-canon.
+PC22-026 Command output /pets is non-canon.
+PC22-027 Cleanup preserves active summon and duration.
+PC22-028 Cleanup preserves vehicle cargo records.
+PC22-029 Manual /summon active mutation disabled.
+PC22-030 Manual /ownhorse or /ownvehicle disabled.
+PC22-031 Display shows pet/mount/summon/vehicle sections honestly.
+PC22-032 Entity death/despawn does not auto-loot.
+PC22-033 ControlledEntityReducer rejects unsafe routed events.
+```
+
+---
+
+# 20. Beginner implementation order
+
+```text
+1. Copy WorldLedgerV0.17.21 accepted build.
+2. Add ensureControlledEntitiesShape and record factories.
+3. Add category separation helpers: pet/mount/summon/vehicle/wild/visible.
+4. Add command intent and response records.
+5. Add ride/boarding/cargo/duration/despawn records.
+6. Update CanonValidator controlled-entity rules.
+7. Update ProposalBuilder event types.
+8. Add ControlledEntityReducer owner-routed commits.
+9. Update context/display renderers.
+10. Add operation keys and duplicate checks.
+11. Add PC22 ReleaseCheck gates.
+12. Add PC22-001 through PC22-033 tests.
+13. Run /foundationcheck /releasecheck /integrity /playerbreakercheck /regressioncheck.
+14. Save WorldLedgerV0.17.22_CONTROLLED_ENTITIES_ACCEPTED.txt.
+```
+
+---
+
+# 21. Pass / warn / fail criteria
+
+## PASS
+
+```text
+pets/mounts/summons/vehicles are separated
+control is separate from ownership
+commands are separate from successful responses
+riding/boarding/cargo/travel are owner-routed
+summon duration/despawn works
+cargo does not merge into inventory
+unsafe command/context/card text is blocked
+PC22 tests pass
+```
+
+## WARN
+
+```text
+advanced summon/party combat deferred
+vehicle simulation deferred
+mount equipment bonuses deferred
+crew systems deferred
+```
+
+## FAIL
+
+```text
+wild creature becomes pet
+riding becomes ownership
+summon attempt becomes active summon
+command forces obedience/damage/travel
+cargo becomes carried inventory
+boarding becomes owned vehicle
+context/card/command creates controlled entity
+cleanup deletes active summon/cargo/control link
+```
+
+---
+
+# 22. Final doctrine
+
+```text
+Controlled entities are relationships and access states, not shortcuts.
+Pets have autonomy.
+Mounts carry bodies but do not imply ownership.
+Summons have source and duration.
+Vehicles have boarding, operation, cargo, and ownership states.
+Every consequence routes through the owner system that actually owns it.
+```
+
+When this chunk passes, Production Chunk 23 may safely build domains, bases, buildings, territories, and large-scale assets.

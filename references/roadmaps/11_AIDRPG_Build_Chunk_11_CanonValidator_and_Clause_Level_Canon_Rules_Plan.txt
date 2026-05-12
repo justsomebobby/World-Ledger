@@ -1,0 +1,1355 @@
+AIDRPG Build Chunk 11 — CanonValidator and Clause-Level Canon Rules Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 11 — CanonValidator and Clause-Level Canon Rules Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact CanonValidator behavior, clause-level canon rules, family-specific accept/reject logic, audit format, and validation tests before reducers are planned.
+Status: Practical build document.
+Follows: AIDRPG Final Build Control Map v1 and Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan.
+This document does not contain final script code.
+
+This chunk exists because the old scripts repeatedly failed when parser hits, output phrasing, old card text, command text, or broad patches were allowed to become truth too easily.
+
+The CanonValidator is the central truth gate.
+
+It decides whether an EventProposal is:
+
+accepted
+rejected
+pending
+deferred
+malformed
+blocked
+
+CanonValidator does not mutate gameplay state.
+
+Reducers mutate state only after CanonValidator accepts a proposal.
+
+⸻
+
+1. CanonValidator doctrine
+
+The core doctrine is:
+
+Mentioned is not confirmed.
+Attempted is not confirmed.
+Quoted is not confirmed.
+Dreamed is not confirmed.
+Rumored is not confirmed.
+Revoked is not retained.
+Denied is not acquired.
+Visible is not owned.
+Promised is not paid.
+Heading toward is not arrival.
+Candidate is not stable.
+Only validated outcome becomes canon.
+
+CanonValidator protects the system from false canon.
+
+It must be conservative by default.
+
+⸻
+
+2. Why CanonValidator is required
+
+Old versions showed that normal parser and command behavior is not enough.
+
+The system must reject cases like:
+
+You decide not to take the rusted iron key.
+You try to grab the key, but the goblin snatches it away.
+You pick up the idea of a brass key.
+Mara says, "Take the key."
+In a dream, you receive the Crown of Dawn.
+You learned Moonblade.
+The scroll title says "You learned Crimson Lotus Fang," but you learn nothing.
+The chapel is visible from here.
+"Twenty years pass," you say while practicing narration.
+People say you died.
+
+The parser can detect those as relevant.
+
+ProposalBuilder can structure them.
+
+CanonValidator decides they are not canon outcomes.
+
+⸻
+
+3. Placement in final script
+
+CanonValidator belongs in:
+
+Section 14 — Canon Validator Shell
+
+It follows:
+
+EventScannerLite
+ProposalBuilder
+
+It comes before:
+
+ReducerRegistry
+OwnerReducers
+DirtyQueue
+CardSyncLite
+ContextBuilderLite
+
+It may depend on:
+
+Constants
+Utils
+AuditLogger
+OperationLedger read checks
+Resolver read helpers
+State read helpers
+
+It must not depend on:
+
+InventoryReducer
+AbilityReducer
+QuestReducer
+BodyReducer
+PlaceReducer
+TimeReducer
+ActorReducer
+CardSync live writes
+ContextBuilder mutation
+
+⸻
+
+4. CanonValidator responsibilities
+
+CanonValidator owns:
+
+* validating EventProposals
+* rejecting non-canon sources
+* applying clause-level canon rules
+* applying family-specific canon rules
+* checking operation-ledger duplicates before commit when relevant
+* assigning validation result status
+* explaining rejection/acceptance/pending/deferred reasons
+* producing validation audits
+* refusing unsafe deferred systems
+* protecting reducer boundaries
+
+CanonValidator does not own:
+
+* parser detection
+* proposal construction
+* gameplay state mutation
+* card writing
+* context generation
+* cleanup deletion
+* command rendering
+
+⸻
+
+5. Required CanonValidator public functions
+
+The final script should provide these functions or equivalents.
+
+CanonValidator.validateAll(proposals, root)
+CanonValidator.validate(proposal, root)
+CanonValidator.validateSource(proposal, root)
+CanonValidator.validateClause(proposal, root)
+CanonValidator.validateTarget(proposal, root)
+CanonValidator.validateFamily(proposal, root)
+CanonValidator.validateInventory(proposal, root)
+CanonValidator.validateAbility(proposal, root)
+CanonValidator.validateBody(proposal, root)
+CanonValidator.validateQuest(proposal, root)
+CanonValidator.validateReward(proposal, root)
+CanonValidator.validateActor(proposal, root)
+CanonValidator.validatePlaceScene(proposal, root)
+CanonValidator.validateTime(proposal, root)
+CanonValidator.validateProgression(proposal, root)
+CanonValidator.validateCardMirror(proposal, root)
+CanonValidator.validateMigration(proposal, root)
+CanonValidator.checkDuplicateRisk(proposal, root)
+CanonValidator.accept(proposal, reason, notes)
+CanonValidator.reject(proposal, reason, notes)
+CanonValidator.pending(proposal, reason, notes)
+CanonValidator.defer(proposal, reason, notes)
+CanonValidator.block(proposal, reason, notes)
+CanonValidator.auditResults(root, results)
+
+Names may change in code, but these responsibilities must exist.
+
+⸻
+
+6. ValidationResult schema
+
+Every validation returns a structured result.
+
+ValidationResult {
+  proposalId: string,
+  family: string,
+  eventType: string,
+  ownerModule: string,
+  targetKey: string,
+  targetDisplayName: string,
+  status: 'accepted' | 'rejected' | 'pending' | 'deferred' | 'blocked' | 'malformed' | 'duplicate_skipped',
+  canonAllowed: boolean,
+  reducerAllowed: boolean,
+  operationKey: string,
+  duplicate: boolean,
+  reasons: string[],
+  requiredReducer: string,
+  dirtyFamiliesIfAccepted: string[],
+  auditLine: string,
+  source: ProposalSource,
+  localClause: LocalClauseBinding,
+  safety: SafetyFlagSet,
+  notes: string[]
+}
+
+No reducer may apply a proposal unless:
+
+status = accepted
+canonAllowed = true
+reducerAllowed = true
+requiredReducer is known
+
+⸻
+
+7. Validation status meanings
+
+7.1 accepted
+
+The proposal may be routed to its owner reducer.
+
+Accepted does not mean already committed.
+
+7.2 rejected
+
+The proposal is not canon and must not mutate state.
+
+7.3 pending
+
+The proposal is plausible but lacks enough confirmation.
+
+Pending may become evidence, rumor, hint, candidate, or audit depending family.
+
+7.4 deferred
+
+The proposal belongs to a disabled system or future mini-spec.
+
+7.5 blocked
+
+The proposal is unsafe because of source, command output, card text, context text, debug text, or forbidden path.
+
+7.6 malformed
+
+The proposal is structurally invalid.
+
+7.7 duplicate_skipped
+
+The proposal appears valid but a durable/recent operation key shows it was already applied or should not repeat.
+
+⸻
+
+8. Universal source validation
+
+CanonValidator must reject or block unsafe sources before family-specific logic.
+
+Blocked sources:
+
+command output
+context text
+Story Card text
+protected card text
+generated card text
+debug output
+audit output
+help output
+releasecheck output
+old logs
+unknown non-canon source
+
+Allowed sources in MVP:
+
+input as intent/attempt only
+output as possible consequence
+setup structured source before lock
+migration structural source only if safe
+manual future source only after future spec
+
+8.1 Command output rule
+
+Any proposal from text beginning with:
+
+[AIDRPG]
+
+must be blocked unless it is diagnostic-only and never routed to gameplay reducers.
+
+8.2 Context rule
+
+Context may remind the AI of state.
+
+Context may not create, update, or repair gameplay canon.
+
+8.3 Card rule
+
+Story Cards mirror state.
+
+Story Card text does not create canon.
+
+⸻
+
+9. Universal clause validation
+
+CanonValidator must evaluate local clause safety before family-specific acceptance.
+
+Universal rejecting or downgrading flags:
+
+negated
+hypothetical
+quotedSpeech
+dreamOrVision
+rumorOrClaim
+failedOrRevoked
+conditional
+futureIntent
+attemptOnly
+abstractOrMetaphorical
+deniedByLocalClause
+revokedByLocalClause
+nonliteral
+sourceUnsafe
+
+These flags do not always reject every family, but they must affect validation.
+
+Example:
+
+* quoted speech may create an actor memory claim.
+* quoted speech may not create inventory acquisition.
+* dream may create dream memory.
+* dream may not create real item ownership.
+* future intent may create travel intent.
+* future intent may not create arrival.
+
+⸻
+
+10. Universal target validation
+
+CanonValidator must reject, pending, or defer proposals with unsafe target binding.
+
+Target risks:
+
+target missing
+target ambiguous
+target generic when persistence required
+target reference-only when presence required
+target sanitizer low confidence
+target belongs to disabled system
+target appears only inside quote/dream/rumor
+
+Unknown targets may be allowed for some event types as candidates, but not for durable canon if exact identity matters.
+
+⸻
+
+11. Duplicate validation
+
+CanonValidator must check duplicate risk before reducers commit repeat-sensitive events.
+
+Repeat-sensitive families:
+
+inventory acquisition
+item transfer
+item consumption/destruction
+reward payment
+XP gain
+level up
+stat gain
+time advance
+age update
+ability stabilization
+ability use evidence if durable
+quest objective completion
+quest completion
+card write/create/update
+startup import
+migration import/quarantine action
+
+If operation key exists:
+
+status = duplicate_skipped
+canonAllowed = false or reducerAllowed = false depending case
+
+Duplicate skip must be audited.
+
+⸻
+
+12. Inventory canon rules
+
+Inventory canon requires confirmed acquisition, transfer, consumption, loss, or custody change.
+
+12.1 Accept inventory acquisition only when
+
+All are true:
+
+source is output or validated setup/manual future path
+local clause confirms actual acquisition/handoff/receipt/pickup
+not negated
+not failed
+not revoked
+not hypothetical
+not quoted instruction only
+not dream/vision
+not abstract/metaphorical
+not visible-only
+not available-only
+item target is bound
+operation key not duplicate
+
+12.2 Reject inventory acquisition when
+
+Any are true:
+
+deniedByLocalClause
+revokedByLocalClause
+failedOrRevoked
+abstractOrMetaphorical
+quotedSpeech as instruction only
+dreamOrVision
+visibleOnly
+availableOnly
+futureIntent without handoff
+attemptOnly from input
+
+12.3 Pending inventory cases
+
+Use pending when text suggests possible item access but not ownership.
+
+Examples:
+
+You see a silver ring on the table.
+The goblin drops a rusty dagger.
+Mara offers you the key.
+The chest contains a potion.
+
+These may become scene item, available loot, or offer candidates later, but not owned inventory.
+
+12.4 Mixed clause rule
+
+In:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+Validation result:
+
+crown rejected
+a potion handoff proposal may be accepted if otherwise safe
+
+12.5 Inventory tests
+
+You decide not to take the rusted iron key -> reject acquisition
+You try to grab the key, but the goblin snatches it away -> reject acquisition
+You pick up the idea of a brass key -> reject abstract
+In a dream, you receive Crown of Dawn -> reject real acquisition
+Mara says "Take the key" -> reject acquisition, possible offer/speech only
+Mira hands you the red healing potion -> accept handoff candidate if key not duplicate
+
+⸻
+
+13. Ability canon rules
+
+Ability canon must distinguish training evidence, attempt, failed use, output-only claim, candidate, unstable, stable, sealed, and unavailable.
+
+13.1 Accept ability training evidence when
+
+source is input or output
+explicit training/practice/refine/drill language exists
+ability target is cleanly bound
+not pretend-only
+not quoted-only
+not dream-only
+not denied/no usable technique
+
+Input training normally creates or updates candidate/evidence, not stable mastery.
+
+13.2 Accept ability stable creation only when
+
+Strong confirmation exists, such as:
+
+repeated training culmination
+teacher confirms learned technique and player demonstrates it
+successful controlled manifestation
+setup-structured starting ability before startup lock
+validated transformation/grant source
+
+13.3 Reject or pending output-only learning claims
+
+Examples:
+
+You learned Moonblade.
+You unlocked Star Chain.
+New skill: Mirror Guard.
+
+Default status:
+
+pending or rejected unless supported by training/source evidence
+
+13.4 Reject ability canon when
+
+quoted instruction only
+pretend use
+failed/fizzled/collapsed/no effect
+scroll title or rumor only
+manual narrative title only
+input attempt only with no output consequence
+
+13.5 Ability name rule
+
+CanonValidator must ensure ability names were cleaned by AbilityNameSanitizer, not shared destructive cleaner.
+
+Reject or pending if target appears polluted:
+
+Ember Ward to protect allies from heat
+Frost Step by moving across slick stones
+Stoneguard until my stance holds under impact
+
+Correct targets:
+
+Ember Ward
+Frost Step
+Stoneguard
+
+13.6 Ability tests
+
+I train Ember Ward to protect allies from heat -> training evidence/candidate allowed
+You learned Moonblade -> no stable ability by default
+You attempt Void Lantern Veil, but it collapses -> failure evidence, no stable ability
+Mira says "Use Hollow Star Palm," but you do not know it -> no ability
+I travel to the smithy -> no smithy ability
+
+⸻
+
+14. Body/status/death canon rules
+
+Body canon requires direct, literal body outcome.
+
+14.1 Accept status gain when
+
+output directly states player status
+status target is known
+not quoted/dream/rumor/metaphor
+severity wording matches status
+
+Examples:
+
+Your legs shake and you are exhausted by the climb.
+Your arm bleeds from the wolf bite.
+Your palm is burned and blistered.
+
+14.2 Distinguish fatigue and exhaustion
+
+fatigued / weary / worn out -> fatigued
+exhausted / can barely stand / drained completely -> exhausted
+
+Do not upgrade fatigue to exhaustion without strong wording.
+
+14.3 Accept recovery when
+
+output directly states bleeding stops, poison fades, breath steadies, burns heal, exhaustion lifts
+
+14.4 Reject death/body changes from
+
+people say you died
+Mara says "you are dead"
+in a dream you die
+you feel dead tired
+symbolic death
+threats or insults
+
+14.5 Death boundary rule
+
+Changing deathBoundary requires explicit direct outcome and later high-safety validation.
+
+Rumor, quote, dream, threat, metaphor, or nonfatal hostile action cannot set death.
+
+⸻
+
+15. Quest canon rules
+
+Quest canon must distinguish rumor, offer, acceptance, active objective, objective progress, objective completion, ready turn-in, completed, rewarded, failed, and abandoned.
+
+15.1 Accept quest acceptance when
+
+player explicitly accepts in input and output/structure supports quest start
+or output clearly says quest accepted/started
+or setup structured quest starts active before lock
+
+15.2 Pending quest when
+
+NPC asks/offers/request but player has not accepted
+rumor of job exists
+quest board lists possible task
+
+15.3 Objective breadth
+
+CanonValidator must allow objective families:
+
+recover
+find
+repair
+escort
+clear
+deliver
+investigate
+protect
+bring
+retrieve
+rescue
+defeat
+survey
+
+But objective text is not automatically completed.
+
+15.4 Reject quest canon from
+
+rumor only
+quoted hypothetical request
+future promise only
+quest mentioned in card/context/command output
+
+⸻
+
+16. Reward canon rules
+
+Reward canon must separate promise, ready, payment, disputed, denied, and paid.
+
+16.1 Promise is not payment
+
+Old Bren promises to pay you 15 gold if you clear the wolves.
+
+Validation:
+
+reward.promise accepted or pending as quest reward promise
+currency payment rejected
+
+16.2 Payment accepted only when
+
+output directly confirms payment/handoff
+reward target/amount is bound
+payer/source is plausible
+not denied/disputed/withheld
+operation reward key not duplicate
+
+16.3 Reject payment when
+
+promises to pay
+will pay later
+could pay
+refuses to pay
+denies payment
+mentions reward amount only
+command /quests displays reward
+Story Card says reward paid
+
+16.4 Reward duplicate rule
+
+If reward key exists:
+
+duplicate_skipped
+no currency added
+
+⸻
+
+17. Place/scene canon rules
+
+Place canon must distinguish current scene confirmation, strong arrival, weak mention, visible/nearby reference, future intent, travel intent, and route/interstitial.
+
+17.1 Current scene confirmation accepted when
+
+output says current location remains/still/around you/you stand in current place
+place target matches or confirms existing current scene
+
+17.2 Arrival accepted when
+
+output uses strong entry/arrival wording
+named destination target is bound
+not hypothetical/future/quoted/dream
+
+Strong arrival verbs:
+
+enter
+step into
+walk inside
+arrive at
+return to
+descend into
+push through doors into
+
+17.3 Weak mention rejected as scene overwrite
+
+Reject current scene overwrite from:
+
+visible from
+nearby
+down the street
+beyond
+road to
+only consider going
+mentions/talks about
+future plan
+
+17.4 Route/interstitial rule
+
+In:
+
+After the road, you enter The Drunken Huntsman.
+
+The destination is:
+
+The Drunken Huntsman
+
+not:
+
+road
+
+17.5 Input travel intent
+
+Input like:
+
+I head toward the chapel.
+
+may create travel intent, not arrival.
+
+⸻
+
+18. Time/aging canon rules
+
+Time canon requires direct literal time passage.
+
+18.1 Accept time advance when
+
+output literally states time passes
+not quoted
+not dream
+not pretend/story practice
+not negated by no time passes
+operation key not duplicate
+
+Examples:
+
+A week passes during the journey.
+Twenty years pass in exile.
+After two years, the city rebuilds.
+
+18.2 Reject time/age mutation from
+
+"Twenty years pass," you say
+in a dream twenty years pass
+practice narration
+no time passes
+wake as same age
+hypothetical future time
+
+18.3 Aging rule
+
+Age update is separate from time text update.
+
+A long time passage may require body/species/age policy before changing age.
+
+If age rules are unknown, mark pending rather than inventing.
+
+18.4 Duplicate time rule
+
+Same literal time passage output cannot advance time/age twice.
+
+⸻
+
+19. Actor canon rules
+
+Actor canon must distinguish present actor, scene-only actor, persistent actor, absent actor, reference-only actor, rumor/claim, and memory.
+
+19.1 Accept present actor when
+
+output directly places actor in current scene
+actor target bound
+not negated/absent/reference-only
+
+19.2 Reject present actor when
+
+actor is definitely not here
+actor is only mentioned
+actor appears in dream/vision
+training dummy named after actor
+actor is elsewhere
+actor is quoted/referenced in speech only
+
+19.3 Compound actor rule
+
+If resolver suppressed generic shorter actor, CanonValidator must preserve that decision.
+
+Veteran Guard -> one actor target, not Guard + Veteran Guard
+
+19.4 Witness memory rule
+
+Witness memory may be accepted only for actors present or directly receiving a report.
+
+Absent actors do not receive scene memory.
+
+Private reports do not become public reputation unless reputation system validates that later.
+
+⸻
+
+20. Progression canon rules
+
+Progression is conservative in MVP.
+
+20.1 XP accepted only when
+
+output explicitly grants XP
+amount is bound
+source is valid
+operation key not duplicate
+progression feature stage allows XP commit
+
+20.2 Reject XP from vague wording
+
+This was a learning experience.
+You gain experience in life.
+You feel wiser.
+
+These are not numeric XP.
+
+20.3 Level/stat gains
+
+Level/stat changes require explicit validated trigger and formula support.
+
+If formula automation is not active, mark pending/deferred rather than mutating.
+
+⸻
+
+21. Card/migration canon rules
+
+Card and migration validation must not route to gameplay reducers.
+
+21.1 Card validation
+
+Accepted card proposals may route only to CardSyncLite mirror behavior.
+
+They cannot create gameplay canon.
+
+Generated cards remain deferred.
+
+Manual card text is not canon.
+
+21.2 Migration validation
+
+Migration may validate structural repair or quarantine.
+
+It may not validate old card prose into inventory, ability, quest, or actor canon.
+
+Unsafe old data becomes quarantine or ignored.
+
+⸻
+
+22. Deferred system rules
+
+If a proposal belongs to a disabled system, CanonValidator returns deferred or blocked.
+
+Deferred systems:
+
+economy
+shop/buy/sell/barter/debt
+crafting/materials/recipes
+investigation/cases/evidence
+reputation/factions/titles automation
+domain/labor/workers/projects
+absorption/evolution/devour
+advanced combat/warfare/scale/group combat
+party/summons advanced controls
+multi-protagonist
+generated CardSync beta
+manual mutation commands
+
+Deferred means:
+
+no gameplay mutation
+honest audit/releasecheck note
+future mini-spec required
+
+⸻
+
+23. CanonValidator audit format
+
+Validation audits must explain decisions compactly.
+
+Examples:
+
+Accepted inventory.handoff_candidate red_healing_potion: direct handoff confirmed, no blocking flags.
+Rejected inventory.acquire_candidate rusted_iron_key: local clause denied acquisition.
+Rejected ability.output_only_learning_claim moonblade: output-only unsupported learning claim.
+Pending quest.offer_candidate repair_north_wall: offered/requested but not accepted.
+Duplicate skipped reward.payment_candidate 15_gold: reward key already exists.
+
+Do not dump full raw text.
+
+⸻
+
+24. Validation caps
+
+Recommended caps:
+
+maxValidationResultsPerTurn = 25
+maxValidationAuditLinesPerTurn = 12
+maxRejectionReasonsPerProposal = 5
+maxAuditPreviewLength = 180
+
+If capped:
+
+* preserve accepted/duplicate/failures first
+* summarize omitted low-risk pending/rejected items
+* do not crash
+
+⸻
+
+25. Reducer handoff
+
+CanonValidator output to ReducerRegistry must include only accepted reducer-allowed results.
+
+Handoff:
+
+AcceptedValidationBatch {
+  accepted: ValidationResult[],
+  rejected: ValidationResult[],
+  pending: ValidationResult[],
+  deferred: ValidationResult[],
+  duplicateSkipped: ValidationResult[],
+  malformed: ValidationResult[],
+  auditSummary: string[]
+}
+
+ReducerRegistry may only process:
+
+accepted where reducerAllowed = true
+
+Everything else is audit/evidence only.
+
+⸻
+
+26. Required CanonValidator tests
+
+BC11-001 — Command output blocked
+
+Proposal source from [AIDRPG] Inventory.
+
+Expected:
+
+status = blocked
+canonAllowed = false
+reducerAllowed = false
+
+⸻
+
+BC11-002 — Context text blocked
+
+Proposal source context.
+
+Expected:
+
+blocked
+no reducer
+
+⸻
+
+BC11-003 — Story Card text blocked
+
+Proposal source story card.
+
+Expected:
+
+blocked
+no gameplay canon
+
+⸻
+
+BC11-004 — Input item attempt not acquisition
+
+Input:
+
+I take the jeweled crown.
+
+Expected:
+
+pending or intent-only
+not accepted owned inventory
+
+⸻
+
+BC11-005 — Denied item rejected
+
+Output:
+
+You decide not to take the rusted iron key.
+
+Expected:
+
+rejected inventory acquisition
+
+⸻
+
+BC11-006 — Failed grab rejected
+
+Output:
+
+You try to grab the rusted iron key, but the goblin snatches it away first.
+
+Expected:
+
+rejected acquisition
+
+⸻
+
+BC11-007 — Mixed clause inventory
+
+Output:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+Expected:
+
+crown rejected
+potion accepted if otherwise safe
+
+⸻
+
+BC11-008 — Abstract item rejected
+
+Output:
+
+You pick up the idea of a brass key.
+
+Expected:
+
+rejected abstract inventory
+
+⸻
+
+BC11-009 — Dream item rejected
+
+Output:
+
+In a dream, you receive Crown of Dawn, then wake empty-handed.
+
+Expected:
+
+rejected real acquisition
+
+⸻
+
+BC11-010 — Ability training allowed as evidence
+
+Input:
+
+I train Ember Ward to protect allies from heat.
+
+Expected:
+
+accepted or pending as training evidence/candidate
+not stable mastery
+
+⸻
+
+BC11-011 — Output-only learned ability not stable
+
+Output:
+
+You learned Moonblade.
+
+Expected:
+
+rejected or pending unsupported learning claim
+no stable ability reducer allowed
+
+⸻
+
+BC11-012 — Failed ability rejected as stable
+
+Output:
+
+You attempt Void Lantern Veil, but the veil collapses and no usable technique remains.
+
+Expected:
+
+failure evidence maybe
+stable ability rejected
+
+⸻
+
+BC11-013 — Exhausted accepted distinctly
+
+Output:
+
+Your legs shake and you are exhausted by the climb.
+
+Expected:
+
+accepted body status exhausted
+
+⸻
+
+BC11-014 — Fatigue does not auto-exhaust
+
+Output:
+
+You are fatigued and worn out.
+
+Expected:
+
+fatigued accepted
+exhausted rejected/not created
+
+⸻
+
+BC11-015 — Death rumor rejected
+
+Output:
+
+People say you died in the ruins.
+
+Expected:
+
+death boundary rejected
+rumor/claim maybe recorded later
+
+⸻
+
+BC11-016 — Weak scene reference rejected as overwrite
+
+Output:
+
+The chapel is visible from the market lane.
+
+Expected:
+
+no chapel current-scene acceptance
+
+⸻
+
+BC11-017 — Strong arrival accepted
+
+Output:
+
+You enter the chapel.
+
+Expected:
+
+place arrival accepted
+
+⸻
+
+BC11-018 — Named arrival beats road
+
+Output:
+
+After the road, you enter The Drunken Huntsman.
+
+Expected:
+
+arrival target The Drunken Huntsman
+not road
+
+⸻
+
+BC11-019 — Nonliteral time rejected
+
+Output:
+
+You say, "Twenty years pass," while practicing narration. No time passes.
+
+Expected:
+
+time/age mutation rejected
+
+⸻
+
+BC11-020 — Literal time pending/accepted
+
+Output:
+
+Twenty years pass in exile.
+
+Expected:
+
+time advance accepted or pending depending age policy
+not duplicate
+
+⸻
+
+BC11-021 — Reward promise not payment
+
+Output:
+
+Old Bren promises to pay you 15 gold if you clear the wolves.
+
+Expected:
+
+reward promise accepted/pending
+payment rejected
+
+⸻
+
+BC11-022 — Reward duplicate skipped
+
+Reward payment proposal with existing reward key.
+
+Expected:
+
+duplicate_skipped
+no reducer allowed
+
+⸻
+
+BC11-023 — Absent actor not present
+
+Output:
+
+The goblin is definitely not here.
+
+Expected:
+
+present actor rejected
+absent/reference-only possible
+
+⸻
+
+BC11-024 — Compound actor preserved
+
+Output:
+
+A veteran guard stands nearby.
+
+Expected:
+
+Veteran Guard accepted/pending as one actor
+Guard duplicate rejected or never proposed
+
+⸻
+
+BC11-025 — XP vague wording rejected
+
+Output:
+
+This was a learning experience.
+
+Expected:
+
+no XP gain accepted
+
+⸻
+
+BC11-026 — Deferred crafting blocked
+
+Proposal family crafting.
+
+Expected:
+
+deferred or blocked
+no reducer
+
+⸻
+
+BC11-027 — Validation audit compact
+
+Expected:
+
+audit line explains decision
+no full giant raw text dump
+
+⸻
+
+27. ReleaseCheck requirements for Build Chunk 11
+
+ReleaseCheck must eventually verify:
+
+CanonValidator exists
+ValidationResult schema exists
+unsafe sources blocked
+input intent cannot become completed success
+local clause flags used
+family-specific validators exist or are honestly shell-only
+inventory negative/dream/quote/abstract rejection exists
+ability output-only/failed/quoted rejection exists
+body/death rumor/quote rejection exists
+scene weak/strong distinction exists
+time nonliteral guard exists
+reward promise/payment separation exists
+actor absent/reference-only guard exists
+duplicate-sensitive validation checks ledger
+reducers cannot receive non-accepted results
+validation audit exists
+validation caps exist
+
+ReleaseCheck must fail if:
+
+ProposalBuilder output can reach reducers without CanonValidator
+CanonValidator mutates gameplay state
+command/context/card/audit text can become canon
+quoted/dreamed/rumored/revoked/denied text can directly mutate relevant gameplay state
+promised reward can pay currency
+input-only item/ability/travel can become completed success
+
+⸻
+
+28. Relationship to Final Build Control Map v1
+
+This chunk directly implements Control Map requirements:
+
+F003 output-only ability learning safety
+F004 exhausted/fatigued/status visibility
+F005 weak scene mention versus confirmed scene
+F006 inventory false-grant prevention
+F009 nonliteral time skip guard
+F015 body/death rumor/quote boundary
+F023 promised versus paid reward separation
+N001 clause-level canon classifier
+N003 local target binding validation
+N004 ReleaseCheck as build gate
+
+⸻
+
+29. What Build Chunk 12 should do next
+
+Next build document:
+
+Build Chunk 12 — Resolver and Owner-Specific Sanitizer Plan
+
+Build Chunk 12 must define:
+
+* shared conservative cleaner
+* AbilityNameSanitizer
+* ItemNameSanitizer
+* PlaceNameSanitizer
+* ActorNameSanitizer
+* QuestObjectiveSanitizer
+* CardNameSanitizer
+* compound actor suppression
+* head noun classification
+* route/interstitial suppression
+* ability suffix cleanup
+* card trigger hygiene
+* target key generation
+* tests from Control Map and Build Chunks 10–11
+
+⸻
+
+30. Final Build Chunk 11 doctrine
+
+CanonValidator is the final gate before truth.
+
+It must be strict, explainable, and family-aware.
+
+Final rule:
+
+No unsafe source becomes canon.
+No unsafe clause becomes canon.
+No ambiguous target becomes durable truth without validation.
+No duplicate effect repeats.
+No reducer receives anything except accepted validated results.
+
+With CanonValidator planned, the next safe step is Resolver and owner-specific sanitizers.

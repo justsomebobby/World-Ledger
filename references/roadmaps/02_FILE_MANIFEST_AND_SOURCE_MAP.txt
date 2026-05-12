@@ -1,0 +1,23 @@
+AIDRPG Master Package v1.1 CLEANED — File Manifest and Source Map
+
+Repaired Design Bible source:
+- AIDRPG_Design_Bible_33_chunks_REPAIRED_PRE_BUILD_LOCKDOWN(5).zip -> 01_Repaired_Design_Bible_33_Chunks/ (extracted contents)
+- Chunk filenames normalized to: AIDRPG_Design_Bible_Chunk_01_... through AIDRPG_Design_Bible_Chunk_33_...
+
+Developer/build/test/formula spec sources:
+- Pasted Text.txt(2).txt -> 02_Developer_Build_Test_and_Formula_Specs/01_AIDRPG_Developer_Spec_v1.txt [AIDRPG Developer Spec v1]
+- Pasted Text.txt 2(2).txt -> 02_Developer_Build_Test_and_Formula_Specs/02_AIDRPG_Developer_Spec_v1_1_Correction_Pass.txt [AIDRPG Developer Spec v1.1 — Correction Pass]
+- Pasted Text.txt 3(1).txt -> 02_Developer_Build_Test_and_Formula_Specs/03_AIDRPG_MVP_Build_Spec_v1.txt [AIDRPG MVP Build Spec v1]
+- Pasted Text.txt 4(1).txt -> 02_Developer_Build_Test_and_Formula_Specs/04_AIDRPG_Test_Spec_v1.txt [AIDRPG Test Spec v1]
+- Pasted Text.txt 5.txt -> 02_Developer_Build_Test_and_Formula_Specs/05_AIDRPG_Formula_Appendix_v1.txt [AIDRPG Formula Appendix v1]
+
+Clean spec file order:
+1. 01_AIDRPG_Developer_Spec_v1.txt
+2. 02_AIDRPG_Developer_Spec_v1_1_Correction_Pass.txt
+3. 03_AIDRPG_MVP_Build_Spec_v1.txt
+4. 04_AIDRPG_Test_Spec_v1.txt
+5. 05_AIDRPG_Formula_Appendix_v1.txt
+
+Correction from v1 package:
+- The original master authority file placed Formula Appendix v1 first in a single global order. This was clarified in v1.1 CLEANED by separating authority lanes: build scope, testing, and formulas.
+- The original design-bible chunk filenames mixed “of_32” for Chunks 1–32 with “of_33” for Chunk 33. This was normalized in filenames only; document contents were not rewritten.

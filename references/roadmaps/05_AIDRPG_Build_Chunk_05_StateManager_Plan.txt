@@ -1,0 +1,1264 @@
+AIDRPG Build Chunk 5 — StateManager Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 5 — StateManager Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact StateManager behavior before StateManager code is generated.
+Status: Practical build document.
+Follows: Build Chunk 4 — Command Output Format Lock.
+This document does not contain final script code.
+
+This chunk is useful because StateManager is the first real safety foundation of the script.
+
+If StateManager is vague, every later system becomes vague.
+
+If StateManager repairs state incorrectly, the player can lose items, identity, quests, abilities, cards, or old progress.
+
+If StateManager imports old prose too aggressively, old bugs return.
+
+If StateManager does not lock startup properly, player identity can drift.
+
+Build Chunk 5 turns the state plan into exact implementation rules.
+
+⸻
+
+1. StateManager doctrine
+
+StateManager owns the shape and safety of state.aidrpg.
+
+It does not own gameplay consequences.
+
+The doctrine is:
+
+Create missing structure.
+Repair safe structure.
+Preserve valid truth.
+Quarantine unsafe old data.
+Never invent gameplay truth from prose.
+Never erase valid records during repair.
+Never enable deferred systems by accident.
+
+StateManager is allowed to make the save usable.
+
+StateManager is not allowed to play the game for the player.
+
+⸻
+
+2. What StateManager is responsible for
+
+StateManager owns:
+
+* root state creation
+* required bucket creation
+* missing-field repair
+* safe default insertion
+* schema version tracking
+* migration shell
+* quarantine shell
+* startup setup lock fields
+* feature flag defaults
+* structural integrity checks
+* basic caps on audit/runtime arrays
+* repair warnings
+* safe state access helpers
+
+StateManager does not own:
+
+* item acquisition
+* HP/MP/EP damage/healing from story events
+* XP gains
+* level-ups
+* ability creation from gameplay
+* quest activation/completion
+* reward payment
+* actor promotion
+* location arrival
+* Story Card writes
+* Context packet generation
+* parser decisions
+* manual mutation commands
+
+⸻
+
+3. StateManager placement in final script
+
+StateManager belongs in:
+
+Section 05 — State Manager
+
+It depends on:
+
+Section 01 — Constants and Version
+Section 02 — Feature Flags and Defaults
+Section 03 — Utility Helpers
+Section 04 — State Schema Defaults
+Section 07 — Audit Logger, if already available or through safe warning buffer
+
+It must not depend on:
+
+EventScannerLite
+ProposalBuilder
+CanonValidator
+ReducerRegistry
+CardSyncLite live writes
+ContextBuilderLite
+CleanupManagerLite destructive cleanup
+
+Reason:
+
+StateManager must be foundational and safe even when later systems are still shells.
+
+⸻
+
+4. Required StateManager public functions
+
+The final script should provide these StateManager functions or equivalent section-scoped functions.
+
+StateManager.getRoot(rawState)
+StateManager.init(rawState)
+StateManager.createFreshRoot()
+StateManager.ensureRoot(rawState)
+StateManager.ensureAllBuckets(root)
+StateManager.ensureBucket(root, bucketName, defaultFactory)
+StateManager.ensureMeta(root)
+StateManager.ensureFeatures(root)
+StateManager.ensureRuntime(root)
+StateManager.ensureStartup(root)
+StateManager.ensurePlayer(root)
+StateManager.ensureBody(root)
+StateManager.ensureProgression(root)
+StateManager.ensureInventory(root)
+StateManager.ensureAbilities(root)
+StateManager.ensureQuests(root)
+StateManager.ensureActors(root)
+StateManager.ensurePlaces(root)
+StateManager.ensureTime(root)
+StateManager.ensureCards(root)
+StateManager.ensureOperationLedger(root)
+StateManager.ensureAudits(root)
+StateManager.ensureMigration(root)
+StateManager.ensureQuarantine(root)
+StateManager.ensureDirty(root)
+StateManager.ensureCleanup(root)
+StateManager.repairKnownFieldTypes(root)
+StateManager.applySafeCaps(root)
+StateManager.validateIntegrity(root)
+StateManager.migrateIfNeeded(root)
+StateManager.quarantine(root, record)
+StateManager.addRepairWarning(root, message)
+StateManager.markGameplayStarted(root)
+StateManager.lockStartup(root, reason)
+StateManager.isSetupLocked(root)
+StateManager.getStateSummary(root)
+
+The exact code can use shorter names, but the responsibilities must exist.
+
+⸻
+
+5. StateManager initialization flow
+
+State initialization must follow this exact order.
+
+1. Accept raw platform state.
+2. Ensure platform state object exists if possible.
+3. Ensure state.aidrpg root exists.
+4. If state.aidrpg is missing, create fresh root.
+5. If state.aidrpg exists but is malformed, quarantine preview if possible and rebuild root safely.
+6. Ensure meta bucket.
+7. Ensure features bucket.
+8. Ensure runtime bucket.
+9. Ensure startup bucket.
+10. Ensure gameplay buckets.
+11. Ensure cards/ledger/audits/migration/quarantine/dirty/cleanup buckets.
+12. Repair safe known field types.
+13. Apply safe caps to logs and arrays.
+14. Run minimal migration shell if schema mismatch.
+15. Validate integrity.
+16. Return root.
+
+StateManager must never skip required buckets.
+
+StateManager must never erase valid existing buckets while adding missing ones.
+
+⸻
+
+6. Fresh root creation
+
+If no AIDRPG state exists, StateManager creates a fresh root using Build Chunk 3 schema.
+
+Fresh root must include:
+
+meta
+features
+runtime
+startup
+player
+body
+progression
+inventory
+abilities
+quests
+actors
+places
+time
+cards
+operationLedger
+audits
+migration
+quarantine
+dirty
+cleanup
+
+Fresh root defaults must follow Build Chunk 3 exactly.
+
+6.1 Fresh root must not include active deferred systems
+
+Do not create active root buckets for:
+
+economy
+crafting
+investigation
+reputation
+domain
+absorption
+warfare
+multiProtagonist
+
+These systems remain disabled through feature flags and help/releasecheck notes.
+
+6.2 Fresh root must be safe for commands
+
+Immediately after fresh root creation, these commands should not crash:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/stateaudit
+/releasecheck
+
+⸻
+
+7. Existing root repair
+
+If state.aidrpg already exists, StateManager must preserve it and add missing structure.
+
+7.1 Preserve valid data
+
+StateManager must preserve valid existing:
+
+* player identity
+* body resources
+* inventory items
+* equipped items
+* currency
+* abilities
+* quests
+* actors
+* places
+* time state
+* card registry
+* operation keys
+* migration/quarantine records
+* audits, within caps
+
+7.2 Add missing buckets
+
+If a bucket is missing, add only that bucket.
+
+Example:
+
+state.aidrpg.player exists
+state.aidrpg.inventory missing
+
+Action:
+
+* add inventory defaults
+* preserve player
+* log repair warning
+
+Do not reset the full root.
+
+7.3 Add missing fields
+
+If a bucket exists but lacks fields, add missing fields only.
+
+Example:
+
+body.hp exists
+body.ep missing
+
+Action:
+
+* add ep default
+* preserve hp/mp/injuries
+* log repair warning
+
+⸻
+
+8. Malformed root handling
+
+If state.aidrpg exists but is not an object:
+
+Examples:
+
+state.aidrpg = 'broken'
+state.aidrpg = null
+state.aidrpg = 7
+
+StateManager must:
+
+1. create a new valid root
+2. add migration/quarantine warning if possible
+3. store a short preview of malformed value if safe
+4. never crash
+
+Do not attempt to parse malformed prose into gameplay state.
+
+⸻
+
+9. Field-type repair rules
+
+StateManager may repair safe field types.
+
+9.1 Array fields
+
+If an array field is missing:
+
+set to []
+
+If an array field is malformed:
+
+* if recoverable, wrap or filter only safe records
+* if not recoverable, quarantine preview and set empty array
+* log warning
+
+9.2 String fields
+
+If required string field missing:
+
+set safe default
+
+If non-string value appears where string expected:
+
+convert to safe string only if harmless
+otherwise set default and warn
+
+9.3 Number fields
+
+If required number missing:
+
+set default
+
+If number is NaN, Infinity, or unsafe:
+
+set default or clamp and warn
+
+9.4 Boolean fields
+
+If missing:
+
+set default
+
+If malformed:
+
+coerce only if obvious true/false
+otherwise set default and warn
+
+9.5 Enum fields
+
+If missing or invalid:
+
+set safe fallback
+log warning
+
+Example:
+
+fatigue = 'normal'
+deathBoundary = 'alive'
+
+⸻
+
+10. Resource repair rules
+
+Resource tracks include:
+
+body.hp
+body.mp
+body.ep
+
+Each must have:
+
+current
+max
+
+10.1 Missing resource
+
+If missing:
+
+add default 100/100
+warn
+
+10.2 Current greater than max
+
+If:
+
+current > max
+
+Action:
+
+current = max
+warn
+
+10.3 Current below zero
+
+If:
+
+current < 0
+
+Action:
+
+current = 0
+warn
+
+10.4 Max below one
+
+If:
+
+max <= 0
+
+Action:
+
+max = 1 or default 100
+current = clamp current
+warn
+
+10.5 Resource repair is structural, not healing
+
+Clamping invalid numbers is repair.
+
+It is not story healing.
+
+Audit should make that clear.
+
+⸻
+
+11. Feature flag repair rules
+
+StateManager must enforce safe MVP defaults.
+
+11.1 Missing feature flags
+
+Add missing flags from defaults.
+
+11.2 Dangerous active flags
+
+If these are true in MVP:
+
+generatedCardsEnabled
+economyEnabled
+craftingEnabled
+investigationEnabled
+reputationEnabled
+domainEnabled
+absorptionEnabled
+multiProtagonistEnabled
+advancedCombatEnabled
+manualMutationCommandsEnabled
+
+StateManager may either:
+
+* force them false and warn, or
+* leave them but ReleaseCheck fails
+
+MVP recommended behavior:
+
+force generatedCardsEnabled false
+force manualMutationCommandsEnabled false
+force unsafe deferred flags false
+warn clearly
+
+Reason:
+
+The first build must not accidentally activate dangerous systems from old state.
+
+11.3 Card flags
+
+In MVP foundation:
+
+cardSyncDryRun = true
+cardSyncSafeMode = true
+protectedCardWritesEnabled = false
+generatedCardsEnabled = false
+
+⸻
+
+12. Startup lock helpers
+
+StateManager must provide startup lock helpers.
+
+12.1 markGameplayStarted(root)
+
+Sets:
+
+startup.gameplayStarted = true
+
+May also set:
+
+startup.setupStatus = 'locked'
+startup.setupLockedTurn = runtime.currentTurn
+
+if setup is complete or should be locked.
+
+12.2 lockStartup(root, reason)
+
+Sets:
+
+startup.setupStatus = 'locked'
+startup.setupLockedTurn = runtime.currentTurn
+
+Adds warning/note if useful.
+
+12.3 isSetupLocked(root)
+
+Returns true if:
+
+startup.setupStatus = 'locked'
+
+or:
+
+startup.gameplayStarted = true
+
+12.4 Lock rule
+
+After setup lock, StateManager must not allow setup import to overwrite:
+
+* player name
+* race/species
+* age
+* appearance
+* starting inventory
+* starting abilities
+* starting location
+* starting companion
+* starting quest
+
+without explicit future manual override.
+
+⸻
+
+13. Migration shell behavior
+
+Core MVP v0.1 needs a migration shell, not full aggressive migration.
+
+13.1 Migration shell may do
+
+* detect missing schema version
+* detect old-looking roots
+* add migration warning
+* create quarantine bucket
+* mark migrationStatus
+* preserve current state
+* ensure generated cards disabled
+* ensure card sync safe/dry-run
+
+13.2 Migration shell may not do yet
+
+* scan every Story Card
+* import old Story Card prose
+* convert old card text into inventory
+* convert old quest card into active quest
+* convert old ability card into stable ability
+* delete old cards
+* neutralize old cards live
+* run full old save conversion
+
+13.3 Old roots
+
+If old roots like these exist:
+
+state.tasis
+state.aidrpgOld
+state.cardSync
+state.patchData
+
+StateManager may record warning:
+
+Legacy-looking state detected; full migration requires later migration build step.
+
+Do not import aggressively.
+
+⸻
+
+14. Quarantine helper behavior
+
+StateManager should provide a basic quarantine helper.
+
+14.1 Quarantine helper input
+
+A quarantine record should include:
+
+* source
+* sourceKey
+* originalPreview
+* reason
+* severity
+* suggestedAction
+
+14.2 Quarantine helper output
+
+It adds to:
+
+quarantine.records
+migration.quarantined
+
+and increments/unifies unresolved count.
+
+14.3 Quarantine helper must not
+
+* activate the quarantined record
+* import item/quest/ability/actor
+* delete the source
+* resolve the record automatically
+
+14.4 Duplicate quarantine records
+
+If the same sourceKey/reason already exists unresolved:
+
+* do not duplicate
+* optionally update preview/turn
+
+⸻
+
+15. Integrity validation behavior
+
+validateIntegrity(root) should check the state shape after initialization/repair.
+
+15.1 Required integrity checks
+
+Check:
+
+* root exists
+* required buckets exist
+* schema version exists
+* feature flags exist
+* runtime fields exist
+* player protected fields exist
+* body resource tracks exist
+* inventory separates items and sceneItems
+* abilities statuses include candidate/stable
+* quests rewardStatuses include promised/paid
+* actors presenceStates include elsewhere/absent
+* places currentLocation and travelIntent exist separately
+* cards generated disabled
+* operationLedger buckets exist
+* audits bucket exists
+* migration/quarantine exist
+* dirty/cleanup exist
+
+15.2 Integrity result
+
+Integrity check should return a result object:
+
+IntegrityResult {
+  ok: boolean,
+  warnings: string[],
+  errors: string[],
+  repaired: string[]
+}
+
+15.3 Integrity must not
+
+* mutate gameplay truth beyond safe repair
+* enable systems
+* import prose
+* run parser
+* write Story Cards
+
+⸻
+
+16. Safe cap behavior
+
+StateManager should apply caps to known arrays.
+
+16.1 Must cap
+
+runtime.hookTrace
+runtime.runtimeWarnings
+runtime.runtimeErrors
+audits.recentProposals
+audits.recentValidationResults
+audits.debugMessages
+audits.runtimeWarnings
+audits.cardAudit
+audits.contextAudit
+audits.cleanupAudit
+audits.migrationAudit
+operationLedger.recentKeys
+dirty.targets
+
+16.2 Must not cap destructively
+
+Do not cap/drop:
+
+operationLedger.permanentKeys
+operationLedger.rewardKeys
+operationLedger.cardKeys
+startup.startupOperationKeys
+migration.migrationOperationKeys
+important active inventory
+active quests
+important actors
+stable abilities
+protected card registry
+
+16.3 Cap strategy
+
+For capped arrays:
+
+* keep most recent entries
+* preserve critical errors if possible
+* warn if major compaction happened
+
+⸻
+
+17. Repair warnings
+
+StateManager must record repair warnings in a readable way.
+
+17.1 Warning destinations
+
+Repair warnings may be stored in:
+
+audits.debugMessages
+audits.runtimeWarnings
+migration.warnings
+state-specific warnings bucket
+
+depending on what was repaired.
+
+17.2 Warning style
+
+Good:
+
+State repair: inventory bucket was missing and has been recreated with safe defaults.
+
+Good:
+
+State repair: body.hp.current was greater than max and was clamped to max.
+
+Bad:
+
+fixed bad thing
+
+17.3 Warning caps
+
+Warnings must be capped to avoid bloat.
+
+⸻
+
+18. Preservation rules
+
+StateManager must preserve valid truth.
+
+18.1 Must preserve
+
+* player name/race/age/appearance
+* current resources if valid
+* inventory items
+* equipped records
+* currency
+* ability records
+* quest records
+* actor records
+* current location
+* time text/deadlines
+* card registry
+* operation keys
+* quarantine records
+* migration records
+* dirty queued targets
+
+18.2 Must not overwrite with defaults
+
+Defaults are only for missing/unsafe fields.
+
+Never overwrite valid values just because default factories exist.
+
+18.3 Example
+
+Existing:
+
+player.name = 'Arin'
+
+Default:
+
+player.name = 'Unnamed Player'
+
+Repair result:
+
+player.name remains 'Arin'
+
+⸻
+
+19. Non-canon import protection
+
+StateManager must never import gameplay truth from:
+
+* Story Card text
+* Context packets
+* command output
+* debug output
+* old logs
+* help text
+* archived summaries
+
+19.1 Example: old inventory card
+
+Old text:
+
+Player owns Crown of Dawn.
+
+StateManager result:
+
+* no Crown added
+* warning or quarantine if encountered
+
+19.2 Example: old quest card
+
+Old text:
+
+Active Quest: Clear the Mill Wolves.
+
+StateManager result:
+
+* no active quest created
+* quarantine/manual review if encountered later
+
+⸻
+
+20. ReleaseCheck dependency
+
+ReleaseCheckLite depends on StateManager to create/repair state enough to inspect it.
+
+StateManager must ensure /releasecheck can run even on fresh or partially malformed state.
+
+ReleaseCheck should fail for unsafe systems.
+
+StateManager should not hide unsafe systems by pretending all is well.
+
+⸻
+
+21. Command dependency
+
+All commands depend on StateManager.
+
+Before a command renders, the command path should call:
+
+StateManager.init(state)
+
+or an equivalent safe root accessor.
+
+This ensures commands do not crash from missing buckets.
+
+Commands still must not mutate gameplay state beyond safe structural repair performed by StateManager.
+
+⸻
+
+22. Runtime dependency
+
+Hook entry points depend on StateManager first.
+
+Required hook order:
+
+1. StateManager.init
+2. Runtime.beginHook
+3. command/context/output logic
+4. Runtime.endHook
+
+If StateManager fails, Runtime fail-soft should attempt safe return.
+
+⸻
+
+23. StateManager must not become a hidden patch layer
+
+StateManager repairs structure.
+
+It does not fix every gameplay inconsistency.
+
+Examples of things StateManager should not silently fix:
+
+* paying a missing reward
+* completing an unfinished quest
+* moving an unavailable item to inventory
+* turning candidate ability into stable
+* marking absent actor present
+* changing player species from old card text
+* deleting duplicate actors without resolver/migration plan
+
+If such issues are detected, StateManager should warn or quarantine, not guess.
+
+⸻
+
+24. Required StateManager tests
+
+BC5-001 — Fresh root creation
+
+Input:
+
+state.aidrpg missing
+
+Expected:
+
+* complete root created
+* all required buckets present
+* feature flags safe
+* generated cards disabled
+
+Fail if:
+
+* missing bucket
+* dangerous feature active
+
+⸻
+
+BC5-002 — Missing bucket repair preserves player
+
+Input:
+
+state.aidrpg.player.name = 'Arin'
+state.aidrpg.inventory missing
+
+Expected:
+
+* inventory bucket added
+* player name remains Arin
+* repair warning logged
+
+Fail if:
+
+* player reset to Unnamed Player
+
+⸻
+
+BC5-003 — Missing EP repaired
+
+Input:
+
+body.hp exists
+body.mp exists
+body.ep missing
+
+Expected:
+
+* ep added as 100/100 or schema default
+* hp/mp preserved
+* warning logged
+
+Fail if:
+
+* body reset entirely
+
+⸻
+
+BC5-004 — Invalid resource clamped
+
+Input:
+
+body.hp.current = 150
+body.hp.max = 100
+
+Expected:
+
+* hp.current = 100
+* warning logged
+
+Fail if:
+
+* invalid value remains silently
+
+⸻
+
+BC5-005 — Negative resource clamped
+
+Input:
+
+body.mp.current = -10
+body.mp.max = 100
+
+Expected:
+
+* mp.current = 0
+* warning logged
+
+Fail if:
+
+* negative MP remains silently
+
+⸻
+
+BC5-006 — Feature flags forced safe
+
+Input:
+
+generatedCardsEnabled = true
+craftingEnabled = true
+
+Expected:
+
+* generatedCardsEnabled false
+* craftingEnabled false or releasecheck hard fail
+* warning logged
+
+MVP preferred:
+
+* force false and warn
+
+Fail if:
+
+* dangerous flags remain active silently
+
+⸻
+
+BC5-007 — OperationLedger preserved
+
+Input:
+
+operationLedger.rewardKeys = ['quest.reward.old_bren.15_gold']
+
+Expected:
+
+* reward key preserved
+
+Fail if:
+
+* repair clears rewardKeys
+
+⸻
+
+BC5-008 — Quarantine record remains inactive
+
+Input:
+
+quarantine record says Crown of Dawn item claim
+
+Expected:
+
+* quarantine preserved
+* no Crown added to inventory
+
+Fail if:
+
+* quarantine becomes active item
+
+⸻
+
+BC5-009 — Malformed root fails softly
+
+Input:
+
+state.aidrpg = 'broken'
+
+Expected:
+
+* new root created
+* warning/quarantine preview if possible
+* no crash
+
+Fail if:
+
+* script crashes
+
+⸻
+
+BC5-010 — Startup lock helper works
+
+Input:
+
+startup.gameplayStarted = false
+
+Action:
+
+markGameplayStarted
+lockStartup
+
+Expected:
+
+* gameplayStarted true
+* setupStatus locked
+* setupLockedTurn set
+
+Fail if:
+
+* setup remains freely importable
+
+⸻
+
+BC5-011 — Defaults do not overwrite identity
+
+Input:
+
+player.name = 'Kael'
+player.raceSpecies = 'elf'
+
+Expected:
+
+* name remains Kael
+* raceSpecies remains elf
+
+Fail if:
+
+* defaults overwrite with Unnamed Player/human
+
+⸻
+
+BC5-012 — Audits capped safely
+
+Input:
+
+audits.debugMessages has 1000 entries
+
+Expected:
+
+* debugMessages capped
+* no timeout
+* critical recent entries preserved if possible
+
+Fail if:
+
+* unbounded audit remains or important recent warning removed incorrectly
+
+⸻
+
+BC5-013 — Old card prose not imported
+
+Input:
+
+Old card-like data visible to migration shell:
+
+Player owns Crown of Dawn.
+
+Expected:
+
+* no Crown added
+* migration warning/quarantine only if processed
+
+Fail if:
+
+* Crown enters inventory
+
+⸻
+
+BC5-014 — Required integrity fields exist after init
+
+After initialization, verify:
+
+* runtime.lastAppliedOutputHash exists
+* runtime.suppressEventScanForCommandOutput exists
+* cards.sync.generatedCardsEnabled false
+* inventory.sceneItems exists
+* quests.rewardStatuses includes promised and paid
+* abilities.statuses includes candidate and stable
+
+Fail if any missing.
+
+⸻
+
+BC5-015 — StateManager does not call forbidden systems
+
+Review/call-graph test.
+
+Expected:
+
+* StateManager does not call EventScanner
+* StateManager does not call ReducerRegistry
+* StateManager does not call CardSync live writes
+* StateManager does not parse Story Cards
+
+Fail if StateManager becomes hidden gameplay engine.
+
+⸻
+
+25. StateManager acceptance checklist
+
+StateManager Plan is complete when the implementation will clearly support:
+
+* root creation
+* bucket creation
+* missing-field repair
+* safe feature defaults
+* runtime fields
+* startup lock fields
+* card safe defaults
+* OperationLedger preservation
+* quarantine preservation
+* migration shell
+* safe caps
+* integrity validation
+* repair warnings
+* no card/context/command prose import
+* no hidden gameplay mutation
+* tests BC5-001 through BC5-015
+
+⸻
+
+26. Relationship to previous build chunks
+
+Build Chunk 5 depends on:
+
+* Build Chunk 1 for v0.1 allowed/forbidden systems
+* Build Chunk 2 for section placement and module boundaries
+* Build Chunk 3 for exact state schema
+* Build Chunk 4 for command formats that depend on safe state access
+* Gap Chunk E for migration/quarantine safety
+* Gap Chunk G for startup lock and identity protection
+
+⸻
+
+27. What Build Chunk 6 should do next
+
+Next build document:
+
+Build Chunk 6 — Runtime Hook Contract Implementation Plan
+
+Build Chunk 6 should plan the exact implementation of:
+
+* input hook flow
+* context hook flow
+* output hook flow
+* valid return shapes
+* command suppression
+* duplicate output hash behavior
+* hook trace
+* fail-soft behavior
+* partial commit protection boundaries
+
+After Build Chunk 6, the project will be close to generating the first foundation code pass.
+
+⸻
+
+28. Final Build Chunk 5 doctrine
+
+StateManager is not exciting, but it is one of the most important parts of the whole project.
+
+If StateManager is correct, later systems have a safe place to live.
+
+If StateManager is wrong, every later system inherits corruption.
+
+Final rule:
+
+StateManager creates structure.
+StateManager repairs structure.
+StateManager preserves truth.
+StateManager quarantines unsafe data.
+StateManager does not invent gameplay.
+StateManager does not erase valid records.
+
+With StateManager planned, the next step is to plan the runtime hooks that will call it every turn.

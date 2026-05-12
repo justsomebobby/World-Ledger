@@ -1,0 +1,2962 @@
+# AIDRPG Production Chunk 17 — Creature Ecology, Species Rules, and Bestiary Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 17 — Creature Ecology, Species Rules, and Bestiary Boundaries  
+**Production sequence:** 17 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.16 context/card-safety accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add creature ecology records, species rules, bestiary knowledge, observed signs, habitat logic, behavior boundaries, creature weaknesses/resistances as knowledge-gated facts, loot/body-part boundaries, and creature encounter safety without spawning fights, granting powers, inventing stats, or leaking hidden bestiary secrets.  
+**Status:** Core world/gameplay systems production chunk.  
+**Follows:** Production Chunk 16 — Context Builder Budget, Memory Priority, and Card Sync Safety.  
+**This document does not contain final script code.**
+
+Production Chunk 17 is one of the most important gameplay chunks because it decides whether creatures are just random enemy names or actual living parts of the world.
+
+The final AIDRPG system needs creatures to feel like they have:
+
+```text
+species identity
+habitats
+behaviors
+signs/tracks/sounds
+territory
+threat patterns
+body parts
+loot/source materials
+weaknesses and resistances
+knowledge gates
+regional presence
+social/ecological roles
+encounter boundaries
+combat boundaries
+hidden bestiary facts
+```
+
+But it must not repeat the old failure loops:
+
+```text
+bestiary lore spawning active encounters
+creature card text creating enemies in the scene
+rumored weakness becoming confirmed fact
+hidden bestiary facts leaking into context
+player instantly knowing every creature weakness
+species lore granting player powers
+creature mention creating loot
+creature death automatically giving loot or XP
+creature threat scaling to player level
+generic animals becoming full actors forever
+wrong creature signs creating wrong encounters
+cleanup deleting active creature evidence or knowledge
+```
+
+This chunk creates the creature ecology and bestiary boundary layer.
+
+It is not a full random encounter generator.
+
+It is not full creature combat AI.
+
+It is not automatic loot-table farming.
+
+It is the reliable system that lets those future systems work without corrupting the ledger.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Creature lore is not an encounter.
+Creature sign is not creature presence.
+Creature presence is not combat.
+Creature defeat is not XP.
+Creature corpse is not owned loot.
+Creature body part is not harvested item.
+Rumored weakness is not confirmed weakness.
+Hidden bestiary fact is not player knowledge.
+Species trait is not player power.
+Habitat supports possibility, not spawning.
+Ecology guides the world; it does not bypass event validation.
+```
+
+Creatures should feel real because they have rules and context.
+
+They should stay safe because those rules do not mutate unrelated systems without owner validation.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 15 created lore authority and knowledge boundaries.
+
+Production Chunk 16 made context/card output safe and budgeted.
+
+Creature ecology comes now because it depends on both:
+
+```text
+world bible lore authority
+player knowledge boundaries
+hidden lore filtering
+threat benchmarks
+encounter activation rules
+combat event validation
+inventory ownership/custody/loot rules
+body/form/race constraints
+actor presence and generic group handling
+place/region/travel context
+quest objective separation
+progression XP boundaries
+context/card non-canon rules
+```
+
+If creature ecology is built before those boundaries, it will become a source of accidental spawns, hidden spoilers, free loot, fake XP, and unstable combat.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 17 may change:
+
+```text
+Creature ecology schema helpers
+Bestiary schema helpers
+CreatureKnowledge helper
+CreatureSign helper
+SpeciesRule helper
+CreatureEcologyManager
+BestiaryManager
+CanonValidator creature/ecology/bestiary rules
+ProposalBuilder creature event types
+EventScannerLite creature/ecology hints
+ThreatBenchmark integration for creature threat labels
+EncounterState reference integration
+Inventory loot/body-part reference boundary
+Combat creature target reference boundary
+ContextBuilder creature/bestiary packet
+CommandRenderers /bestiary, /creatures, /threat, /encounter if supported
+OperationLedger creature/bestiary keys
+DirtyQueue creature/lore/threat/context targets
+IntegrityChecker creature checks
+ReleaseCheck creature gates
+Regression/player-breaker creature tests
+```
+
+Production Chunk 17 may add:
+
+```text
+CreatureSpeciesRecord schema
+CreatureVariantRecord schema
+CreatureInstanceRecord schema
+BestiaryEntryRecord schema
+CreatureKnowledgeRecord schema
+CreatureSignRecord schema
+CreatureHabitatRecord schema
+CreatureBehaviorRecord schema
+CreatureThreatProfileRecord schema
+CreatureWeaknessResistanceRecord schema
+CreatureLootProfileRecord schema
+CreatureBodyPartRecord schema
+CreatureEncounterBoundaryRecord schema
+CreatureEcologyObservationRecord schema
+CreatureRumorRecord schema
+CreatureHiddenFactRecord schema
+CreatureContextRuleRecord schema
+```
+
+Production Chunk 17 may not add:
+
+```text
+full random encounter generator
+full creature stat block generator
+full tactical creature AI
+full loot-table harvesting automation
+automatic creature XP rewards
+automatic creature spawn from lore/cards/context
+automatic player race/species power grants from creature lore
+full faction/ecosystem simulation
+manual /spawncreature /killcreature /harvest commands
+live CardSync writes
+old card prose creature import as active state
+```
+
+Advanced combat/party/absorption/warfare remains later.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+CreatureState helpers
+BestiaryState helpers
+CreatureEcologyManager
+BestiaryManager
+CreatureKnowledgeManager
+CreatureSignManager
+SpeciesRuleManager shell
+CanonValidator creature/ecology rules
+ProposalBuilder creature proposals
+EventScannerLite creature hints
+Resolver creature/species target binding
+ThreatBenchmark helper references
+EncounterState helper references
+ContextBuilderLite creature/bestiary packet
+CommandRenderers: /bestiary, /creatures, /threat, /encounter if available
+OperationLedger creature keys
+DirtyQueue creature/lore/context dirty targets
+AuditLogger creature lines
+InvariantChecker creature checks
+ReleaseCheckLite PC17 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+CombatReducer except creature target references
+InventoryReducer except available corpse/loot/body-part reference events remain owner-routed
+ProgressionReducer except no automatic creature XP
+QuestReducer except creature objective references only
+PlaceReducer except habitat/region references only
+ActorReducer except generic creature/animal scene presence references
+WorldBible import except creature lore reading through existing boundaries
+CardSync live writes
+manual mutation commands
+```
+
+Creature ecology can inform these systems.
+
+It cannot replace them.
+
+---
+
+# 5. Creature/bestiary state model
+
+Add or verify a creature ecology bucket.
+
+Recommended shape:
+
+```text
+creatures: {
+  species: {},
+  variants: {},
+  instances: {},
+  bestiary: {},
+  knowledge: {},
+  signs: {},
+  habitats: {},
+  behaviors: {},
+  threatProfiles: {},
+  weaknessesResistances: {},
+  lootProfiles: {},
+  bodyParts: {},
+  encounterBoundaries: {},
+  observations: {},
+  rumors: {},
+  hiddenFacts: {},
+  contextRules: {},
+  warnings: [],
+  notes: []
+}
+```
+
+If the existing build uses `worldBible.creatureLore`, this chunk should bridge it to `creatures` as a controlled read/reference path.
+
+Do not create competing creature truth roots.
+
+A clean implementation may use:
+
+```text
+worldBible.creatureLore = lore/reference source
+creatures.species/bestiary = gameplay-aware bestiary records
+encounters.records = active/candidate encounter state
+combat.events = combat resolution state
+inventory.sceneItems = loot/body part ownership state
+```
+
+---
+
+# 6. CreatureSpeciesRecord schema
+
+CreatureSpeciesRecord describes a species as a world/entity category, not an active enemy.
+
+Required shape:
+
+```text
+CreatureSpeciesRecord {
+  id,
+  key,
+  displayName,
+  category,
+  taxonomyTags,
+  confirmed,
+  authorityKey,
+  sourceKeys,
+  habitatKeys,
+  behaviorKeys,
+  threatProfileKey,
+  weaknessResistanceKeys,
+  lootProfileKey,
+  bodyPartKeys,
+  playerKnowledgeKey,
+  hiddenFactKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Categories:
+
+```text
+beast
+monster
+undead
+construct
+draconic
+spirit
+elemental
+plant
+ooze
+swarm
+giant
+humanoid_creature
+aberration_deferred
+celestial_deferred
+infernal_deferred
+fae_deferred
+unknown
+```
+
+Rules:
+
+```text
+species record is not active encounter
+species record is not combatant
+species record is not loot
+species record is not player form/race
+species record may guide threat/lore/context if knowledge boundaries allow
+```
+
+---
+
+# 7. CreatureVariantRecord schema
+
+Variants represent subspecies, regional types, or special versions.
+
+Required shape:
+
+```text
+CreatureVariantRecord {
+  id,
+  key,
+  speciesKey,
+  displayName,
+  variantType,
+  regionKey,
+  mutationSource,
+  authorityKey,
+  traitDifferences,
+  threatAdjustmentLabel,
+  knowledgeStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Variant types:
+
+```text
+regional
+age_class
+corrupted
+blessed_deferred
+undead_variant
+alpha
+juvenile
+ancient
+seasonal
+environmental
+unknown
+```
+
+Rules:
+
+```text
+variant can change threat/context labels if authority supports it
+variant does not auto-spawn instance
+variant does not grant loot/powers by itself
+```
+
+---
+
+# 8. CreatureInstanceRecord schema
+
+Creature instances are actual current or historical creatures, but not necessarily combatants.
+
+Required shape:
+
+```text
+CreatureInstanceRecord {
+  id,
+  key,
+  speciesKey,
+  variantKey,
+  displayName,
+  instanceType,
+  count,
+  status,
+  placeKey,
+  sceneKey,
+  encounterKey,
+  combatantKey,
+  actorKey,
+  knownToPlayer,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  endedTurn,
+  warnings,
+  notes
+}
+```
+
+Instance types:
+
+```text
+individual
+group
+swarm
+herd
+pack
+corpse
+track_source_unknown
+rumored_only
+unknown
+```
+
+Statuses:
+
+```text
+candidate
+present
+nearby
+distant
+encounter_active
+combat_engaged
+dead_pending
+dead_confirmed
+corpse_available
+escaped
+resolved
+rejected
+unknown
+```
+
+Rules:
+
+```text
+present creature does not automatically mean combat
+nearby/distant creature does not automatically mean present
+corpse_available does not mean harvested loot
+dead_confirmed requires owner validation through combat/body/death boundary
+```
+
+---
+
+# 9. BestiaryEntryRecord schema
+
+Bestiary entries are knowledge records for the player/model, not live events.
+
+Required shape:
+
+```text
+BestiaryEntryRecord {
+  id,
+  key,
+  speciesKey,
+  variantKey,
+  displayName,
+  entryStatus,
+  playerKnowledgeStatus,
+  summary,
+  knownSigns,
+  knownHabitats,
+  knownBehaviors,
+  knownThreatLabels,
+  knownWeaknesses,
+  knownResistances,
+  knownLootNotes,
+  hiddenFactKeys,
+  sourceKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Entry statuses:
+
+```text
+unknown
+rumored
+partial
+known
+confirmed_by_observation
+expert_known
+hidden
+blocked
+```
+
+Rules:
+
+```text
+bestiary entry can be shown only according to player knowledge
+hidden bestiary facts are not shown
+bestiary entry does not spawn creature
+bestiary entry does not grant combat advantage unless future rule validates it
+```
+
+---
+
+# 10. CreatureKnowledgeRecord schema
+
+Creature knowledge is player-specific.
+
+Required shape:
+
+```text
+CreatureKnowledgeRecord {
+  id,
+  key,
+  speciesKey,
+  knowledgeType,
+  knowledgeStatus,
+  confidence,
+  learnedFromSourceKey,
+  discoveryKey,
+  learnedTurn,
+  publicness,
+  notes
+}
+```
+
+Knowledge types:
+
+```text
+identity
+sign
+habitat
+behavior
+threat
+weakness
+resistance
+loot
+life_cycle
+social_ecology
+myth
+unknown
+```
+
+Knowledge statuses:
+
+```text
+unknown
+suspected
+rumored
+known
+confirmed_by_observation
+confirmed_by_expert
+misinformed
+hidden
+unknown
+```
+
+Rules:
+
+```text
+player may know a sign without knowing species
+player may know a rumor without it being true
+confirmed knowledge can improve context wording
+knowledge does not mutate creature stats or combat outcomes by itself
+```
+
+---
+
+# 11. CreatureSignRecord schema
+
+Signs are evidence, not presence.
+
+Required shape:
+
+```text
+CreatureSignRecord {
+  id,
+  key,
+  signType,
+  displayName,
+  suspectedSpeciesKey,
+  confidence,
+  placeKey,
+  sceneKey,
+  freshnessLabel,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Sign types:
+
+```text
+tracks
+claw_marks
+fur
+scales
+feathers
+slime
+scent
+howl
+roar
+bones
+droppings
+nest
+scratch_marks
+blood_trace
+footprints
+shed_skin
+burn_marks
+cold_spot
+unknown
+```
+
+Confidence:
+
+```text
+confirmed
+probable
+possible
+unknown
+misleading
+```
+
+Freshness labels:
+
+```text
+fresh
+recent
+old
+ancient
+unknown
+```
+
+Rules:
+
+```text
+tracks are not creature presence
+howling in distance is not combat
+fresh signs may support candidate encounter/danger context
+misleading signs may exist without forcing species truth
+```
+
+---
+
+# 12. CreatureHabitatRecord schema
+
+Habitats tell where creatures normally live.
+
+Required shape:
+
+```text
+CreatureHabitatRecord {
+  id,
+  key,
+  speciesKey,
+  habitatType,
+  regionKeys,
+  placeTypeTags,
+  climateTags,
+  timeTags,
+  rarityLabel,
+  sourceAuthority,
+  playerKnowledgeStatus,
+  createdTurn,
+  notes
+}
+```
+
+Habitat types:
+
+```text
+forest
+swamp
+mountain
+cave
+ruin
+settlement_edge
+urban
+river
+lake
+ocean
+desert
+snowfield
+underground
+graveyard
+ethereal_deferred
+unknown
+```
+
+Rarity labels:
+
+```text
+common
+uncommon
+rare
+very_rare
+unique
+unknown
+```
+
+Rules:
+
+```text
+habitat supports plausibility
+habitat does not spawn encounters
+habitat may guide context and future encounter generator only when that generator is safely activated
+```
+
+---
+
+# 13. CreatureBehaviorRecord schema
+
+Behavior makes creatures feel alive.
+
+Required shape:
+
+```text
+CreatureBehaviorRecord {
+  id,
+  key,
+  speciesKey,
+  behaviorType,
+  triggerConditions,
+  responseLabel,
+  aggressionLabel,
+  socialStructure,
+  sourceAuthority,
+  playerKnowledgeStatus,
+  createdTurn,
+  notes
+}
+```
+
+Behavior types:
+
+```text
+territorial
+predatory
+scavenger
+defensive
+curious
+nocturnal
+diurnal
+pack_hunter
+ambush_predator
+herbivore
+parasite_deferred
+nest_guardian
+migratory
+intelligent_social_deferred
+unknown
+```
+
+Aggression labels:
+
+```text
+passive
+wary
+defensive
+aggressive
+berserk
+predatory
+unknown
+```
+
+Social structures:
+
+```text
+solitary
+pair
+pack
+herd
+swarm
+colony
+tribe_deferred
+hive_deferred
+unknown
+```
+
+Rules:
+
+```text
+behavior guides encounter narration
+behavior does not force attack
+behavior does not replace CombatValidator
+```
+
+---
+
+# 14. CreatureThreatProfileRecord schema
+
+Creature threat profiles connect to PC14 threat benchmarks.
+
+Required shape:
+
+```text
+CreatureThreatProfileRecord {
+  id,
+  key,
+  speciesKey,
+  variantKey,
+  objectiveThreatTier,
+  relativeWarningPolicy,
+  sourceAuthority,
+  threatBenchmarkKey,
+  knownToPlayer,
+  createdTurn,
+  notes
+}
+```
+
+Objective threat tiers:
+
+```text
+trivial
+low
+moderate
+serious
+deadly
+overwhelming
+legendary
+unknown
+```
+
+Rules:
+
+```text
+objective threat does not scale to player level
+relative warning can vary with player condition/form/context
+threat profile does not create combat stats by itself
+```
+
+---
+
+# 15. CreatureWeaknessResistanceRecord schema
+
+Weaknesses and resistances are high-risk because they can become free wins.
+
+Required shape:
+
+```text
+CreatureWeaknessResistanceRecord {
+  id,
+  key,
+  speciesKey,
+  variantKey,
+  factType,
+  damageOrEffectType,
+  description,
+  confidence,
+  sourceAuthority,
+  playerKnowledgeStatus,
+  hidden,
+  mechanicalOwner,
+  createdTurn,
+  notes
+}
+```
+
+Fact types:
+
+```text
+weakness
+resistance
+immunity
+vulnerability_condition
+avoidance_behavior
+misinformation
+unknown
+```
+
+Mechanical owners:
+
+```text
+combat_deferred
+ability_deferred
+item_deferred
+lore_only
+future_ecology_rule
+unknown
+```
+
+Rules:
+
+```text
+known weakness can appear in context if player knows it
+rumored weakness must be labeled rumor
+hidden weakness must not be shown
+weakness does not auto-win combat
+resistance does not auto-null damage unless combat rule active
+```
+
+---
+
+# 16. CreatureLootProfileRecord schema
+
+Loot profiles describe possible materials, not inventory grants.
+
+Required shape:
+
+```text
+CreatureLootProfileRecord {
+  id,
+  key,
+  speciesKey,
+  variantKey,
+  lootEntries,
+  harvestRequirements,
+  sourceAuthority,
+  playerKnowledgeStatus,
+  hidden,
+  createdTurn,
+  notes
+}
+```
+
+Loot entry shape:
+
+```text
+CreatureLootEntry {
+  itemKey,
+  displayName,
+  sourceBodyPartKey,
+  rarityLabel,
+  conditionRequirement,
+  usableAs,
+  notes
+}
+```
+
+Rules:
+
+```text
+loot profile is possibility, not actual loot
+creature death does not automatically create loot
+corpse may become available scene object if validated
+harvesting requires future/owner-routed inventory event
+loot item is not owned until accepted acquisition
+```
+
+---
+
+# 17. CreatureBodyPartRecord schema
+
+Body parts are anatomy/reference records.
+
+Required shape:
+
+```text
+CreatureBodyPartRecord {
+  id,
+  key,
+  speciesKey,
+  displayName,
+  bodyPartType,
+  functionalRole,
+  harvestable,
+  sourceAuthority,
+  playerKnowledgeStatus,
+  createdTurn,
+  notes
+}
+```
+
+Body part types:
+
+```text
+claw
+fang
+horn
+scale
+hide
+fur
+feather
+wing
+heart
+eye
+venom_gland
+bone
+shell
+tail
+gill
+core_deferred
+unknown
+```
+
+Rules:
+
+```text
+body part record does not create item
+harvestable does not mean harvested
+combat targeting body part still requires combat validation
+```
+
+---
+
+# 18. CreatureEncounterBoundaryRecord schema
+
+Creature encounter boundaries prevent ecology from spawning fights.
+
+Required shape:
+
+```text
+CreatureEncounterBoundaryRecord {
+  id,
+  key,
+  boundaryType,
+  rule,
+  active,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Boundary types:
+
+```text
+lore_not_spawn
+sign_not_presence
+presence_not_combat
+defeat_not_xp
+corpse_not_loot_owned
+weakness_not_auto_win
+hidden_fact_not_context
+habitat_not_spawn
+species_trait_not_player_power
+unknown
+```
+
+Rules:
+
+```text
+boundaries are ReleaseCheck-gated
+owner systems must respect them
+```
+
+---
+
+# 19. CreatureEcologyObservationRecord schema
+
+Observation records connect gameplay events to creature knowledge.
+
+Required shape:
+
+```text
+CreatureEcologyObservationRecord {
+  id,
+  key,
+  observationType,
+  speciesKey,
+  signKey,
+  instanceKey,
+  placeKey,
+  sceneKey,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Observation types:
+
+```text
+saw_creature
+heard_creature
+found_tracks
+found_corpse
+observed_behavior
+observed_weakness
+observed_resistance
+observed_habitat
+read_bestiary
+heard_rumor
+unknown
+```
+
+Rules:
+
+```text
+observation can update player knowledge
+observation does not necessarily update world fact
+observation does not spawn new event effects
+```
+
+---
+
+# 20. CreatureRumorRecord schema
+
+Rumors are common in AI Dungeon.
+
+Required shape:
+
+```text
+CreatureRumorRecord {
+  id,
+  key,
+  speciesKey,
+  rumorType,
+  textPreview,
+  sourceActorKey,
+  placeKey,
+  confidence,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rumor types:
+
+```text
+presence
+weakness
+behavior
+loot
+threat
+origin
+myth
+unknown
+```
+
+Rules:
+
+```text
+rumor can update player suspected knowledge
+rumor does not confirm bestiary fact
+rumor does not spawn encounter
+rumor does not create loot/weakness mechanic
+```
+
+---
+
+# 21. CreatureHiddenFactRecord schema
+
+Hidden bestiary facts must be protected.
+
+Required shape:
+
+```text
+CreatureHiddenFactRecord {
+  id,
+  key,
+  speciesKey,
+  factFamily,
+  textPreview,
+  revealConditionText,
+  revealStatus,
+  allowedContextUse,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Fact families:
+
+```text
+true_weakness
+true_origin
+hidden_behavior
+hidden_lair
+hidden_life_cycle
+hidden_intelligence
+hidden_loot_property
+hidden_countermeasure
+unknown
+```
+
+Reveal statuses:
+
+```text
+hidden
+partially_revealed
+revealed
+blocked
+unknown
+```
+
+Allowed context use:
+
+```text
+none
+foreshadowing_only
+validator_only
+full_after_reveal
+unknown
+```
+
+Rules:
+
+```text
+hidden creature facts do not enter normal context
+hidden weakness does not help combat until discovered/validated
+```
+
+---
+
+# 22. CreatureContextRuleRecord schema
+
+Creature context must be filtered and careful.
+
+Required shape:
+
+```text
+CreatureContextRuleRecord {
+  id,
+  key,
+  ruleType,
+  speciesKey,
+  active,
+  wordingPolicy,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rule types:
+
+```text
+show_known_signs
+show_known_threat
+show_rumored_weakness_as_rumor
+hide_hidden_weakness
+show_habitat_if_relevant
+show_behavior_if_observed
+avoid_auto_spawn_wording
+avoid_auto_loot_wording
+unknown
+```
+
+Rules:
+
+```text
+context wording must not imply active presence unless encounter/scene validates it
+context wording must not imply confirmed knowledge if player only heard rumor
+```
+
+---
+
+# 23. Species rules and player race/form boundary
+
+Creature species rules do not grant player powers.
+
+Examples:
+
+```text
+Wolves track by scent.
+Dragons breathe fire.
+Vampires resist normal weapons.
+Slimes split when cut.
+Ghouls carry disease.
+Harpies can fly.
+```
+
+Allowed:
+
+```text
+create bestiary/species facts
+create player-known or hidden knowledge records
+create combat-deferred rule labels
+create threat/deadliness context
+```
+
+Forbidden by default:
+
+```text
+player in wolf form automatically gains perfect scent tracking
+player with dragon lineage automatically gains breath weapon
+vampire lore changes player death boundary
+slime lore changes player body rules
+harpy lore grants player flight
+```
+
+Player form/race power activation remains owner-routed through PC13/Ability/Combat future rules.
+
+---
+
+# 24. Creature lore and encounter separation
+
+Creature lore can support encounter plausibility.
+
+It cannot activate encounters.
+
+Examples:
+
+```text
+World lore: Wolves live near the Old Mill.
+Expected: habitat/species record, no encounter.
+
+Output: You hear wolves howling beyond the trees.
+Expected: sign/candidate danger, no combat.
+
+Output: A wolf steps onto the path and growls.
+Expected: creature instance + active encounter candidate, still no damage.
+
+Output: The wolf lunges and bites your arm.
+Expected: encounter/combat/damage owner-routed through Combat/Body.
+```
+
+---
+
+# 25. Creature loot and inventory separation
+
+Creature loot is possibility, not ownership.
+
+Rules:
+
+```text
+loot profile does not create items
+creature death does not create owned loot
+corpse presence may create scene item/corpse reference if validated
+harvesting requires accepted inventory/item event
+body parts require acquisition validation
+loot duplicates require operation keys
+```
+
+Examples:
+
+```text
+The wolf has valuable pelts. -> lore/loot possibility, no item
+The wolf falls dead. -> corpse/death if combat validates, no pelt owned
+I skin the wolf and take its pelt. -> possible inventory acquisition only if validated
+```
+
+---
+
+# 26. Creature weakness and combat separation
+
+Known weakness helps narration and future validation, but does not automatically win.
+
+Rules:
+
+```text
+weakness fact must be player-known to appear in normal context
+rumored weakness must be labeled rumor
+hidden weakness omitted
+combat weakness effects are deferred unless Combat/Formula owner rule active
+using weakness still requires action and combat validation
+```
+
+Example:
+
+```text
+Known: trolls fear fire.
+Input: I threaten the troll with a torch.
+Expected: context/possible behavior influence, not automatic victory.
+```
+
+---
+
+# 27. Creature threat integration
+
+Creature threat connects to PC14.
+
+Rules:
+
+```text
+creature threat profile can create/update ThreatBenchmarkRecord
+objective threat does not scale to player level
+relative danger can consider player condition/form/current resources
+creature ecology does not generate enemy stats
+```
+
+Example:
+
+```text
+A cave bear is serious objective threat.
+If player is wounded and trapped, relative danger may be deadly.
+The bear did not scale.
+```
+
+---
+
+# 28. Creature behavior integration
+
+Behavior can influence encounter context.
+
+Examples:
+
+```text
+territorial wolves may growl/block path before attacking
+scavenger ghouls may follow blood scent
+nocturnal predators more active at night
+nest guardians defend eggs
+herd animals flee unless cornered
+```
+
+Rules:
+
+```text
+behavior informs context and candidate predictions
+behavior does not force combat outcome
+behavior does not spawn encounter by itself
+```
+
+---
+
+# 29. Creature knowledge discovery flow
+
+Safe knowledge flow:
+
+```text
+1. Lore/source creates species fact, rumor, hidden fact, or blocked claim.
+2. Player sees sign/creature/behavior or hears/reads information.
+3. Observation/discovery record updates CreatureKnowledgeRecord.
+4. BestiaryEntryRecord updates visible known/suspected facts.
+5. ContextBuilder includes only player-known/relevant/safe creature facts.
+```
+
+Do not skip from:
+
+```text
+hidden bestiary fact -> normal context
+world lore -> player expert knowledge
+rumor -> confirmed weakness
+```
+
+---
+
+# 30. Creature CanonValidator expansion
+
+CanonValidator must enforce creature safety.
+
+## 30.1 Accept species/bestiary lore when
+
+```text
+source is allowed by LoreAuthority/WorldBible boundaries
+claim is creature/species/habitat/behavior/threat/weakness/loot lore
+claim does not attempt active encounter/combat/loot mutation
+operation key not duplicate
+```
+
+Result:
+
+```text
+species/bestiary/lore records only
+no active encounter or inventory/combat mutation
+```
+
+## 30.2 Accept creature sign when
+
+```text
+safe output directly shows tracks/sounds/marks/nest/etc.
+place/scene target is bound enough
+not command/context/card source
+```
+
+Result:
+
+```text
+CreatureSignRecord and possible observation/candidate danger
+no creature presence unless output directly confirms it
+```
+
+## 30.3 Accept creature presence when
+
+```text
+safe output directly places creature in current/near scene
+species/instance target can be bound
+not rumor/lore/book/card/context/command source
+```
+
+Result:
+
+```text
+CreatureInstanceRecord present/nearby/distant according to text
+EncounterState may receive candidate/active encounter proposal if pressure exists
+no combat damage
+```
+
+## 30.4 Accept creature behavior observation when
+
+```text
+safe output directly shows behavior
+creature/species target bound
+not merely lore/rumor unless stored as rumor/lore
+```
+
+## 30.5 Accept weakness/resistance knowledge when
+
+```text
+player directly observes it or learns from accepted source
+knowledge status/confidence assigned
+hidden boundary respected
+```
+
+Result:
+
+```text
+CreatureKnowledgeRecord update
+no automatic combat effect
+```
+
+## 30.6 Reject creature mutation when
+
+Any are true:
+
+```text
+Story Card tries to spawn creature
+context says creature is present
+command output says encounter active
+lore mentions creature habitat only
+rumor says creature attacks here
+quest objective names creature
+hidden bestiary fact tries to enter normal context
+creature lore tries to grant player power
+creature lore tries to create loot/XP
+```
+
+---
+
+# 31. ProposalBuilder creature event types
+
+Add or verify event types:
+
+```text
+creature.species_lore_candidate
+creature.variant_lore_candidate
+creature.bestiary_entry_candidate
+creature.knowledge_candidate
+creature.sign_candidate
+creature.habitat_candidate
+creature.behavior_candidate
+creature.threat_profile_candidate
+creature.weakness_candidate
+creature.resistance_candidate
+creature.loot_profile_candidate
+creature.body_part_candidate
+creature.hidden_fact_candidate
+creature.rumor_candidate
+creature.instance_candidate
+creature.presence_candidate
+creature.corpse_candidate
+creature.encounter_boundary_candidate
+creature.blocked_mutation_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+species/variant lore
+bestiary entries
+player creature knowledge
+signs/tracks/sounds/nests
+habitats
+behaviors
+threat profile references
+weakness/resistance knowledge records
+loot/body part possibility records
+creature instances/presence references
+hidden facts/rumors
+blocked mutation records
+```
+
+Current chunk must not commit:
+
+```text
+spawned combat
+owned loot
+XP
+player powers
+full enemy stat blocks
+```
+
+---
+
+# 32. EventScannerLite creature hints
+
+EventScannerLite may detect creature hints, but detection is not canon.
+
+Hint families:
+
+```text
+creature names/species names
+tracks/claw marks/fur/scales/scent/howls/nests
+habitat words like lair, den, nest, territory
+behavior words like stalks, hunts, scavenges, guards, flees
+weakness/resistance words like vulnerable to, immune to, fears, avoids
+loot/body part words like pelt, fang, scale, venom gland
+bestiary/lore words like legends say, hunters know, scholar writes
+presence words like appears, steps out, circles overhead
+corpse words like carcass, corpse, remains
+```
+
+Must flag:
+
+```text
+loreOnly
+rumorOnly
+hiddenFactRisk
+signOnly
+presenceConfirmed
+encounterPressure
+combatEngagement
+lootPossibilityOnly
+harvestAttempt
+weaknessRumor
+weaknessObserved
+resistanceObserved
+cardSource
+contextSource
+commandSource
+auditSource
+duplicateRisk
+playerPowerGrantRisk
+spawnRisk
+xpLootRisk
+```
+
+Parser cannot mutate creature state directly.
+
+---
+
+# 33. CreatureEcologyManager behavior
+
+CreatureEcologyManager should:
+
+```text
+ensure creature state shape
+create/update species records from safe lore
+create/update variants
+create/update habitats/behaviors/threat profiles
+record signs and observations
+update player knowledge through discovery rules
+produce safe context facts
+create hidden fact/rumor records
+record blocked mutation attempts
+```
+
+It should not:
+
+```text
+spawn encounters from lore
+start combat
+award XP
+grant loot
+grant player powers
+mutate form/race/body directly
+scale creature threat to player level
+write live cards
+```
+
+---
+
+# 34. BestiaryManager behavior
+
+BestiaryManager should:
+
+```text
+build player-facing bestiary entries from CreatureKnowledgeRecords
+separate known/rumored/hidden facts
+keep hidden facts out of normal context
+show misinformation as suspected if tracked
+preserve authority/source labels
+support /bestiary display
+```
+
+BestiaryManager should not:
+
+```text
+show hidden weakness before reveal
+convert rumor into fact
+create combat bonuses by itself
+spawn bestiary creatures
+```
+
+---
+
+# 35. Creature defensive guards
+
+Creature reducers/managers must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+lore-only as active encounter
+sign-only as creature presence
+presence as combat damage
+rumor as confirmed fact
+hidden fact as context
+weakness as auto-win
+species trait as player power
+loot profile as owned item
+corpse as harvested item
+defeat as XP
+player level scaling creature threat
+wrong owner reducer
+```
+
+Reducers must not blindly trust upstream.
+
+---
+
+# 36. Operation keys
+
+Required creature operation keys:
+
+```text
+creature.species.<speciesKey>.<sourceHash>
+creature.variant.<speciesKey>.<variantKey>.<sourceHash>
+creature.bestiary.<speciesKey>.<knowledgeHash>
+creature.knowledge.<speciesKey>.<knowledgeType>.<discoveryHash>
+creature.sign.<signType>.<placeKey>.<sourceHash>
+creature.habitat.<speciesKey>.<habitatKey>.<sourceHash>
+creature.behavior.<speciesKey>.<behaviorType>.<sourceHash>
+creature.threat.<speciesKey>.<threatTier>.<sourceHash>
+creature.weakness.<speciesKey>.<factHash>
+creature.resistance.<speciesKey>.<factHash>
+creature.lootProfile.<speciesKey>.<sourceHash>
+creature.bodyPart.<speciesKey>.<bodyPartKey>.<sourceHash>
+creature.hiddenFact.<speciesKey>.<factHash>
+creature.rumor.<speciesKey>.<rumorHash>
+creature.instance.<speciesKey>.<placeKey>.<sourceHash>
+creature.boundary.<boundaryType>.<policyVersion>
+creature.blockedMutation.<ownerSystem>.<claimHash>
+```
+
+Rules:
+
+```text
+species/knowledge/hidden/boundary keys are durable
+sign keys may be scene/time scoped
+presence/instance keys prevent duplicate creatures from replay
+blocked mutation keys prevent repeated warning spam
+```
+
+---
+
+# 37. Dirty targets
+
+Creature updates should mark:
+
+```text
+creature_ecology
+world_lore
+context
+threat if threat profile changes
+encounter if active/candidate presence validates
+inventory_equipment only if owner-routed corpse/loot scene item changes
+combat only if combat owner validates engagement
+stateaudit/releasecheck if boundaries/conflicts change
+```
+
+Mapping:
+
+```text
+species/habitat/behavior lore -> creature_ecology, world_lore, context if known/relevant
+sign/observation -> creature_ecology, context, threat if danger relevant
+presence -> creature_ecology, encounter, context
+weakness/resistance knowledge -> creature_ecology, context if player-known
+hidden fact -> creature_ecology only, not normal context
+loot profile -> creature_ecology, context if player-known/relevant, no inventory mutation
+```
+
+---
+
+# 38. `/bestiary`, `/creatures`, `/threat`, `/encounter` updates
+
+## 38.1 `/bestiary`
+
+Should show:
+
+```text
+known species
+rumored species
+known signs
+known habitats
+known behaviors
+known/rumored weaknesses and resistances
+known loot possibilities
+hidden fact count without spoilers
+misinformation/conflict warnings if tracked
+```
+
+## 38.2 `/creatures`
+
+Should show:
+
+```text
+present creature instances
+nearby/distant creature signs
+known species records
+creature instances tied to active encounter
+corpse/carcass references if validated
+```
+
+## 38.3 `/threat`
+
+Should show creature threat labels carefully:
+
+```text
+objective threat
+relative danger warning
+source authority
+no-rubber-band policy
+```
+
+## 38.4 `/encounter`
+
+Should distinguish:
+
+```text
+sign/candidate encounter
+active encounter
+combat engagement
+resolved encounter
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 39. ContextBuilder creature packet
+
+ContextBuilder should include only relevant, player-safe creature facts.
+
+Include:
+
+```text
+active creature encounter/presence facts from owner state
+known creature signs in current scene
+known behavior relevant to immediate scene
+known/rumored weakness only if player knows it and labeled correctly
+hidden facts only if revealed
+creature threat warnings from PC14
+form/body constraints relevant to creature encounter
+```
+
+Do not include:
+
+```text
+hidden weakness before discovery
+full bestiary dump
+species lore as active creature presence
+rumored creature as confirmed encounter
+loot profile as loot owned
+creature behavior as guaranteed action
+```
+
+Good context example:
+
+```text
+Creature signs: Fresh wolf tracks cross the mud near Old Mill. This suggests wolves may be nearby, but none are currently confirmed in the scene. Known rumor: locals say wolves avoid silver bells; unconfirmed.
+```
+
+Bad context example:
+
+```text
+Wolves are here. They fear silver bells. You can use silver bells to win. You will get wolf pelts if you kill them.
+```
+
+---
+
+# 40. IntegrityChecker creature checks
+
+Add checks:
+
+```text
+creature ecology bucket exists
+species records do not create active encounters
+sign records do not mark creature present
+bestiary hidden facts not included in normal context
+rumors not marked confirmed without authority
+loot profiles not present in inventory as owned items
+weakness/resistance records do not create combat effects unless owner rule active
+creature threat profiles do not scale to player level
+creature instance presence source not command/card/context
+encounter/combat/inventory/progression boundaries intact
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not spawn creatures, award loot/XP, or grant powers.
+
+---
+
+# 41. Cleanup creature protections
+
+Cleanup may compact:
+
+```text
+old duplicate sign spam
+old blocked mutation warning spam
+old low-confidence rumor duplicates
+old resolved creature instance summaries
+old context-only bestiary section caches
+```
+
+Cleanup must not delete:
+
+```text
+confirmed species records
+player knowledge/discovery records
+hidden fact controls
+active creature instances
+active signs in current scene
+active encounter-linked creature records
+threat profiles
+creature boundary records
+blocked mutation records needed for audit
+```
+
+Cleanup must not:
+
+```text
+confirm rumors
+reveal hidden facts
+spawn/despawn active creatures without owner validation
+grant loot
+grant XP
+grant player powers
+```
+
+---
+
+# 42. ReleaseCheck gates for this chunk
+
+Add or verify PC17-specific gates:
+
+```text
+PC17-G01 CreatureSpeciesRecord schema exists or equivalent species structure exists
+PC17-G02 CreatureVariantRecord and CreatureInstanceRecord schemas exist or equivalents exist
+PC17-G03 BestiaryEntryRecord and CreatureKnowledgeRecord schemas exist or equivalents exist
+PC17-G04 CreatureSignRecord and CreatureEcologyObservationRecord schemas exist or equivalents exist
+PC17-G05 CreatureHabitatRecord and CreatureBehaviorRecord schemas exist or equivalents exist
+PC17-G06 CreatureThreatProfileRecord integrates with no-rubber-band threat policy
+PC17-G07 CreatureWeaknessResistanceRecord separates known/rumored/hidden/mechanical-deferred facts
+PC17-G08 CreatureLootProfileRecord and CreatureBodyPartRecord do not grant inventory
+PC17-G09 CreatureEncounterBoundaryRecord exists and blocks lore/sign/presence/combat/loot/XP shortcuts
+PC17-G10 CanonValidator rejects card/context/command creature claims as active gameplay mutation
+PC17-G11 signs do not become confirmed presence unless presence validates
+PC17-G12 lore/habitat does not spawn encounters
+PC17-G13 presence does not become combat/damage without CombatValidator
+PC17-G14 defeat/corpse does not grant XP/loot without owner events
+PC17-G15 species traits do not grant player powers without owner rules
+PC17-G16 hidden bestiary facts do not enter normal context before reveal
+PC17-G17 BestiaryManager displays known/rumored/hidden facts honestly
+PC17-G18 cleanup preserves species/knowledge/hidden/boundary/active records
+PC17-G19 random encounter generator and full creature stat AI remain disabled
+PC17-G20 player-breaker creature/bestiary tests registered
+```
+
+ReleaseCheck must fail if creature lore spawns encounters, hidden weakness leaks to context, creature death grants loot/XP automatically, or species lore grants player powers.
+
+---
+
+# 43. Required tests
+
+## PC17-001 — Species lore does not spawn encounter
+
+World lore:
+
+```text
+Wolves live near the Old Mill.
+```
+
+Expected:
+
+```text
+CreatureSpecies/Habitat/Bestiary record possible
+no active encounter
+no combat
+```
+
+---
+
+## PC17-002 — Story Card creature attack blocked
+
+Story Card text:
+
+```text
+Wolves attack the player at the Old Mill.
+```
+
+Expected:
+
+```text
+no active encounter/combat
+blocked mutation or reference-only lore record
+```
+
+---
+
+## PC17-003 — Context creature presence blocked
+
+Context text:
+
+```text
+A wolf is present and attacking.
+```
+
+Expected:
+
+```text
+no creature instance/encounter/combat mutation from context
+```
+
+---
+
+## PC17-004 — Command bestiary non-canon
+
+Run:
+
+```text
+/bestiary
+/creatures
+```
+
+Feed output through Output hook.
+
+Expected:
+
+```text
+no creature/lore/encounter mutation
+```
+
+---
+
+## PC17-005 — Tracks are signs, not presence
+
+Output:
+
+```text
+Fresh wolf tracks cross the mud near the Old Mill.
+```
+
+Expected:
+
+```text
+CreatureSignRecord fresh tracks
+possible candidate danger
+no wolf present
+no combat
+```
+
+---
+
+## PC17-006 — Howling is distant sign, not combat
+
+Output:
+
+```text
+Wolves howl somewhere beyond the trees.
+```
+
+Expected:
+
+```text
+sound/sign or distant candidate
+no confirmed present wolf
+no combat
+```
+
+---
+
+## PC17-007 — Creature presence confirmed
+
+Output:
+
+```text
+A wolf steps from the brush and growls at you.
+```
+
+Expected:
+
+```text
+CreatureInstanceRecord present/encounter candidate or active encounter through PC14
+no damage
+```
+
+---
+
+## PC17-008 — Presence does not equal damage
+
+Output:
+
+```text
+A wolf blocks the path, teeth bared.
+```
+
+Expected:
+
+```text
+creature present/encounter pressure
+no body damage
+```
+
+---
+
+## PC17-009 — Attack routes to combat, not ecology
+
+Output:
+
+```text
+The wolf lunges and bites your arm.
+```
+
+Expected:
+
+```text
+creature/combat link possible
+actual damage handled by Combat/Body owner path
+CreatureEcology does not write HP/injury directly
+```
+
+---
+
+## PC17-010 — Rumored weakness remains rumor
+
+Output:
+
+```text
+Villagers say wolves fear silver bells.
+```
+
+Expected:
+
+```text
+CreatureRumor/Knowledge suspected or rumored
+not confirmed weakness
+```
+
+---
+
+## PC17-011 — Hidden weakness omitted
+
+Setup:
+
+```text
+hidden fact: Old Mill wolves obey hidden bell
+not discovered
+```
+
+Build context.
+
+Expected:
+
+```text
+hidden fact omitted
+/bestiary shows hidden count only, no spoiler
+```
+
+---
+
+## PC17-012 — Observed weakness can update knowledge
+
+Output:
+
+```text
+When the silver bell rings, the wolf backs away in fear.
+```
+
+Expected:
+
+```text
+observed behavior/weakness knowledge candidate or confirmed_by_observation if validation accepts
+no automatic victory
+```
+
+---
+
+## PC17-013 — Weakness does not auto-win
+
+Setup:
+
+```text
+player knows wolves fear silver bells
+```
+
+Input:
+
+```text
+I ring the silver bell at the wolf.
+```
+
+Expected:
+
+```text
+possible behavior/combat/social influence candidate
+no automatic encounter victory unless output validates wolf flees/resolves
+```
+
+---
+
+## PC17-014 — Resistance does not auto-null damage without combat rule
+
+Lore:
+
+```text
+Stone golems resist arrows.
+```
+
+Combat output:
+
+```text
+Your arrow strikes the golem.
+```
+
+Expected:
+
+```text
+resistance context/deferred combat rule label
+no automatic damage nullification unless Combat rule active
+```
+
+---
+
+## PC17-015 — Loot profile does not grant item
+
+Lore:
+
+```text
+Wolf pelts are valuable.
+```
+
+Expected:
+
+```text
+CreatureLootProfile possible
+no wolf pelt in inventory
+```
+
+---
+
+## PC17-016 — Dead creature does not grant loot
+
+Output:
+
+```text
+The wolf falls dead.
+```
+
+Expected:
+
+```text
+death/corpse status only if Combat validates
+no pelt/fang/item owned
+no XP
+```
+
+---
+
+## PC17-017 — Harvest attempt requires inventory validation
+
+Input/output:
+
+```text
+I skin the wolf and take its pelt.
+```
+
+Expected:
+
+```text
+harvest/acquisition only if InventoryReducer validates item acquisition
+CreatureEcology may reference body part/loot profile
+```
+
+---
+
+## PC17-018 — Creature body part is not item by itself
+
+Lore:
+
+```text
+Drakes have fire glands.
+```
+
+Expected:
+
+```text
+CreatureBodyPartRecord possible
+no fire gland inventory item
+```
+
+---
+
+## PC17-019 — Creature threat does not scale to player level
+
+Setup:
+
+```text
+wolf objective threat moderate
+player level increases
+```
+
+Expected:
+
+```text
+wolf objective threat unchanged
+relative warning may adjust only if context changes
+```
+
+---
+
+## PC17-020 — Player form does not auto-copy species power
+
+Setup:
+
+```text
+player currentForm = wolf
+wolf species behavior includes scent tracking
+```
+
+Expected:
+
+```text
+player does not automatically gain perfect scent-tracking ability unless Form/Ability owner validates it
+```
+
+---
+
+## PC17-021 — Dragon lore no breath power to player
+
+Lore:
+
+```text
+Dragons breathe fire.
+```
+
+Setup:
+
+```text
+player has dragon lineage candidate
+```
+
+Expected:
+
+```text
+no breath weapon ability granted
+```
+
+---
+
+## PC17-022 — Habitat supports plausibility only
+
+Setup:
+
+```text
+cave habitat for bats
+player enters cave
+```
+
+Expected:
+
+```text
+context may note bats are plausible if player knows lore
+no automatic bat encounter
+```
+
+---
+
+## PC17-023 — Duplicate sign skipped
+
+Repeat:
+
+```text
+Fresh wolf tracks cross the mud near the Old Mill.
+```
+
+Expected:
+
+```text
+no duplicate sign spam
+operation key skip/update audit
+```
+
+---
+
+## PC17-024 — Bestiary display honest
+
+State:
+
+```text
+wolf known partially
+silver bell weakness rumored
+hidden bell control undiscovered
+pelt loot known possible
+```
+
+Run:
+
+```text
+/bestiary
+```
+
+Expected:
+
+```text
+known/rumored/hidden/loot-possible categories separated
+no hidden spoiler
+no owned loot claim
+```
+
+---
+
+## PC17-025 — Creature context honest
+
+State:
+
+```text
+fresh tracks
+no wolf present
+rumored weakness
+hidden fact undiscovered
+```
+
+Context expected:
+
+```text
+tracks suggest wolves may be nearby
+no wolf confirmed present
+rumored weakness labeled rumor
+hidden fact omitted
+```
+
+---
+
+## PC17-026 — Cleanup preserves active creature knowledge
+
+Setup:
+
+```text
+known species
+hidden fact
+active sign
+active encounter-linked creature instance
+knowledge record
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+important creature records preserved
+only low-risk duplicates compacted
+```
+
+---
+
+## PC17-027 — Manual creature commands disabled
+
+Run:
+
+```text
+/spawncreature dragon
+/killcreature wolf
+/harvest wolf pelt
+/giveweakness wolf silver
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no creature/encounter/inventory mutation
+```
+
+---
+
+# 44. Regression placement
+
+Add PC17 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+27 PC17 tests registered
+0 critical PC17 failures
+```
+
+---
+
+# 45. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+creatures.species
+creatures.variants
+creatures.instances
+creatures.bestiary
+creatures.knowledge
+creatures.signs
+creatures.habitats
+creatures.behaviors
+creatures.threatProfiles
+creatures.weaknessesResistances
+creatures.lootProfiles
+creatures.bodyParts
+creatures.encounterBoundaries
+creatures.observations
+creatures.rumors
+creatures.hiddenFacts
+creatures.contextRules
+CreatureSpeciesRecord shape
+CreatureVariantRecord shape
+CreatureInstanceRecord shape
+BestiaryEntryRecord shape
+CreatureKnowledgeRecord shape
+CreatureSignRecord shape
+CreatureHabitatRecord shape
+CreatureBehaviorRecord shape
+CreatureThreatProfileRecord shape
+CreatureWeaknessResistanceRecord shape
+CreatureLootProfileRecord shape
+CreatureBodyPartRecord shape
+CreatureEncounterBoundaryRecord shape
+CreatureEcologyObservationRecord shape
+CreatureRumorRecord shape
+CreatureHiddenFactRecord shape
+CreatureContextRuleRecord shape
+```
+
+---
+
+# 46. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+creature/species lore classification
+creature sign detection
+creature presence detection
+habitat/behavior/threat/weakness/loot/body-part lore detection
+rumor/hidden/fact separation
+bestiary knowledge update proposals
+blocked mutation detection
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+random encounter generator
+creature stat block generation
+combat damage formula activation
+automatic loot harvesting
+automatic XP reward
+manual creature mutation parser
+card/context creature import as active state
+```
+
+---
+
+# 47. Reducer/checker changes
+
+Allowed:
+
+```text
+CreatureEcologyManager species/variant/habitat/behavior/threat/sign/observation/knowledge behavior
+BestiaryManager player-facing known/rumored/hidden behavior
+creature boundary records
+creature integrity checks
+creature duplicate skip results
+```
+
+Forbidden:
+
+```text
+spawning encounters from lore
+granting inventory loot
+granting XP
+granting player powers
+writing HP/injury/combat directly
+scaling creatures to player level
+```
+
+---
+
+# 48. Command/context/card changes
+
+Allowed:
+
+```text
+/bestiary display
+/creatures display
+/threat creature threat references
+/encounter creature participant references
+/context creature packet
+/cardaudit creature boundary labels
+/releasecheck PC17 gates
+/playerbreakercheck creature cases
+```
+
+Forbidden:
+
+```text
+/spawncreature
+/killcreature
+/harvest active command
+/giveweakness
+/importbestiaryasencounter
+live card writes that create creature truth
+```
+
+---
+
+# 49. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted context/card safety build
+
+Start from:
+
+```text
+WorldLedgerV0.17.16_CONTEXT_CARD_SAFETY_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.17_CREATURE_ECOLOGY_BESTIARY_WORKING.txt
+```
+
+## Step 2 — Add/verify creature helper functions
+
+Create helpers for:
+
+```text
+ensureCreatureShape
+makeCreatureSpeciesRecord
+makeCreatureVariantRecord
+makeCreatureInstanceRecord
+makeBestiaryEntryRecord
+makeCreatureKnowledgeRecord
+makeCreatureSignRecord
+makeCreatureHabitatRecord
+makeCreatureBehaviorRecord
+makeCreatureThreatProfileRecord
+makeCreatureWeaknessResistanceRecord
+makeCreatureLootProfileRecord
+makeCreatureBodyPartRecord
+makeCreatureEncounterBoundaryRecord
+makeCreatureEcologyObservationRecord
+makeCreatureRumorRecord
+makeCreatureHiddenFactRecord
+makeCreatureContextRuleRecord
+isUnsafeCreatureSource
+isCreatureSignOnly
+isCreaturePresenceConfirmed
+isCreatureLoreOnly
+isCreatureMutationBlocked
+```
+
+## Step 3 — Add creature encounter boundaries
+
+Create default boundaries:
+
+```text
+lore_not_spawn
+sign_not_presence
+presence_not_combat
+defeat_not_xp
+corpse_not_loot_owned
+weakness_not_auto_win
+hidden_fact_not_context
+habitat_not_spawn
+species_trait_not_player_power
+```
+
+ReleaseCheck must fail if missing.
+
+## Step 4 — Add CreatureEcologyManager
+
+Implement safe commits for:
+
+```text
+species/variant lore
+habitat
+behavior
+threat profile
+weakness/resistance knowledge
+loot/body part possibility
+signs/observations
+rumors/hidden facts
+instances/presence references
+blocked mutations
+```
+
+## Step 5 — Add BestiaryManager
+
+Implement:
+
+```text
+known/rumored/hidden separation
+player knowledge display
+hidden fact filtering
+context-safe summaries
+```
+
+## Step 6 — Update creature CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+lore-only creature facts
+signs
+presence
+behavior observation
+weakness/resistance discovery
+loot profile/harvest boundary
+hidden facts
+card/context/command blocks
+```
+
+## Step 7 — Update ProposalBuilder creature support
+
+Ensure proposals carry:
+
+```text
+species key
+variant key
+place/scene key
+sign type
+knowledge type/status
+source authority
+hidden/rumor flags
+mutation-risk flags
+operation key suggestion
+```
+
+## Step 8 — Integrate with threat/encounter/context only as references
+
+Connect:
+
+```text
+ThreatBenchmark creature threat references
+EncounterState participant references
+ContextBuilder creature packet
+```
+
+Do not create active combat/loot/XP.
+
+## Step 9 — Update commands
+
+Update or add:
+
+```text
+/bestiary
+/creatures
+/threat
+/encounter
+/cardaudit creature sections
+```
+
+## Step 10 — Update IntegrityChecker creature checks
+
+Add boundary, hidden fact, signs/presence/combat, loot/XP, and no-rubber-band checks.
+
+## Step 11 — Add PC17 ReleaseCheck gates
+
+Add PC17-G01 through PC17-G20.
+
+## Step 12 — Add PC17 tests
+
+Add PC17-001 through PC17-027.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/bestiary
+/creatures
+/threat
+/encounter
+/context
+/cardaudit
+```
+
+## Step 14 — Save accepted creature ecology build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.17_CREATURE_ECOLOGY_BESTIARY_ACCEPTED.txt
+```
+
+---
+
+# 50. What this chunk produces
+
+Production Chunk 17 should produce:
+
+```text
+WorldLedger V0.17.17 creature-ecology/bestiary accepted script if code changes are made
+CreatureSpecies/Variant/Instance schemas
+BestiaryEntry/CreatureKnowledge schemas
+CreatureSign/Habitat/Behavior schemas
+CreatureThreat/Weakness/Resistance schemas
+CreatureLoot/BodyPart schemas
+CreatureEncounterBoundary schemas
+CreatureObservation/Rumor/HiddenFact schemas
+CreatureEcologyManager
+BestiaryManager
+creature CanonValidator refinement
+/bestiary /creatures display improvements
+creature context packet
+creature integrity checks
+PC17 ReleaseCheck gates
+PC17 regression/player-breaker tests
+creature ecology acceptance report
+updated planning zip with Production Chunk 17 added
+```
+
+It should not produce:
+
+```text
+random encounter generator
+full creature AI/stat generation
+automatic creature XP
+automatic loot harvesting
+automatic player power grants from species lore
+live CardSync writes
+card/context creature import as active state
+```
+
+---
+
+# 51. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 17 passes if:
+
+```text
+creature species/variant/instance/bestiary structures exist
+creature signs are separated from presence
+presence is separated from combat
+bestiary knowledge separates known/rumored/hidden facts
+hidden bestiary facts stay out of normal context
+weakness/resistance facts do not auto-win or auto-null combat
+loot/body-part profiles do not grant inventory
+creature defeat/corpse does not grant XP/loot automatically
+species traits do not grant player powers
+creature threat profiles respect no-rubber-band policy
+card/context/command creature claims cannot become active state
+/bestiary and /creatures display honestly
+cleanup preserves species/knowledge/hidden/boundary/active records
+PC17 tests pass
+ReleaseCheck has no PC17 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+random encounters remain disabled
+creature stat blocks are not generated
+advanced creature combat AI is deferred
+loot harvesting is owner-routed but not fully automated
+some species facts remain lore-only
+some weaknesses/resistances are mechanical-deferred
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+creature lore spawns encounter
+creature sign creates present enemy
+creature presence deals damage
+hidden weakness leaks to context
+rumored weakness becomes confirmed fact without authority
+creature death grants XP
+creature corpse grants owned loot
+species lore grants player powers
+player level scales creature threat
+card/context/command creature text mutates active state
+cleanup reveals hidden facts or deletes active creature records
+CreatureEcologyManager trusts unsafe routed data
+```
+
+---
+
+# 52. Handoff to Production Chunk 18
+
+When this chunk passes, Production Chunk 18 begins:
+
+```text
+Production Chunk 18 — Economy, Shops, Trade, Debt, and Service Contracts
+```
+
+Production Chunk 18 may use creature loot profiles as possible trade goods, but it must not treat loot profiles as owned inventory.
+
+Production Chunk 17 must leave creature/bestiary state reliable enough that PC18 can ask:
+
+```text
+Is this creature material actually owned?
+Is it merely a possible loot profile?
+Does the player know the material value?
+Was the creature harvested through valid inventory events?
+Is the source a rumor, hidden fact, or confirmed observation?
+```
+
+---
+
+# 53. Final doctrine
+
+Production Chunk 17 is where the world’s creatures become believable without becoming unsafe automation.
+
+Final rule:
+
+```text
+Creatures have ecology.
+Bestiary knowledge is gated.
+Signs are evidence, not enemies.
+Lore is possibility, not presence.
+Presence is pressure, not combat.
+Death is not loot.
+Weakness is knowledge, not victory.
+Species facts are not player powers.
+```
+
+Once this passes, the project can safely deepen economy, shops, trade, debt, and service contracts in Production Chunk 18.

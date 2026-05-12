@@ -1,0 +1,957 @@
+# AIDRPG Production Chunk 08 — Actor Presence, Social Memory, Witnessing, and Relationship Depth
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 08 — Actor Presence, Social Memory, Witnessing, and Relationship Depth  
+**Production sequence:** 08 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.7 quest/reward-depth accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen actor records, actor presence, scene-only actors, reference-only actors, absent actors, witness memory, direct-informed memory, relationship evidence, and social continuity without false presence, duplicate actors, or unsafe reputation automation.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 07 — Quest, Objective, Reward, and Promise/Payment Depth.  
+**This document does not contain final script code.**
+
+Production Chunk 08 exists because actors are where AI Dungeon continuity can either feel alive or become badly corrupted. Old rough attempts showed the same risks repeatedly: duplicate actors from titles/names, absent actors treated as present, reference-only names treated as scene participants, private witness memory becoming global reputation, generic guards becoming permanent major NPCs, command/card/context text creating memories, and actor harm being applied to a statue, painting, title, or training dummy named after someone.
+
+This chunk turns actors into structured, useful, bounded state. The goal is not full reputation, faction, romance, party, summon, or NPC combat automation yet. The goal is reliable actor presence, source-bound memory, and relationship evidence that future systems can safely build on.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Mentioned is not present.
+Absent is not present.
+Reference-only is not present.
+Generic is not automatically persistent.
+Witnessed is not global reputation.
+Private is not public.
+Relationship claim is evidence, not absolute truth.
+Actor memory requires presence or direct information.
+A training dummy named after Mira is not Mira.
+```
+
+Actor truth must be local, source-aware, duplicate-safe, scene-aware, and AI-Dungeon-safe.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 07 made quest givers, reward payers, turn-ins, and quest references safer. Actors come next because they connect to quest givers, reward payers, witnesses, companions, enemies, merchants, trainers, faction contacts, social memory, relationship changes, scene presence, future reputation, future party/summon logic, and world persistence.
+
+If actors are not safe now, later systems will create false witnesses, false public knowledge, duplicate NPCs, and broken relationship state.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Allowed changes:
+
+```text
+Actor schema helpers
+ActorReducerLite
+ActorNameSanitizer
+CanonValidator actor/presence/memory rules
+ProposalBuilder actor event types
+EventScannerLite actor/social hints
+CommandRenderers /actors
+ContextBuilder actor/social packets
+OperationLedger actor/memory keys
+DirtyQueue actor/social targets
+IntegrityChecker actor checks
+ReleaseCheck actor gates
+Regression/player-breaker actor tests
+```
+
+Allowed additions:
+
+```text
+ActorRecord schema depth
+SceneActorRecord schema
+ActorMemoryRecord schema
+RelationshipEvidenceRecord schema
+PresenceStatus model
+PersistenceClass model
+WitnessScope model
+ActorRole model
+Alias/title handling
+Compound actor suppression rules
+Generic actor promotion policy
+Social memory audit summaries
+```
+
+Forbidden in this chunk:
+
+```text
+full reputation automation
+faction standing automation
+romance system
+party/summon control system
+merchant economy system
+NPC combat AI engine
+manual /spawnactor or /setrelationship commands
+generated actor Story Cards
+old card prose actor import
+```
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+ActorState helpers
+ActorReducerLite
+ActorNameSanitizer
+CanonValidator actor rules
+ProposalBuilder actor proposals
+EventScannerLite actor/social hints
+Resolver actor target binding
+CommandRenderers: /actors and relevant quest-giver references
+ContextBuilderLite actor/social packet
+OperationLedger actor/memory keys
+DirtyQueue actor dirty targets
+AuditLogger actor/social lines
+InvariantChecker actor checks
+ReleaseCheckLite PC08 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+QuestReducer except actor references for giver/payer/turn-in display
+InventoryReducer except custody-holder references
+AbilityReducer except trainer references only
+BodyReducer except NPC injury/death remains conservative
+PlaceReducer except current-scene actor references
+ProgressionReducer
+Reputation/faction/domain systems
+Party/summon systems
+CardSync live writes
+WorldBible import
+manual mutation commands
+```
+
+---
+
+# 5. Actor state model
+
+Actors bucket should support:
+
+```text
+records
+sceneActors
+present
+absent
+referenceOnly
+memories
+relationshipNotes
+warnings
+notes
+```
+
+Recommended shape:
+
+```text
+actors: {
+  records: {},
+  sceneActors: {},
+  present: [],
+  absent: [],
+  referenceOnly: [],
+  memories: [],
+  relationshipNotes: [],
+  warnings: [],
+  notes: []
+}
+```
+
+If existing code uses arrays, keep stable actor keys and helper functions. Do not allow multiple active actor records for the same canonical named actor.
+
+---
+
+# 6. ActorRecord schema
+
+```text
+ActorRecord {
+  id,
+  key,
+  displayName,
+  normalizedName,
+  aliases,
+  titles,
+  type,
+  role,
+  importance,
+  persistenceClass,
+  presenceStatus,
+  currentPlaceKey,
+  currentSceneKey,
+  knownToPlayer,
+  relationshipSummary,
+  memories,
+  relationshipEvidence,
+  custodyRefs,
+  questRefs,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  lastSeenTurn,
+  lastMentionedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+key is stable and family-scoped
+key does not contain full raw output
+key does not come from command/card/context text
+important titles are preserved when identity-relevant
+aliases are stored, not automatically separate actors
+bad compound/connectors are cleaned without creating fake actors
+```
+
+Named/important actors may become persistent. Generic actors normally become scene actors.
+
+Examples:
+
+```text
+Mira Vell -> persistent actor
+Old Bren -> persistent actor
+High Priestess Ilyra -> persistent actor
+Veteran Guard -> important scene actor or persistent if repeated/quest-relevant
+A guard -> scene actor by default
+A merchant -> scene actor by default
+Three bandits -> scene group actor by default
+```
+
+---
+
+# 7. SceneActorRecord schema
+
+```text
+SceneActorRecord {
+  id,
+  key,
+  displayName,
+  normalizedName,
+  actorKey,
+  groupCount,
+  role,
+  presenceStatus,
+  sceneKey,
+  placeKey,
+  persistenceClass,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  expiresTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+scene actor may link to persistent ActorRecord if known
+scene-only actor does not automatically become permanent
+scene actor may expire on scene change through cleanup policy
+scene actor presence does not imply global knowledge
+```
+
+---
+
+# 8. PresenceStatus model
+
+Allowed statuses:
+
+```text
+present
+scene_only
+nearby
+mentioned
+reference_only
+absent
+elsewhere
+unknown
+left_scene
+dead_pending
+dead_confirmed
+captured
+```
+
+Rules:
+
+```text
+present means currently in scene or directly interacting
+scene_only means present but not durable by default
+nearby means nearby, not necessarily interacting
+mentioned/reference_only means not present
+absent/elsewhere means no witness memory
+actor death remains conservative and must not come from rumor/card/context/command text
+```
+
+---
+
+# 9. PersistenceClass model
+
+Allowed persistence classes:
+
+```text
+player
+major
+recurring
+quest_relevant
+scene_only
+generic_group
+summon_deferred
+unknown
+```
+
+Generic actors should not become major unless named, repeatedly recurring, connected to a quest/reward/major event, or explicitly promoted by validation.
+
+---
+
+# 10. ActorMemoryRecord schema
+
+```text
+ActorMemoryRecord {
+  memoryId,
+  actorKey,
+  memoryType,
+  scope,
+  confidence,
+  summary,
+  sourceOperationKey,
+  sourceEventId,
+  sourceTurn,
+  witnessedDirectly,
+  informedByActorKey,
+  placeKey,
+  publicness,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Memory types:
+
+```text
+witnessed_action
+heard_report
+direct_conversation
+quest_promise
+quest_payment
+threat
+help_received
+harm_received
+relationship_evidence
+private_secret
+rumor
+```
+
+Scopes/publicness:
+
+```text
+private_to_actor
+shared_with_present_group
+public_local
+public_faction_deferred
+unknown
+```
+
+Rules:
+
+```text
+present witnesses can receive witnessed_action memory
+absent actors do not receive scene memory
+directly informed actors can receive heard_report/direct_conversation memory
+private memory does not become public reputation
+rumor memory is rumor, not confirmed truth
+```
+
+---
+
+# 11. RelationshipEvidenceRecord schema
+
+```text
+RelationshipEvidenceRecord {
+  evidenceId,
+  actorKey,
+  relationType,
+  direction,
+  strength,
+  confidence,
+  summary,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Relation types:
+
+```text
+friendly
+hostile
+fearful
+respectful
+suspicious
+grateful
+angry
+loyal
+distrustful
+romantic_deferred
+rival_deferred
+unknown
+```
+
+Rules:
+
+```text
+relationship evidence is not numeric reputation automation
+one nice action does not create permanent loyalty by itself
+one private insult does not create public hostility
+romance remains deferred unless future spec exists
+```
+
+---
+
+# 12. ActorNameSanitizer depth
+
+Must handle:
+
+```text
+Veteran Guard -> Veteran Guard, not Guard duplicate
+High Priestess Ilyra -> High Priestess Ilyra
+Old Bren -> Old Bren
+Mira Vell -> Mira Vell
+Captain Arlen of the North Gate -> Captain Arlen
+three bandits -> bandits group with count 3 if supported
+ACTOR:AND_MIRA -> ACTOR:MIRA
+Mira and Old Bren -> two actors, not one actor named Mira and Old Bren
+```
+
+Must not create present actors from:
+
+```text
+training dummy named after Mira
+statue of Mira
+painting of Old Bren
+rumor about the High Priestess
+book title containing a name
+Story Card/context/command text
+```
+
+---
+
+# 13. Compound actor suppression
+
+Examples:
+
+```text
+The Veteran Guard blocks the gate.
+```
+
+Expected:
+
+```text
+one actor: Veteran Guard
+not Veteran Guard + Guard
+```
+
+```text
+High Priestess Ilyra raises her staff.
+```
+
+Expected:
+
+```text
+one actor: High Priestess Ilyra
+not High Priestess + Ilyra separately
+```
+
+```text
+Mira and Old Bren argue.
+```
+
+Expected:
+
+```text
+two actors: Mira, Old Bren
+not one actor named Mira and Old Bren
+```
+
+---
+
+# 14. Actor CanonValidator expansion
+
+Accept present actor only when safe story output places actor in the current scene or direct interaction, actor target is bound, and source is not absent/reference-only/object/statue/painting/dummy/title/dream-only/command/context/card/audit/debug.
+
+Accept scene-only actor when a generic actor or group appears in scene and should not be persistent by default.
+
+Accept absent/reference-only actor when source explicitly says actor is absent/elsewhere/not present, or actor is used only as comparison/title/reference/object label.
+
+Accept memory only when actor is present and directly witnesses event, or actor is directly informed. Reject memory when actor is absent, reference-only, only rumored, not informed, or source is command/card/context/audit/debug.
+
+---
+
+# 15. Actor ProposalBuilder event types
+
+```text
+actor.present_candidate
+actor.scene_only_candidate
+actor.nearby_candidate
+actor.absent_candidate
+actor.reference_only_candidate
+actor.elsewhere_candidate
+actor.memory_candidate
+actor.relationship_evidence_candidate
+actor.status_candidate
+actor.death_candidate
+actor.custody_reference_candidate
+actor.quest_reference_candidate
+```
+
+Current chunk may commit present actor, scene-only actor, nearby/reference, absent/reference-only note, memory for present/directly informed actor, relationship evidence, quest/custody references. Actor death/status remains conservative and may stay pending unless directly validated.
+
+---
+
+# 16. EventScannerLite actor/social hints
+
+Detect actor/social hints, but detection is not canon.
+
+Allowed scan families:
+
+```text
+named actors
+titles and roles
+generic people/groups
+presence verbs
+absence verbs
+speech/direct information
+witnessing verbs
+relationship/emotion cues
+custody/holding item references
+quest giver/payer/turn-in references
+```
+
+Must flag absent, elsewhere, referenceOnly, objectReference, statueOrPainting, dummyOrTrainingTarget, quotedSpeechOnly, rumorOrClaim, dreamOrVision, privateNoWitness, commandSource, contextSource, cardSource, auditSource, compoundActorRisk, genericActor.
+
+---
+
+# 17. ActorReducerLite detailed behavior
+
+ActorReducerLite owns:
+
+```text
+actors.records
+actors.sceneActors
+actors.present
+actors.absent
+actors.referenceOnly
+actors.memories
+actors.relationshipNotes
+actors.warnings
+```
+
+Accepted present actor should create/update ActorRecord or SceneActorRecord, set presence/current scene if known, set lastSeenTurn, mark social_memory/current_location/context dirty, and audit compactly.
+
+Accepted generic actor should create/update SceneActorRecord with scene_only/generic_group persistence and not create major persistent actor unless promotion rule accepts it.
+
+Accepted absent/reference-only should record absent/reference-only status or note, not add to present list, not create witness memory, and not apply scene effects.
+
+Accepted memory should verify actor present or directly informed, create ActorMemoryRecord, set scope/private/publicness correctly, not update public reputation, and mark social_memory/context dirty.
+
+Accepted relationship evidence should create RelationshipEvidenceRecord, update relationshipSummary cautiously, not apply numeric reputation/faction automation, and mark social_memory/context dirty.
+
+---
+
+# 18. ActorReducer defensive guards
+
+Reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+absent as present
+reference-only as present
+statue/painting/dummy as actor presence
+training dummy named after actor as actor harm
+rumor-only memory as direct memory
+private event as public memory
+generic actor auto-major without promotion
+missing actor key
+wrong owner reducer
+```
+
+Reducer must not blindly trust upstream.
+
+---
+
+# 19. Witness memory rules
+
+Present witness example:
+
+```text
+The Veteran Guard watches you steal the apple.
+```
+
+Expected: Veteran Guard gets witnessed_action memory, private/local scope, no global reputation.
+
+Absent actor example:
+
+```text
+Mira is not here when you steal the apple.
+```
+
+Expected: Mira receives no witness memory.
+
+Directly informed example:
+
+```text
+You tell Mira that you stole the apple.
+```
+
+Expected: Mira gets heard_report/direct_conversation memory only if present/directly addressed or output confirms contact.
+
+Public group example:
+
+```text
+The whole market sees you steal the apple.
+```
+
+Expected: scene/public_local memory candidate; reputation/faction numeric automation remains deferred.
+
+---
+
+# 20. Relationship evidence rules
+
+Examples:
+
+```text
+Mira smiles warmly after you help her.
+Old Bren thanks you for clearing the wolves.
+The guard narrows his eyes, suspicious of you.
+The bandit swears revenge.
+```
+
+Expected: relationship evidence added, relationship summary may update cautiously, no faction/reputation automation.
+
+---
+
+# 21. Actor custody and quest references
+
+Actors may be linked to items and quests as references.
+
+```text
+Mira holds the jeweled crown.
+Old Bren promises 15 gold.
+Captain Arlen gives the gate repair job.
+```
+
+ActorReducer may store social/reference memory only. InventoryReducer owns custody truth. QuestReducer owns quest/reward truth. ActorReducer must not add inventory or pay rewards.
+
+---
+
+# 22. Operation keys
+
+```text
+actor.present.<actorKey>.<placeOrSceneKey>.<clauseHash>
+actor.scene.<actorKey>.<sceneKey>.<clauseHash>
+actor.absent.<actorKey>.<clauseHash>
+actor.reference.<actorKey>.<referenceKind>.<clauseHash>
+actor.memory.<actorKey>.<memoryHash>
+actor.relationship.<actorKey>.<relationType>.<sourceHash>
+actor.custodyref.<actorKey>.<itemKey>.<sourceHash>
+actor.questref.<actorKey>.<questKey>.<sourceHash>
+actor.status.<actorKey>.<statusKey>.<clauseHash>
+```
+
+Present/scene keys prevent duplicate actors on replay. Memory keys prevent duplicate memory spam. Relationship keys prevent repeated emotional spam. Custody/quest refs do not replace Inventory/Quest owner keys.
+
+---
+
+# 23. Dirty targets
+
+Actor updates should mark social_memory, current_location, context, quest_log when actor reference affects quest display, and inventory_equipment only when paired with InventoryReducer custody truth.
+
+---
+
+# 24. `/actors` updates
+
+Required sections:
+
+```text
+Present important actors
+Scene-only actors
+Known persistent actors
+Nearby actors
+Absent / elsewhere actors
+Reference-only mentions
+Recent witness memories
+Relationship evidence
+Quest / custody references
+Warnings
+```
+
+Display rules:
+
+```text
+absent actors not shown as present
+reference-only actors not shown as present
+scene-only actors not shown as major persistent unless promoted
+private memory not shown as public reputation
+relationship evidence not shown as absolute reputation score
+```
+
+---
+
+# 25. ContextBuilder actor/social packet
+
+Include present important actors, scene-only actors when scene-relevant, recent witness memories if relevant, important relationship evidence, and quest giver/payer/turn-in actor if relevant. Do not include all known actors every turn, absent actors as present, reference-only actors as present, private memory as public reputation, full raw memory logs, or old quarantined actor claims.
+
+---
+
+# 26. IntegrityChecker actor checks
+
+Checks:
+
+```text
+no duplicate actor records with same canonical key
+present list only contains present/scene actors
+referenceOnly list does not overlap present unless valid transition exists
+absent actor not marked present
+scene-only actors not promoted without reason
+memory records have actorKey and sourceOperationKey
+witness memories require present/directly informed source
+relationship evidence does not become numeric reputation
+actor records do not originate from command/card/context source
+```
+
+IntegrityChecker may warn/quarantine bad records. It may not create actors, memories, or relationship changes.
+
+---
+
+# 27. Cleanup actor/social protections
+
+Cleanup may compact low-value scene-only actors after scene expiry policy, duplicate memory warning spam, low-risk relationship evidence summaries, and actor warning caps.
+
+Cleanup must not delete major/recurring/quest-relevant actors, active present actors, important witness memories, quest giver/payer references, custody references needed for inventory display, or relationship evidence needed for future continuity.
+
+---
+
+# 28. ReleaseCheck gates for this chunk
+
+```text
+PC08-G01 ActorRecord schema exists or equivalent stable actor record exists
+PC08-G02 SceneActorRecord schema exists or equivalent scene actor structure exists
+PC08-G03 ActorMemoryRecord schema exists or equivalent memory structure exists
+PC08-G04 RelationshipEvidenceRecord schema exists or equivalent evidence structure exists
+PC08-G05 presence model separates present/scene_only/nearby/mentioned/reference_only/absent/elsewhere/unknown
+PC08-G06 persistence model separates major/recurring/quest_relevant/scene_only/generic_group
+PC08-G07 ActorNameSanitizer preserves titles/names and suppresses compound duplicates
+PC08-G08 CanonValidator rejects absent/reference-only/object/dummy/card/context actors as present
+PC08-G09 ActorReducer rejects unsafe routed actor/memory events
+PC08-G10 witness memory requires presence or direct information
+PC08-G11 private memory does not become public reputation
+PC08-G12 relationship evidence does not activate reputation automation
+PC08-G13 actor custody/quest refs do not mutate inventory/quest truth directly
+PC08-G14 /actors displays presence/reference/memory honestly
+PC08-G15 command/context/card actor text cannot become canon
+PC08-G16 cleanup does not delete important actor/memory truth
+PC08-G17 reputation/faction/party/summon systems remain disabled
+PC08-G18 player-breaker actor/social tests registered
+```
+
+ReleaseCheck must fail if absent/reference-only actors can become present, command/card/context actor text can create actors, or private witness memory can become public reputation.
+
+---
+
+# 29. Required tests
+
+```text
+PC08-001 Named actor present: Mira Vell steps into tavern -> Mira present persistent record.
+PC08-002 Generic guard scene-only: A guard stands by the gate -> scene-only, not major.
+PC08-003 Veteran Guard no duplicate Guard.
+PC08-004 High Priestess Ilyra preserved as one actor.
+PC08-005 Mira and Old Bren split into two actors.
+PC08-006 Absent actor not present.
+PC08-007 Reference-only actor not present.
+PC08-008 Training dummy named Mira does not harm real Mira.
+PC08-009 Statue of Old Bren not actor presence.
+PC08-010 Present witness receives memory, no global reputation.
+PC08-011 Absent actor receives no witness memory.
+PC08-012 Directly informed actor memory only if present/addressed/contact confirmed.
+PC08-013 Whole market sees theft -> local/public memory candidate, no reputation automation.
+PC08-014 Friendly relationship evidence added, not permanent loyalty.
+PC08-015 Hostile relationship evidence added, no combat/faction automation.
+PC08-016 Quest giver reference does not complete quest.
+PC08-017 Custody reference does not grant item.
+PC08-018 /actors output is non-canon when fed into Output hook.
+PC08-019 Story Card actor prose does not mutate presence/trust.
+PC08-020 Context actor prose does not mutate actor memory/reputation.
+PC08-021 Duplicate actor presence skipped.
+PC08-022 Duplicate memory skipped.
+PC08-023 Scene-only actor cleanup preserves major actors/memories.
+PC08-024 /actors display separates present/scene-only/reference/absent.
+PC08-025 /reputation /faction /setrelationship disabled/no mutation.
+PC08-026 /partycontrol /summoncontrol disabled/no actor promotion.
+```
+
+Minimum expectation:
+
+```text
+26 PC08 tests registered
+0 critical PC08 failures
+```
+
+---
+
+# 30. Regression placement
+
+Add PC08 tests to:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T8 Deferred System Disabled Tests
+T7 Long-Run Stability Tests
+```
+
+---
+
+# 31. State fields added or deepened
+
+```text
+actors.records
+actors.sceneActors
+actors.present
+actors.absent
+actors.referenceOnly
+actors.memories
+actors.relationshipNotes
+ActorRecord shape
+SceneActorRecord shape
+ActorMemoryRecord shape
+RelationshipEvidenceRecord shape
+presence status model
+persistence class model
+witness scope model
+actor role model
+sourceOperationKeys
+```
+
+---
+
+# 32. Parser/proposal/validator changes
+
+Allowed: actor presence/absence/reference detection refinement, witness/direct-informed memory detection, relationship evidence detection, compound actor suppression, generic scene-only classification, operation key suggestions.
+
+Forbidden: full reputation/faction parser, party/summon command parser, actor combat AI parser, manual relationship mutation parser, card/context actor import.
+
+---
+
+# 33. Reducer changes
+
+Allowed: ActorReducer present/scene-only/absent/reference-only/memory/relationship evidence behavior, unsafe routed-data rejection, memory logging, dirty targets, duplicate skip results.
+
+Forbidden: public reputation mutation, faction standing mutation, party/summon activation, manual spawn/setrelationship reducer, inventory/quest mutation inside ActorReducer, combat damage automation.
+
+---
+
+# 34. Command/context/card changes
+
+Allowed: /actors display depth, context actor/social packet, cardaudit actor mirror labels if dry-run, releasecheck PC08 gates, playerbreakercheck actor/social cases.
+
+Forbidden: /setrelationship, /spawnactor, /addcompanion, active /reputation, active /faction, live card writes that create actor truth.
+
+---
+
+# 35. Beginner implementation order
+
+```text
+1. Copy WorldLedgerV0.17.7_QUEST_REWARD_DEPTH_ACCEPTED.txt.
+2. Create WorldLedgerV0.17.8_ACTOR_SOCIAL_DEPTH_WORKING.txt.
+3. Add/verify actor helpers: ensureActorsShape, makeActorRecord, makeSceneActorRecord, makeActorMemoryRecord, makeRelationshipEvidenceRecord, normalizePresenceStatus, normalizePersistenceClass, isPresentEnoughForMemory, isReferenceOnlyActorMention, isUnsafeActorSource.
+4. Deepen ActorNameSanitizer for names, titles, groups, compounds, connectors, and reference-only names.
+5. Update actor CanonValidator rules for present, scene-only, absent, reference-only, witness memory, informed memory, relationship evidence, custody/quest refs.
+6. Update ProposalBuilder actor support with target, presence, persistence, group count, memory type/scope, relationship evidence, safety flags, operation key suggestions.
+7. Update ActorReducerLite safe commits.
+8. Update /actors.
+9. Update ContextBuilder actor/social packet.
+10. Update IntegrityChecker actor checks.
+11. Add PC08-G01 through PC08-G18.
+12. Add PC08-001 through PC08-026.
+13. Run /foundationcheck /releasecheck /integrity /playerbreakercheck /regressioncheck /actors.
+14. Save WorldLedgerV0.17.8_ACTOR_SOCIAL_DEPTH_ACCEPTED.txt.
+```
+
+---
+
+# 36. What this chunk produces
+
+```text
+WorldLedger V0.17.8 actor/social-depth accepted script if code changes are made
+actor helper depth
+ActorReducer presence/memory/relationship behavior
+ActorNameSanitizer depth
+actor CanonValidator refinement
+/actors display improvement
+actor/social context packet
+actor integrity checks
+PC08 ReleaseCheck gates
+PC08 regression/player-breaker tests
+actor/social acceptance report
+updated planning zip with Production Chunk 08 added
+```
+
+It should not produce full reputation, full faction standing, party/summon control, manual actor/relationship mutation commands, NPC combat AI, generated actor cards, live CardSync writes, or old card prose actor import.
+
+---
+
+# 37. Pass / warn / fail criteria
+
+PASS if actor presence/reference/absence states are separated, named/generic actors are classified safely, compound duplicates are suppressed, reference-only and absent actors do not become present, witness memory requires presence/direct information, private memory does not become public reputation, relationship evidence remains evidence, ActorReducer rejects unsafe routed data, /actors displays honestly, command/context/card actor text cannot become canon, cleanup preserves important actors/memories, PC08 tests pass, and ReleaseCheck has no PC08 FAIL/BLOCKED gates.
+
+WARN if reputation/faction, party/summon, relationship automation, generic actor promotion, scene-only cleanup, or NPC combat/death remain conservative/deferred.
+
+FAIL if absent/reference-only actors become present, training dummy named after Mira harms Mira, Veteran Guard creates duplicate Guard, command/context/card text creates actor/memory, private witness memory becomes public reputation, generic guard becomes permanent major actor without promotion, relationship evidence mutates faction/reputation automation, ActorReducer trusts unsafe routed data, or cleanup deletes major actor/important memory.
+
+---
+
+# 38. Handoff to Production Chunk 09
+
+When this chunk passes, Production Chunk 09 begins:
+
+```text
+Production Chunk 09 — Place, Travel, Time, Scene, and Deadline Depth
+```
+
+Production Chunk 09 may use actor presence and scene actor state to improve current scene/location display, but should not let location text create false actors or let actor references overwrite location.
+
+---
+
+# 39. Final doctrine
+
+```text
+Actors exist in states.
+Presence is local.
+Memory is source-bound.
+Relationships are evidence-based.
+Reputation is deferred.
+No unsafe text source creates people, witnesses, trust, hatred, or public knowledge.
+```
+
+Once this passes, the project can safely deepen places, travel, scenes, time, and deadlines in Production Chunk 09.

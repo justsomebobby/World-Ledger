@@ -1,0 +1,323 @@
+# AIDRPG Production Chunk 03 — State Schema Deepening for Full System Readiness
+
+## Document status
+
+Production sequence: 03 of 25.
+Build target: WorldLedger V0.17.2 command-surface accepted build.
+Purpose: Deepen state schema, migration metadata, invariant scaffolding, disabled placeholders, operation ledgers, and quarantine categories before live gameplay expansion.
+
+## Doctrine
+
+```text
+Prepare state before features.
+Add structure before automation.
+Add placeholders without enabling unsafe systems.
+Add migration metadata before migration complexity.
+Add invariant shells before high-risk reducers.
+Keep old prose quarantined, not imported.
+```
+
+## Allowed changes
+
+```text
+State schema factories
+StateManager default creation and missing-field repair
+schema version metadata
+bucket version metadata
+migration metadata
+quarantine categories
+operation ledger bucket structure
+feature flag placeholders
+invariant checker shell
+state audit display
+ReleaseCheck schema gates
+cleanup cap metadata
+```
+
+Forbidden:
+
+```text
+active economy/crafting/combat/reputation/domain/absorption/generated cards/manual mutation
+old card prose gameplay import
+```
+
+## Canonical root rule
+
+There must be one canonical root:
+
+```text
+state.worldledger
+```
+
+Do not create competing active roots such as `state.aidrpg`, `state.tasis`, `state.tas`, `state.innerSelf`, or `state.autoCards`. Old roots may be detected and quarantined as legacy evidence.
+
+## Required top-level buckets
+
+```text
+meta features runtime startup player body progression inventory abilities quests actors places time cards operationLedger audits migration quarantine dirty cleanup schema integrity
+```
+
+StateManager adds missing safe defaults without deleting valid existing data.
+
+## Schema metadata bucket
+
+Recommended shape:
+
+```text
+schema: {
+  schemaId: 'worldledger.schema.v1.locked',
+  schemaVersion: '1.0.0',
+  stateVersion: '0.17.3-schema-readiness',
+  createdBy: 'WorldLedger',
+  lastCheckedTurn: 0,
+  lastMigrationTurn: 0,
+  bucketVersions: {},
+  requiredBuckets: [],
+  optionalDisabledBuckets: [],
+  knownLegacyRoots: [],
+  warnings: [],
+  notes: []
+}
+```
+
+## Bucket version metadata
+
+Track versions for all major buckets:
+
+```text
+meta features runtime startup player body progression inventory abilities quests actors places time cards operationLedger audits migration quarantine dirty cleanup schema integrity
+```
+
+Use simple values such as `1` or `v1`.
+
+## Deferred feature placeholders
+
+Feature flags must distinguish active foundation systems, disabled future systems, shell diagnostics, and blocked unsafe systems. Required disabled flags:
+
+```text
+economyEnabled craftingEnabled investigationEnabled reputationEnabled domainEnabled absorptionEnabled advancedCombatEnabled warfareEnabled multiProtagonistEnabled partyAdvancedEnabled generatedCardsEnabled protectedCardWritesEnabled manualMutationCommandsEnabled = false
+```
+
+Add display metadata with planned chunk/reason, for example economy planned for 23A, crafting 23B, investigation 23C, reputation 23D, domain 23E, advanced combat 24A, party 24B, absorption 24C, multi-protagonist 24D, warfare 24E.
+
+## Bucket readiness requirements
+
+### Startup
+
+```text
+locked, firstGameplayInputSeen, setupSourceStatus, setupSourceKey, identityLockedAtTurn, startupOperationKeys, importedFields, unknownFields, warnings, notes
+```
+
+Post-lock setup cannot overwrite protected identity.
+
+### Player
+
+```text
+id, displayName, aliases, identityStatus, origin, worldKnowledgeStatus, trueRaceSpecies, lineage, currentForm, bodyType, disguise, illusion, presentation, protectedFields, candidateTraits, pendingTraits, warnings, notes
+```
+
+Unknown race does not mean human. Current form does not overwrite true race/species.
+
+### Body
+
+```text
+resources.hp/mp/ep, fatigue, conditions, injuries, deathBoundary, bodyTraits, formConstraints, warnings, notes
+```
+
+Structural clamp is not healing.
+
+### Progression
+
+```text
+level, currentXP, totalXP, xpToNext, stats, baseStats, modifiers, derivedSnapshot, statXP, histories, formulaProfile, formulasEnabled, warnings, notes
+```
+
+Formulas remain disabled/limited until formula chunks.
+
+### Inventory
+
+```text
+items, equipped, stored, sceneItems, custody, currency, itemHistory, warnings, notes
+```
+
+Future ItemRecord shape includes id, key, displayName, quantity, category, tags, stackable, durability, accessState, owner/custody/source metadata.
+
+### Abilities
+
+```text
+records, stable, unstable, candidates, hints, failed, sealed, unavailable, evidenceLog, warnings, notes
+```
+
+Candidate is not stable.
+
+### Quests
+
+```text
+records, active, offered, rumored, readyToTurnIn, completed, failed, abandoned, rewardLedger, warnings, notes
+```
+
+Promised reward is separate from paid reward.
+
+### Actors
+
+```text
+records, sceneActors, present, absent, referenceOnly, memories, relationshipNotes, warnings, notes
+```
+
+Reference-only actor is not present.
+
+### Places
+
+```text
+currentLocation, currentScene, records, travelIntent, visibleReferences, nearbyReferences, routeReferences, sceneHistory, warnings, notes
+```
+
+Travel intent is separate from current location.
+
+### Time
+
+```text
+text, turn, sequence, lastAdvance, acceptedAdvances, pendingClaims, deadlines, agePolicy, warnings, notes
+```
+
+Time advance and age mutation are separate.
+
+### Cards
+
+```text
+protectedCards, registry, dirtyCards, tombstones, duplicateWarnings, apiStatus, syncMode, lastDryRun, warnings, notes
+```
+
+Generated cards and protected live writes remain disabled.
+
+## OperationLedger deepening
+
+Required buckets:
+
+```text
+permanentKeys recentKeys rewardKeys cardKeys sourceUseKeys startupOperationKeys migrationOperationKeys itemKeys abilityKeys timeKeys questKeys actorKeys placeKeys progressionKeys combatKeys craftingKeys economyKeys reputationKeys
+```
+
+Disabled placeholder key buckets may exist but disabled systems must not write to them.
+
+Durable keys must not be capped like recent noise.
+
+## Migration metadata
+
+```text
+migration: {
+  currentSchema,
+  detectedSchema,
+  lastMigrationStatus,
+  migrationsApplied: [],
+  repairLog: [],
+  legacyRootsDetected: [],
+  legacyPayloadsQuarantined: [],
+  futureSchemaWarnings: [],
+  failedMigrations: [],
+  warnings: [],
+  notes: []
+}
+```
+
+Migrations must be deterministic and idempotent. Write new version only after success. Failed migration preserves old payload in quarantine/backup.
+
+## Quarantine categories
+
+```text
+legacy_root legacy_card_prose malformed_bucket invalid_resource invalid_item invalid_ability invalid_quest invalid_actor invalid_place invalid_time invalid_progression unsafe_command_text unsafe_context_text unsafe_card_text future_schema manual_edit_conflict migration_failure
+```
+
+QuarantineRecord fields:
+
+```text
+quarantineId, category, source, sourceKey, originalPreview, reason, severity, suggestedAction, status, createdTurn, notes
+```
+
+Quarantined records are inactive.
+
+## IntegrityChecker shell
+
+Should check required buckets, safe feature flags, numeric resources, current <= max, nonnegative item quantities, duplicate stable ability keys, duplicate active quests, deathBoundary values, generated cards disabled, manual mutation disabled, durable ledger buckets, and inactive quarantine.
+
+It may report PASS/WARN/FAIL/QUARANTINE. It may not award, heal, pay, or repair gameplay effects.
+
+## PC03 ReleaseCheck gates
+
+```text
+PC03-G01 one canonical state root exists
+PC03-G02 required top-level buckets exist
+PC03-G03 schema metadata bucket exists
+PC03-G04 bucket version metadata exists
+PC03-G05 deferred system placeholders are disabled
+PC03-G06 startup lock metadata exists
+PC03-G07 player identity/form/disguise fields prepared
+PC03-G08 body resource/status/injury fields prepared
+PC03-G09 progression formula fields prepared but not over-activated
+PC03-G10 inventory item/access/custody fields prepared
+PC03-G11 abilities status/evidence fields prepared
+PC03-G12 quest objective/reward fields prepared
+PC03-G13 actor presence/reference/memory fields prepared
+PC03-G14 place current/travel/reference fields prepared
+PC03-G15 time/deadline/age policy fields prepared
+PC03-G16 card mirror registry fields prepared and generated cards disabled
+PC03-G17 operation ledger durable buckets exist
+PC03-G18 migration metadata exists
+PC03-G19 quarantine categories and records exist
+PC03-G20 integrity checker shell exists
+PC03-G21 cleanup protected paths exist
+PC03-G22 old prose cannot import as truth
+```
+
+## Required tests
+
+```text
+PC03-001 Single root only
+PC03-002 Missing bucket repair preserves data
+PC03-003 Schema metadata exists
+PC03-004 Deferred placeholders disabled
+PC03-005 Startup lock metadata preserved
+PC03-006 Player unknown fields stay unknown
+PC03-007 Body resource structural clamp does not heal
+PC03-008 Negative item quantity quarantined
+PC03-009 Duplicate stable ability detected
+PC03-010 Quest reward fields separate promise/payment
+PC03-011 Actor reference-only structure exists
+PC03-012 Place travel intent separate from current location
+PC03-013 Time age policy cautious
+PC03-014 Card mirror flags safe
+PC03-015 Durable ledger buckets protected
+PC03-016 Old card prose quarantined
+PC03-017 Future schema warning safe
+PC03-018 Integrity command non-mutating
+PC03-019 Quarantine inactive display
+PC03-020 ReleaseCheck PC03 gates
+```
+
+## Implementation order
+
+```text
+1. Copy V0.17.2 accepted command-surface build.
+2. Add schema metadata defaults.
+3. Add bucket version map.
+4. Expand StateManager required bucket repair.
+5. Add deferred system metadata.
+6. Deepen startup/player/body/progression/inventory/abilities/quests/actors/places/time/cards/ledger/migration/quarantine/cleanup/integrity shapes.
+7. Add quarantine categories.
+8. Add integrity checker shell.
+9. Update schema/integrity commands.
+10. Add PC03 gates and tests.
+11. Run foundationcheck, releasecheck, schemaaudit, integrity, regressioncheck, supportcheck, playerbreakercheck.
+12. Save as WorldLedgerV0.17.3_SCHEMA_READINESS_ACCEPTED.txt.
+```
+
+## Final doctrine
+
+```text
+State shape comes before system behavior.
+Migration metadata comes before migration complexity.
+Quarantine comes before salvage.
+Invariant checks come before high-risk reducers.
+Disabled placeholders come before feature activation.
+Cleanup protection comes before long-run play.
+```

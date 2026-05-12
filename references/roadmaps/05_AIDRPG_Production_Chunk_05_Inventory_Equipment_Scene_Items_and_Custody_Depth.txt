@@ -1,0 +1,488 @@
+# AIDRPG Production Chunk 05 — Inventory, Equipment, Scene Items, and Custody Depth
+
+## Document status
+
+Production sequence: 05 of 25.
+Build target: WorldLedger V0.17.4 body/identity accepted build.
+Purpose: Deepen inventory, equipment, scene-item, custody, item-history, and currency safety without false item grants or unsafe economy activation.
+
+## Doctrine
+
+```text
+Visible is not owned.
+Available is not acquired.
+Offered is not received.
+Promised is not paid.
+NPC custody is not player custody.
+Dropped is not deleted.
+Consumed is not carried.
+Destroyed is not usable.
+Dreamed is not owned.
+Quoted is not owned.
+Denied is not acquired.
+Failed grab is not acquisition.
+```
+
+Inventory truth must be conservative, durable, and auditable.
+
+## Allowed changes
+
+```text
+Inventory schema helpers
+InventoryReducer
+ItemNameSanitizer
+limited RewardNameSanitizer currency support
+CanonValidator inventory rules
+ProposalBuilder inventory event types
+EventScannerLite inventory/item hints
+/inventory renderer
+ContextBuilder inventory packet
+OperationLedger item/currency keys
+DirtyQueue inventory targets
+IntegrityChecker inventory checks
+ReleaseCheck inventory gates
+Regression/player-breaker inventory tests
+```
+
+Forbidden:
+
+```text
+full economy buy/sell/barter/debt
+full crafting/material/recipe engine
+full equipment stat modifiers
+full non-humanoid equipment constraints
+manual /additem or /giveitem
+manual /money commands
+generated card item creation
+old card prose item import
+```
+
+Economy and crafting remain deferred to Production Chunk 23.
+
+## Inventory state model
+
+Preferred shape:
+
+```text
+inventory: {
+  items: {},
+  equipped: {},
+  stored: {},
+  sceneItems: {},
+  custody: {},
+  currency: {},
+  itemHistory: [],
+  warnings: [],
+  notes: []
+}
+```
+
+Arrays are acceptable if already used, but stable item keys are required.
+
+## ItemRecord schema
+
+```text
+ItemRecord {
+  id,
+  key,
+  displayName,
+  normalizedName,
+  quantity,
+  category,
+  tags,
+  stackable,
+  unique,
+  durability,
+  accessState,
+  owner,
+  holder,
+  custodyKey,
+  locationKey,
+  equippedSlot,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  updatedTurn,
+  historyKeys,
+  warnings,
+  notes
+}
+```
+
+Keys are stable and family-scoped. They must not contain full raw output, quotes, dreams, command text, or card/context prose.
+
+Quantity must be positive for active records. Negative quantity quarantines or repairs safely without granting new items. Unique items do not stack unless policy says so.
+
+## AccessState model
+
+```text
+owned carried equipped stored visible available_loot offered npc_custody place_custody inaccessible lost consumed destroyed unknown
+```
+
+Owned/carried/equipped/stored are player access states.
+
+Visible/available/offered are not owned.
+
+NPC/place custody and inaccessible are not player-owned.
+
+Lost/consumed/destroyed are not usable.
+
+Unknown is not owned by default.
+
+## Equipment shell
+
+Equipment is a view/state of inventory, not a separate truth source.
+
+Slots:
+
+```text
+mainHand offHand head body hands feet ring1 ring2 neck back customSlots
+```
+
+Equipped item must exist as owned/carried/equipped. Equipping requires accepted equip event or safe startup source. Equipment stat modifiers are deferred. Body/form equipment constraints are warnings/context labels only in this chunk.
+
+## SceneItemRecord
+
+```text
+SceneItemRecord {
+  id,
+  key,
+  displayName,
+  quantity,
+  accessState,
+  locationKey,
+  sceneKey,
+  holderKey,
+  visibility,
+  reachable,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  expiresTurn,
+  notes
+}
+```
+
+Scene items are not player inventory. Visible/available items become inventory only through accepted acquisition/handoff/take events.
+
+## CustodyRecord
+
+```text
+CustodyRecord {
+  id,
+  itemKey,
+  itemDisplayName,
+  holderType,
+  holderKey,
+  holderDisplayName,
+  accessState,
+  locationKey,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Holder types: actor, place, container, unknown, player. NPC custody is not player-owned. Transfer requires accepted transfer/handoff/acquisition.
+
+## Currency model
+
+Currency must be explicit and duplicate-safe. Acceptable simple shape:
+
+```text
+currency: { gold: 0, silver: 0, copper: 0, custom: {} }
+```
+
+or record shape with amount/source keys.
+
+Rules:
+
+```text
+promised reward does not increase currency
+ready reward does not increase currency
+paid reward may increase currency only once
+buy/sell/spend is deferred until economy mini-spec
+```
+
+## ItemHistoryRecord
+
+```text
+ItemHistoryRecord {
+  historyId,
+  itemKey,
+  eventType,
+  fromAccessState,
+  toAccessState,
+  actorKey,
+  placeKey,
+  operationKey,
+  turn,
+  summary,
+  notes
+}
+```
+
+Preserve unique item history. Compact/cap only through safe cleanup policy.
+
+## Categories/tags
+
+Categories:
+
+```text
+weapon armor shield tool key consumable quest_item currency treasure material book container food drink clothing jewelry misc unknown
+```
+
+Tags are descriptive only. Magical does not grant ability. Quest item does not complete quest. Material does not enable crafting yet.
+
+## ItemNameSanitizer depth
+
+Must handle:
+
+```text
+the rusted iron key, but the goblin snatches it away -> rusted iron key
+red healing potion from Mira -> red healing potion
+three silver arrows on the table -> silver arrows + quantity 3 if supported
+jeweled crown that Mira refuses to give you -> jeweled crown
+idea of a brass key -> brass key with abstract/metaphorical flag
+```
+
+Preserve meaningful modifiers: rusted, iron, red healing, jeweled, silver, old wooden, masterwork, cracked, black gate, cellar.
+
+## Inventory CanonValidator expansion
+
+Accept owned acquisition only when safe output/startup source confirms actual acquisition/handoff/receipt/pickup, target is bound, no denial/failure/revocation/hypothetical/quote/dream/abstract/visible/available/offered/custody/attempt-only flag, and operation key is not duplicate.
+
+Reject ownership when any unsafe flag is present:
+
+```text
+deniedByLocalClause failedOrRevoked abstractOrMetaphorical quotedSpeech dreamOrVision visibleOnly availableOnly offeredOnly futureIntent attemptOnly command/context/card/audit/debug source
+```
+
+Use pending/scene item/custody for:
+
+```text
+You see a silver ring on the table.
+The goblin drops a rusty dagger.
+Mara offers you the key.
+The chest contains a potion.
+The jeweled crown rests behind glass.
+```
+
+## Mixed clause rule
+
+```text
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+```
+
+Expected:
+
+```text
+jeweled crown not owned
+red healing potion acquired once if otherwise safe
+```
+
+Do not apply the handoff verb to the denied item or the denial to the accepted potion.
+
+## Proposal event types
+
+```text
+inventory.acquire_candidate
+inventory.handoff_candidate
+inventory.transfer_candidate
+inventory.drop_candidate
+inventory.lose_candidate
+inventory.consume_candidate
+inventory.destroy_candidate
+inventory.visible_candidate
+inventory.available_loot_candidate
+inventory.offered_candidate
+inventory.custody_candidate
+inventory.inaccessible_candidate
+inventory.equip_candidate
+inventory.unequip_candidate
+currency.gain_candidate
+currency.promise_candidate
+currency.ready_candidate
+currency.payment_candidate
+```
+
+## InventoryReducer behavior
+
+Acquisition/handoff commit:
+
+```text
+1. Confirm accepted validation result.
+2. Confirm safe source and no unsafe routed flags.
+3. Confirm item target key/displayName.
+4. Check operation key.
+5. If duplicate, skipped_duplicate.
+6. Add or merge item by stack/unique policy.
+7. Set accessState carried/owned unless equip/stored validated.
+8. Set owner/holder player.
+9. Add item history.
+10. Add operation key.
+11. Mark dirty targets.
+12. Audit.
+```
+
+Scene items update sceneItems and never inventory.items.
+
+Custody updates custody records and never owned items unless player holder confirmed.
+
+Consume/drop/lose/destroy update accessState/history rather than deleting immediately.
+
+Equip/unequip shell requires item already owned/carried and accepted equip event. No stat bonuses.
+
+## Currency and reward payment split
+
+Preferred split-owner policy:
+
+```text
+QuestReducer handles reward status.
+InventoryReducer handles currency changes.
+```
+
+Reward promise does not pay. Reward ready does not pay. Payment creates currency once. Repeated output skips. `/quests` display cannot pay.
+
+## Operation keys
+
+```text
+item.acquire.<itemKey>.<sourceOrScene>.<clauseHash>
+item.handoff.<itemKey>.<fromActor>.<toPlayer>.<clauseHash>
+item.transfer.<itemKey>.<from>.<to>.<clauseHash>
+item.visible.<itemKey>.<placeOrScene>.<clauseHash>
+item.available.<itemKey>.<placeOrScene>.<clauseHash>
+item.custody.<itemKey>.<holderKey>.<clauseHash>
+item.consume.<itemKey>.<clauseHash>
+item.destroy.<itemKey>.<clauseHash>
+item.drop.<itemKey>.<clauseHash>
+item.lose.<itemKey>.<clauseHash>
+item.equip.<itemKey>.<slot>.<clauseHash>
+item.unequip.<itemKey>.<slot>.<clauseHash>
+currency.gain.<amount>.<currencyType>.<sourceKey>.<clauseHash>
+reward.currency.pay.<questKey>.<payerKey>.<amount>.<currencyType>
+```
+
+## Dirty targets
+
+```text
+owned item/currency/equipment -> inventory_equipment, context
+scene item -> inventory_equipment, current_location, context
+custody -> inventory_equipment, context, maybe current_location
+reward payment currency -> inventory_equipment, quest_log, context
+```
+
+## /inventory display
+
+Required sections:
+
+```text
+Owned / Carried
+Equipped
+Stored
+Visible Nearby
+Available Loot
+Offered
+NPC / Place Custody
+Lost / Consumed / Destroyed
+Currency
+Warnings
+```
+
+Visible, available, custody, promised, lost, consumed, destroyed must never display as currently owned/usable.
+
+## Context packet
+
+Include important owned items, equipment, quest items, relevant visible/available items, relevant custody facts, and relevant currency. Never include visible items as owned, promised rewards as currency, or quarantined old claims as truth.
+
+## PC05 ReleaseCheck gates
+
+```text
+PC05-G01 ItemRecord schema exists or equivalent stable item record exists
+PC05-G02 AccessState model separates owned/visible/available/offered/custody/lost/consumed/destroyed
+PC05-G03 SceneItemRecord schema exists
+PC05-G04 CustodyRecord schema exists
+PC05-G05 Currency model exists and promise/payment separation is enforced
+PC05-G06 ItemHistoryRecord or compact history exists
+PC05-G07 ItemNameSanitizer preserves meaningful modifiers and flags abstract items
+PC05-G08 CanonValidator rejects denied/failed/dream/quote/abstract/visible-only false grants
+PC05-G09 mixed clause inventory split is covered
+PC05-G10 InventoryReducer rejects unsafe routed inventory events
+PC05-G11 scene items do not become owned inventory
+PC05-G12 custody items do not become owned inventory
+PC05-G13 reward/currency duplicate keys exist
+PC05-G14 /inventory displays access states honestly
+PC05-G15 command/context/card inventory text cannot become canon
+PC05-G16 cleanup does not delete active inventory/durable keys
+PC05-G17 equipment shell does not apply stat bonuses yet
+PC05-G18 economy/crafting remain disabled
+PC05-G19 player-breaker inventory tests registered
+```
+
+## Required tests
+
+```text
+PC05-001 Denied key no item
+PC05-002 Failed grab no item
+PC05-003 Abstract item no item
+PC05-004 Dream item no item
+PC05-005 Quoted handoff no item
+PC05-006 Mixed clause split
+PC05-007 Visible item scene only
+PC05-008 Available loot not owned
+PC05-009 Chest contains item not owned
+PC05-010 Handoff acquired once
+PC05-011 Handoff duplicate skipped
+PC05-012 Currency promise no payment
+PC05-013 Currency payment once
+PC05-014 Currency payment duplicate skipped
+PC05-015 Command inventory non-canon
+PC05-016 Story Card item prose non-canon
+PC05-017 Context item prose non-canon
+PC05-018 Negative quantity quarantined
+PC05-019 Equipped item must be owned
+PC05-020 Equip shell no stat bonus
+PC05-021 Consumed item not carried
+PC05-022 Lost item not usable
+PC05-023 Destroyed item not usable
+PC05-024 Inventory display honest
+PC05-025 Economy commands disabled
+```
+
+## Implementation order
+
+```text
+1. Copy V0.17.4 body/identity accepted build.
+2. Add inventory helper functions.
+3. Deepen ItemNameSanitizer.
+4. Update inventory CanonValidator rules.
+5. Update ProposalBuilder inventory event support.
+6. Update InventoryReducer.
+7. Update /inventory.
+8. Update ContextBuilder inventory packet.
+9. Update IntegrityChecker inventory checks.
+10. Add PC05 ReleaseCheck gates.
+11. Add PC05 tests.
+12. Run foundationcheck, releasecheck, integrity, playerbreakercheck, regressioncheck, inventory.
+13. Save as WorldLedgerV0.17.5_INVENTORY_DEPTH_ACCEPTED.txt.
+```
+
+## Pass / warn / fail
+
+PASS if access states are separated, false grants rejected, mixed clauses split, scene/custody items not owned, currency promise/payment separated, duplicates prevented, InventoryReducer rejects unsafe data, display is honest, command/context/card item text non-canon, cleanup preserves active/durable data, tests pass.
+
+WARN if equipment shell is display-only, category/tags are display-only, currency is simple but duplicate-safe, economy/crafting remain disabled, non-humanoid equipment constraints are deferred.
+
+FAIL if visible/offered/available becomes owned, failed/denied/dream/quote/abstract becomes owned, custody item becomes player-owned, reward promise pays currency, reward duplicates, command/context/card creates item/currency, negative quantity becomes grant, cleanup deletes active item/durable reward key, buy/sell/craft mutates, or InventoryReducer trusts unsafe data.
+
+## Final doctrine
+
+```text
+An item mention is not inventory.
+A visible item is not inventory.
+A promised reward is not currency.
+A custody item is not owned.
+A failed acquisition is not acquisition.
+Only accepted, validated, duplicate-safe inventory events change player inventory.
+```

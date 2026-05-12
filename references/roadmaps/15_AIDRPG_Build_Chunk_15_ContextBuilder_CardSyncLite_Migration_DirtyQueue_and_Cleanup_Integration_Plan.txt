@@ -1,0 +1,1162 @@
+AIDRPG Build Chunk 15 — ContextBuilder, CardSyncLite, Migration, DirtyQueue, and Cleanup Integration Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 15 — ContextBuilder, CardSyncLite, Migration, DirtyQueue, and Cleanup Integration Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact behavior for read-only context, protected Story Card mirrors, migration/quarantine, dirty target processing, and non-destructive cleanup before ReleaseCheck and regression locking.
+Status: Practical build document.
+Follows: Build Chunk 14 — Core Reducer Plans.
+This document does not contain final script code.
+
+This chunk exists because previous versions repeatedly failed when support layers became hidden writers.
+
+Context started acting like state.
+
+Story Cards started acting like canon.
+
+Migration started guessing from old prose.
+
+Cleanup risked deleting important truth.
+
+Dirty queues could bloat or process too much.
+
+CardSync could duplicate cards, route to wrong targets, or create broad-trigger pollution.
+
+Build Chunk 15 locks those systems as support systems, not gameplay writers.
+
+⸻
+
+1. Support-layer doctrine
+
+Reducers commit truth.
+DirtyQueue marks what needs mirroring.
+ContextBuilder reads truth.
+CardSync mirrors truth.
+Migration repairs structure and quarantines unsafe data.
+Cleanup caps and expires safe noise.
+None of these layers invent gameplay canon.
+
+Support layers may improve readability, persistence, and stability.
+
+They may not decide gameplay consequences.
+
+⸻
+
+2. Systems covered in this chunk
+
+This chunk covers:
+
+ContextBuilderLite
+Context packet budget/selection
+CardSyncLite protected mirrors
+Card API adapter boundary
+Protected card singleton policy
+Generated card disabled policy
+Card tombstone/duplicate policy
+MigrationManager
+QuarantineManager
+DirtyQueue
+CleanupManagerLite
+support-layer integration tests
+
+This chunk does not activate:
+
+generated Story Cards
+economy/shop/crafting/investigation/domain/reputation/party/warfare/absorption systems
+manual mutation commands
+full world structure automation
+
+⸻
+
+3. Placement in final script
+
+Recommended placement:
+
+Section 17 — Dirty Queue
+Section 18 — Context Builder Lite
+Section 19 — Card API Adapter and CardSync Lite
+Section 20 — Migration and Quarantine Manager
+Section 21 — Cleanup Manager Lite
+
+These follow:
+
+StateManager
+Runtime
+AuditLogger
+OperationLedger
+CommandRouter
+EventScannerLite
+ProposalBuilder
+CanonValidator
+ReducerRegistry
+OwnerReducers
+
+They come before:
+
+ReleaseCheck final integration
+hook orchestration final assembly
+
+⸻
+
+4. Support-layer hard boundaries
+
+These systems must not:
+
+parse raw story output as canon
+call EventScannerLite on their own text
+call ProposalBuilder on their own text
+call CanonValidator to invent new truth
+call owner reducers to create gameplay consequences
+import Story Card prose into state
+turn command output into gameplay
+resolve quarantine automatically
+create generated cards in MVP
+write live cards unless explicitly safe and enabled
+perform destructive cleanup of active truth
+
+If a support layer needs a state change, it must be represented as a future accepted validation result or explicit safe structural repair path.
+
+⸻
+
+5. DirtyQueue doctrine
+
+DirtyQueue is the bridge between reducer commits and support-layer updates.
+
+Reducers mark dirty targets.
+
+DirtyQueue records and prioritizes them.
+
+ContextBuilder and CardSync may read dirty targets to know what to refresh.
+
+DirtyQueue itself does not mutate gameplay truth.
+
+⸻
+
+6. DirtyTarget schema
+
+DirtyTarget {
+  dirtyId: string,
+  family: string,
+  targetKey: string,
+  reason: string,
+  sourceReducer: string,
+  sourceOperationKey: string,
+  priority: number,
+  status: 'queued' | 'processed' | 'blocked' | 'error' | 'skipped',
+  createdTurn: number,
+  processedTurn: number,
+  attempts: number,
+  notes: string[]
+}
+
+Required dirty families:
+
+player_sheet
+body_status
+abilities
+inventory_equipment
+quest_log
+social_memory
+current_location
+context
+card_registry
+migration
+audit
+
+⸻
+
+7. DirtyQueue behavior
+
+7.1 Add dirty target
+
+DirtyQueue may add or refresh a dirty target when a reducer commits.
+
+Rules:
+
+same family + targetKey + reason may be deduped
+higher priority wins
+attempt count does not increase when merely refreshed
+createdTurn preserved if same unresolved target
+
+7.2 Processing policy
+
+Early MVP does not need automatic full processing.
+
+Allowed:
+
+ContextBuilder reads dirty context targets
+CardSyncLite dry-run reads dirty protected card targets
+CleanupManager caps dirty queue
+commands display dirty state
+
+Forbidden:
+
+DirtyQueue directly edits Story Cards
+DirtyQueue directly mutates gameplay buckets
+DirtyQueue directly resolves migration/quarantine
+
+7.3 Dirty cap
+
+Recommended cap:
+
+maxDirtyTargets = 100
+
+If exceeded:
+
+* dedupe first
+* keep highest priority targets
+* keep protected card targets
+* keep context-critical targets
+* summarize/cap low-priority audit-only targets
+* never drop unresolved migration/quarantine warnings silently
+
+⸻
+
+8. ContextBuilderLite doctrine
+
+ContextBuilderLite is read-only.
+
+It serializes important current state into concise context packets for the AI.
+
+Context is not canon.
+
+Context cannot mutate gameplay state.
+
+Context cannot create Story Cards.
+
+Context cannot parse itself.
+
+⸻
+
+9. Context packet schema
+
+ContextPacket {
+  packetId: string,
+  family: string,
+  priority: number,
+  text: string,
+  sourceStateKeys: string[],
+  sourceHashes: string[],
+  maxAgeTurns: number,
+  createdTurn: number,
+  expiresTurn: number,
+  reason: string,
+  safeForModel: boolean,
+  notes: string[]
+}
+
+Packet text must be concise and player-safe.
+
+Do not include giant raw JSON.
+
+Do not include internal IDs unless diagnostic mode explicitly allows it.
+
+⸻
+
+10. Context packet families
+
+Core MVP context families:
+
+player_identity_summary
+body_status_summary
+current_location_summary
+current_scene_summary
+inventory_key_items
+ability_summary
+quest_summary
+actor_presence_summary
+social_memory_summary
+time_deadline_summary
+safety_reminders
+
+Deferred or limited families:
+
+economy
+crafting
+investigation
+reputation
+domain
+warfare
+multi_protagonist
+absorption/evolution
+
+⸻
+
+11. Context selection priority
+
+Recommended priority order:
+
+1. Current location and current scene
+2. Player identity protected facts
+3. Immediate body danger/status
+4. Active quest objective/deadline
+5. Present important actors
+6. Key inventory/custody facts
+7. Stable/candidate ability summary
+8. Recent accepted consequence summary
+9. Social/witness memory if relevant
+10. Deferred system disabled reminders only when needed
+
+ContextBuilder should avoid broad lore spam.
+
+⸻
+
+12. Context budget rules
+
+Recommended budget:
+
+maxContextChars = configurable, default 3000–4500 depending platform safety
+maxPackets = 12
+maxPacketChars = 450
+
+If over budget:
+
+* keep highest priority packets
+* summarize low-priority packets
+* skip broad lore packets
+* audit skipped packet count
+* never include full audit logs
+* never include full inventory if large
+
+⸻
+
+13. Context no-write enforcement
+
+ContextBuilderLite may write only diagnostic/audit metadata such as:
+
+contextAudit
+lastContextHash
+selectedPacketSummary
+skippedPacketSummary
+
+It may not mutate:
+
+player
+body
+progression
+inventory
+abilities
+quests
+actors
+places
+time
+cards
+migration/quarantine
+
+ReleaseCheck must fail if ContextBuilder can call reducers or mutate gameplay state.
+
+⸻
+
+14. Context stale packet policy
+
+Context packets should be rebuilt from state, not treated as state.
+
+If state changes:
+
+reducer marks context dirty
+ContextBuilder rebuilds packet from state
+old packet is ignored or expires
+
+Context packet text does not become canon.
+
+If context says an item exists but state does not, state wins.
+
+⸻
+
+15. CardSyncLite doctrine
+
+Story Cards are mirrors.
+
+They are not canon.
+
+State is canon.
+
+Context is immediate model-facing summary.
+
+Story Cards are long-term mirror summaries only.
+
+CardSyncLite must not create gameplay truth.
+
+⸻
+
+16. Protected cards in MVP
+
+MVP protected singleton cards:
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+
+Protected cards mirror these state families:
+
+Protected card	State source
+player_sheet	player + progression summary
+body_status	body
+abilities	abilities
+inventory_equipment	inventory
+quest_log	quests
+social_memory	actors/social memory
+current_location	places + time + scene
+
+⸻
+
+17. Protected card registry schema
+
+ProtectedCardRecord {
+  key: string,
+  title: string,
+  cardId: string,
+  status: 'missing' | 'present' | 'duplicate' | 'disabled' | 'tombstoned' | 'unknown',
+  lastRenderedHash: string,
+  lastSyncedTurn: number,
+  dirty: boolean,
+  duplicateIds: string[],
+  tombstoneId: string,
+  warnings: string[],
+  notes: string[]
+}
+
+Registry lives in:
+
+cards.protectedCards
+cards.registry
+
+⸻
+
+18. Card API adapter boundary
+
+CardSyncLite must talk to card APIs only through a CardApiAdapter.
+
+Adapter capabilities:
+
+listCards
+createCard
+updateCard
+disableCard
+removeCard if supported later
+capabilityCheck
+
+MVP may run adapter in:
+
+dry-run
+safe mode
+
+If card API is unavailable, CardSyncLite must fail softly and audit.
+
+⸻
+
+19. CardSync modes
+
+Required flags:
+
+cardSyncDryRun = true by default
+cardSyncSafeMode = true by default
+protectedCardWritesEnabled = false by default in early MVP
+generatedCardsEnabled = false
+generatedCardCreatesPerTurn = 0
+generatedCardUpdatesPerTurn = 0
+
+Live protected writes may only activate after:
+
+adapter tests pass
+protected singleton tests pass
+releasecheck gate passes
+user/build explicitly enables later mode
+
+Generated cards remain disabled in Core MVP v0.1.
+
+⸻
+
+20. Card render rules
+
+CardSync renders from state only.
+
+It may render:
+
+confirmed player identity
+confirmed body status
+confirmed ability statuses
+confirmed inventory/scene item separation
+confirmed quest/reward statuses
+confirmed actor/social memory
+confirmed current location/time
+
+It may not render as confirmed:
+
+candidate as stable
+visible item as owned
+promised reward as paid
+travel intent as arrival
+rumor as fact
+dream as canon
+quarantined old data as truth
+
+Card text should clearly label candidate/visible/promised/rumored states.
+
+⸻
+
+21. Card title and trigger hygiene
+
+Use CardNameSanitizer and CardTriggerSanitizer from Build Chunk 12.
+
+Reject broad triggers for generated cards.
+
+Protected card triggers should be stable and controlled.
+
+Forbidden broad generated triggers include:
+
+street
+road
+town
+village
+forest
+market
+shop
+sword
+key
+guard
+man
+woman
+he
+she
+they
+
+Generated cards disabled means these should not be created anyway, but ReleaseCheck must still guard future activation.
+
+⸻
+
+22. Protected singleton policy
+
+For each protected card key, only one active card should exist.
+
+If duplicates detected:
+
+mark registry duplicate
+choose one canonical card if safe
+mark duplicates in duplicateWarnings
+if live safe mode supports it later, disable duplicates carefully
+never import duplicate card text into state
+
+MVP dry-run should report duplicate handling without destructive changes.
+
+⸻
+
+23. Tombstone policy
+
+Tombstones prevent deleted/disabled cards from being immediately recreated repeatedly.
+
+A tombstone record includes:
+
+tombstoneId
+cardKey
+oldCardId
+reason
+createdTurn
+expiresTurn or permanent flag
+notes
+
+MVP may only audit tombstones unless card API behavior is confirmed.
+
+Tombstones must not delete gameplay state.
+
+⸻
+
+24. CardSync write budget
+
+Recommended MVP limits when live writes later enabled:
+
+maxProtectedCardUpdatesPerTurn = 2
+maxProtectedCardCreatesPerTurn = 1
+maxCardApiOperationsPerTurn = 3
+maxCardRenderCharsPerCard = 1200
+
+Dry-run may simulate more but should cap audit rows.
+
+If too many dirty cards:
+
+* prioritize current_location, body_status, inventory_equipment, quest_log
+* defer lower priority updates
+* audit deferred count
+
+⸻
+
+25. Generated card disabled policy
+
+In Core MVP v0.1:
+
+generatedCardsEnabled = false
+
+If text or command attempts to enable generated cards:
+
+block
+return disabled message
+releasecheck fails if flag true
+
+Generated card planning may exist as deferred spec only.
+
+No generated actor/place/item/quest cards are created in MVP.
+
+⸻
+
+26. MigrationManager doctrine
+
+Migration repairs structure.
+
+Migration preserves valid truth.
+
+Migration quarantines unsafe old data.
+
+Migration does not guess canon from prose.
+
+Old patches are evidence, not direct imports.
+
+⸻
+
+27. Migration safe actions
+
+Migration may:
+
+ensure state.aidrpg root exists
+ensure required buckets exist
+add missing fields with safe defaults
+preserve valid existing fields
+clamp invalid resource numbers structurally
+record migration warnings
+detect old roots or old patch layers
+quarantine unsafe legacy data previews
+force unsafe MVP feature flags false
+disable generated cards
+mark old card prose as non-canon if encountered
+
+Migration may not:
+
+scan all old Story Cards as canon
+turn old inventory card prose into inventory
+turn old ability card prose into stable ability
+turn old quest card prose into active quest
+pay old reward text
+resolve quarantine automatically
+delete old valid state recklessly
+
+⸻
+
+28. QuarantineManager doctrine
+
+Quarantine is for unsafe or uncertain legacy claims.
+
+Quarantined data is not active gameplay truth.
+
+A quarantined item is not inventory.
+
+A quarantined ability is not usable.
+
+A quarantined quest is not active.
+
+A quarantined actor is not present.
+
+⸻
+
+29. Quarantine record schema
+
+QuarantineRecord {
+  quarantineId: string,
+  source: string,
+  sourceKey: string,
+  originalPreview: string,
+  reason: string,
+  severity: 'low' | 'medium' | 'high' | 'critical',
+  suggestedAction: string,
+  status: 'unresolved' | 'ignored' | 'resolved_later' | 'superseded',
+  createdTurn: number,
+  notes: string[]
+}
+
+Quarantine records must be deduped by sourceKey + reason where possible.
+
+⸻
+
+30. Startup import relationship
+
+Startup import was planned earlier, but Build Chunk 15 confirms support-layer boundaries.
+
+Startup import may only use:
+
+structured setup source
+startup operation keys
+StateManager/StartupManager
+owner reducers or structured init path before gameplay lock
+
+Startup import must not use:
+
+old card prose
+context text
+command output
+AI-generated story claims after lock
+
+After gameplay starts:
+
+startup identity locked
+setup cannot overwrite protected identity fields without future manual override spec
+
+⸻
+
+31. CleanupManagerLite doctrine
+
+CleanupManagerLite keeps state small and safe.
+
+It does not rewrite gameplay truth.
+
+It does not delete important active records.
+
+It does not resolve canon uncertainty.
+
+It does not patch away bugs silently.
+
+⸻
+
+32. Cleanup allowed actions
+
+CleanupManagerLite may:
+
+cap audit arrays
+cap runtime warnings/errors
+cap hook traces
+cap recent operation keys
+cap dirty queue after dedupe
+expire scene-only actors after scene change if policy exists
+expire stale scene items if policy exists
+compact resolved low-risk warnings
+summarize old debug lines
+
+CleanupManagerLite may not:
+
+delete active inventory items
+delete active quests
+delete stable abilities
+delete important actors
+delete current location/time
+clear reward keys
+clear card keys
+clear permanent keys
+resolve quarantine automatically
+turn candidate ability into stable
+remove conditions/injuries without recovery event
+
+⸻
+
+33. Cleanup caps
+
+Recommended caps:
+
+runtime.hookTrace max 30
+runtime.runtimeWarnings max 25
+runtime.runtimeErrors max 20
+audits.debugMessages max 50
+audits.recentProposals max 50
+audits.recentValidationResults max 50
+audits.cardAudit max 50
+audits.contextAudit max 50
+audits.cleanupAudit max 50
+audits.migrationAudit max 50
+operationLedger.recentKeys max 250
+dirty.targets max 100
+quarantine display cap, not destructive cap
+
+Do not cap durable keys as if they were recent noise.
+
+⸻
+
+34. Cleanup audit format
+
+Examples:
+
+Cleanup capped debugMessages from 75 to 50, preserving most recent entries.
+Cleanup deduped dirty target inventory_equipment:item:red_healing_potion.
+Cleanup skipped active quest records: destructive cleanup disabled.
+
+Cleanup audit must be compact and capped.
+
+⸻
+
+35. Support-layer integration order after Output hook
+
+Recommended Output hook order after reducers:
+
+1. ReducerRegistry applies accepted results.
+2. Reducers return dirty targets.
+3. DirtyQueue records/dedupes targets.
+4. Context dirty state is available for next Context hook.
+5. CardSyncLite dry-run checks protected card updates if enabled.
+6. CleanupManagerLite performs safe caps.
+7. AuditLogger records summaries.
+8. Runtime returns original output text.
+
+CardSync should not block story output if it fails.
+
+Cleanup should not block story output if it fails.
+
+Both fail softly.
+
+⸻
+
+36. Command surfaces affected
+
+Build Chunk 15 supports these commands:
+
+/contextaudit
+/cardaudit
+/dirty
+/migration
+/quarantine
+/stateaudit
+/releasecheck
+/debuglast
+
+These commands inspect support-layer state.
+
+They do not process dirty targets, write cards, resolve quarantine, or perform destructive cleanup.
+
+⸻
+
+37. Required support-layer tests
+
+BC15-001 — Context read-only
+
+Run ContextBuilderLite.
+
+Expected:
+
+context text/audit may update
+player/body/inventory/abilities/quests/actors/places/time unchanged
+
+Fail if context mutates gameplay truth.
+
+⸻
+
+BC15-002 — Context budget respected
+
+Given many active state records.
+
+Expected:
+
+context packets capped/summarized
+skipped packet audit exists
+no giant raw dump
+
+⸻
+
+BC15-003 — Context state wins over stale packet
+
+State says no Crown of Dawn.
+
+Old/stale context packet mentions Crown.
+
+Expected:
+
+rebuilt context excludes Crown
+no inventory mutation
+
+⸻
+
+BC15-004 — Dirty target created by reducer
+
+Accepted inventory commit.
+
+Expected:
+
+dirty targets include inventory_equipment and context
+
+⸻
+
+BC15-005 — Dirty target dedupe
+
+Add same dirty target repeatedly.
+
+Expected:
+
+one queued/refreshed target
+priority preserved/escalated
+no unbounded duplicates
+
+⸻
+
+BC15-006 — CardSync dry-run only
+
+Feature flags default.
+
+Expected:
+
+CardSync reports planned protected update
+no live card write
+
+⸻
+
+BC15-007 — Generated cards disabled
+
+Attempt generated card creation.
+
+Expected:
+
+blocked/suppressed
+generatedCardsEnabled false
+no generated card record created except audit warning
+
+⸻
+
+BC15-008 — Protected singleton duplicate detected
+
+Two Player Sheet cards exist in simulated adapter list.
+
+Expected:
+
+registry marks duplicate
+duplicate warning audit
+no card text imported as canon
+
+⸻
+
+BC15-009 — Manual card edit not canon
+
+Manual card says:
+
+Player owns Crown of Dawn.
+
+Expected:
+
+no inventory mutation
+cardaudit warning possible
+
+⸻
+
+BC15-010 — Broad trigger rejected
+
+Generated trigger candidate:
+
+street
+
+Expected:
+
+trigger rejected too broad
+no generated card
+
+⸻
+
+BC15-011 — Card API unavailable fail-soft
+
+Simulate adapter unavailable.
+
+Expected:
+
+card audit warning
+no crash
+story output unaffected
+
+⸻
+
+BC15-012 — Migration missing bucket repair
+
+State missing inventory bucket.
+
+Expected:
+
+inventory bucket recreated safely
+existing player preserved
+repair warning
+
+⸻
+
+BC15-013 — Migration old card prose quarantined
+
+Old card text says:
+
+Player owns Crown of Dawn.
+
+Expected:
+
+quarantine/warning only
+no Crown inventory
+
+⸻
+
+BC15-014 — Quarantine inactive
+
+Quarantine contains item claim.
+
+Expected:
+
+/quarantine displays it
+/inventory does not show it as owned
+
+⸻
+
+BC15-015 — Future schema safe
+
+State schema version is future/unknown.
+
+Expected:
+
+no crash
+migration warning
+safe conservative behavior
+
+⸻
+
+BC15-016 — Cleanup caps audits
+
+Debug audit has 100 entries.
+
+Expected:
+
+capped to configured max
+recent entries preserved
+no gameplay mutation
+
+⸻
+
+BC15-017 — Cleanup does not delete durable keys
+
+OperationLedger has rewardKeys/cardKeys/permanentKeys.
+
+Expected:
+
+cleanup does not remove them
+recentKeys only capped
+
+⸻
+
+BC15-018 — Cleanup does not heal/remove condition
+
+Body has active bleeding.
+
+Run cleanup.
+
+Expected:
+
+bleeding remains active
+no healing without reducer event
+
+⸻
+
+BC15-019 — Cleanup does not delete active quest
+
+Active quest exists.
+
+Run cleanup.
+
+Expected:
+
+quest preserved
+
+⸻
+
+BC15-020 — Support-layer fail-soft
+
+Simulate CardSync/Cleanup error during Output hook.
+
+Expected:
+
+runtime returns original output
+error audit recorded
+no partial gameplay mutation by support layer
+
+⸻
+
+38. ReleaseCheck requirements for Build Chunk 15
+
+ReleaseCheck must verify:
+
+ContextBuilderLite exists or is honestly shell-only
+ContextBuilderLite cannot mutate gameplay buckets
+context budget/cap exists
+DirtyQueue exists
+DirtyQueue dedupes/caps targets
+CardSyncLite protected mode exists or is honestly dry-run/shell-only
+generated cards disabled in MVP
+protected card singleton policy exists
+Card API adapter boundary exists
+manual card text cannot become canon
+broad trigger rejection exists for generated cards
+MigrationManager repairs structure conservatively
+QuarantineManager keeps unsafe data inactive
+CleanupManagerLite caps only safe arrays
+Cleanup does not remove active truth or durable keys
+support-layer fail-soft behavior exists
+
+ReleaseCheck must fail if:
+
+ContextBuilder mutates gameplay state
+Story Card text can create gameplay canon
+generatedCardsEnabled true in MVP
+CardSync live writes enabled without adapter tests
+protected card duplicates can crash or import text as canon
+Migration imports old card prose as item/ability/quest truth
+Cleanup deletes active inventory/quests/abilities/actors/body conditions
+DirtyQueue grows unbounded
+support-layer errors can crash hook output
+
+⸻
+
+39. Relationship to Final Build Control Map v1
+
+This chunk directly implements:
+
+F019 CardSync pollution, duplicate cards, broad triggers
+F020 Context bloat and context-as-canon risk
+F021 Migration/save corruption/old patch layers
+F022 Runtime hook failure and timeout risk support layer portion
+F024 Command/manual mutation safety via support-layer non-writer policy
+F025 Whole-system testing gates for support layers
+
+It also supports prior protections:
+
+inventory visible/owned separation in cards/context
+candidate/stable ability separation in cards/context
+promised/paid reward separation in cards/context
+travel intent/arrival separation in cards/context
+rumor/claim/non-canon separation in cards/context
+
+⸻
+
+40. What Build Chunk 16 should do next
+
+Next build document:
+
+Build Chunk 16 — ReleaseCheck and Regression Matrix Lock
+
+Build Chunk 16 must define:
+
+* ReleaseCheck master gate list
+* required PASS/WARN/FAIL/BLOCKED semantics
+* per-module gate checks
+* control-map failure coverage checks
+* regression matrix structure
+* player-breaker/adversarial test tier
+* old-fix salvage gate
+* deferred system gates
+* packaging readiness gates
+* no-code-until-pass policy
+
+⸻
+
+41. Final Build Chunk 15 doctrine
+
+Support layers are allowed to help the system remember, explain, mirror, and stay small.
+
+They are not allowed to play the game.
+
+Final rule:
+
+Context reads.
+Cards mirror.
+Migration repairs structure.
+Quarantine isolates unsafe claims.
+DirtyQueue marks refresh needs.
+Cleanup caps safe noise.
+Reducers remain the only gameplay writers.
+
+With context, cards, migration, dirty queue, and cleanup planned, the next safe step is ReleaseCheck and the regression matrix lock.

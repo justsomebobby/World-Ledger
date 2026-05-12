@@ -1,0 +1,1891 @@
+AIDRPG Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec
+Purpose: Define the long-run stability rules for context packets, dirty queues, cleanup, budgets, state bloat prevention, and performance safeguards before coding begins.
+Status: Pre-code blocker.
+Applies after: Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec.
+Applies before: ContextBuilderLite coding, CardSyncLite dirty-card updates, CleanupManagerLite, long campaign testing, generated CardSync beta, and any performance-sensitive expansion.
+This document does not contain final script code.
+
+This chunk exists because old versions had recurring long-run risks:
+
+* context flooding the AI with too much state
+* context omitting critical current facts
+* context accidentally becoming canon
+* dirty queues growing forever
+* cards rewriting every turn
+* stale temporary actors/items lingering forever
+* cleanup deleting important truth
+* old logs bloating state
+* repeated output being reprocessed
+* full Story Card scans happening too often
+* full actor/place scans happening too often
+* generated card storms
+* repeated regex scans over huge history
+* unbounded arrays
+* slowdowns and timeouts
+* long campaigns rotting gradually
+
+Gap Chunk F turns long-run stability into explicit rules.
+
+⸻
+
+1. Core stability doctrine
+
+The doctrine is:
+
+Context must be useful, compact, and read-only.
+Dirty queues must be deduped, prioritized, and bounded.
+Cleanup must be conservative, audited, and never invent truth.
+Performance budgets must fail softly instead of timing out.
+
+AIDRPG should not become more unstable the longer it runs.
+
+Long campaigns must remain inspectable, bounded, and recoverable.
+
+⸻
+
+2. Scope of Gap Chunk F
+
+This chunk defines:
+
+1. Context packet serializer rules
+2. Context no-write reinforcement
+3. Context prioritization and budgets
+4. Dirty target schema
+5. Dirty queue behavior
+6. Dirty card/context coordination
+7. Cleanup categories
+8. Cleanup safety rules
+9. Cleanup budgets
+10. Performance limits
+11. Long-run replay protection
+12. State bloat safeguards
+13. Audit and diagnostic requirements
+14. /contextaudit, /dirty, /cleanup, /stateaudit, /releasecheck requirements
+15. Tests F001–F035
+
+This chunk does not define:
+
+* final code
+* actual AI Dungeon token budgeting implementation
+* generated CardSync beta
+* full archive compression algorithms
+* advanced memory summarization
+* economy/crafting/domain cleanup rules beyond deferred placeholders
+
+⸻
+
+3. ContextBuilderLite doctrine
+
+ContextBuilderLite is a read-only serializer.
+
+It may read state.
+
+It may build packets.
+
+It may write context audit metadata.
+
+It may not change gameplay truth.
+
+3.1 Allowed ContextBuilderLite reads
+
+ContextBuilderLite may read:
+
+* player danger/status
+* current location
+* current scene
+* present/absent actors
+* important item custody/access
+* active quest/deadline
+* ability limits/cost warnings
+* time/travel note
+* recent corrections
+* dirty context target hints
+
+3.2 Forbidden ContextBuilderLite writes
+
+ContextBuilderLite may not write:
+
+* player identity
+* HP/MP/EP
+* inventory items
+* ability status
+* quest status
+* actor presence
+* location
+* time
+* XP
+* card registry
+* generated cards
+* rewards
+
+3.3 Allowed diagnostic writes
+
+ContextBuilderLite may write only:
+
+* context audit summary
+* context packet hashes
+* skipped packet notes
+* runtime hook trace
+
+These are not gameplay truth.
+
+⸻
+
+4. Context packet schema
+
+Every context unit must be structured before serialization.
+
+ContextPacket {
+  packetId: string,
+  family: 'correction' | 'scene' | 'status' | 'actor' | 'inventory' | 'quest' | 'ability' | 'time' | 'system',
+  priority: number,
+  sourceStateIds: string[],
+  text: string,
+  hash: string,
+  reason: string,
+  uncertaintyLabels: string[],
+  expiresTurn?: number,
+  createdTurn: number,
+  hiddenTruthSafe: boolean,
+  include: boolean,
+  skipReason?: string
+}
+
+4.1 Required packet fields
+
+Required:
+
+* packetId
+* family
+* priority
+* text
+* hash
+* reason
+* hiddenTruthSafe
+* include
+
+Optional but recommended:
+
+* sourceStateIds
+* uncertaintyLabels
+* expiresTurn
+* skipReason
+
+4.2 Packet text style
+
+Packet text should be short, direct, and useful.
+
+Good:
+
+Mara is elsewhere and cannot block attacks in this scene.
+
+Bad:
+
+According to the ActorState registry object with id actor_mara, her presence enum value is elsewhere, which means that by validator rule 12.4 she cannot currently perform blocking actions unless a transition event occurs.
+
+4.3 Packet hidden-truth rule
+
+Do not include hidden spoilers or unconfirmed facts as confirmed.
+
+If uncertain, label it.
+
+Example:
+
+Lord Veyr is rumored to be involved in Dalen's death; this is not proven.
+
+Not:
+
+Lord Veyr killed Dalen.
+
+unless confirmed.
+
+⸻
+
+5. Context packet priority
+
+Context packets must be selected by priority.
+
+Default priority order:
+
+1. Critical correction
+2. Current scene/location
+3. Player danger/body/resource status
+4. Actor presence/absence correction
+5. Inventory custody/access warning
+6. Active quest/deadline/current objective
+7. Ability limit/cost/status warning
+8. Time/travel note
+9. Low-priority system reminder
+
+5.1 Priority numbers
+
+Recommended scale:
+
+100 = critical correction
+90 = immediate danger/body status
+80 = current scene/location
+70 = actor presence/access correction
+60 = item custody/access warning
+50 = active quest/deadline
+40 = ability limit/cost warning
+30 = time/travel note
+20 = useful reminder
+10 = low priority
+
+5.2 Critical correction examples
+
+The Iron Sword is in Mara's custody and cannot be used right now.
+Mara is elsewhere; she cannot block attacks in this scene.
+Shadow Step is only a candidate ability and should not work reliably.
+Old Bren promised 15 gold, but has not paid it yet.
+
+5.3 Current scene examples
+
+Current location: Old Mill yard. The ground is muddy, the mill door is broken, and wolf tracks lead inside.
+Present: Mara and Old Bren. Visible nearby: rusty dagger on the ground. Exits: road south, mill interior.
+
+5.4 Status examples
+
+HP 42/100; left arm wounded; fatigue: tired.
+MP is low. Heavy spell use should be risky or fail.
+
+⸻
+
+6. Context budget rules
+
+Context must be compact.
+
+6.1 Packet count budget
+
+Recommended MVP default:
+
+maxContextPackets = 8
+maxCriticalCorrectionPackets = 3
+maxScenePackets = 2
+maxStatusPackets = 2
+maxQuestPackets = 2
+maxAbilityPackets = 2
+maxInventoryPackets = 2
+maxActorPackets = 2
+
+These are maximums, not required counts.
+
+6.2 Character budget
+
+Recommended MVP default:
+
+maxContextCharacters = 1500
+softTargetCharacters = 900
+criticalCorrectionTarget = 300
+sceneTarget = 350
+statusTarget = 200
+questTarget = 250
+abilityTarget = 200
+inventoryTarget = 200
+actorTarget = 250
+
+If the platform context limit is smaller, these must shrink.
+
+6.3 Skip policy
+
+If budget is exceeded:
+
+* keep critical corrections
+* keep current scene
+* keep immediate danger/status
+* skip lower priority reminders
+* record skip reason in /contextaudit
+
+6.4 No full dumps
+
+Context must not dump:
+
+* full inventory
+* all actors
+* all quests
+* all locations
+* all abilities
+* audit logs
+* migration quarantine details
+* full schemas
+* old archived histories
+
+⸻
+
+7. Context packet expiration
+
+Some packets should expire.
+
+7.1 Persistent packets
+
+May persist until state changes:
+
+* current location
+* active quest objective
+* important item custody
+* major actor presence
+* ability status warning
+
+7.2 Temporary packets
+
+Should expire after a few turns:
+
+* immediate correction from last invalid action
+* recent failed ability note
+* one-turn danger warning
+* low resource warning if resources recover
+* temporary scene hazard if scene changes
+
+7.3 Expiration default
+
+Recommended:
+
+critical correction: 3 turns or until issue resolved
+scene packet: until sceneId changes
+status packet: until body/resource changes
+quest packet: until quest objective/status changes
+ability packet: until ability status/resource context changes
+inventory custody packet: until item access/custody changes
+
+Expired packets must not remain in context.
+
+⸻
+
+8. Context packet hashing
+
+Each packet must have a hash.
+
+Purpose:
+
+* avoid repeated audit spam
+* detect unchanged packets
+* avoid unnecessary dirty context processing
+
+8.1 Hash should include
+
+* family
+* sourceStateIds
+* text
+* priority
+
+8.2 Hash should not include
+
+* volatile timestamp only
+* random ID only
+* audit-only fields
+
+8.3 Repeated packet behavior
+
+If packet hash unchanged:
+
+* may reuse without new audit entry
+* do not count as new event
+* do not dirty cards
+* do not mutate state
+
+⸻
+
+9. Context audit requirements
+
+/contextaudit must explain context behavior.
+
+9.1 Required audit fields
+
+* selected packets
+* skipped packets
+* packet priorities
+* packet families
+* packet hashes
+* budget used
+* correction packets
+* uncertainty labels
+* context no-write status
+* last context error if any
+
+9.2 Example /contextaudit
+
+AIDRPG Context Audit
+Budget: 842 / 1500 chars
+Selected:
+1. correction — Mara absent — priority 100
+2. scene — Old Mill yard — priority 80
+3. inventory — Iron Sword in Mara's custody — priority 60
+Skipped:
+- quest archive reminder — low priority / budget
+No gameplay state was changed by ContextBuilder.
+
+9.3 Context audit safety
+
+/contextaudit output is non-canon and must not be parsed as story.
+
+⸻
+
+10. Dirty target doctrine
+
+Dirty targets mark that a summary, card, context, or audit view should be refreshed.
+
+Dirty targets are not gameplay truth.
+
+A dirty target says:
+
+Something changed; a mirror or packet may need updating.
+
+It does not say:
+
+Create a new gameplay fact.
+
+⸻
+
+11. Dirty target schema
+
+DirtyTarget {
+  dirtyId: string,
+  family: 'player_sheet' | 'body_status' | 'abilities' | 'inventory_equipment' | 'quest_log' | 'social_memory' | 'current_location' | 'context' | 'card_registry' | 'migration' | 'audit',
+  stateIds: string[],
+  reason: string,
+  priority: number,
+  createdTurn: number,
+  lastAttemptTurn?: number,
+  attempts: number,
+  status: 'queued' | 'processed' | 'skipped' | 'blocked' | 'error',
+  lastResult?: string
+}
+
+11.1 Dirty families
+
+Required MVP dirty families:
+
+player_sheet
+body_status
+abilities
+inventory_equipment
+quest_log
+social_memory
+current_location
+context
+card_registry
+audit
+migration
+
+11.2 Dirty family ownership
+
+Dirty Family	Usually Marked By	Usually Processed By
+player_sheet	StateManager / ProgressionReducer	CardSyncLite / commands
+body_status	BodyReducer	CardSyncLite / ContextBuilder
+abilities	AbilityReducer	CardSyncLite / ContextBuilder
+inventory_equipment	InventoryReducer	CardSyncLite / ContextBuilder
+quest_log	QuestReducerLite	CardSyncLite / ContextBuilder
+social_memory	ActorReducerLite	CardSyncLite / ContextBuilder
+current_location	PlaceReducerLite / TimeReducerLite	CardSyncLite / ContextBuilder
+context	any reducer with current relevance	ContextBuilderLite
+card_registry	CardSyncLite / Migration	CardSyncLite
+migration	StateManager / Migration	commands / audit
+audit	all modules	AuditLogger
+
+⸻
+
+12. Dirty queue rules
+
+12.1 Deduplication
+
+If same family + same stateIds + same reason already queued:
+
+* do not add duplicate
+* update priority if higher
+* update createdTurn only if policy says refresh
+
+12.2 Priority
+
+Recommended priority:
+
+100 = critical correction/current danger
+90 = current location/body status
+80 = inventory custody/quest active
+70 = ability status/social memory
+60 = player sheet
+50 = migration/audit
+
+12.3 Queue size cap
+
+Recommended MVP default:
+
+maxDirtyTargets = 100
+
+If exceeded:
+
+* compact duplicates
+* drop low-priority processed/skipped entries
+* never drop unprocessed critical entries
+* audit overflow warning
+
+12.4 Dirty target lifecycle
+
+queued -> processed
+queued -> skipped
+queued -> blocked
+queued -> error
+
+Processed targets may be retained briefly for audit, then compacted.
+
+12.5 Dirty queue must not trigger gameplay events
+
+Dirty target processing can update mirrors and audits only.
+
+It must not create items, XP, quests, actors, abilities, rewards, or location changes.
+
+⸻
+
+13. Dirty card coordination
+
+CardSyncLite uses dirty targets to know which protected cards need update.
+
+13.1 Reducer dirty output
+
+Reducers return dirty targets after successful commits.
+
+Examples:
+
+* Body damage -> body_status + context
+* Item pickup -> inventory_equipment + current_location + context
+* Quest progress -> quest_log + context
+* Actor presence change -> social_memory + current_location + context
+* Location arrival -> current_location + context
+* Ability status change -> abilities + context
+
+13.2 Failed validation dirty output
+
+Rejected events may mark context dirty if correction is useful.
+
+Examples:
+
+* attempt to use item in NPC custody -> context correction
+* absent companion action -> context correction
+* candidate ability treated as stable -> context correction
+
+13.3 Card update limit
+
+Dirty cards must respect:
+
+maxProtectedUpdatesPerTurn = 3
+
+Unprocessed dirty cards remain queued.
+
+13.4 Unchanged render skip
+
+If dirty card renders unchanged:
+
+* mark dirty target processed/skipped unchanged
+* do not write card
+* audit if debug mode
+
+⸻
+
+14. Cleanup doctrine
+
+Cleanup is not a fixer of canon.
+
+Cleanup is a conservative maintenance process.
+
+It may remove stale temporary data.
+
+It may compact logs.
+
+It may dedupe queues.
+
+It may quarantine unsafe data.
+
+It may not invent truth.
+
+It may not delete important truth.
+
+⸻
+
+15. Cleanup types
+
+15.1 Lightweight cleanup
+
+Runs often, usually after Output hook if budget allows.
+
+Allowed actions:
+
+* dedupe dirty targets
+* cap audit logs
+* remove expired parser hits
+* remove duplicate context packet hashes
+* clear command suppression flag after safe cycle
+* compact processed dirty entries
+
+15.2 Scene cleanup
+
+Runs when scene changes.
+
+Allowed actions:
+
+* expire old scene-only actors
+* expire old visible scene items
+* clear scene hazards/exits no longer relevant
+* keep important/promoted actors/items
+* audit removed temporary records
+
+15.3 Deep cleanup
+
+Runs rarely, budgeted.
+
+Recommended:
+
+every 25 turns, or manual diagnostic only
+
+Allowed actions:
+
+* compact old recent operation keys beyond max
+* prune old audit logs
+* archive stale completed/failed quests if already safe
+* quarantine malformed stale records
+* compact old context packet hashes
+* remove stale unpromoted candidates
+
+15.4 Migration cleanup
+
+Only during migration path.
+
+Allowed actions:
+
+* quarantine unsafe old data
+* neutralize duplicate managed cards if safe
+* compact old logs
+* repair missing buckets
+
+⸻
+
+16. Cleanup may remove
+
+Cleanup may remove or compact:
+
+* expired parser candidates
+* old rejected proposals beyond audit cap
+* processed dirty queue rows
+* duplicate dirty targets
+* old context packet hashes
+* expired scene-only actors
+* expired visible-only scene items
+* temporary hazards after scene change
+* old debug logs beyond cap
+* old non-permanent recent keys beyond cap
+* stale unpromoted actor candidates
+* stale unpromoted place candidates
+* stale low-evidence ability hints if explicitly expired
+
+⸻
+
+17. Cleanup may never remove
+
+Cleanup must never remove:
+
+* player state
+* player identity
+* current HP/MP/EP state
+* active inventory items
+* equipped items
+* quest-linked items
+* active quests
+* completed/rewarded quest archive keys
+* important actors
+* companions
+* current location
+* protected card registry
+* permanent operation keys
+* reward operation keys
+* card operation keys
+* migration operation keys
+* confirmed major outcomes
+* explicit player-owned currency
+* stable abilities
+* sealed/unavailable ability records
+* quarantined records before review if they are needed for safety audit
+
+⸻
+
+18. Cleanup safety checks
+
+Before cleanup removes anything, it must check:
+
+* is this temporary?
+* is this unpromoted?
+* is this expired?
+* is this duplicated?
+* is this safe to remove?
+* is this linked to active quest/item/actor/place?
+* does removal need audit?
+* does removal affect gameplay truth?
+
+If unclear:
+
+skip cleanup and audit warning
+
+⸻
+
+19. Cleanup operation keys
+
+Destructive or meaningful cleanup actions need operation keys.
+
+Examples:
+
+cleanup.scene.expire.visible_item.scene_ring_01.scene_change_12
+cleanup.scene.expire.actor.generic_guard.scene_change_12
+cleanup.audit.compact.turn_100
+cleanup.dirty.dedupe.inventory_equipment.turn_50
+cleanup.quarantine.malformed_actor.actor_x
+
+Cleanup keys prevent repeated cleanup spam.
+
+⸻
+
+20. Cleanup audit requirements
+
+/cleanup or /stateaudit should show:
+
+* last cleanup turn
+* cleanup type
+* records inspected
+* records removed/compacted
+* records skipped
+* warnings/errors
+* budget used
+* protected records skipped
+
+20.1 Cleanup audit example
+
+AIDRPG Cleanup Audit
+Last Cleanup: turn 50, lightweight
+Removed: 3 expired parser candidates, 2 processed dirty targets
+Skipped: actor_mara — important actor
+Warnings: scene item old_ring retained because questLinked=true
+
+⸻
+
+21. Performance doctrine
+
+The script must never assume unlimited runtime.
+
+If work exceeds budget:
+
+* stop safely
+* record skip
+* continue next turn if needed
+* do not crash
+* do not force full scan
+
+⸻
+
+22. Per-hook performance budgets
+
+Recommended MVP budgets:
+
+22.1 Input hook budget
+
+maxInputTextLengthToParse = 3000 characters
+maxInputParserHits = 10
+maxInputIntentProposals = 5
+maxInputResolverCandidatesPerHit = 10
+maxCommandOutputCharacters = 3000
+
+22.2 Context hook budget
+
+maxContextPackets = 8
+maxContextCharacters = 1500
+maxContextSourceRecordsScanned = 25
+maxContextAuditEntriesAdded = 5
+
+22.3 Output hook budget
+
+maxOutputTextLengthToParse = 5000 characters
+maxOutputParserHits = 20
+maxEventProposals = 15
+maxValidatedCommits = 10
+maxResolverCandidatesPerHit = 12
+maxDirtyTargetsAdded = 20
+maxProtectedCardUpdates = 3
+maxCleanupRecords = 20
+
+22.4 Card API budget
+
+maxCardListScansPerTurn = 1
+maxCardRefsInspectedPerScan = 50
+maxProtectedSingletonChecksPerTurn = 3
+maxLiveProtectedWritesPerTurn = 3
+maxGeneratedCardCreatesPerTurn = 0 in MVP
+maxGeneratedCardUpdatesPerTurn = 0 in MVP
+
+22.5 Cleanup budget
+
+maxLightCleanupRecords = 20
+maxSceneCleanupRecords = 30
+maxDeepCleanupRecords = 50
+maxCleanupTimeSlice = conservative platform-safe chunk
+
+If exact timing cannot be measured, use record count budgets.
+
+⸻
+
+23. State size safeguards
+
+State arrays must be capped or compacted.
+
+Recommended MVP caps:
+
+recentProposals max = 50
+recentValidationResults max = 50
+debugMessages max = 50
+runtimeWarnings max = 25
+runtimeErrors max = 20
+hookTrace max = 30
+recentOperationKeys max = 250
+contextPacketHashes max = 100
+dirtyTargets max = 100
+sceneItems max = 50
+sceneActors max = 30
+actorCandidates max = 50
+placeCandidates max = 50
+abilityEvidenceRecent max = 50
+quarantineRecords max = 100 before summary compaction
+
+23.1 Cap behavior
+
+When cap is exceeded:
+
+* compact old entries
+* preserve critical warnings
+* preserve permanent keys
+* preserve reward/card keys
+* preserve unresolved quarantine records if important
+* audit compaction if meaningful
+
+23.2 Never silently drop critical data
+
+Critical data must not be dropped without archive/summary:
+
+* active quest outcome
+* reward paid key
+* protected card duplicate warning
+* migration error
+* runtime error
+* player death boundary event
+
+⸻
+
+24. Replay and repeated processing safeguards
+
+24.1 Output hash replay
+
+If output hash already applied:
+
+* skip scanning
+* record replay skip if debug
+* do not create proposals
+* do not run reducers
+* do not update cards unnecessarily
+
+24.2 Operation key replay
+
+If same operation key exists:
+
+* skip commit
+* audit duplicate
+
+24.3 Context hash replay
+
+If context packet hash unchanged:
+
+* do not add repeated audit entry every turn
+* do not dirty card just because packet exists
+
+24.4 Card render hash replay
+
+If rendered card hash unchanged:
+
+* skip card write
+* do not consume card write budget
+
+⸻
+
+25. Full scan restrictions
+
+25.1 Forbidden full scans every hook
+
+Do not do these every hook:
+
+* full Story Card scan
+* full actor scan
+* full place scan
+* full inventory scan with all item details
+* full quest archive scan
+* full history scan
+* full old log scan
+* full migration scan
+
+25.2 Allowed limited scans
+
+Allowed:
+
+* scan active scene actors/items
+* scan active quests
+* scan equipped/important inventory
+* scan dirty targets
+* scan recent proposals/audit entries
+* scan protected card registry subset
+
+25.3 Full scan allowed only for
+
+* manual diagnostic command
+* migration pass
+* releasecheck
+* controlled test harness
+* explicit cleanup pass under budget
+
+Even then, obey caps and fail softly.
+
+⸻
+
+26. Context/correction relationship
+
+Rejected events can create correction context.
+
+26.1 Correction creation examples
+
+Rejected item use:
+
+Player tries to draw Iron Sword, but sword is in Mara's custody.
+
+Correction packet:
+
+The Iron Sword is in Mara's custody and cannot be used right now.
+
+Rejected absent actor action:
+
+Mara blocks the arrow, but Mara is elsewhere.
+
+Correction packet:
+
+Mara is elsewhere and cannot act in this scene.
+
+Rejected candidate ability full success:
+
+Shadow Step is only candidate; reliable teleport should not occur yet.
+
+26.2 Correction expiration
+
+Corrections should expire when:
+
+* issue resolved
+* item custody changes
+* actor becomes present
+* ability becomes stable
+* enough turns pass
+* scene changes and correction no longer relevant
+
+26.3 Correction must not overrule valid new state
+
+If Mara later arrives, old correction must expire.
+
+Do not keep saying Mara is absent.
+
+⸻
+
+27. Dirty queue and context interaction
+
+Reducers and validators may mark context dirty.
+
+ContextBuilder uses dirty targets to prioritize packets.
+
+27.1 Dirty context from accepted events
+
+Accepted events create context dirtiness if current gameplay needs reminder.
+
+Examples:
+
+* new injury
+* new quest objective
+* newly acquired key
+* location change
+* companion leaves/arrives
+
+27.2 Dirty context from rejected events
+
+Rejected events create correction packets.
+
+Examples:
+
+* inaccessible item use
+* absent actor action
+* candidate ability overreach
+* reward duplicate attempt
+
+27.3 Context dirty processing
+
+When ContextBuilder includes a packet:
+
+* mark context dirty target processed or partially processed
+* do not clear underlying gameplay state
+* keep persistent packets if still relevant
+
+⸻
+
+28. AuditLogger performance rules
+
+AuditLogger must not become a state bloat source.
+
+28.1 Required audit buckets
+
+lastTurnSummary
+recentProposals
+recentValidationResults
+debugMessages
+runtimeWarnings
+cardAudit
+contextAudit
+cleanupAudit
+migrationAudit
+
+28.2 Audit caps
+
+Use caps from state size safeguards.
+
+28.3 Audit compaction
+
+When compacting:
+
+* preserve last important errors
+* preserve last duplicate skip
+* preserve last releasecheck result
+* preserve migration warnings
+* preserve card duplicate warnings
+
+28.4 Audit should summarize
+
+Instead of storing every full object forever, store:
+
+* event type
+* outcome
+* reason
+* operation key
+* dirty targets
+* short text preview
+
+⸻
+
+29. Performance fail-soft behavior
+
+If a budget is exceeded:
+
+* stop current optional processing
+* keep already validated safe commits if complete
+* do not start new optional commits
+* mark skipped work
+* leave dirty targets queued
+* return safe text
+
+29.1 Required budget skip messages
+
+Examples:
+
+Context skipped low-priority quest archive due to budget.
+CardSync left Quest Log dirty due to protected card update limit.
+Cleanup stopped after 20 records; remaining stale entries will be processed later.
+
+⸻
+
+30. /dirty command contract
+
+/dirty must show dirty target state.
+
+30.1 Required fields
+
+* total queued
+* total processed recently
+* highest priority targets
+* blocked targets
+* error targets
+* dirty protected cards
+* dirty context reason
+* budget skips
+
+30.2 Example output
+
+AIDRPG Dirty Queue
+Queued: 4
+1. current_location — scene changed — priority 90
+2. body_status — injury added — priority 90
+3. inventory_equipment — rusty dagger acquired — priority 80
+4. quest_log — skipped last turn due to card budget — priority 70
+
+30.3 Safety
+
+/dirty is diagnostic and non-canon.
+
+⸻
+
+31. /cleanup command contract
+
+MVP default:
+
+/cleanup is diagnostic unless safe cleanup mode is explicitly implemented.
+
+31.1 Diagnostic output should show
+
+* last cleanup turn
+* next scheduled deep cleanup
+* stale temporary records count
+* audit/log size status
+* dirty queue size
+* warnings
+
+31.2 If safe cleanup command is implemented later
+
+It must:
+
+* run only lightweight safe cleanup
+* obey budget
+* audit all removals
+* never delete important truth
+* never parse its own output
+
+⸻
+
+32. /stateaudit performance/stability requirements
+
+/stateaudit should show:
+
+* schema integrity
+* state size summary
+* bucket counts
+* cap warnings
+* quarantine count
+* migration warnings
+* cleanup warnings
+* runtime errors
+* dirty queue health
+
+It should not dump full arrays unless debug mode explicitly requests and budget allows.
+
+⸻
+
+33. /releasecheck additions for Gap Chunk F
+
+/releasecheck must check:
+
+33.1 Context checks
+
+* ContextBuilder read-only
+* packet schema exists
+* packet priority exists
+* packet budget exists
+* uncertainty labels exist
+* context audit exists
+* context cannot mutate state
+
+33.2 Dirty queue checks
+
+* dirty target schema exists
+* dirty queue capped
+* dedupe rules exist
+* dirty targets cannot create gameplay truth
+* dirty card update limit exists
+
+33.3 Cleanup checks
+
+* cleanup rules exist
+* cleanup never removes important truth
+* cleanup audit exists
+* cleanup budget exists
+* deep cleanup is not unbounded
+
+33.4 Performance checks
+
+* per-hook budgets exist
+* state caps exist
+* card scan budgets exist
+* replay hash checks exist
+* no full scans every hook
+* fail-soft budget behavior exists
+
+ReleaseCheck must fail if:
+
+* Context can mutate state
+* cleanup can delete active inventory/quests/actors
+* dirty queue is unbounded
+* generated card write budget nonzero in MVP
+* card scans are unbounded
+* repeated output can be reprocessed
+
+⸻
+
+34. Context/dirty/cleanup/performance tests
+
+F001 — Context read-only
+
+Run Context hook with current state.
+
+Expected:
+
+* context text generated
+* no gameplay state mutation
+* context audit created
+
+Fail if:
+
+* inventory/quest/actor/time/body changes
+
+⸻
+
+F002 — Current location included
+
+State:
+
+currentLocation.place = Old Mill
+currentScene.summary = muddy mill yard
+
+Expected context:
+
+* includes Old Mill/current scene
+
+Fail if:
+
+* no location context despite available budget
+
+⸻
+
+F003 — Custody correction included
+
+State:
+
+Iron Sword access = npc_custody, custody = Mara
+recent rejected action = player tried to draw sword
+
+Expected context:
+
+* Iron Sword custody warning
+
+Fail if:
+
+* warning omitted while relevant
+
+⸻
+
+F004 — Rumor remains uncertain
+
+State memory:
+
+Lord Veyr killed Dalen, truthStatus = rumored
+
+Expected context:
+
+* says rumored/suspected, not confirmed
+
+Fail if:
+
+* context confirms murder
+
+⸻
+
+F005 — Context avoids full inventory dump
+
+State:
+
+Inventory has 30 items.
+
+Expected:
+
+* context includes only relevant/equipped/quest/custody items
+
+Fail if:
+
+* all 30 items dumped
+
+⸻
+
+F006 — Context budget skip audited
+
+State:
+
+Many high/low priority packets.
+
+Expected:
+
+* high priority included
+* low priority skipped
+* /contextaudit explains skip
+
+Fail if:
+
+* no audit of skipped packet
+
+⸻
+
+F007 — Context correction expires
+
+State:
+
+Old correction says Mara absent.
+
+Then Mara becomes present.
+
+Expected:
+
+* old absent correction removed/expired
+
+Fail if:
+
+* context still says Mara absent
+
+⸻
+
+F008 — Dirty target dedupe
+
+Action:
+
+InventoryReducer marks inventory_equipment dirty three times for same item/reason.
+
+Expected:
+
+* one dirty target or merged target
+
+Fail if:
+
+* three duplicate dirty rows remain
+
+⸻
+
+F009 — Dirty queue cap
+
+Setup:
+
+Create more than maxDirtyTargets.
+
+Expected:
+
+* compact/dedupe low priority processed entries
+* critical queued entries preserved
+* warning audited
+
+Fail if:
+
+* queue grows unbounded or critical entries dropped
+
+⸻
+
+F010 — Dirty target does not create gameplay state
+
+Setup:
+
+Dirty target says quest_log dirty.
+
+Expected:
+
+* no quest created solely from dirty target
+
+Fail if:
+
+* dirty target creates quest
+
+⸻
+
+F011 — Card update limit uses dirty priority
+
+Setup:
+
+All seven protected cards dirty.
+
+Expected:
+
+* max 3 processed
+* highest priority first
+* rest remain dirty
+
+Fail if:
+
+* all updated or wrong priorities ignored
+
+⸻
+
+F012 — Unchanged card render skipped
+
+Setup:
+
+Dirty Body Status renders same hash.
+
+Expected:
+
+* no card write
+* dirty processed/skipped unchanged
+
+Fail if:
+
+* unchanged card rewritten every turn
+
+⸻
+
+F013 — Lightweight cleanup removes expired parser candidates
+
+Setup:
+
+Old expired parser candidates exist.
+
+Expected:
+
+* candidates removed/compacted
+* audit cleanup
+
+Fail if:
+
+* candidates persist forever
+
+⸻
+
+F014 — Cleanup never removes active inventory
+
+Setup:
+
+Player has Iron Sword active inventory.
+
+Cleanup runs.
+
+Expected:
+
+* Iron Sword remains
+
+Fail if:
+
+* active item removed
+
+⸻
+
+F015 — Cleanup never removes important actor
+
+Setup:
+
+Mara important companion actor.
+
+Cleanup runs.
+
+Expected:
+
+* Mara remains
+
+Fail if:
+
+* Mara deleted
+
+⸻
+
+F016 — Scene cleanup removes scene-only guard
+
+Setup:
+
+Generic guard scene-only, scene changes.
+
+Expected:
+
+* guard expires
+* important actors remain
+
+Fail if:
+
+* generic guard persists forever
+
+⸻
+
+F017 — Scene cleanup removes visible clutter
+
+Setup:
+
+Visible apple on table, not important, scene changes.
+
+Expected:
+
+* old visible apple removed
+
+Fail if:
+
+* stale visible clutter remains forever
+
+⸻
+
+F018 — Quest-linked visible item retained or handled safely
+
+Setup:
+
+Visible quest item not picked up, scene changes.
+
+Expected:
+
+* retained if quest-linked or converted to safe note/pending
+* not silently deleted if important
+
+Fail if:
+
+* quest-critical item lost without audit
+
+⸻
+
+F019 — Deep cleanup respects permanent keys
+
+Setup:
+
+permanentKeys and rewardKeys exist.
+
+Deep cleanup runs.
+
+Expected:
+
+* permanentKeys/rewardKeys remain
+
+Fail if:
+
+* permanent/reward keys removed
+
+⸻
+
+F020 — Audit logs capped
+
+Setup:
+
+More than audit cap entries.
+
+Expected:
+
+* compacted/capped
+* recent critical warnings preserved
+
+Fail if:
+
+* audit grows unbounded or critical errors lost
+
+⸻
+
+F021 — Runtime errors capped
+
+Setup:
+
+More than runtimeErrors cap.
+
+Expected:
+
+* cap/compact with latest errors preserved
+
+Fail if:
+
+* unbounded runtime error growth
+
+⸻
+
+F022 — Output hash replay skip
+
+Output:
+
+You pick up the rusty dagger.
+
+Run same hash twice.
+
+Expected:
+
+* second scan skipped or duplicate blocked
+* one dagger only
+
+Fail if:
+
+* duplicate item
+
+⸻
+
+F023 — Operation key duplicate blocks varied text
+
+Output 1:
+
+Old Bren pays you 15 gold.
+
+Output 2:
+
+Old Bren hands you the promised fifteen gold.
+
+Expected:
+
+* same reward operation key blocks duplicate
+
+Fail if:
+
+* double payment
+
+⸻
+
+F024 — Context hash prevents audit spam
+
+Same context generated across 5 turns.
+
+Expected:
+
+* repeated packet hashes do not create endless new audit spam
+
+Fail if:
+
+* context audit grows every turn with identical packet entries
+
+⸻
+
+F025 — Card scan budget respected
+
+Setup:
+
+Many Story Cards available.
+
+Action:
+
+Card audit/sync operation under budget.
+
+Expected:
+
+* only allowed number inspected
+* budget skip audited
+* no timeout
+
+Fail if:
+
+* full unbounded scan every hook
+
+⸻
+
+F026 — No full history scan every hook
+
+Setup:
+
+Long story history.
+
+Expected:
+
+* parser uses current text/window only
+* no full history parse every hook
+
+Fail if:
+
+* hook attempts to parse entire history repeatedly
+
+⸻
+
+F027 — Budget exceed fail-soft
+
+Simulate output with too many parser hits.
+
+Expected:
+
+* process within cap
+* skip rest with audit
+* no crash
+
+Fail if:
+
+* timeout/crash/unbounded proposals
+
+⸻
+
+F028 — Dirty card remains queued after budget skip
+
+Setup:
+
+Quest Log dirty but card write budget exhausted.
+
+Expected:
+
+* Quest Log remains dirty
+* cardaudit says skipped due to budget
+
+Fail if:
+
+* dirty target lost silently
+
+⸻
+
+F029 — Cleanup batch continues later
+
+Setup:
+
+100 stale records, cleanup budget 20.
+
+Expected:
+
+* 20 processed
+* remaining queued/left for later
+* audit notes partial cleanup
+
+Fail if:
+
+* attempts all 100 and times out or deletes unsafely
+
+⸻
+
+F030 — Stateaudit summarizes, not dumps
+
+Setup:
+
+Large state.
+
+Command:
+
+/stateaudit
+
+Expected:
+
+* bucket counts and warnings
+* no huge full array dump
+
+Fail if:
+
+* full huge state dumped by default
+
+⸻
+
+F031 — Cleanup does not resolve quarantine automatically
+
+Setup:
+
+Quarantined Crown claim.
+
+Cleanup runs.
+
+Expected:
+
+* quarantine remains unresolved
+* no Crown item created
+
+Fail if:
+
+* cleanup imports or deletes unresolved quarantine without rule
+
+⸻
+
+F032 — Low MP ability warning included
+
+State:
+
+MP low, player recently attempted heavy spell.
+
+Expected context:
+
+* warning about low MP or risky heavy spell
+
+Fail if:
+
+* no relevant resource warning
+
+⸻
+
+F033 — Absent companion correction included and expires
+
+State:
+
+Mara absent; recent output tried to make Mara act.
+
+Expected:
+
+* correction included
+
+Then Mara arrives.
+
+Expected:
+
+* correction removed
+
+Fail if:
+
+* correction missing or stale forever
+
+⸻
+
+F034 — Long-run 100-turn replay no bloat failure
+
+Run controlled 100-turn test with repeated simple events.
+
+Expected:
+
+* no duplicate rewards/items
+* logs capped
+* dirty queue capped
+* state size stable
+* no generated cards
+* no timeout
+
+Fail if:
+
+* unbounded growth or duplicate consequences
+
+⸻
+
+F035 — Releasecheck fails unsafe cleanup/performance configuration
+
+Setup:
+
+Cleanup allowed to delete active inventory or dirty queue unbounded.
+
+Expected:
+
+* /releasecheck FAIL
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+35. Gap Chunk F completion checklist
+
+Gap Chunk F is complete when:
+
+* ContextBuilderLite read-only doctrine is defined
+* ContextPacket schema is defined
+* packet priority is defined
+* packet budgets are defined
+* packet expiration is defined
+* packet hashing is defined
+* /contextaudit requirements are defined
+* DirtyTarget schema is defined
+* dirty families are defined
+* dirty dedupe/cap/lifecycle rules are defined
+* dirty card coordination is defined
+* cleanup doctrine is defined
+* cleanup types are defined
+* cleanup may-remove and never-remove lists are defined
+* cleanup operation keys are defined
+* cleanup audits are defined
+* per-hook performance budgets are defined
+* state size caps are defined
+* replay safeguards are defined
+* full scan restrictions are defined
+* command requirements for /dirty, /cleanup, /stateaudit, and /releasecheck are defined
+* tests F001–F035 are accepted
+
+⸻
+
+36. Final Gap Chunk F doctrine
+
+Long-run stability is not optional.
+
+The first few turns are not enough to prove the script works.
+
+The system must remain safe after repeated outputs, long scenes, old saves, many actors, many items, many quests, dirty card queues, and debug audits.
+
+The final rule is:
+
+Do not flood context.
+Do not let dirty queues grow forever.
+Do not clean important truth.
+Do not scan the world every hook.
+Do not rewrite unchanged cards.
+Do not reprocess repeated output.
+Do not hide budget skips.
+Do not crash when work is too large.
+
+Next required gap chunk:
+
+Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec

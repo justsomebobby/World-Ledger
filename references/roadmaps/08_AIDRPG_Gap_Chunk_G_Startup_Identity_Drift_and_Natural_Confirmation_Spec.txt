@@ -1,0 +1,258 @@
+# AIDRPG Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec
+
+## 0. Document status
+
+Document name: AIDRPG Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec
+Purpose: Define safe startup/setup import, player identity protection, appearance/body drift rules, transformation/disguise handling, aging rules, and natural confirmation/handoff logic before coding begins.
+Status: Final pre-code gap-closure chunk.
+Applies after: Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec.
+Applies before: Script v0.1 coding, setup import, player sheet generation, inventory startup import, ability startup import, transformation handling, and natural handoff parsing.
+This document does not contain final script code.
+
+This chunk exists because old AIDRPG/TASIS versions had repeated identity and confirmation risks:
+
+- startup import could run more than once
+- player setup could be overwritten by later narration
+- NPC names could overwrite player identity
+- player age/species/appearance could drift from dreams, disguises, or vague narration
+- starting items could be created from vague scene prose
+- starting abilities could become stable from unclear wording
+- future promises could be treated as current handoffs
+- quoted instructions could become actual item transfers
+- refused items could enter inventory
+- command/card/context text could falsely confirm state
+- vague “you feel stronger” text could create permanent traits or stat changes
+
+## 1. Startup and identity doctrine
+
+Startup may initialize once. Player identity is protected. Temporary changes are not permanent identity. Dreams, disguises, rumors, and quotes do not rewrite the player. Actual handoffs require actual transfer language. Future promises are not current possession.
+
+Player setup is allowed to create initial canon only during a controlled startup window. After gameplay begins, player identity and starting state are no longer freely overwritten by opening prose, card text, context text, command output, or vague narration.
+
+## 2. Scope
+
+This chunk defines startup/setup import authority, setup lock rules, protected player identity fields, appearance/body drift rules, disguise versus transformation, dream/vision/illusion handling, aging/time-skip rules, starting inventory/ability/location/companion/quest import rules, natural handoff confirmation, promise versus payment, refusal/revocation, `/startupaudit`, `/releasecheck` additions, and tests G001–G035.
+
+This chunk does not define final setup import code, manual override command code, full transformation/evolution mechanics, full aging simulation, or multi-protagonist identity systems.
+
+## 3. Startup authority
+
+Allowed startup sources:
+
+- explicit scenario setup block
+- structured initial state
+- explicit user-provided character setup
+- first-turn setup import before gameplay lock
+- future explicit manual migration/setup path
+
+Disallowed startup sources:
+
+- Story Card prose
+- Context packet text
+- command output
+- debug output
+- old logs
+- random narration after gameplay lock
+- NPC speech unless explicitly setup-authorized
+- dream/vision/illusion text
+
+## 4. Startup state fields
+
+Recommended root bucket:
+
+```text
+startup: {
+  setupStatus: 'not_started' | 'in_progress' | 'completed' | 'completed_with_warnings' | 'locked' | 'failed',
+  setupImported: boolean,
+  gameplayStarted: boolean,
+  setupLockedTurn: number,
+  setupSourceHash: string,
+  importedFields: StartupImportRecord[],
+  rejectedFields: StartupRejectRecord[],
+  warnings: string[],
+  errors: string[],
+  startupOperationKeys: string[]
+}
+```
+
+StartupImportRecord includes field, valuePreview, source, confidence, reason, and turn. StartupRejectRecord includes field, rejectedValuePreview, source, reason, severity, and turn.
+
+## 5. Setup lock rules
+
+Startup import runs once. If `setupImported = true`, setup may not run again unless explicit manual reset/override exists later. Once normal gameplay begins, set `gameplayStarted = true` and `setupStatus = locked`. After lock, setup import cannot overwrite name, race/species, age, appearance, starting inventory, starting abilities, starting location, or starting companion.
+
+Startup operation keys include:
+
+```text
+startup.import.player.name
+startup.import.player.species
+startup.import.player.age
+startup.import.player.appearance
+startup.import.starting_item.iron_sword
+startup.import.starting_ability.mana_slash
+startup.lock.turn_1
+```
+
+## 6. Protected player identity fields
+
+Protected fields include name, race/species, age, appearance, bodyType, sex/gender text if provided, buildIdentity, specialization, titles, and origin/backstory summary. These may be initialized during startup or changed later only by validated explicit events.
+
+Allowed update sources: setup before lock, validated transformation, validated title grant, validated time-skip aging, explicit future manual override, and structured safe migration. Disallowed: vague narration, NPC misnaming, dreams, disguises, illusions, rumors, quoted speech, command output, card text, and context text.
+
+## 7. Player name rules
+
+Player name may be imported if explicitly provided, passes sanitizer, is not generic, and is not inside quote/rumor/dream text. Accepted examples: `Name: Arin Vale`, `You are Arin Vale`, `Your name is Kael`.
+
+Rejected examples: `A man named Joren approaches you`, `Mara says, "You look like Arin"`, `In your dream, your name is the Ash King`, `People call you monster`.
+
+Titles/nicknames may be stored separately if validated. NPC introductions never rename the player.
+
+## 8. Race/species rules
+
+Race/species may be imported if explicit: human, elf, dragonkin, slime, etc. If absent, default to human or scenario default. Metaphors do not change species: `you move like a ghost`, `they call you a demon`, `you feel like a beast`.
+
+Dream/vision species changes do not persist. Confirmed permanent transformation requires validated output and may update species, bodyType, appearance, body traits, conditions, abilities/passives/candidates.
+
+## 9. Age and time-skip rules
+
+Age may be numeric or text if explicit: `24`, `adult`, `ageless`, `unknown`. Confirmed time skips may age the player only if species ages normally and operation keys prevent duplicate aging. Ageless/immortal traits prevent normal aging unless scenario says otherwise.
+
+Repeated time-skip output must not age the player twice. Use keys such as `time.age.player.five_year_skip.event_key`.
+
+## 10. Appearance and body drift rules
+
+Setup may import explicit appearance. Temporary appearance changes such as mud, blood, masks, disguises, or illusions are stored separately as temporaryAppearance, activeDisguise, activeIllusion, or conditions. Permanent appearance changes require explicit validated wording like permanent scar, ritual mark, or lasting body change. Injuries are body/status records first and become appearance only if persistent/scarring.
+
+## 11. Disguise, illusion, transformation distinction
+
+Disguise is intentional external presentation and does not change permanent identity. Illusion is perceptual and does not change permanent identity. Transformation physically/metaphysically changes body/identity and requires validation. Dream transformation is non-canon unless the scenario has real dream mechanics and validation approves.
+
+## 12. Starting inventory import rules
+
+Explicit starting items may be imported during startup if clearly stated: `Starting equipment: iron sword, leather armor, 10 copper`, `Your pack contains a sealed letter`. Imported items require sanitizer pass, owner/custody/access fields, and startup operation keys.
+
+Scene description is not starting inventory: `A sword hangs on the wall`, `A cup sits on the table`, `A market stall displays daggers`. Dream items and quoted future items are not inventory. Starting currency imports only when explicit, not from price quotes.
+
+## 13. Starting ability import rules
+
+Stable starting abilities require explicit wording: `Known ability: Mana Slash`, `You know Lesser Heal`. Uncertain wording becomes hint/candidate: `a strange shadow power stirs within you`, `latent talent for fire`. Passives/talents may be imported if explicit. Dream power, quoted scroll text, rumors, metaphors, failed attempts, card text, command output, and context text cannot create stable abilities.
+
+## 14. Starting location import rules
+
+Explicit starting locations may set currentLocation and currentScene: `You begin in Greyford Tavern`, `Starting location: Old Mill Road`. Broad worldbuilding does not set current location. Dream/flashback locations do not set current physical location.
+
+## 15. Starting companion import rules
+
+Explicit companions/familiars may import actor companion state: `Mara is your traveling companion`. Scene NPCs are not companions: `An innkeeper greets you`, `A guard stands nearby`. Temporary summons require later Party/Summon spec.
+
+## 16. Starting quest import rules
+
+Explicit active starting quests may import as active: `Your current quest is to deliver Mara's letter`. Rumors/offers import as rumored/offered at most. Starting quest rewards must separate promised, ready, and paid. Promised reward does not add currency.
+
+## 17. Natural confirmation doctrine
+
+Actual transfer language can confirm state. Instructions, offers, promises, quotes, intentions, refusals, dreams, hypotheticals, and future plans cannot. Natural confirmation still uses parser flags, resolver, CanonValidator, OperationLedger, and owner reducers.
+
+## 18. Actual handoff rules
+
+Accepted handoff examples: `Mara hands you the iron key`, `Mara gives you the sealed letter`, `Old Bren passes you a pouch`, `She places the amulet in your palm`, `Mara returns your sword`, `You accept the key from Mara`.
+
+A handoff proposal should identify giver, recipient, item/currency, custody/source, destination access/custody, operation key, and quote/negation/future/dream flags. If accepted, item custody/access changes according to ownership/borrowed/returned wording.
+
+## 19. Rejected handoff rules
+
+Do not confirm possession for: quoted instructions, tells/requests, refused offers, future promises, almost handoffs, reaching for items, dreams, imagination, or rumors. These may create request, offer, future promise, refused offer, rumor/claim, or dream note, not possession.
+
+## 20. Payment confirmation rules
+
+Accepted payment examples: `Old Bren pays you 15 gold`, `He hands you your reward`, `The captain counts 20 silver into your palm`, `You receive the bounty payment`. Rejected payment examples: promises to pay, quoted promises, future payment, almost pays, refuses to pay, rumors, or dreams.
+
+Vague reward payment like `He gives you your reward` may resolve to a stored promised reward only if quest/payer/reward status validate and duplicate reward key is unused. Otherwise pending/soft-fail; do not invent amount.
+
+## 21. Acceptance/refusal rules
+
+Player input acceptance is usually intent only. Output confirmation can activate quest. Refusal blocks acceptance. Offer is not acceptance. Future acceptance is not active quest.
+
+## 22. Arrival confirmation rules
+
+Accepted: `you arrive at X`, `you reach X`, `you step inside X`. Rejected: heading toward, could go, dream arrival, quote/instruction, plan to visit later, flashback/memory arrival.
+
+## 23. Success confirmation rules
+
+AI output may confirm success if clear and plausible. Player input claimed success is attempt only. Impossible success can be softened or denied by validation.
+
+## 24. Stat/trait confirmation rules
+
+Vague improvement is not stat gain: `you feel stronger`, `you learn from the experience`, `your power grows`. Explicit mechanical gains may create proposals if allowed and deduped: `You gain 20 XP`, `Strength increases by 1`, `You unlock Night Vision`.
+
+## 25. `/startupaudit` command
+
+`/startupaudit` shows setupStatus, setupImported, gameplayStarted, setupLockedTurn, imported fields, rejected fields, warnings/errors, and startup operation key summary. It does not import new setup data, mutate gameplay state, or parse its own output.
+
+## 26. `/releasecheck` additions
+
+ReleaseCheck must verify startup bucket, setup lock, idempotency keys, gameplayStarted flag, startup audit, protected identity fields, NPC name protection, title/name separation, dream/disguise/vision safeguards, validated transformation, time-skip operation keys, accepted/rejected handoff lists, promise/payment distinction, refusal blocking, travel intent/arrival distinction. It fails if setup can rerun, duplicate imports occur, identity can be overwritten casually, quoted handoff adds item, promised reward pays currency, or refusal still acquires item.
+
+## 27. Tests G001–G035
+
+G001 — Startup imports once: setup with Arin and iron sword imported once only.
+G002 — Gameplay lock prevents later setup overwrite: later “You are Joren now” does not rename player without valid event.
+G003 — NPC name does not overwrite player: Mara enters as actor, not player name.
+G004 — Title does not overwrite name: Wolf of Greyford becomes title/nickname only if valid.
+G005 — Dream name rejected: Ash King dream name does not rename player.
+G006 — Species metaphor rejected: “move like a ghost” does not set species to ghost.
+G007 — Dream transformation rejected: dream dragon body not real.
+G008 — Confirmed transformation can update identity only through validation.
+G009 — Disguise does not change permanent appearance.
+G010 — Illusion does not change permanent body or age.
+G011 — Permanent scar updates appearance only if permanent wording exists.
+G012 — Time skip ages once; replay does not age twice.
+G013 — Ageless character does not age normally.
+G014 — Explicit starting inventory accepted with custody/access.
+G015 — Scene sword not starting inventory.
+G016 — Dream item not starting inventory.
+G017 — Explicit stable starting ability accepted once.
+G018 — Latent ability imported as hint/candidate, not stable.
+G019 — Quoted scroll text not stable ability.
+G020 — Explicit starting location accepted.
+G021 — Broad world description not current location.
+G022 — Explicit companion accepted.
+G023 — Scene NPC not companion.
+G024 — Explicit active starting quest accepted.
+G025 — Starting rumor not active quest.
+G026 — Actual handoff accepted.
+G027 — Quoted handoff rejected.
+G028 — Future handoff not current possession.
+G029 — Refused item not acquired.
+G030 — Almost handoff not acquired.
+G031 — Payment accepted in valid quest/reward context.
+G032 — Promise not payment.
+G033 — Vague reward uses stored promise only if valid.
+G034 — Travel intent not arrival.
+G035 — Confirmed arrival accepted only through validation.
+
+## 28. Completion checklist
+
+Gap Chunk G is complete when startup authority, startup fields, setup lock, protected identity, name/race/species/age, appearance/body drift, disguise/illusion/transformation, starting inventory/ability/location/companion/quest, natural handoff, rejected handoff, payment confirmation, acceptance/refusal, arrival confirmation, stat/trait confirmation, `/startupaudit`, `/releasecheck` additions, and tests G001–G035 are defined.
+
+## 29. Relationship to previous gap chunks
+
+Gap Chunk G depends on Gap Chunk B for setup timing and hooks, Gap Chunk D for parser flags, Gap Chunk E for migration/old setup conflicts, and Gap Chunk F for cleanup/context stability. Gap Chunk G completes the pre-code gap set A–G.
+
+## 30. Are more pre-code gap chunks required?
+
+For preventing old tested issues from immediately returning before MVP coding, Gap Chunks A–G are sufficient as the pre-code gap closure set. Future advanced systems still require their own mini-specs before implementation: Generated CardSync Beta, Combat/Progression v0.2, Economy/Transaction Ledger, Crafting/Materials, Investigation/Evidence, Reputation/Faction/Titles, Party/Followers/Summons/Multi-Protagonist, Scale/Group Combat/Warfare, Body Compatibility/Death Boundary, Ability Formation/Cost/Alias Advanced, Absorption/Evolution, Whole-System Tester, and Full Regression Matrix v1.
+
+## 31. Final doctrine
+
+Startup must not duplicate. Identity must not drift. A disguise is not a transformation. A dream is not a body change. A title is not a name. A promise is not payment. An offer is not acceptance. An instruction is not a handoff. A plan is not arrival. A vague feeling is not a stat gain.
+
+Final rule:
+
+```text
+Initial truth is imported once.
+Permanent truth changes only through validated events.
+Natural language must confirm actual completion before state changes.
+```
+
+With Gap Chunks A–G complete, the project may proceed to Build Chunk 1 — Implementation Start Packet.

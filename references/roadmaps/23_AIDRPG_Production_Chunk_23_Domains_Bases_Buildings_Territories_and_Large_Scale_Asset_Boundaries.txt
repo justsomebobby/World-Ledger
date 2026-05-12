@@ -1,0 +1,904 @@
+# AIDRPG Production Chunk 23 — Domains, Bases, Buildings, Territories, and Large-Scale Asset Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 23 — Domains, Bases, Buildings, Territories, and Large-Scale Asset Boundaries  
+**Production sequence:** 23 of 25 production chunks  
+**Build target:** WorldLedger V0.17.22 controlled-entities accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Secure domains, bases, rooms, buildings, storage, construction, staff, territory claims, legitimacy, taxes, upkeep, defenses, income shells, and large-scale asset state without false ownership, fake kingdom control, automatic income, or command/context/card property mutation.  
+**Status:** Large-scale gameplay boundary production chunk.  
+**Follows:** Production Chunk 22 — Pets, Mounts, Summons, Vehicles, and Controlled-Entity Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 23 is fun because it makes the world feel ownable: homes, shops, rooms, bases, forts, towns, castles, farms, ships, labs, temples, territories, and domains can matter.
+
+It is dangerous because AI Dungeon prose often treats access, presence, and ownership loosely.
+
+```text
+you see a castle
+you enter the manor
+you sleep in the inn room
+you claim the tower
+the villagers call you lord
+your base has guards
+the shop earns gold
+your fortress repels the army
+```
+
+None of those can automatically become secure ownership, legal control, income, defense victory, or territory rule.
+
+This chunk separates property from access, control, legitimacy, occupancy, construction, storage, staff, income, and territory.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Seeing a building is not owning it.
+Entering a room is not owning it.
+Renting a room is not owning the inn.
+Using storage is not carried inventory.
+Claiming land is not recognized rule.
+Recognized rule is not absolute control.
+Construction plan is not completed building.
+A defense exists as context, not auto-victory.
+Income is not currency until collected and validated.
+Taxes are not automatic money.
+Staff are not puppets.
+Territory is not won by a single sentence.
+```
+
+Large-scale assets should open gameplay, not silently rewrite the save.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 22 secured controlled entities and vehicles.
+
+Domains and bases come next because they connect to:
+
+```text
+inventory storage and custody
+property ownership and access
+economy upkeep/income/debt
+faction/law legitimacy
+actor staff and autonomy
+quest objectives and service contracts
+travel/current place
+threat/encounter danger
+warfare/siege consequences later
+CardSync summaries
+```
+
+If base/domain rules are not secure before advanced combat and warfare, one battle output can accidentally grant castles, taxes, armies, and territory.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 23 may change:
+
+```text
+Domain/Base schema helpers
+PropertyReducer / DomainReducer shell
+AssetAccess helper
+ConstructionProject helper
+BaseStorage helper
+StaffAssignment helper
+TerritoryClaim helper
+DefenseAsset helper
+IncomeUpkeep shell
+CanonValidator property/domain rules
+ProposalBuilder property/domain events
+EventScannerLite property/domain hints
+CommandRenderers /base /domain /property /storage if available
+ContextBuilder property/domain packet
+OperationLedger property/domain keys
+DirtyQueue property/domain targets
+IntegrityChecker property/domain checks
+ReleaseCheck PC23 gates
+Regression/player-breaker property tests
+```
+
+Production Chunk 23 may add:
+
+```text
+PropertyRecord
+BaseRecord
+BuildingRecord
+RoomRecord
+FacilityRecord
+ConstructionProjectRecord
+StorageLocationRecord
+StoredAssetRecord
+PropertyAccessRecord
+PropertyOwnershipRecord
+ControlLegitimacyRecord
+StaffAssignmentRecord
+TerritoryClaimRecord
+IncomeStreamRecord
+UpkeepRecord
+DefenseAssetRecord
+DomainAuditRecord
+```
+
+Production Chunk 23 may not add:
+
+```text
+full city/domain economy
+full tax simulation
+full army/warfare engine
+automatic territory conquest
+automatic income collection
+automatic staff obedience
+live card writes
+manual /owncastle /claimkingdom mutation commands
+```
+
+Warfare activation is Production Chunk 24.
+
+---
+
+# 4. State model
+
+Recommended shape:
+
+```text
+domains: {
+  properties: {},
+  bases: {},
+  buildings: {},
+  rooms: {},
+  facilities: {},
+  constructionProjects: {},
+  storageLocations: {},
+  storedAssets: {},
+  accessRecords: {},
+  ownershipRecords: {},
+  legitimacyRecords: {},
+  staffAssignments: {},
+  territoryClaims: {},
+  incomeStreams: {},
+  upkeepRecords: {},
+  defenseAssets: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Do not store domain truth only in inventory, location, quest, or lore.
+
+---
+
+# 5. PropertyRecord schema
+
+```text
+PropertyRecord {
+  id,
+  key,
+  displayName,
+  propertyType,
+  status,
+  placeKey,
+  ownerActorKey,
+  controllerActorKey,
+  legalOwnerKey,
+  accessStatus,
+  controlStatus,
+  legitimacyStatus,
+  storageKeys,
+  facilityKeys,
+  staffKeys,
+  defenseKeys,
+  territoryClaimKey,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Property types:
+
+```text
+room
+house
+shop
+farm
+workshop
+inn_room
+base
+camp
+fort
+castle
+tower
+temple
+ship_as_property
+vehicle_asset
+territory
+settlement_deferred
+unknown
+```
+
+Statuses:
+
+```text
+visible
+accessible
+occupied
+rented
+borrowed
+owned
+claimed
+controlled
+disputed
+abandoned
+damaged
+destroyed
+unknown
+```
+
+Rules:
+
+```text
+visible is not accessible
+accessible is not owned
+rented is not owned
+claimed is not recognized
+controlled is not legal ownership
+legal ownership is not total obedience/control
+```
+
+---
+
+# 6. Base, building, room, and facility schemas
+
+## BaseRecord
+
+```text
+BaseRecord {
+  id,
+  propertyKey,
+  baseType,
+  status,
+  currentOccupants,
+  storageKeys,
+  facilityKeys,
+  staffKeys,
+  defenseKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Base types:
+
+```text
+camp
+hideout
+home
+fortified_base
+guildhall
+ship_base
+mobile_base_deferred
+unknown
+```
+
+## BuildingRecord
+
+```text
+BuildingRecord {
+  id,
+  propertyKey,
+  buildingType,
+  conditionStatus,
+  roomKeys,
+  facilityKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## RoomRecord
+
+```text
+RoomRecord {
+  id,
+  propertyKey,
+  roomType,
+  accessStatus,
+  occupantKeys,
+  storageKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## FacilityRecord
+
+```text
+FacilityRecord {
+  id,
+  propertyKey,
+  facilityType,
+  status,
+  functionLabel,
+  activeRulesDeferred,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Facility types:
+
+```text
+bed
+storage
+workshop
+forge
+alchemy_table
+stable
+dock
+library
+training_yard
+barracks
+wall
+gate
+watchtower
+shrine
+unknown
+```
+
+Rules:
+
+```text
+facility presence is context/use affordance, not automatic crafting/income/combat bonus
+facility use routes through owner system such as crafting/rest/storage/training
+```
+
+---
+
+# 7. ConstructionProjectRecord schema
+
+```text
+ConstructionProjectRecord {
+  id,
+  key,
+  propertyKey,
+  projectType,
+  status,
+  progressLabel,
+  requiredMaterials,
+  consumedMaterialKeys,
+  laborSourceKeys,
+  paymentKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  completedTurn,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+planned
+materials_needed
+in_progress
+paused
+completed
+failed
+cancelled
+unknown
+```
+
+Rules:
+
+```text
+plan is not construction
+materials visible are not consumed
+payment quote is not payment
+in progress is not completed
+completed building requires validated completion event
+material consumption routes through InventoryReducer
+payment routes through Economy
+```
+
+---
+
+# 8. StorageLocationRecord and StoredAssetRecord schemas
+
+```text
+StorageLocationRecord {
+  id,
+  key,
+  propertyKey,
+  displayName,
+  storageType,
+  accessStatus,
+  ownerActorKey,
+  controllerActorKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+StoredAssetRecord {
+  id,
+  key,
+  storageKey,
+  itemKey,
+  quantity,
+  custodyStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+stored item is not carried item
+base storage is not inventory unless display clearly separates it
+removing from storage requires InventoryReducer transfer/acquisition
+placing into storage requires InventoryReducer custody/storage transfer
+storage access is not ownership of contents
+```
+
+---
+
+# 9. Access, ownership, control, and legitimacy schemas
+
+```text
+PropertyAccessRecord {
+  id,
+  propertyKey,
+  actorKey,
+  accessType,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+PropertyOwnershipRecord {
+  id,
+  propertyKey,
+  ownerActorKey,
+  ownershipType,
+  legalStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+ControlLegitimacyRecord {
+  id,
+  propertyKey,
+  controllerActorKey,
+  controlType,
+  recognitionStatus,
+  disputedByKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Access types:
+
+```text
+seen
+entered
+guested
+rented
+borrowed
+keyholder
+owner_access
+restricted
+forbidden
+unknown
+```
+
+Ownership types:
+
+```text
+none
+personal
+shared
+leased
+rented
+stewardship
+conquest_claim_deferred
+legal_title
+disputed
+unknown
+```
+
+Recognition statuses:
+
+```text
+unrecognized
+locally_recognized
+legally_recognized
+disputed
+usurped_deferred
+unknown
+```
+
+---
+
+# 10. Staff, territory, income, upkeep, and defense schemas
+
+## StaffAssignmentRecord
+
+```text
+StaffAssignmentRecord {
+  id,
+  propertyKey,
+  actorKey,
+  role,
+  status,
+  autonomyLevel,
+  paymentStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+staff are actors, not property
+assignment is not obedience
+payment/service contracts route through Economy/Actor systems
+```
+
+## TerritoryClaimRecord
+
+```text
+TerritoryClaimRecord {
+  id,
+  key,
+  territoryName,
+  claimantActorKey,
+  claimStatus,
+  recognitionStatus,
+  relatedFactionKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+claiming territory is not recognized rule
+recognized rule is not total control
+warfare/siege results cannot grant territory without this owner validation
+```
+
+## IncomeStreamRecord and UpkeepRecord
+
+```text
+IncomeStreamRecord {
+  id,
+  propertyKey,
+  incomeType,
+  status,
+  amountLabel,
+  collectionStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+UpkeepRecord {
+  id,
+  propertyKey,
+  upkeepType,
+  status,
+  costLabel,
+  dueStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+income exists as a stream, not currency
+taxes are not collected until Economy validates payment
+upkeep due is not currency loss until payment validates
+```
+
+## DefenseAssetRecord
+
+```text
+DefenseAssetRecord {
+  id,
+  propertyKey,
+  defenseType,
+  status,
+  effectivenessLabel,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+defense is context and threat modifier label, not auto-victory
+defense damage/repair routes through combat/crafting/property systems
+```
+
+---
+
+# 11. CanonValidator rules
+
+Accept property access when output confirms entry/rent/permission.
+Do not treat access as ownership.
+
+Accept ownership only when safe output confirms purchase, legal grant, gift/deed, or strict setup ownership.
+
+Accept claim only as claim unless recognition is explicitly validated.
+
+Accept construction progress only when output confirms progress.
+Accept completion only when output confirms completed structure.
+
+Accept storage transfer only through InventoryReducer custody/storage transfer.
+
+Accept income/upkeep only as shell unless Economy validates currency flow.
+
+Reject property/domain mutation from:
+
+```text
+command output
+context output
+Story Card prose
+rumor/lore only
+claim with no recognition
+single victory sentence
+hypothetical plan
+```
+
+---
+
+# 12. Owner-routing contracts
+
+```text
+InventoryReducer owns carried items and storage transfers.
+Economy owns payments, rent, taxes, upkeep, wages, income collection.
+ActorReducer owns staff presence, autonomy, memory, and relationship.
+Faction/Law systems own recognition and legitimacy evidence.
+PlaceReducer owns current location and property place references.
+QuestReducer owns quest objectives involving construction/property.
+Combat/Threat systems own attacks, siege damage, and danger context.
+DomainReducer owns property/base/domain records and access/control/legitimacy shells.
+```
+
+No domain event may directly add currency, complete quests, kill enemies, or force staff obedience.
+
+---
+
+# 13. Display/context rules
+
+Commands may include:
+
+```text
+/base
+/property
+/domain
+/storage
+```
+
+or folded display in `/location`, `/inventory`, `/quests`, and `/stateaudit`.
+
+Display must separate:
+
+```text
+visible properties
+accessible properties
+rented/borrowed spaces
+owned property
+claimed territory
+recognized control
+storage contents
+construction projects
+staff assignments
+income streams due/uncollected
+upkeep due/unpaid
+defenses as context
+```
+
+Context should say:
+
+```text
+You rent a room at the inn; you do not own the inn.
+The tower is claimed by you but not legally recognized.
+The base chest stores the iron sword; it is not currently carried.
+The shop may generate income, but no coins are collected yet.
+The palisade helps defend the camp, but it does not guarantee victory.
+```
+
+---
+
+# 14. Operation keys
+
+```text
+property.visible.<propertyKey>.<sourceHash>
+property.access.<propertyKey>.<actorKey>.<accessType>.<sourceHash>
+property.ownership.<propertyKey>.<ownerKey>.<sourceHash>
+property.claim.<propertyKey>.<claimantKey>.<sourceHash>
+property.legitimacy.<propertyKey>.<status>.<sourceHash>
+construction.plan.<projectKey>.<sourceHash>
+construction.progress.<projectKey>.<sourceHash>
+construction.complete.<projectKey>.<sourceHash>
+storage.location.<storageKey>.<sourceHash>
+storage.asset.<storageKey>.<itemKey>.<sourceHash>
+staff.assign.<propertyKey>.<actorKey>.<role>.<sourceHash>
+territory.claim.<territoryKey>.<claimantKey>.<sourceHash>
+income.stream.<propertyKey>.<incomeType>.<sourceHash>
+income.collect.<propertyKey>.<sourceHash>
+upkeep.due.<propertyKey>.<sourceHash>
+defense.asset.<propertyKey>.<defenseType>.<sourceHash>
+```
+
+---
+
+# 15. ReleaseCheck gates
+
+```text
+PC23-G01 PropertyRecord schema exists.
+PC23-G02 Base/Building/Room/Facility records exist or equivalents exist.
+PC23-G03 ConstructionProjectRecord exists and separates plan/progress/completion.
+PC23-G04 StorageLocation/StoredAsset records exist and separate base storage from carried inventory.
+PC23-G05 Access/Ownership/Control/Legitimacy records exist and are separated.
+PC23-G06 StaffAssignmentRecord respects actor autonomy.
+PC23-G07 TerritoryClaimRecord separates claim from recognized rule.
+PC23-G08 IncomeStream/Upkeep records are shells and do not mutate currency automatically.
+PC23-G09 DefenseAssetRecord is context, not auto-victory.
+PC23-G10 CanonValidator rejects access as ownership.
+PC23-G11 CanonValidator rejects claim as recognized rule.
+PC23-G12 Owner-routing contracts preserve inventory/economy/actor/quest/combat ownership.
+PC23-G13 Duplicate property/construction/storage/territory keys exist.
+PC23-G14 Command/context/card property text cannot become canon.
+PC23-G15 Display separates ownership/access/control/storage/income/defense honestly.
+PC23-G16 Cleanup preserves owned/active/disputed property, storage, construction, and keys.
+PC23-G17 Warfare/army/siege/domain economy remain deferred unless PC24+ gates validate.
+PC23-G18 Manual property/domain mutation commands disabled.
+PC23-G19 Player-breaker tests registered.
+```
+
+---
+
+# 16. Required tests
+
+```text
+PC23-001 Seeing a castle does not create ownership.
+PC23-002 Entering a manor creates access/presence only.
+PC23-003 Renting an inn room creates rented access, not inn ownership.
+PC23-004 Receiving a deed validates property ownership if safe.
+PC23-005 Claiming a tower creates claim, not recognized rule.
+PC23-006 Local recognition can update legitimacy without total control.
+PC23-007 Construction plan does not create completed building.
+PC23-008 Construction progress does not complete project.
+PC23-009 Construction completion requires validated output.
+PC23-010 Materials for construction are not consumed without InventoryReducer.
+PC23-011 Paying builders routes through Economy.
+PC23-012 Base chest storage does not become carried inventory.
+PC23-013 Removing item from base storage requires InventoryReducer transfer.
+PC23-014 Staff assignment does not force obedience.
+PC23-015 Staff wages due do not remove currency automatically.
+PC23-016 Shop income expected does not add currency.
+PC23-017 Collected income routes through Economy.
+PC23-018 Upkeep due does not remove currency automatically.
+PC23-019 Defense wall does not auto-win attack.
+PC23-020 Siege damage routes through Combat/Property repair systems.
+PC23-021 Territory victory text does not grant recognized rule automatically.
+PC23-022 Story Card castle ownership non-canon.
+PC23-023 Context base storage non-canon.
+PC23-024 Command /base output non-canon.
+PC23-025 Duplicate property ownership output skipped.
+PC23-026 Duplicate construction completion skipped.
+PC23-027 Cleanup preserves active construction and storage.
+PC23-028 Cleanup preserves disputed territory claim.
+PC23-029 Manual /owncastle disabled.
+PC23-030 Manual /claimkingdom disabled.
+PC23-031 Display shows property states honestly.
+PC23-032 DomainReducer rejects unsafe routed events.
+```
+
+---
+
+# 17. Beginner implementation order
+
+```text
+1. Copy WorldLedgerV0.17.22 accepted build.
+2. Add ensureDomainsShape and record factories.
+3. Implement access/ownership/control/legitimacy separation.
+4. Implement base/building/room/facility records.
+5. Implement construction project records.
+6. Implement storage location/stored asset records.
+7. Implement staff/territory/income/upkeep/defense shells.
+8. Update CanonValidator property/domain rules.
+9. Update ProposalBuilder and EventScannerLite hints.
+10. Update display/context renderers.
+11. Add operation keys and duplicate checks.
+12. Add ReleaseCheck gates and tests.
+13. Save WorldLedgerV0.17.23_DOMAINS_BASES_ACCEPTED.txt.
+```
+
+---
+
+# 18. Pass / warn / fail criteria
+
+## PASS
+
+```text
+ownership/access/control/legitimacy separated
+construction plan/progress/completion separated
+base storage separated from carried inventory
+income/upkeep shells do not mutate currency
+staff autonomy preserved
+defenses context-only
+unsafe sources blocked
+PC23 tests pass
+```
+
+## WARN
+
+```text
+full domain economy deferred
+army/siege/warfare deferred
+tax simulation deferred
+facility bonuses mostly deferred
+```
+
+## FAIL
+
+```text
+visible building becomes owned
+rented room becomes inn ownership
+claim becomes recognized rule
+base storage becomes carried inventory
+income adds currency automatically
+defense auto-wins attack
+command/context/card creates property
+cleanup deletes active base/storage/construction truth
+```
+
+---
+
+# 19. Final doctrine
+
+```text
+A home, base, domain, or territory is only fun if it is stable.
+Stable means ownership, access, control, legitimacy, storage, construction, income, staff, and defense each have their own record and owner path.
+No single line of story, context, card text, or victory output is allowed to hand the player a kingdom.
+```
+
+When this passes, Production Chunk 24 may safely define advanced combat, party/summon coordination, absorption/evolution, and warfare activation boundaries.

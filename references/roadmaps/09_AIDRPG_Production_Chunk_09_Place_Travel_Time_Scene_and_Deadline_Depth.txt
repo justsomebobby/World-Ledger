@@ -1,0 +1,1506 @@
+# AIDRPG Production Chunk 09 — Place, Travel, Time, Scene, and Deadline Depth
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 09 — Place, Travel, Time, Scene, and Deadline Depth  
+**Production sequence:** 09 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.8 actor/social-depth accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen current location, current scene, travel intent, visible/nearby references, route/interstitial handling, time passage, time claims, deadlines, and age-safety behavior without weak mention overwrites or fake time/age canon.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 08 — Actor Presence, Social Memory, Witnessing, and Relationship Depth.  
+**This document does not contain final script code.**
+
+Production Chunk 09 exists because place and time continuity determine whether AI Dungeon gameplay feels like a real world or a constantly-resetting hallucination.
+
+Old attempts often failed by:
+
+```text
+weak place mentions overwriting current location
+visible places becoming arrival
+travel intent becoming arrival
+roads/path/interstitial phrases beating named destinations
+context/card/command location text becoming canon
+quoted or narrated time skips changing age
+long time passage duplicating on output replay
+deadlines being forgotten or completed from vague text
+scene actors/items not matching current scene after movement
+```
+
+This chunk makes location and time persistent, conservative, duplicate-safe, and readable. The goal is not full world simulation yet. The goal is to make current place, current scene, intended travel, known references, time passage, and deadlines safe enough for later world bible, region, faction, encounter, and long-run persistence systems.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Visible is not current location.
+Nearby is not arrival.
+Travel intent is not arrival.
+Road is not destination when a named destination exists.
+Route is not scene unless confirmed.
+Mentioned place is not current place.
+Command location text is not canon.
+Context location text is not canon.
+Story Card location text is not canon.
+Quoted time skip is not time passage.
+Dream time skip is not real aging.
+Literal time passage is duplicate-sensitive.
+Age mutation requires strict policy.
+Deadline mention is not completion.
+```
+
+Place and time truth must be local, source-aware, duplicate-safe, and conservative.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 08 made actor presence and scene witnesses safer. Places and time come next because they connect to scene actors, scene items, quest objectives, travel and arrival, deadlines, actor memory location, region pressure, creature encounters, world bible references, CardSync current-location mirrors, context prioritization, and long-run persistence.
+
+If place/time is not safe now, later world systems will misfire. A wolf encounter in the market, a chapel scene overwriting a tavern, or a twenty-year quote aging the player can break the whole game.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 09 may change:
+
+```text
+Place schema helpers
+Time schema helpers
+PlaceReducerLite
+TimeReducerLite
+PlaceNameSanitizer
+CanonValidator place/time rules
+ProposalBuilder place/time event types
+EventScannerLite place/time hints
+CommandRenderers /location and /time
+ContextBuilder place/time packets
+OperationLedger place/time/deadline keys
+DirtyQueue place/time targets
+Cleanup scene-expiry shell
+IntegrityChecker place/time checks
+ReleaseCheck place/time gates
+Regression/player-breaker place/time tests
+```
+
+Production Chunk 09 may add:
+
+```text
+PlaceRecord schema depth
+SceneRecord schema
+TravelIntentRecord schema
+PlaceReferenceRecord schema
+RouteReferenceRecord schema
+TimeAdvanceRecord schema
+TimeClaimRecord schema
+DeadlineRecord schema
+SceneTransitionRecord schema
+arrival-strength model
+weak-reference model
+age policy shell
+scene expiry coordination shell
+location/time audit summaries
+```
+
+Production Chunk 09 may not add:
+
+```text
+full world bible import
+full region/faction pressure model
+full weather/calendar system
+full encounter generator
+full travel simulation with pathfinding
+full settlement/world structure extraction
+manual /teleport or /settime commands
+live CardSync writes
+old card prose place/time import
+```
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+PlaceState helpers
+TimeState helpers
+PlaceReducerLite
+TimeReducerLite
+PlaceNameSanitizer
+CanonValidator place/time rules
+ProposalBuilder place/time proposals
+EventScannerLite place/time hints
+Resolver place target binding
+CommandRenderers: /location and /time
+ContextBuilderLite place/time packets
+OperationLedger place/time/deadline keys
+DirtyQueue place/time dirty targets
+AuditLogger place/time lines
+InvariantChecker place/time checks
+CleanupManagerLite scene expiry shell
+ReleaseCheckLite PC09 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to ActorReducer, InventoryReducer, QuestReducer, BodyReducer, ProgressionReducer, WorldBible import, region/faction systems, encounter/creature systems, CardSync live writes, or manual mutation commands.
+
+---
+
+# 5. Place state model
+
+Places bucket should support:
+
+```text
+currentLocation
+currentScene
+records
+travelIntent
+visibleReferences
+nearbyReferences
+routeReferences
+sceneHistory
+warnings
+notes
+```
+
+Recommended shape:
+
+```text
+places: {
+  currentLocation: null,
+  currentScene: null,
+  records: {},
+  travelIntent: null,
+  visibleReferences: [],
+  nearbyReferences: [],
+  routeReferences: [],
+  sceneHistory: [],
+  warnings: [],
+  notes: []
+}
+```
+
+Do not create multiple conflicting current locations.
+
+---
+
+# 6. PlaceRecord schema
+
+Required place record fields:
+
+```text
+PlaceRecord {
+  id,
+  key,
+  displayName,
+  normalizedName,
+  type,
+  status,
+  regionKey,
+  parentPlaceKey,
+  knownToPlayer,
+  currentStrength,
+  lastConfirmedTurn,
+  firstDiscoveredTurn,
+  sourceOperationKeys,
+  references,
+  warnings,
+  notes
+}
+```
+
+Place identity rules:
+
+```text
+key is stable
+key is family-scoped
+key does not contain full raw output
+key does not contain command/card/context text
+key preserves meaningful proper names
+key suppresses route/interstitial noise when named destination exists
+```
+
+Examples:
+
+```text
+The Drunken Huntsman -> drunken_huntsman
+Market Lane -> market_lane
+Old Mill -> old_mill
+Chapel of Ash -> chapel_of_ash
+North Gate Road -> north_gate_road only if road is actually the relevant place
+```
+
+---
+
+# 7. Place type model
+
+Allowed place types:
+
+```text
+room
+building
+street
+road
+path
+landmark
+settlement
+region
+wilderness
+dungeon
+interior
+exterior
+route
+threshold
+vehicle
+unknown
+```
+
+Rules:
+
+```text
+road/path/route are often interstitial
+building/room/street/landmark can be current scene/location if confirmed
+region is broader than current scene
+settlement is broader than street/building
+vehicle can be current location if player is inside/on it
+village well is a landmark, not the whole village
+market lane is a street/scene, not the whole city
+road to chapel is a route, not chapel arrival
+chapel visible is a visible reference, not current location
+```
+
+---
+
+# 8. SceneRecord schema
+
+Current scene is more immediate than current location.
+
+```text
+SceneRecord {
+  id,
+  key,
+  placeKey,
+  displayName,
+  summary,
+  sceneType,
+  activeActorKeys,
+  sceneItemKeys,
+  mood,
+  dangerLevel,
+  createdTurn,
+  updatedTurn,
+  sourceOperationKey,
+  notes
+}
+```
+
+Rules:
+
+```text
+scene can update without changing location
+location can change and create/reset scene
+scene summary must be concise
+scene actors/items coordinate through DirtyQueue/Cleanup, not direct deletion by PlaceReducer unless explicit policy exists
+```
+
+---
+
+# 9. TravelIntentRecord schema
+
+Travel intent is what the player is trying to do, not where they are.
+
+```text
+TravelIntentRecord {
+  id,
+  targetPlaceKey,
+  targetDisplayName,
+  originPlaceKey,
+  routeHint,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Statuses:
+
+```text
+intended
+in_progress
+interrupted
+arrived
+cancelled
+unknown
+```
+
+Rules:
+
+```text
+I go to the chapel -> travel intent
+I head toward the chapel -> travel intent
+You enter the chapel -> arrival
+You arrive at the chapel -> arrival
+You can see the chapel -> visible reference, not travel intent unless player action says travel
+```
+
+---
+
+# 10. PlaceReferenceRecord schema
+
+Weak references must be tracked separately.
+
+```text
+PlaceReferenceRecord {
+  id,
+  placeKey,
+  displayName,
+  referenceType,
+  strength,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Reference types:
+
+```text
+visible
+nearby
+mentioned
+rumored
+known
+route_hint
+background
+memory
+unknown
+```
+
+Rules:
+
+```text
+weak/medium references do not overwrite current location
+visible references can appear in /location but not as current place
+known references can support future travel target binding
+background references should not spam context
+```
+
+---
+
+# 11. Route/interstitial model
+
+Routes and interstitials are common in AI Dungeon prose.
+
+Examples:
+
+```text
+after the road
+along the path
+through the alley
+past the gate
+across the bridge
+at the threshold
+near the doorway
+```
+
+Rules:
+
+```text
+route/interstitial can be scene if the narrative stops there
+route/interstitial should not beat a named arrival destination
+route/interstitial may be stored as routeReference
+route/interstitial should not reset destination if arrival is strong
+```
+
+Critical example:
+
+```text
+After the road, you enter The Drunken Huntsman.
+```
+
+Expected:
+
+```text
+current location = The Drunken Huntsman
+road = route reference
+not current location
+```
+
+---
+
+# 12. Arrival strength model
+
+Place CanonValidator should score arrival strength.
+
+```text
+none
+weak_reference
+travel_intent
+scene_confirmation
+strong_arrival
+explicit_location_set
+```
+
+Examples:
+
+```text
+You see the chapel from the market lane -> weak_reference
+I head toward the chapel -> travel_intent
+The market lane remains crowded -> scene_confirmation
+You enter the chapel -> strong_arrival
+You arrive at The Drunken Huntsman -> strong_arrival
+```
+
+Rules:
+
+```text
+strong_arrival can change currentLocation
+scene_confirmation can update scene/current location if it matches current state
+travel_intent does not change currentLocation
+weak_reference does not change currentLocation
+explicit_location_set is reserved for safe startup/structured state only, not commands
+```
+
+---
+
+# 13. PlaceNameSanitizer depth
+
+PlaceNameSanitizer must preserve named places and suppress route noise.
+
+Must handle:
+
+```text
+The Drunken Huntsman -> The Drunken Huntsman
+Chapel of Ash -> Chapel of Ash
+market lane -> Market Lane
+north gate road -> North Gate Road
+Old Mill -> Old Mill
+road to the chapel -> Chapel target + route road, depending clause
+village well -> Village Well, not whole village
+```
+
+Must not create current locations from visible chapel, rumored city, book title place, Story Card place, command output location, context reminder, or route phrase when named destination exists.
+
+---
+
+# 14. Time state model
+
+Time bucket should support:
+
+```text
+text
+turn
+sequence
+lastAdvance
+acceptedAdvances
+pendingClaims
+deadlines
+agePolicy
+warnings
+notes
+```
+
+Rules:
+
+```text
+turn/sequence is script metadata, not necessarily in-world time
+text can be loose in MVP
+time advances require accepted event
+age mutation requires stricter age policy
+```
+
+---
+
+# 15. TimeAdvanceRecord schema
+
+```text
+TimeAdvanceRecord {
+  id,
+  key,
+  amountText,
+  normalizedAmount,
+  unit,
+  literal,
+  affectsAge,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Units:
+
+```text
+moments
+minutes
+hours
+days
+weeks
+months
+years
+unknown
+```
+
+Rules:
+
+```text
+literal accepted time passage can update lastAdvance/text
+nonliteral/quote/dream time passage cannot
+same output replay cannot duplicate time advance
+years/months time passage may be pending for age mutation unless age policy is active
+```
+
+---
+
+# 16. TimeClaimRecord schema
+
+Uncertain time claims should be stored separately from accepted advances.
+
+```text
+TimeClaimRecord {
+  id,
+  claimText,
+  claimType,
+  confidence,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  status,
+  notes
+}
+```
+
+Claim types:
+
+```text
+quote
+rumor
+dream
+metaphor
+hypothetical
+planning
+uncertain_literal
+calendar_reference
+unknown
+```
+
+Rules:
+
+```text
+pending claim is not accepted time advance
+pending claim does not age player
+pending claim can be shown in /time if useful
+```
+
+---
+
+# 17. DeadlineRecord schema
+
+```text
+DeadlineRecord {
+  id,
+  key,
+  title,
+  relatedQuestKey,
+  relatedActorKey,
+  relatedPlaceKey,
+  dueText,
+  dueTurn,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  completedTurn,
+  missedTurn,
+  notes
+}
+```
+
+Deadline statuses:
+
+```text
+active
+pending
+completed
+missed
+cancelled
+unknown
+```
+
+Rules:
+
+```text
+deadline mention creates pending/active deadline only if clear
+deadline completion requires accepted completion event
+deadline missed requires accepted time/deadline miss event
+deadline does not auto-fail quest unless future policy says so
+```
+
+---
+
+# 18. Age policy shell
+
+Age updates are high-risk.
+
+Required policy questions:
+
+```text
+is player age known?
+is player species/race aging model known?
+is time passage literal?
+is time passage long enough?
+is passage duplicate-safe?
+is body/identity lock compatible?
+is there a reason to update exact age instead of just recording time passage?
+```
+
+Rules:
+
+```text
+quoted "twenty years pass" does not age player
+dream twenty years pass does not age player
+narration practice does not age player
+literal exile for twenty years may be accepted time passage
+exact player age mutation may remain pending if age model incomplete
+```
+
+This chunk may record long literal passage without changing exact age unless age policy is implemented.
+
+---
+
+# 19. Place CanonValidator expansion
+
+Accept travel intent when safe input/output says the player heads/goes/travels toward a destination but has not arrived. Result: update travelIntent, currentLocation unchanged.
+
+Accept strong arrival when safe output directly confirms arrival/entry/entering/reaching destination, target is bound, and it is not command/context/card source, dream/quote only, hypothetical, or merely visible/nearby. Result: update currentLocation/currentScene and clear/mark matching travelIntent.
+
+Accept scene confirmation when safe output confirms current scene/location details and target matches current place or is strong current-scene phrase. Result: update scene/confirm location without overwriting from weak reference.
+
+Accept weak reference when safe source mentions visible/nearby/known/background place with no direct arrival. Result: reference record only.
+
+---
+
+# 20. Time CanonValidator expansion
+
+Accept time advance when safe output directly narrates literal time passage, not quote/dream/metaphor/hypothetical/planning, not command/context/card, and operation key is unique.
+
+Reject or pending when time wording is quoted, storytelling/narration practice, metaphorical, planning intent, hypothetical, prophecy, card/context/command text, or dream/vision.
+
+Examples to reject or keep pending:
+
+```text
+You say, "Twenty years pass."
+You feel like years pass.
+In a dream, a century passes.
+If a week passed, the town would change.
+[AIDRPG] Time: three days passed.
+```
+
+Exact age update requires a stricter policy. Default safe result for long passage is accepted/pending time advance with age update pending/deferred unless age policy is active.
+
+---
+
+# 21. ProposalBuilder event types
+
+Place event types:
+
+```text
+place.travel_intent_candidate
+place.arrival_candidate
+place.current_scene_confirm_candidate
+place.visible_reference_candidate
+place.nearby_reference_candidate
+place.route_reference_candidate
+place.known_reference_candidate
+place.scene_transition_candidate
+place.conflict_candidate
+```
+
+Time event types:
+
+```text
+time.advance_candidate
+time.claim_candidate
+time.age_candidate
+time.deadline_candidate
+time.deadline_complete_candidate
+time.deadline_missed_candidate
+time.rest_candidate
+time.calendar_reference_candidate
+```
+
+Current chunk may commit travel intent, strong arrival, scene confirmation, visible/nearby/route references, literal time advance, pending/claim records, deadlines, and age pending/deferred status.
+
+---
+
+# 22. EventScannerLite place/time hints
+
+Place hint families:
+
+```text
+enter/arrive/reach/step into
+head toward/go to/travel to
+see/visible/nearby/in the distance
+road/path/bridge/gate/doorway/threshold
+current scene confirmation phrases
+```
+
+Time hint families:
+
+```text
+moments pass
+minutes/hours/days/weeks/months/years pass
+later
+at dawn/dusk/night/morning
+deadline/due before/by/sunset/tomorrow
+rest/sleep/wait/travel time
+```
+
+Must flag weakReference, travelIntentOnly, strongArrival, routeInterstitial, namedDestination, quotedSpeech, dreamOrVision, metaphor, hypothetical, planningOnly, commandSource, contextSource, cardSource, auditSource, duplicateRisk, and ageRisk.
+
+Parser cannot mutate place/time state.
+
+---
+
+# 23. PlaceReducerLite behavior
+
+PlaceReducerLite owns:
+
+```text
+places.currentLocation
+places.currentScene
+places.records
+places.travelIntent
+places.visibleReferences
+places.nearbyReferences
+places.routeReferences
+places.sceneHistory
+places.warnings
+```
+
+Travel intent commit:
+
+```text
+create/update TravelIntentRecord
+status intended or in_progress
+currentLocation unchanged
+mark current_location/context dirty
+audit compactly
+```
+
+Strong arrival commit:
+
+```text
+create/update PlaceRecord
+set currentLocation
+create/update currentScene
+mark matching travelIntent arrived/clear if applicable
+record SceneTransitionRecord
+coordinate scene actor/item expiry through DirtyQueue/Cleanup shell
+mark current_location/context dirty
+audit compactly
+```
+
+Scene confirmation commit updates currentScene and confirms currentLocation only if target matches current place or is stronger current-scene phrase.
+
+Weak/visible/nearby/reference commit creates a PlaceReferenceRecord without changing currentLocation.
+
+Route/interstitial commit stores routeReference and does not beat a named destination arrival.
+
+---
+
+# 24. TimeReducerLite behavior
+
+TimeReducerLite owns:
+
+```text
+time.text
+time.turn
+time.sequence
+time.lastAdvance
+time.acceptedAdvances
+time.pendingClaims
+time.deadlines
+time.agePolicy
+time.warnings
+```
+
+Time advance commit:
+
+```text
+check operation key
+create TimeAdvanceRecord
+update lastAdvance
+update time.text if useful
+update deadlines only if explicit deadline policy supports it
+mark current_location, quest_log, context dirty
+audit compactly
+```
+
+Time claim commit creates TimeClaimRecord without updating lastAdvance, age, or deadlines.
+
+Deadline create/complete/miss commits update DeadlineRecord and do not auto-complete/fail quests unless QuestReducer receives a separate accepted event or future policy exists.
+
+Age update default policy: pending/deferred unless agePolicy active and all safety checks pass.
+
+---
+
+# 25. Reducer defensive guards
+
+PlaceReducer must reject/no-op if routed result has command/context/card/audit/debug source, visible/nearby as arrival, travel intent as arrival, route phrase overriding named destination, weak mention as current location, dream/quote-only location change, missing place key, or wrong owner reducer.
+
+TimeReducer must reject/no-op if routed result has command/context/card/audit/debug source, quoted time skip, dream time skip, metaphor, hypothetical/planning only, age update without policy, duplicate time advance, missing operation key for repeat-sensitive advance, or wrong owner reducer.
+
+Reducers must not blindly trust upstream.
+
+---
+
+# 26. Operation keys
+
+Place keys:
+
+```text
+place.intent.<placeKey>.<inputHash>
+place.arrive.<placeKey>.<clauseHash>
+place.scene.confirm.<placeKey>.<clauseHash>
+place.reference.visible.<placeKey>.<clauseHash>
+place.reference.nearby.<placeKey>.<clauseHash>
+place.reference.route.<placeKey>.<clauseHash>
+place.transition.<fromPlaceKey>.<toPlaceKey>.<clauseHash>
+```
+
+Time/deadline keys:
+
+```text
+time.advance.<amountKey>.<clauseHash>
+time.claim.<claimType>.<claimHash>
+time.age.<amountKey>.<clauseHash>
+time.deadline.create.<deadlineKey>.<sourceHash>
+time.deadline.complete.<deadlineKey>.<sourceHash>
+time.deadline.miss.<deadlineKey>.<sourceHash>
+```
+
+Rules:
+
+```text
+arrival keys prevent repeated scene transitions on replay
+time advance keys prevent repeated time passage
+deadline keys prevent duplicate deadlines
+age keys are durable/high-risk
+```
+
+---
+
+# 27. Dirty targets
+
+Place/time updates should mark:
+
+```text
+current_location
+context
+quest_log when deadlines/objective locations are affected
+social_memory when present actor scene association changes
+inventory_equipment when scene items need expiry/display refresh
+card_registry only through mirror dirty, not direct write
+```
+
+---
+
+# 28. Scene actor/item coordination shell
+
+When strong arrival changes scene:
+
+```text
+PlaceReducer records scene transition
+DirtyQueue marks social_memory/current_location/inventory_equipment/context
+CleanupManagerLite may expire scene-only actors/items if policy exists
+ActorReducer remains owner of actor records
+InventoryReducer remains owner of scene item records
+```
+
+PlaceReducer must not directly delete actor or inventory records unless a narrow, tested scene-expiry contract exists.
+
+MVP safe behavior:
+
+```text
+mark scene transition
+let cleanup/support layer expire scene-only records conservatively
+preserve persistent actors/items/history
+```
+
+---
+
+# 29. `/location` updates
+
+`/location` must display:
+
+```text
+Current location
+Current scene
+Travel intent
+Visible references
+Nearby references
+Route/interstitial references
+Known places
+Scene transition history summary
+Warnings
+```
+
+Display rules:
+
+```text
+visible place not shown as current
+travel intent not shown as arrived
+route not shown as destination when named destination exists
+unknown current location shown unknown, not guessed
+```
+
+Example:
+
+```text
+[AIDRPG] Location
+
+Current location:
+- Market Lane
+
+Current scene:
+- Crowded market street near the old fountain
+
+Travel intent:
+- Chapel of Ash — intended destination, not arrived
+
+Visible references:
+- Chapel of Ash — visible from Market Lane
+
+Route references:
+- North Gate Road — route/interstitial, not destination
+```
+
+---
+
+# 30. `/time` updates
+
+`/time` must display:
+
+```text
+Current time text
+Turn / sequence marker if used
+Last accepted time advance
+Pending/nonliteral time claims
+Deadlines
+Age policy status
+Warnings
+```
+
+Display rules:
+
+```text
+command does not advance time
+pending claims not shown as accepted advances
+age update status shown separately
+deadlines not marked complete/missed unless accepted
+```
+
+---
+
+# 31. ContextBuilder place/time packets
+
+Place packet should include current location, current scene, travel intent if active, important visible/nearby references, and scene-relevant actors/items already owned by their systems.
+
+Time packet should include current time text if known, recent accepted time advance, urgent deadlines, and age policy warnings only when relevant.
+
+Do not include full place registry, all known places, weak references as current location, pending time claims as accepted passage, hidden lore locations before discovery, or old quarantined place/time claims.
+
+---
+
+# 32. IntegrityChecker place/time checks
+
+Add checks:
+
+```text
+only one currentLocation
+currentScene has placeKey or unknown-safe state
+travelIntent separate from currentLocation
+visible/nearby/route references not marked current
+route/interstitial not overriding named destination
+arrival history operation keys exist
+accepted time advances have operation keys
+time claims not in acceptedAdvances
+age update not applied without policy
+active deadlines have stable keys/statuses
+command/card/context source not active place/time truth
+```
+
+IntegrityChecker may warn/quarantine bad records. It may not teleport the player or advance time.
+
+---
+
+# 33. Cleanup place/time protections
+
+Cleanup may compact old low-value place references, route reference spam, time claim spam, scene history summaries, and resolved deadline warnings if archive policy exists.
+
+Cleanup must not delete currentLocation, currentScene, active travelIntent, active deadlines, accepted time advances needed for audit, important scene transition history, or known major places.
+
+Cleanup must not convert weak references into current location or erase accepted time passage.
+
+---
+
+# 34. ReleaseCheck gates for this chunk
+
+Add or verify PC09-specific gates:
+
+```text
+PC09-G01 PlaceRecord schema exists or equivalent stable place record exists
+PC09-G02 SceneRecord schema exists or equivalent current scene structure exists
+PC09-G03 TravelIntentRecord schema exists or equivalent travel intent structure exists
+PC09-G04 PlaceReferenceRecord schema exists or equivalent visible/nearby/route reference structure exists
+PC09-G05 TimeAdvanceRecord schema exists or equivalent accepted time advance structure exists
+PC09-G06 TimeClaimRecord schema exists or equivalent pending claim structure exists
+PC09-G07 DeadlineRecord schema exists or equivalent deadline structure exists
+PC09-G08 PlaceNameSanitizer preserves named destinations and suppresses route noise
+PC09-G09 CanonValidator rejects weak visible/nearby reference as current location
+PC09-G10 CanonValidator separates travel intent from arrival
+PC09-G11 CanonValidator rejects quoted/dream/metaphorical/planning time passage
+PC09-G12 PlaceReducer rejects unsafe routed place events
+PC09-G13 TimeReducer rejects unsafe routed time/age events
+PC09-G14 duplicate arrival/time/deadline keys exist
+PC09-G15 /location displays current/travel/reference/route states honestly
+PC09-G16 /time displays accepted/pending/deadline/age-policy states honestly
+PC09-G17 command/context/card place/time text cannot become canon
+PC09-G18 cleanup does not delete current location/time/deadlines
+PC09-G19 world bible/region/faction/encounter systems remain deferred
+PC09-G20 player-breaker place/time tests registered
+```
+
+ReleaseCheck must fail if weak place references overwrite current location, travel intent becomes arrival, quoted/dream time changes age, or command/card/context place/time text mutates state.
+
+---
+
+# 35. Required tests
+
+## PC09-001 — Visible chapel no overwrite
+
+Output:
+
+```text
+The chapel is visible from the market lane.
+```
+
+Expected:
+
+```text
+chapel visible reference
+currentLocation remains Market Lane if already there
+```
+
+## PC09-002 — Nearby place no overwrite
+
+```text
+The old mill is nearby beyond the trees.
+```
+
+Expected: old mill nearby reference; currentLocation unchanged.
+
+## PC09-003 — Travel intent not arrival
+
+```text
+I head toward the chapel.
+```
+
+Expected: travelIntent Chapel; currentLocation unchanged.
+
+## PC09-004 — Strong arrival updates location
+
+```text
+You enter the chapel.
+```
+
+Expected: currentLocation Chapel; matching travelIntent arrived/cleared; currentScene updated.
+
+## PC09-005 — Road loses to named destination
+
+```text
+After the road, you enter The Drunken Huntsman.
+```
+
+Expected: currentLocation The Drunken Huntsman; road route reference only.
+
+## PC09-006 — Route as scene only when narrative stops there
+
+```text
+You stop on the narrow bridge as fog rolls over the river.
+```
+
+Expected: bridge may become current scene/location if strong enough; not discarded merely because bridge is route-like.
+
+## PC09-007 — Current scene confirmation
+
+Setup: currentLocation = Market Lane. Output:
+
+```text
+The market lane remains crowded and loud.
+```
+
+Expected: currentScene confirmed/updated; currentLocation remains Market Lane.
+
+## PC09-008 — Weak mention of distant city no overwrite
+
+```text
+Someone mentions the capital far to the east.
+```
+
+Expected: capital mentioned/known reference if useful; currentLocation unchanged.
+
+## PC09-009 — Command location non-canon
+
+Run `/location`, feed command output through Output hook. Expected: no location/travel/reference mutation.
+
+## PC09-010 — Story Card location prose non-canon
+
+Story Card text:
+
+```text
+The player is currently in the Chapel of Ash.
+```
+
+Expected: no currentLocation mutation; quarantine/audit only if surfaced.
+
+## PC09-011 — Context location prose non-canon
+
+Context text:
+
+```text
+Current location: The Drunken Huntsman.
+```
+
+Expected: no currentLocation mutation.
+
+## PC09-012 — Literal night passes
+
+```text
+The night passes uneventfully while you rest.
+```
+
+Expected: accepted time advance; lastAdvance updated; no healing unless separate recovery event accepted.
+
+## PC09-013 — Rest intent no time advance
+
+```text
+I plan to rest until morning.
+```
+
+Expected: intent only; no accepted time advance until output confirms.
+
+## PC09-014 — Quote time skip rejected
+
+```text
+You say, "Twenty years pass," while practicing narration.
+```
+
+Expected: no accepted time advance; no age update.
+
+## PC09-015 — Dream time skip rejected
+
+```text
+In a dream, a century passes before you wake.
+```
+
+Expected: no accepted real time advance; no age update.
+
+## PC09-016 — Metaphorical years rejected
+
+```text
+The wait feels like years.
+```
+
+Expected: no literal time advance; possible metaphor claim only.
+
+## PC09-017 — Literal long passage age cautious
+
+```text
+Twenty years pass during your exile.
+```
+
+Expected: literal time advance accepted or pending by safety mode; exact age update pending/deferred unless age policy active.
+
+## PC09-018 — Duplicate time advance skipped
+
+Repeat night-passes output. Expected: time advance not duplicated; operation key skip/audit.
+
+## PC09-019 — Deadline creation
+
+```text
+Old Bren says the wolves must be cleared before sunset.
+```
+
+Expected: deadline active/pending linked if bound; quest not failed/completed automatically.
+
+## PC09-020 — Deadline completion explicit
+
+```text
+You return before sunset, meeting Old Bren's deadline.
+```
+
+Expected: deadline completed if bound; quest/reward changes only through separate accepted events.
+
+## PC09-021 — Deadline missed explicit
+
+```text
+Sunset passes, and you miss Old Bren's deadline.
+```
+
+Expected: deadline missed if bound; quest failure only if separate event/policy applies.
+
+## PC09-022 — Command time non-canon
+
+Run `/time`, feed command output through Output hook. Expected: no time/deadline/age mutation.
+
+## PC09-023 — Story Card time prose non-canon
+
+Story Card text:
+
+```text
+Ten years have passed since the player entered town.
+```
+
+Expected: no accepted time advance; no age update; quarantine/audit only if surfaced.
+
+## PC09-024 — Scene transition marks dirty
+
+Strong arrival occurs. Expected: dirty targets include current_location and context; social_memory/inventory_equipment marked for scene actor/item refresh if applicable.
+
+## PC09-025 — Location display honest
+
+State: currentLocation Market Lane, travelIntent Chapel of Ash, visibleReference Chapel of Ash, routeReference North Gate Road. `/location` should show Market Lane current, Chapel as travel/visible not current, Road as route.
+
+## PC09-026 — Time display honest
+
+State: accepted night passed, pending quoted twenty years, active before-sunset deadline, cautious age policy. `/time` should separate all of these.
+
+## PC09-027 — Cleanup preserves current place/time/deadlines
+
+Cleanup must preserve currentLocation, currentScene, active deadlines, and accepted time advances while compacting only low-value old references.
+
+---
+
+# 36. Regression placement
+
+Add PC09 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+27 PC09 tests registered
+0 critical PC09 failures
+```
+
+---
+
+# 37. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+places.currentLocation
+places.currentScene
+places.records
+places.travelIntent
+places.visibleReferences
+places.nearbyReferences
+places.routeReferences
+places.sceneHistory
+PlaceRecord shape
+SceneRecord shape
+TravelIntentRecord shape
+PlaceReferenceRecord shape
+SceneTransitionRecord shape
+time.text
+time.lastAdvance
+time.acceptedAdvances
+time.pendingClaims
+time.deadlines
+time.agePolicy
+TimeAdvanceRecord shape
+TimeClaimRecord shape
+DeadlineRecord shape
+```
+
+---
+
+# 38. Parser/proposal/validator changes
+
+Allowed: place travel/arrival/reference/route detection refinement, time advance/claim/deadline detection refinement, PlaceNameSanitizer route/named destination handling, quoted/dream/metaphor/planning time rejection, and operation key suggestions.
+
+Forbidden: world bible import parser, region/faction pressure parser, encounter generator parser, manual teleport/time mutation parser, and card/context place/time import.
+
+---
+
+# 39. Reducer changes
+
+Allowed: PlaceReducer travel intent/arrival/scene confirmation/weak reference/route behavior; TimeReducer time advance/time claim/deadline behavior; unsafe routed-data rejection; dirty targets; duplicate skip results.
+
+Forbidden: region/faction mutation, world event simulation, random encounter generation, manual teleport/settime reducer, age update without policy, and quest failure/payment from deadline unless separately validated.
+
+---
+
+# 40. Command/context/card changes
+
+Allowed:
+
+```text
+/location display depth
+/time display depth
+/context place/time packet
+/cardaudit place/time mirror labels if dry-run
+/releasecheck PC09 gates
+/playerbreakercheck place/time cases
+```
+
+Forbidden:
+
+```text
+/teleport
+/setlocation
+/settime
+/advanceyears
+/manual deadline complete command
+live card writes that create place/time truth
+```
+
+---
+
+# 41. Beginner implementation order
+
+1. Copy accepted actor/social build: `WorldLedgerV0.17.8_ACTOR_SOCIAL_DEPTH_ACCEPTED.txt`.
+2. Create working file: `WorldLedgerV0.17.9_PLACE_TIME_DEPTH_WORKING.txt`.
+3. Add/verify place/time helpers: `ensurePlacesShape`, `ensureTimeShape`, `makePlaceRecord`, `makeSceneRecord`, `makeTravelIntentRecord`, `makePlaceReferenceRecord`, `makeTimeAdvanceRecord`, `makeTimeClaimRecord`, `makeDeadlineRecord`, `normalizeArrivalStrength`, `normalizePlaceType`, `isWeakPlaceReference`, `isStrongArrival`, `isUnsafePlaceSource`, and `isUnsafeTimeSource`.
+4. Deepen PlaceNameSanitizer for named destinations, routes, visible/nearby references, and landmark precision.
+5. Update place/time CanonValidator rules for travel intent, arrival, scene confirmation, weak references, literal time advance, nonliteral claims, deadlines, and cautious age policy.
+6. Update ProposalBuilder to carry place target, event strength, reference type, route/named destination info, time amount/unit/literal flag, deadline target, safety flags, and operation key suggestions.
+7. Update PlaceReducerLite for travel intent, strong arrival, scene confirmation, weak references, route references, and scene transitions.
+8. Update TimeReducerLite for literal time advance, claims, deadlines, and age pending/deferred policy.
+9. Update `/location` and `/time` displays.
+10. Update ContextBuilder place/time packets.
+11. Update IntegrityChecker place/time checks.
+12. Add PC09-G01 through PC09-G20 ReleaseCheck gates.
+13. Add PC09-001 through PC09-027 tests.
+14. Run `/foundationcheck`, `/releasecheck`, `/integrity`, `/playerbreakercheck`, `/regressioncheck`, `/location`, and `/time`.
+15. Save accepted build as `WorldLedgerV0.17.9_PLACE_TIME_DEPTH_ACCEPTED.txt`.
+
+---
+
+# 42. What this chunk produces
+
+Production Chunk 09 should produce:
+
+```text
+WorldLedger V0.17.9 place/time-depth accepted script if code changes are made
+place/time helper depth
+PlaceReducer travel/arrival/reference behavior
+TimeReducer time/deadline behavior
+PlaceNameSanitizer depth
+place/time CanonValidator refinement
+/location and /time display improvement
+place/time context packets
+place/time integrity checks
+PC09 ReleaseCheck gates
+PC09 regression/player-breaker tests
+place/time acceptance report
+updated planning zip with Production Chunk 09 added
+```
+
+It should not produce full world bible import, full region/faction model, encounter generator, manual teleport/settime commands, calendar/weather engine, age mutation without strict policy, live CardSync writes, generated place cards, or old card prose place/time import.
+
+---
+
+# 43. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 09 passes if:
+
+```text
+current location/current scene/travel intent/references/routes are separated
+weak visible/nearby mentions do not overwrite location
+travel intent does not equal arrival
+strong arrival updates location safely
+road/interstitial does not beat named destination
+literal time advances are duplicate-safe
+quoted/dream/metaphorical/planning time does not advance time or age
+age updates are cautious/pending unless policy active
+deadlines are stateful and do not auto-complete/fail quests without rules
+PlaceReducer and TimeReducer reject unsafe routed events
+/location and /time display honestly
+command/context/card place/time text cannot become canon
+cleanup preserves current location/time/deadlines
+PC09 tests pass
+ReleaseCheck has no PC09 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if exact calendar system is deferred, weather/time-of-day details are loose, age mutation is pending/deferred, region/faction/world pressure systems are deferred, scene-only actor/item expiry is conservative, or long-route travel simulation is not active.
+
+## FAIL
+
+Fail and stop if visible chapel becomes current location, heading toward chapel becomes arrival, road beats The Drunken Huntsman, command/context/card location text changes currentLocation, quoted or dream time skip advances time/age, repeated time passage duplicates, rest intent advances time without output confirmation, deadline mention completes/fails quest automatically, cleanup deletes current location/current scene/active deadline, or PlaceReducer/TimeReducer trusts unsafe routed data.
+
+---
+
+# 44. Handoff to Production Chunk 10
+
+When this chunk passes, Production Chunk 10 begins:
+
+```text
+Production Chunk 10 — Formula Matrix and Progression Baseline
+```
+
+Production Chunk 10 may use time and place context for training, rest, travel, and progression pacing, but it must not turn every time passage into XP or every region into world scaling.
+
+Production Chunk 09 must leave place/time state reliable enough that future chunks can ask:
+
+```text
+Where is the player now?
+What is the current scene?
+Where is the player trying to go?
+What places are only visible or nearby?
+Did time literally pass?
+Was time only mentioned, quoted, dreamed, or planned?
+Are deadlines active, completed, or missed?
+Can age safely update, or should it stay pending?
+```
+
+---
+
+# 45. Final doctrine
+
+Production Chunk 09 is where the world stops sliding under the player’s feet.
+
+Final rule:
+
+```text
+A place must be arrived at before it becomes current.
+A time skip must be literal before it changes time.
+A deadline must be explicit before it matters.
+Age must be protected.
+Weak references, command text, context text, card prose, dreams, quotes, routes, and plans cannot rewrite reality.
+```
+
+Once this passes, the project can safely begin progression and formula baseline work in Production Chunk 10.

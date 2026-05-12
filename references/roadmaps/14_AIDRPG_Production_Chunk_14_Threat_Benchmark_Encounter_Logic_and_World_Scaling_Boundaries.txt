@@ -1,0 +1,2274 @@
+# AIDRPG Production Chunk 14 — Threat Benchmark, Encounter Logic, and World Scaling Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 14 — Threat Benchmark, Encounter Logic, and World Scaling Boundaries  
+**Production sequence:** 14 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.13 form/race/constraints accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add threat benchmark records, encounter state, region/creature danger labels, fairness boundaries, no-rubber-band scaling enforcement, encounter proposal safety, and world-scaling display rules without turning every monster mention into combat or scaling the world to the player.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 13 — Body Form, Race Logic, Transformation Consequence, and Non-Humanoid Constraints.  
+**This document does not contain final script code.**
+
+Production Chunk 14 exists because threat and encounter logic is where an RPG script either starts feeling like a living world or becomes fake difficulty math.
+
+Old and rough builds risked:
+
+```text
+all enemies scaling to the player automatically
+low-level areas becoming impossible because the player leveled up
+high-threat regions being softened because the player is weak
+monster references becoming immediate combat
+rumors spawning enemies
+Story Card creature lore becoming active encounter state
+context reminders creating fights
+current location danger being overwritten by random creature text
+form/race traits being treated as instant power scaling
+quest danger becoming completed combat
+combat victory generating XP/loot automatically
+duplicate encounter outputs creating duplicate enemies
+```
+
+This chunk locks the threat/encounter boundary. The goal is not a full creature ecology or encounter generator yet. The goal is to define how threat is measured, how encounter state begins and ends, how the world refuses rubber-band scaling, and how AI Dungeon gameplay receives useful danger context without uncontrolled automation.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Threat is not player-scaled by default.
+A wolf remains a wolf unless world facts change it.
+A dragon remains dangerous even if the player is low level.
+A rat does not become legendary because the player is high level.
+A creature mention is not an encounter.
+A rumor is not an encounter.
+A visible enemy is not combat until engagement validates it.
+A dangerous region is not an automatic fight.
+Encounter victory is not XP or loot unless separate owner events validate it.
+Difficulty labels guide context; they do not mutate state by themselves.
+```
+
+Threat should be fair because it is honest, not because it secretly bends around the player.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 13 made body form and non-humanoid constraints meaningful. Threat benchmarks come next because they use:
+
+```text
+player level and XP boundaries from PC10
+stats and resource safety from PC11
+combat event model from PC12
+form/body constraints from PC13
+actor presence from PC08
+place/current scene from PC09
+quest objective/reward boundaries from PC07
+inventory/equipment truth from PC05
+ability status from PC06
+```
+
+If threat is not defined before world bible and creature ecology chunks, those later chunks will invent inconsistent danger rules. This chunk makes future world systems safer.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 14 may change:
+
+```text
+Threat schema helpers
+Encounter schema helpers
+ThreatBenchmark helper
+EncounterState helper
+WorldScalingBoundary enforcement
+CanonValidator threat/encounter rules
+ProposalBuilder threat/encounter event types
+EventScannerLite encounter hints
+CommandRenderers /location, optional /encounter or /threat
+ContextBuilder threat/encounter packet
+OperationLedger threat/encounter keys
+DirtyQueue threat/combat/location/context targets
+IntegrityChecker threat/encounter checks
+ReleaseCheck threat/encounter gates
+Regression/player-breaker threat tests
+```
+
+Production Chunk 14 may add:
+
+```text
+ThreatBenchmarkRecord schema
+ThreatSourceRecord schema
+EncounterRecord schema
+EncounterParticipantRecord schema
+EncounterStateRecord schema
+EncounterTriggerRecord schema
+EncounterResolutionRecord schema
+RegionThreatRecord shell
+CreatureThreatRecord shell
+HazardThreatRecord shell
+DangerContextRecord schema
+FairnessBoundaryRecord schema
+NoRubberBandPolicyRecord schema
+EncounterAuditRecord schema
+```
+
+Production Chunk 14 may not add:
+
+```text
+full creature ecology database
+full world bible import
+full random encounter generator
+full region/faction pressure simulation
+full tactical combat balancing
+full NPC stat generation
+full loot table or XP table automation
+automatic encounter scaling
+manual /spawnencounter or /setthreat commands
+live CardSync writes
+generated encounter cards
+old card prose encounter import
+```
+
+World Bible import/reference layer is Production Chunk 15. Creature ecology is Production Chunk 17. Advanced combat/warfare remains later.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+ThreatState helpers
+EncounterState helpers
+ThreatBenchmark helper
+WorldScalingBoundary helper
+CanonValidator threat/encounter rules
+ProposalBuilder threat/encounter proposals
+EventScannerLite encounter hints
+Resolver encounter participant binding
+CommandRenderers: /location, optional /encounter, optional /threat
+ContextBuilderLite threat/encounter packet
+OperationLedger threat/encounter keys
+DirtyQueue threat/combat/location dirty targets
+AuditLogger threat/encounter lines
+InvariantChecker threat/encounter checks
+ReleaseCheckLite PC14 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+CombatReducer except encounter link references
+ProgressionReducer except no automatic XP scaling
+InventoryReducer except no automatic loot scaling
+ActorReducer except encounter participant references
+PlaceReducer except danger context display
+WorldBible import
+Creature ecology
+Faction/region pressure systems
+Manual mutation commands
+CardSync live writes
+```
+
+---
+
+# 5. Threat and encounter state model
+
+Threat state should be structured but not overactive.
+
+Recommended shape:
+
+```text
+threat: {
+  benchmarks: {},
+  sources: {},
+  regionThreats: {},
+  creatureThreats: {},
+  hazardThreats: {},
+  dangerContexts: {},
+  fairnessBoundaries: {},
+  noRubberBandPolicy: null,
+  warnings: [],
+  notes: []
+}
+```
+
+Encounter state should be separate:
+
+```text
+encounters: {
+  activeEncounterKey: null,
+  records: {},
+  participants: {},
+  triggers: [],
+  resolutions: [],
+  recentEncounters: [],
+  warnings: [],
+  notes: []
+}
+```
+
+Do not hide threat data inside combat logs only. Threat can exist without combat. Encounter can exist before combat. Combat can happen inside an encounter, but they are not the same thing.
+
+---
+
+# 6. ThreatBenchmarkRecord schema
+
+Threat benchmark records classify danger without scaling it automatically.
+
+Required shape:
+
+```text
+ThreatBenchmarkRecord {
+  id,
+  key,
+  displayName,
+  threatFamily,
+  threatTier,
+  relativeToPlayerLabel,
+  absoluteDangerLabel,
+  sourceAuthority,
+  sourceOperationKey,
+  relatedCreatureKey,
+  relatedRegionKey,
+  relatedPlaceKey,
+  relatedQuestKey,
+  formulaProfileId,
+  scalingPolicyKey,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Threat families:
+
+```text
+creature
+actor
+hazard
+region
+location
+quest
+faction_deferred
+divine_deferred
+environment
+unknown
+```
+
+Threat tiers:
+
+```text
+trivial
+low
+moderate
+serious
+deadly
+overwhelming
+legendary
+unknown
+```
+
+Rules:
+
+```text
+absoluteDangerLabel describes the world fact
+relativeToPlayerLabel is display/context only
+relative labels do not mutate creature/region/player stats
+threat tier must not change just because player levels up unless source authority changes
+```
+
+---
+
+# 7. ThreatSourceRecord schema
+
+Threat sources explain where the danger label came from.
+
+Required shape:
+
+```text
+ThreatSourceRecord {
+  id,
+  key,
+  sourceType,
+  authority,
+  confidence,
+  sourceOperationKey,
+  sourceEventId,
+  summary,
+  createdTurn,
+  notes
+}
+```
+
+Source types:
+
+```text
+validated_story_output
+structured_startup
+world_bible_reference_later
+creature_record_later
+region_record_later
+quest_warning
+actor_warning
+rumor
+card_context_blocked
+command_blocked
+unknown
+```
+
+Authority levels:
+
+```text
+confirmed
+probable
+rumored
+candidate
+blocked
+unknown
+```
+
+Rules:
+
+```text
+rumored threat is not confirmed threat
+blocked card/context/command source cannot create active threat truth
+world bible reference later can guide future records but does not import yet
+```
+
+---
+
+# 8. NoRubberBandPolicyRecord schema
+
+This record enforces the central fairness rule.
+
+Required shape:
+
+```text
+NoRubberBandPolicyRecord {
+  id,
+  policyName,
+  enabled,
+  playerScalingAllowed,
+  automaticEnemyScalingAllowed,
+  automaticRegionScalingAllowed,
+  automaticLootScalingAllowed,
+  automaticXPScalingAllowed,
+  authority,
+  sourceOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Required values for MVP:
+
+```text
+playerScalingAllowed = false
+automaticEnemyScalingAllowed = false
+automaticRegionScalingAllowed = false
+automaticLootScalingAllowed = false
+automaticXPScalingAllowed = false
+```
+
+Rules:
+
+```text
+player level may influence relative danger display
+player level may not rewrite enemy level
+player level may not rewrite region danger
+player level may not create loot/XP tables
+encounter fairness means honest warning, not hidden scaling
+```
+
+---
+
+# 9. FairnessBoundaryRecord schema
+
+Fairness boundaries explain what the system should and should not do.
+
+Required shape:
+
+```text
+FairnessBoundaryRecord {
+  id,
+  key,
+  boundaryType,
+  rule,
+  active,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Boundary types:
+
+```text
+no_rubber_band_scaling
+no_auto_encounter_from_mention
+no_auto_xp_from_victory
+no_auto_loot_from_victory
+no_auto_combat_from_visible_enemy
+respect_region_danger
+respect_form_constraints
+respect_escape_possibility
+warn_overwhelming_threat
+unknown
+```
+
+Rules:
+
+```text
+boundaries guide validation and context
+boundaries do not themselves mutate gameplay state
+```
+
+---
+
+# 10. EncounterRecord schema
+
+Encounter records track situations, not just fights.
+
+Required shape:
+
+```text
+EncounterRecord {
+  id,
+  key,
+  displayName,
+  encounterType,
+  status,
+  placeKey,
+  sceneKey,
+  participantKeys,
+  triggerKey,
+  threatBenchmarkKeys,
+  dangerContextKey,
+  startedTurn,
+  updatedTurn,
+  endedTurn,
+  resolutionKey,
+  sourceOperationKey,
+  warnings,
+  notes
+}
+```
+
+Encounter types:
+
+```text
+combat
+social_threat
+creature_sighting
+hazard
+ambush
+pursuit
+standoff
+boss_deferred
+environmental_danger
+unknown
+```
+
+Statuses:
+
+```text
+candidate
+active
+engaged
+avoided
+escaped
+resolved
+ended
+rejected
+unknown
+```
+
+Rules:
+
+```text
+creature sighting can be encounter candidate without combat
+active encounter does not mean damage
+engaged encounter can link to CombatSceneState
+resolved encounter does not auto-award XP/loot
+```
+
+---
+
+# 11. EncounterParticipantRecord schema
+
+Participants link actors, creatures, player, hazards, or groups.
+
+Required shape:
+
+```text
+EncounterParticipantRecord {
+  id,
+  key,
+  encounterKey,
+  participantType,
+  displayName,
+  actorKey,
+  creatureKey,
+  hazardKey,
+  count,
+  role,
+  presenceStatus,
+  threatBenchmarkKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Participant types:
+
+```text
+player
+actor
+creature_deferred
+generic_enemy
+hazard
+group
+unknown
+```
+
+Roles:
+
+```text
+threat
+ally
+neutral
+bystander
+prey
+pursuer
+hazard_source
+unknown
+```
+
+Rules:
+
+```text
+participant record does not create full actor/creature stats
+generic group can exist without persistent actor promotion
+creature_deferred waits for creature ecology/world bible authority
+```
+
+---
+
+# 12. EncounterTriggerRecord schema
+
+Triggers explain why an encounter began.
+
+Required shape:
+
+```text
+EncounterTriggerRecord {
+  id,
+  key,
+  triggerType,
+  sourceOperationKey,
+  sourceEventId,
+  summary,
+  confidence,
+  createdTurn,
+  notes
+}
+```
+
+Trigger types:
+
+```text
+direct_attack
+creature_approaches
+ambush_revealed
+player_enters_danger_area
+hazard_activated
+actor_confrontation
+quest_scene
+visible_threat
+rumor_rejected
+card_context_blocked
+unknown
+```
+
+Rules:
+
+```text
+visible_threat may create candidate encounter, not automatic combat
+rumor_rejected should not create active encounter
+card/context blocked should not create active encounter
+```
+
+---
+
+# 13. EncounterResolutionRecord schema
+
+Resolution is stateful and must not create rewards by itself.
+
+Required shape:
+
+```text
+EncounterResolutionRecord {
+  id,
+  key,
+  encounterKey,
+  resolutionType,
+  summary,
+  sourceOperationKey,
+  createdTurn,
+  linkedCombatOutcomeKey,
+  linkedQuestKey,
+  linkedXPKey,
+  linkedLootKey,
+  warnings,
+  notes
+}
+```
+
+Resolution types:
+
+```text
+escaped
+avoided
+defeated_enemy
+defeated_player
+negotiated
+fled
+captured
+surrendered
+disengaged
+hazard_survived
+unknown
+```
+
+Rules:
+
+```text
+resolution does not award XP automatically
+resolution does not create loot automatically
+resolution may link to combat/quest/progression/inventory owner events if separately validated
+```
+
+---
+
+# 14. Region, creature, and hazard threat shells
+
+These shells let later world systems plug in safely.
+
+```text
+RegionThreatRecord {
+  id,
+  key,
+  displayName,
+  threatTier,
+  sourceAuthority,
+  knownToPlayer,
+  relatedPlaceKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+CreatureThreatRecord {
+  id,
+  key,
+  displayName,
+  creatureFamily,
+  threatTier,
+  sourceAuthority,
+  knownToPlayer,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+HazardThreatRecord {
+  id,
+  key,
+  displayName,
+  hazardFamily,
+  threatTier,
+  placeKey,
+  active,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+region threat does not scale to player
+creature threat does not change because player level changes
+hazard mention is not damage
+world bible import later may populate these through controlled rules
+```
+
+Hazard families:
+
+```text
+fire
+falling_rocks
+poison_gas
+flood
+storm
+trap
+curse_deferred
+radiation_deferred
+unknown
+```
+
+---
+
+# 15. DangerContextRecord schema
+
+Danger context helps AI Dungeon narration without forcing outcomes.
+
+Required shape:
+
+```text
+DangerContextRecord {
+  id,
+  key,
+  contextType,
+  placeKey,
+  encounterKey,
+  threatBenchmarkKeys,
+  summary,
+  playerRelativeWarning,
+  escapePossibleLabel,
+  formConstraintNotes,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Context types:
+
+```text
+safe
+caution
+danger
+high_danger
+overwhelming
+unknown
+```
+
+Escape possible labels:
+
+```text
+likely
+possible
+difficult
+unlikely
+unknown
+```
+
+Rules:
+
+```text
+danger context informs prompt/context
+it does not force damage, combat, or quest failure
+form constraints can affect warning labels but not hidden scaling
+```
+
+---
+
+# 16. Threat benchmark calculation policy
+
+Threat comparison may use player facts, but only for display.
+
+Allowed inputs:
+
+```text
+player level if known
+player resource/body state if relevant
+active severe conditions
+current form constraints
+known stable abilities
+owned/equipped relevant items as references only
+place/region danger label
+creature/hazard threat label
+quest warning label
+```
+
+Allowed outputs:
+
+```text
+relative danger label
+warning text
+context note
+ReleaseCheck/audit note
+```
+
+Forbidden outputs:
+
+```text
+enemy stat changes
+region level changes
+automatic XP changes
+automatic loot changes
+automatic combat result changes
+automatic quest failure/completion
+```
+
+Use labels instead of fake precise math unless formulas are explicit:
+
+```text
+safe
+manageable
+risky
+dangerous
+deadly
+overwhelming
+unknown
+```
+
+Important example:
+
+```text
+A wolf may be moderate objective threat.
+If the player is exhausted, bleeding, and in a no-hands form, relative danger may be dangerous.
+The wolf did not scale; the player's situation changed.
+```
+
+---
+
+# 17. Encounter activation policy
+
+An encounter can activate when source validates direct scene pressure.
+
+Accepted activation examples:
+
+```text
+The wolf steps from the brush and growls at you.
+Bandits surround you in the alley.
+The bridge cracks beneath your feet.
+The dragon lands in the square, scattering the crowd.
+Mira draws her blade and blocks your path.
+```
+
+Rejected activation examples:
+
+```text
+People say wolves haunt the mill.
+A book describes dragons.
+The quest board warns of bandits.
+[AIDRPG] Encounter: wolf active.
+Story Card: wolves attack travelers here.
+Context: a dragon is nearby.
+```
+
+Candidate-only examples:
+
+```text
+You hear howling in the distance.
+Tracks suggest wolves passed recently.
+The air smells of smoke and scales.
+```
+
+---
+
+# 18. Encounter boundaries with other systems
+
+## 18.1 Encounter and combat separation
+
+```text
+encounter candidate can exist without combat
+active encounter can be social/hazard/creature sighting
+combat starts only when direct engagement/attack/threat validates
+combat victory can resolve encounter
+encounter resolution does not create XP/loot by itself
+```
+
+## 18.2 Encounter and quest separation
+
+```text
+quest objective mentioning wolves does not spawn wolves
+quest warning of dragon does not spawn dragon
+encounter with quest target can update quest only through QuestReducer objective validation
+encounter resolution does not auto-complete quest unless objective completion validates
+```
+
+## 18.3 Encounter and progression separation
+
+```text
+encounter activation does not grant XP
+encounter survival does not grant XP unless exact XP validates
+encounter victory does not grant XP unless exact XP validates
+threat tier does not auto-calculate XP
+player level does not scale XP table
+```
+
+## 18.4 Encounter and inventory separation
+
+```text
+encounter resolution does not create loot
+creature death does not automatically add loot
+loot drop creates available scene item only if InventoryReducer validates it
+owned loot requires acquisition event
+```
+
+## 18.5 Encounter and form constraints
+
+Form constraints should make encounters feel different.
+
+Examples:
+
+```text
+wolf form with no hands in a locked-door encounter -> tool-use warning
+winged form in cramped tunnel -> movement/space warning
+large beast form in narrow alley -> access/movement warning
+tiny form against large predator -> danger warning
+water-breathing form in flood hazard -> relative danger may improve
+exhausted human body facing wolves -> relative danger worsens
+```
+
+Rules:
+
+```text
+form constraints affect danger context/relative warnings
+form constraints do not auto-win or auto-lose encounters
+combat/quest/place owner systems still validate outcomes
+```
+
+---
+
+# 19. Threat CanonValidator expansion
+
+CanonValidator must enforce encounter and threat safety.
+
+## 19.1 Accept threat benchmark when
+
+```text
+safe output or structured source directly establishes danger level/fact
+source is not command/context/card/audit/debug
+threat target is bound
+not rumor unless stored as rumored/candidate
+not player-scaling formula mutation
+```
+
+## 19.2 Accept encounter candidate when
+
+```text
+safe output shows signs/tracks/distant sound/possible danger
+not direct engagement yet
+```
+
+## 19.3 Accept active encounter when
+
+```text
+safe output places threat in current scene with direct pressure
+participant target bound enough
+not rumor/book/card/context/command source
+```
+
+## 19.4 Accept encounter resolution when
+
+```text
+safe output directly resolves encounter by escape, defeat, negotiation, capture, surrender, or disengagement
+encounter target binds to active/candidate encounter
+not duplicate
+```
+
+## 19.5 Reject encounter when
+
+Any are true:
+
+```text
+rumor-only
+book/lore-only
+quest objective-only
+Story Card source
+context source
+command output
+hypothetical
+dream/vision only
+weak mention with no current scene pressure
+```
+
+---
+
+# 20. ProposalBuilder threat/encounter event types
+
+Add or verify event types:
+
+```text
+threat.benchmark_candidate
+threat.source_candidate
+threat.region_candidate
+threat.creature_candidate
+threat.hazard_candidate
+threat.danger_context_candidate
+encounter.candidate
+encounter.activate_candidate
+encounter.participant_candidate
+encounter.trigger_candidate
+encounter.resolve_candidate
+encounter.reject_candidate
+encounter.link_combat_candidate
+encounter.link_quest_candidate
+world.scaling_boundary_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+threat benchmarks
+no-rubber-band policy
+fairness boundaries
+danger context
+encounter candidates
+active encounters
+participants
+triggers
+resolutions
+links to combat/quest/inventory/progression only as references unless owner events validate
+```
+
+---
+
+# 21. EventScannerLite threat/encounter hints
+
+EventScannerLite may detect encounter hints, but detection is not canon.
+
+Hint families:
+
+```text
+creature appears / steps out / charges / stalks
+ambush / surround / block path
+hazard activates / bridge cracks / gas fills room
+tracks / howls / distant roar
+region warning / deadly forest / cursed swamp
+boss-like presence / dragon lands / giant blocks gate
+escape / flee / negotiate / surrender / defeat
+```
+
+Must flag:
+
+```text
+rumorOnly
+loreOnly
+questTextOnly
+visibleOnly
+candidateOnly
+activePressure
+directEngagement
+cardSource
+contextSource
+commandSource
+auditSource
+dreamOrVision
+hypothetical
+scalingRisk
+xpLootRisk
+duplicateRisk
+ambiguousThreat
+```
+
+Parser cannot mutate threat or encounter state.
+
+---
+
+# 22. ThreatBenchmark and EncounterState helper behavior
+
+ThreatBenchmark helper should:
+
+```text
+ensure no-rubber-band policy exists
+create/update objective threat benchmark records
+calculate relative danger labels only for display/context
+read player level/body/form state conservatively
+read region/creature/hazard threat labels if known
+never mutate player/enemy/world stats
+never award XP/loot
+never start combat by itself
+```
+
+EncounterState helper should:
+
+```text
+create candidate encounters from signs/distant threats
+activate encounters from direct scene pressure
+link encounter participants without inventing full stats
+link combat scene when combat validates
+resolve encounters from direct output
+preserve encounter history
+mark dirty targets
+```
+
+It should not:
+
+```text
+spawn random enemies
+scale participant stats
+award XP/loot
+complete quests
+kill participants
+teleport threats into scene from lore/card/context
+```
+
+---
+
+# 23. Encounter defensive guards
+
+Encounter/Threat reducers must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+rumor/lore-only as active encounter
+quest objective as spawned encounter
+weak distant sign as combat
+visible threat as combat without engagement
+encounter victory as XP/loot
+player level scaling enemy stats
+duplicate encounter activation
+ambiguous threat target
+wrong owner reducer
+```
+
+Reducers must not blindly trust upstream.
+
+---
+
+# 24. Operation keys
+
+Required threat operation keys:
+
+```text
+threat.benchmark.<threatKey>.<sourceHash>
+threat.source.<sourceType>.<targetKey>.<sourceHash>
+threat.region.<regionKey>.<sourceHash>
+threat.creature.<creatureKey>.<sourceHash>
+threat.hazard.<hazardKey>.<sourceHash>
+threat.dangerContext.<placeOrEncounterKey>.<sourceHash>
+threat.noRubberBand.<policyVersion>
+threat.fairnessBoundary.<boundaryType>.<policyVersion>
+```
+
+Required encounter operation keys:
+
+```text
+encounter.candidate.<encounterKey>.<sourceHash>
+encounter.activate.<encounterKey>.<placeKey>.<sourceHash>
+encounter.participant.<encounterKey>.<participantKey>.<sourceHash>
+encounter.trigger.<encounterKey>.<triggerType>.<sourceHash>
+encounter.resolve.<encounterKey>.<resolutionType>.<sourceHash>
+encounter.linkCombat.<encounterKey>.<combatKey>
+encounter.linkQuest.<encounterKey>.<questKey>
+```
+
+Rules:
+
+```text
+encounter activation/resolution keys are durable enough to prevent replay duplication
+threat policy keys are durable
+relative danger recalculation keys may be recent/cache-like
+cleanup must preserve no-rubber-band policy and active encounter keys
+```
+
+---
+
+# 25. Dirty targets
+
+Threat/encounter updates should mark:
+
+```text
+current_location
+context
+combat if encounter links to combat
+quest_log if encounter links to quest objective
+social_memory if actors witness/respond
+body_status if danger context depends on severe body/form state
+```
+
+Mapping:
+
+```text
+threat benchmark -> current_location, context
+encounter candidate -> current_location, context
+active encounter -> current_location, context, combat if engaged
+encounter resolution -> current_location, context, combat/social_memory as relevant
+danger context -> current_location, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 26. Command display updates
+
+## 26.1 `/location`
+
+Should include danger context when relevant:
+
+```text
+Current danger context
+Visible/nearby threats
+Encounter status if active
+Region/creature/hazard warning if known
+```
+
+## 26.2 Optional `/threat`
+
+If command budget permits:
+
+```text
+/threat
+```
+
+Should show:
+
+```text
+objective threat labels
+relative danger labels
+known region/creature/hazard threats
+no-rubber-band policy status
+warning/deferred notes
+```
+
+## 26.3 Optional `/encounter`
+
+If command budget permits:
+
+```text
+/encounter
+```
+
+Should show:
+
+```text
+active encounter
+participants
+trigger
+threat benchmark
+combat link if any
+resolution status
+XP/loot warning: not automatic
+```
+
+If commands are not added, include summaries in:
+
+```text
+/location
+/stateaudit
+/debuglast
+```
+
+All output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 27. ContextBuilder threat/encounter packet
+
+ContextBuilder should include concise danger facts.
+
+Include:
+
+```text
+active encounter status
+objective threat warning
+relative danger label if useful
+known escape/avoidance possibility if supported
+form/body constraint warnings
+no automatic scaling reminder only if relevant
+```
+
+Do not include:
+
+```text
+all threat benchmarks every turn
+rumors as active encounters
+lore/card/context threats as active
+enemy stats invented from player level
+loot/XP promises from threat tier
+```
+
+Example packet:
+
+```text
+Threat: A wolf is actively blocking the path. Objective threat is moderate, but you are exhausted and in wolf form with no human hands, making the situation dangerous. The wolf has not scaled to your level; danger comes from the scene and your condition.
+```
+
+---
+
+# 28. IntegrityChecker threat/encounter checks
+
+Add checks:
+
+```text
+no-rubber-band policy exists and is enabled
+player level does not mutate threat tier
+active encounter has sourceOperationKey
+active encounter source is not command/card/context
+rumored threat not active encounter
+quest objective not spawned encounter
+visible threat not combat unless engagement validates
+encounter resolution does not imply XP/loot
+threat benchmark has authority/source/confidence
+relative danger labels not stored as objective enemy stats
+active encounter participants have stable keys
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not spawn encounters, scale enemies, grant XP, or create loot.
+
+---
+
+# 29. Cleanup threat/encounter protections
+
+Cleanup may compact:
+
+```text
+old low-value candidate encounter signs
+old rejected rumor encounter audits
+old duplicate danger context spam
+old resolved encounter summaries after archive policy
+```
+
+Cleanup must not delete:
+
+```text
+active encounters
+no-rubber-band policy
+fairness boundaries
+active danger context
+important threat benchmarks
+encounter resolution history needed for audit
+operation keys preventing duplicate encounter activation/resolution
+```
+
+Cleanup must not resolve encounters, scale threats, award rewards, or remove danger warnings without validated scene change/resolution.
+
+---
+
+# 30. ReleaseCheck gates for this chunk
+
+Add or verify PC14-specific gates:
+
+```text
+PC14-G01 ThreatBenchmarkRecord schema exists or equivalent threat benchmark structure exists
+PC14-G02 EncounterRecord schema exists or equivalent encounter structure exists
+PC14-G03 EncounterParticipantRecord and EncounterTriggerRecord schemas exist or equivalents exist
+PC14-G04 EncounterResolutionRecord exists or equivalent resolution structure exists
+PC14-G05 NoRubberBandPolicyRecord exists and disables automatic enemy/region/loot/XP scaling
+PC14-G06 FairnessBoundaryRecord exists or equivalent boundary rules exist
+PC14-G07 RegionThreatRecord, CreatureThreatRecord, and HazardThreatRecord shells exist or equivalents exist
+PC14-G08 CanonValidator rejects rumor/lore/card/context/command threats as active encounters
+PC14-G09 CanonValidator separates visible/candidate threat from active engagement/combat
+PC14-G10 ThreatBenchmark helper calculates relative danger without mutating enemy/world stats
+PC14-G11 EncounterState helper rejects unsafe routed encounter events
+PC14-G12 encounter resolution does not auto-award XP/loot/quest completion
+PC14-G13 duplicate encounter activation/resolution keys exist
+PC14-G14 form/body constraints can influence danger context without auto-win/auto-loss
+PC14-G15 /location or /threat /encounter displays danger state honestly
+PC14-G16 command/context/card threat text cannot become canon
+PC14-G17 cleanup preserves active encounters, policies, boundaries, and operation keys
+PC14-G18 world bible/creature ecology/random encounter systems remain deferred
+PC14-G19 combat/progression/inventory owner boundaries remain intact
+PC14-G20 player-breaker threat/encounter tests registered
+```
+
+ReleaseCheck must fail if player level scales enemies, rumor spawns encounters, card/context text activates threats, or encounter victory grants XP/loot automatically.
+
+---
+
+# 31. Required tests
+
+## PC14-001 — No-rubber-band policy exists
+
+Expected:
+
+```text
+NoRubberBandPolicyRecord exists
+automatic enemy/region/loot/XP scaling disabled
+ReleaseCheck reports policy active
+```
+
+---
+
+## PC14-002 — Player level does not scale wolf
+
+Setup:
+
+```text
+player level increases
+wolf threat benchmark exists
+```
+
+Expected:
+
+```text
+wolf objective threat unchanged
+relative danger may update only as display/context if appropriate
+```
+
+---
+
+## PC14-003 — Dragon remains overwhelming to weak player
+
+Setup:
+
+```text
+player low level
+dragon threat benchmark overwhelming/legendary
+```
+
+Expected:
+
+```text
+dragon not scaled down
+context warns overwhelming/deadly if encountered
+```
+
+---
+
+## PC14-004 — Rat does not become legendary
+
+Setup:
+
+```text
+player high level
+rat or low-threat creature benchmark exists
+```
+
+Expected:
+
+```text
+rat objective threat unchanged
+no automatic legendary scaling
+```
+
+---
+
+## PC14-005 — Rumor wolves no encounter
+
+Output:
+
+```text
+People say wolves haunt the Old Mill.
+```
+
+Expected:
+
+```text
+rumored/candidate threat only
+no active encounter
+no combat
+```
+
+---
+
+## PC14-006 — Quest objective does not spawn encounter
+
+Quest text:
+
+```text
+Clear the Mill Wolves.
+```
+
+Expected:
+
+```text
+quest objective exists
+no wolf encounter until scene validates wolves present
+```
+
+---
+
+## PC14-007 — Creature sighting candidate
+
+Output:
+
+```text
+You hear wolves howling somewhere beyond the trees.
+```
+
+Expected:
+
+```text
+candidate encounter or danger sign
+no active combat
+```
+
+---
+
+## PC14-008 — Direct creature pressure active encounter
+
+Output:
+
+```text
+A wolf steps from the brush and blocks your path, growling.
+```
+
+Expected:
+
+```text
+active encounter or active threat state
+combat not necessarily active unless engagement validates
+```
+
+---
+
+## PC14-009 — Ambush active encounter
+
+Output:
+
+```text
+Three bandits surround you in the alley with blades drawn.
+```
+
+Expected:
+
+```text
+active encounter
+participants group count 3 if supported
+combat/threat context updated
+```
+
+---
+
+## PC14-010 — Visible dragon not instant combat
+
+Output:
+
+```text
+A dragon circles far above the mountains.
+```
+
+Expected:
+
+```text
+visible/nearby or distant threat reference
+no active combat
+encounter candidate only if scene pressure supports it
+```
+
+---
+
+## PC14-011 — Hazard encounter candidate
+
+Output:
+
+```text
+The bridge groans and cracks beneath your feet.
+```
+
+Expected:
+
+```text
+hazard encounter/danger context active or candidate
+no damage unless Body/Combat validates fall/injury
+```
+
+---
+
+## PC14-012 — Hazard mention no damage
+
+Output:
+
+```text
+The old bridge is said to be dangerous.
+```
+
+Expected:
+
+```text
+rumored hazard threat only
+no active hazard encounter
+no damage
+```
+
+---
+
+## PC14-013 — Encounter victory no XP
+
+Output:
+
+```text
+You drive the wolf away.
+```
+
+Expected:
+
+```text
+encounter resolution possible
+no XP unless exact XP event validates
+no loot
+```
+
+---
+
+## PC14-014 — Encounter victory with exact XP routes to ProgressionReducer
+
+Output:
+
+```text
+You drive the wolf away and gain 5 XP.
+```
+
+Expected:
+
+```text
+encounter resolution possible
+XP only through ProgressionReducer exact XP event
+no threat-based XP table
+```
+
+---
+
+## PC14-015 — Loot drop is available, not owned
+
+Output:
+
+```text
+The bandit flees, dropping a silver dagger.
+```
+
+Expected:
+
+```text
+encounter resolution possible
+silver dagger available scene item through InventoryReducer if validated
+not owned
+```
+
+---
+
+## PC14-016 — Form constraints affect danger context
+
+Setup:
+
+```text
+player in wolf form with no human hands
+encounter is locked door hazard/social obstacle
+```
+
+Expected:
+
+```text
+danger/context warning mentions tool-use constraint
+no auto-fail/auto-success
+```
+
+---
+
+## PC14-017 — Exhaustion affects relative warning, not enemy stats
+
+Setup:
+
+```text
+player exhausted and bleeding
+wolf threat benchmark moderate
+```
+
+Expected:
+
+```text
+relative danger may become dangerous/deadly
+wolf threat tier unchanged
+```
+
+---
+
+## PC14-018 — Command threat non-canon
+
+Run:
+
+```text
+/location
+/threat if available
+/encounter if available
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no threat/encounter mutation from command text
+```
+
+---
+
+## PC14-019 — Story Card encounter prose non-canon
+
+Story Card text:
+
+```text
+A dragon attacks the player whenever they enter the valley.
+```
+
+Expected:
+
+```text
+no active encounter from card text
+quarantine/audit only if surfaced
+```
+
+---
+
+## PC14-020 — Context threat prose non-canon
+
+Context text:
+
+```text
+Active encounter: wolves attack now.
+```
+
+Expected:
+
+```text
+no active encounter/combat mutation from context text
+```
+
+---
+
+## PC14-021 — Duplicate encounter activation skipped
+
+Repeat:
+
+```text
+A wolf steps from the brush and blocks your path, growling.
+```
+
+Expected:
+
+```text
+same encounter updated or duplicate skipped
+no duplicate wolf swarm unless new evidence supports it
+```
+
+---
+
+## PC14-022 — Duplicate resolution skipped
+
+Repeat:
+
+```text
+You drive the wolf away.
+```
+
+Expected:
+
+```text
+encounter resolution not duplicated
+no repeated XP/loot/quest effects
+```
+
+---
+
+## PC14-023 — Active encounter display honest
+
+State:
+
+```text
+active wolf encounter
+objective wolf threat moderate
+player exhausted
+relative danger dangerous
+no combat yet
+```
+
+Run:
+
+```text
+/location
+/encounter if available
+```
+
+Expected:
+
+```text
+active encounter shown
+objective vs relative danger distinguished
+combat not falsely shown active
+```
+
+---
+
+## PC14-024 — Resolved encounter display honest
+
+State:
+
+```text
+encounter resolved by escape
+no XP
+no loot
+```
+
+Expected:
+
+```text
+resolution shown
+XP/loot not shown unless owner events exist
+```
+
+---
+
+## PC14-025 — Cleanup preserves active encounter and policy
+
+Setup:
+
+```text
+active encounter
+no-rubber-band policy
+fairness boundaries
+operation keys
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active encounter/policy/boundaries/keys preserved
+only old low-risk candidate signs compacted
+```
+
+---
+
+## PC14-026 — Manual encounter commands disabled
+
+Run:
+
+```text
+/spawnencounter dragon
+/setthreat wolf legendary
+/scaleenemies on
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no encounter/threat mutation
+```
+
+---
+
+# 32. Regression placement
+
+Add PC14 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+26 PC14 tests registered
+0 critical PC14 failures
+```
+
+---
+
+# 33. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+threat.benchmarks
+threat.sources
+threat.regionThreats
+threat.creatureThreats
+threat.hazardThreats
+threat.dangerContexts
+threat.fairnessBoundaries
+threat.noRubberBandPolicy
+encounters.activeEncounterKey
+encounters.records
+encounters.participants
+encounters.triggers
+encounters.resolutions
+ThreatBenchmarkRecord shape
+ThreatSourceRecord shape
+NoRubberBandPolicyRecord shape
+FairnessBoundaryRecord shape
+EncounterRecord shape
+EncounterParticipantRecord shape
+EncounterTriggerRecord shape
+EncounterResolutionRecord shape
+RegionThreatRecord shell
+CreatureThreatRecord shell
+HazardThreatRecord shell
+DangerContextRecord shape
+```
+
+---
+
+# 34. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+threat benchmark detection
+encounter candidate/activation/resolution detection
+rumor/lore/card/context rejection
+visible/candidate/active separation
+relative danger warning calculation
+no-rubber-band enforcement
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+random encounter generator
+creature stat generation
+world bible import parser
+manual encounter/threat mutation parser
+auto XP/loot parser from encounter resolution
+card/context encounter import
+```
+
+---
+
+# 35. Reducer/checker changes
+
+Allowed:
+
+```text
+ThreatBenchmark helper records
+EncounterState helper records
+NoRubberBandPolicy enforcement
+DangerContext records
+encounter duplicate skip results
+threat/encounter integrity checks
+```
+
+Forbidden:
+
+```text
+enemy/player stat scaling
+XP/loot reward generation
+quest completion/failure from encounter resolution
+combat damage/healing from encounter state alone
+world bible/creature ecology activation
+```
+
+---
+
+# 36. Command/context/card changes
+
+Allowed:
+
+```text
+/location danger context display
+/threat optional command
+/encounter optional command
+/context threat/encounter packet
+/cardaudit threat mirror labels if dry-run
+/releasecheck PC14 gates
+/playerbreakercheck threat/encounter cases
+```
+
+Forbidden:
+
+```text
+/spawnencounter
+/setthreat
+/scaleenemies
+/awardencounterxp
+/generateloot
+live card writes that create encounter truth
+```
+
+---
+
+# 37. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted form/race build
+
+Start from:
+
+```text
+WorldLedgerV0.17.13_FORM_RACE_CONSTRAINTS_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.14_THREAT_ENCOUNTER_BOUNDARIES_WORKING.txt
+```
+
+## Step 2 — Add/verify threat and encounter helper functions
+
+Create helpers for:
+
+```text
+ensureThreatShape
+ensureEncounterShape
+makeThreatBenchmarkRecord
+makeThreatSourceRecord
+makeNoRubberBandPolicyRecord
+makeFairnessBoundaryRecord
+makeEncounterRecord
+makeEncounterParticipantRecord
+makeEncounterTriggerRecord
+makeEncounterResolutionRecord
+makeDangerContextRecord
+isUnsafeThreatSource
+isRumorOnlyThreat
+isActiveEncounterPressure
+isScalingMutationAttempt
+```
+
+## Step 3 — Add no-rubber-band policy defaults
+
+Create default policy and fairness boundaries.
+
+Make ReleaseCheck fail if missing.
+
+## Step 4 — Add ThreatBenchmark helper
+
+Support:
+
+```text
+objective threat labels
+relative danger display labels
+player vulnerability/form constraint context
+no stat/world mutation
+```
+
+## Step 5 — Add EncounterState helper
+
+Support:
+
+```text
+candidate encounter
+active encounter
+participants
+triggers
+resolutions
+combat/quest links as references only
+```
+
+## Step 6 — Update threat/encounter CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+rumor/lore threat
+candidate signs
+active encounter pressure
+visible distant threat
+hazard activation
+encounter resolution
+XP/loot separation
+```
+
+## Step 7 — Update ProposalBuilder threat/encounter support
+
+Ensure proposals carry:
+
+```text
+threat target
+encounter target
+participants
+place/scene keys
+source/localClause/safety flags
+objective vs relative labels
+operation key suggestion
+```
+
+## Step 8 — Update commands and context
+
+Update:
+
+```text
+/location
+/threat if available
+/encounter if available
+ContextBuilder threat/encounter packet
+```
+
+## Step 9 — Update IntegrityChecker
+
+Add no-rubber-band, active encounter source, encounter/reward separation, and duplicate checks.
+
+## Step 10 — Add PC14 ReleaseCheck gates
+
+Add PC14-G01 through PC14-G20.
+
+## Step 11 — Add PC14 tests
+
+Add PC14-001 through PC14-026.
+
+## Step 12 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/location
+/threat if available
+/encounter if available
+```
+
+## Step 13 — Save accepted threat/encounter build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.14_THREAT_ENCOUNTER_BOUNDARIES_ACCEPTED.txt
+```
+
+---
+
+# 38. What this chunk produces
+
+Production Chunk 14 should produce:
+
+```text
+WorldLedger V0.17.14 threat/encounter-boundaries accepted script if code changes are made
+ThreatBenchmarkRecord / EncounterRecord schemas
+NoRubberBandPolicyRecord
+FairnessBoundaryRecord
+Region/Creature/Hazard threat shells
+DangerContext records
+ThreatBenchmark helper
+EncounterState helper
+threat/encounter CanonValidator refinement
+/location /threat /encounter display improvements
+threat/encounter context packet
+threat/encounter integrity checks
+PC14 ReleaseCheck gates
+PC14 regression/player-breaker tests
+threat/encounter acceptance report
+updated planning zip with Production Chunk 14 added
+```
+
+It should not produce:
+
+```text
+full world bible import
+full creature ecology
+random encounter generator
+manual encounter/threat commands
+world rubber-band scaling
+automatic XP/loot from encounters
+full enemy stat generation
+live CardSync writes
+old card prose encounter import
+```
+
+---
+
+# 39. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 14 passes if:
+
+```text
+threat benchmark and encounter structures exist
+no-rubber-band policy is active and enforced
+player level does not mutate enemy/region threat
+rumor/lore/card/context/command threats do not activate encounters
+visible/candidate threat is separated from active engagement/combat
+encounter resolution does not auto-award XP/loot/quest completion
+form/body constraints can inform danger context without auto-win/auto-loss
+operation keys prevent duplicate encounter activation/resolution
+/location or /threat /encounter displays honestly
+command/context/card threat text cannot become canon
+cleanup preserves active encounters, policies, boundaries, and keys
+PC14 tests pass
+ReleaseCheck has no PC14 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+creature ecology is shell-only
+world bible threat import is deferred
+random encounters are disabled
+relative danger labels are approximate/display-only
+region/faction pressure is deferred
+creature stat details are unknown
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+player level scales enemy or region threat
+rumor spawns active encounter
+quest objective spawns encounter
+Story Card/context/command creates encounter
+visible distant threat becomes combat automatically
+encounter victory grants XP or loot automatically
+relative danger overwrites objective threat tier
+duplicate encounter activation creates duplicate enemies
+cleanup deletes active encounter or no-rubber-band policy
+Threat/Encounter helper trusts unsafe routed data
+```
+
+---
+
+# 40. Handoff to Production Chunk 15
+
+When this chunk passes, Production Chunk 15 begins:
+
+```text
+Production Chunk 15 — World Bible Import, Lore Authority, and Knowledge Boundaries
+```
+
+Production Chunk 15 may use threat benchmarks and encounter boundaries to safely import world facts, region danger, creature references, and lore authority.
+
+Production Chunk 14 must leave threat/encounter state reliable enough that PC15 can ask:
+
+```text
+Is this danger a confirmed world fact, rumor, lore reference, or active encounter?
+Does this creature/region threat come from a trusted source?
+Can this world bible fact guide context without spawning combat?
+Is player level prevented from scaling the world?
+Are XP, loot, quest, and combat still owned by their own systems?
+```
+
+---
+
+# 41. Final doctrine
+
+Production Chunk 14 is where difficulty stops being fake scaling.
+
+Final rule:
+
+```text
+The world does not bend around the player by default.
+Threat is a fact, encounter is a state, combat is an event, reward is owner-routed, and danger context is guidance.
+A fair system warns honestly instead of secretly scaling reality.
+```
+
+Once this passes, the project can safely build World Bible import and lore authority boundaries in Production Chunk 15.

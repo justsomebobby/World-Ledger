@@ -1,0 +1,1034 @@
+# AIDRPG Production Chunk 11 — Stats, Derived Values, Conditions, and Invariant Checker
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 11 — Stats, Derived Values, Conditions, and Invariant Checker  
+**Production sequence:** 11 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.10 progression-baseline accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen base stats, stat modifiers, derived values, resource formulas, condition modifiers, invariant checking, stat audit, and safe repair/quarantine behavior without vague stat gains, hidden recalculation drift, impossible values, or cleanup deleting truth.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 10 — Formula Matrix and Progression Baseline.  
+**This document does not contain final script code.**
+
+Production Chunk 11 is the math-safety wall between the progression baseline and the combat system. It makes stats useful while preventing the classic failure pattern where vague narration, cleanup, or a stale formula silently rewrites the character.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Base stats are truth.
+Derived stats are calculated snapshots.
+Modifiers need source, owner, duration, status, and operation keys.
+Conditions may affect stats, but cleanup cannot heal them.
+Level does not grant stats unless a stat rule exists.
+Vague strength is not STR.
+Feeling faster is not DEX.
+Training is not a stat increase by default.
+Impossible values must warn, repair structurally, or quarantine.
+No derived value becomes permanent truth without formula authority.
+```
+
+Stats must be deterministic, versioned, explainable, and ready for AI Dungeon gameplay, where output text can be messy and repeated.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 10 locked exact XP, formula profile authority, duplicate-safe level events, and no-rubber-band world scaling. Stats come next because future systems depend on them:
+
+```text
+combat damage/healing
+body resources
+ability costs and reliability
+conditions and injuries
+race/form consequences
+creature threat comparison
+world threat benchmarks
+equipment modifiers
+long-run balance
+```
+
+If stats and invariants are not safe before combat, combat will be built on unstable math and patch-loop risk.
+
+---
+
+# 3. Allowed scope
+
+Production Chunk 11 may change:
+
+```text
+Progression stat helpers
+Stat schema helpers
+Modifier helpers
+DerivedValueCalculator shell
+ConditionModifierBridge
+InvariantChecker
+Body resource invariant checks
+CanonValidator stat/progression modifier rules
+ProposalBuilder stat/modifier event types
+EventScannerLite stat/condition modifier hints
+/sheet, /status, optional /stats
+ContextBuilder stat/body packet
+OperationLedger stat/modifier/resource keys
+DirtyQueue stat/body targets
+Cleanup protected paths
+ReleaseCheck stat/invariant gates
+Regression/player-breaker stat tests
+```
+
+It may not add:
+
+```text
+full combat damage engine
+full equipment stat bonus system
+full class/talent tree
+race/lineage power automation
+absorption/evolution stat gains
+manual /setstat or /addstat commands
+world enemy auto-scaling
+full final level 1–1000 balancing unless the formula authority is locked and tested
+```
+
+---
+
+# 4. Stat authority model
+
+Every stat value must have an authority level:
+
+```text
+unknown
+setup_confirmed
+formula_derived
+validated_story_change
+temporary_modifier
+condition_modifier
+equipment_modifier_deferred
+race_form_modifier_deferred
+manual_deferred
+invalid_quarantined
+```
+
+Rules:
+
+```text
+unknown does not become 10 by default unless the active profile says so
+setup_confirmed can initialize base stats before lock
+formula_derived calculates snapshots but does not overwrite base stats
+validated_story_change requires strict validation and ReleaseCheck coverage
+temporary_modifier must have source/duration/status
+condition_modifier must link to an active condition/injury
+manual_deferred is blocked/display only, not active mutation
+```
+
+---
+
+# 5. StatBlock schema
+
+Required shape:
+
+```text
+StatBlock {
+  baseStats,
+  modifiers,
+  derivedValues,
+  resources,
+  formulaProfileId,
+  lastCalculatedTurn,
+  lastValidTurn,
+  warnings,
+  notes
+}
+```
+
+Recommended storage:
+
+```text
+progression.statBlock
+```
+
+or a clearly bridged equivalent across:
+
+```text
+progression.baseStats
+progression.modifiers
+progression.derivedSnapshot
+body.resources
+```
+
+Do not create a second unrelated stat root.
+
+---
+
+# 6. BaseStatRecord schema
+
+Required fields:
+
+```text
+BaseStatRecord {
+  key,
+  displayName,
+  value,
+  known,
+  min,
+  max,
+  source,
+  sourceOperationKey,
+  locked,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Possible stat keys if the active formula profile supports them:
+
+```text
+strength
+dexterity
+constitution
+intelligence
+wisdom
+charisma
+willpower
+perception
+agility
+endurance
+```
+
+The final active stat list must come from FormulaProfile / Formula Appendix authority. If no stat profile is active, base stats should stay unknown/deferred instead of being guessed.
+
+---
+
+# 7. StatModifierRecord schema
+
+Required fields:
+
+```text
+StatModifierRecord {
+  id,
+  key,
+  targetStatKey,
+  modifierType,
+  value,
+  stackingPolicy,
+  sourceFamily,
+  sourceKey,
+  sourceOperationKey,
+  status,
+  durationType,
+  expiresTurn,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Modifier types:
+
+```text
+add
+multiply
+set_min
+set_max
+cap
+floor
+advantage_label
+disadvantage_label
+unknown
+```
+
+Source families:
+
+```text
+condition
+injury
+ability_deferred
+equipment_deferred
+race_form_deferred
+quest_deferred
+manual_deferred
+unknown
+```
+
+Rules:
+
+```text
+condition modifiers require active condition/injury
+expired modifiers do not affect derived values
+duplicate modifiers require operation keys and stacking policy
+equipment, ability, race, and form modifiers remain deferred unless their owner systems are active
+```
+
+---
+
+# 8. DerivedValueRecord schema
+
+Derived values are calculated outputs, not independent truth.
+
+Required fields:
+
+```text
+DerivedValueRecord {
+  key,
+  displayName,
+  value,
+  known,
+  formulaRuleId,
+  formulaProfileId,
+  inputsHash,
+  calculatedTurn,
+  stale,
+  warnings,
+  notes
+}
+```
+
+Examples:
+
+```text
+maxHP
+maxMP
+maxEP
+armorClass_deferred
+carryCapacity_deferred
+initiative_deferred
+attackBonus_deferred
+defense_deferred
+```
+
+Rules:
+
+```text
+derived values recalculate from base stats, active modifiers, and formula rules
+derivedSnapshot can be stored for display/performance
+stale derived values must be marked stale, not trusted
+cleanup cannot delete formula inputs and leave a snapshot as truth
+```
+
+---
+
+# 9. ResourceFormulaRecord schema
+
+Body resources connect body and stats.
+
+Required fields:
+
+```text
+ResourceFormulaRecord {
+  resourceKey,
+  formulaRuleId,
+  formulaProfileId,
+  currentPolicy,
+  maxPolicy,
+  clampPolicy,
+  source,
+  enabled,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+maxHP/maxMP/maxEP may derive from stat formulas only if formula active
+current resource does not auto-fill to new max unless a policy says so
+structural clamp is not healing
+current cannot exceed max when both are known
+current cannot go below 0 when known
+```
+
+---
+
+# 10. ConditionModifierRecord schema
+
+Conditions and injuries may apply modifiers.
+
+Required fields:
+
+```text
+ConditionModifierRecord {
+  id,
+  conditionKey,
+  injuryKey,
+  targetStatKey,
+  targetDerivedKey,
+  effectLabel,
+  modifierType,
+  value,
+  severityScale,
+  active,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Examples:
+
+```text
+fatigued -> minor endurance/agility disadvantage label
+exhausted -> major endurance/strength/agility disadvantage label
+bleeding -> endurance / HP-risk label
+sprained ankle -> movement/agility disadvantage label
+blinded -> perception/attack labels deferred to combat
+```
+
+Unknown severity should use cautious labels, not guessed math.
+
+---
+
+# 11. StatChangeRecord schema
+
+Direct stat changes must be rare and audited.
+
+Required fields:
+
+```text
+StatChangeRecord {
+  id,
+  statKey,
+  fromValue,
+  toValue,
+  delta,
+  changeType,
+  sourceType,
+  sourceOperationKey,
+  acceptedTurn,
+  formulaProfileId,
+  warnings,
+  notes
+}
+```
+
+Allowed change types:
+
+```text
+setup_initialize
+formula_level_up
+validated_story_change
+migration_repair
+quarantine_rejected
+manual_deferred
+unknown
+```
+
+Default direct story stat changes should be pending/deferred unless a strict stat-change policy is active.
+
+---
+
+# 12. InvariantViolationRecord and RepairActionRecord schemas
+
+Invariant problems must be recorded clearly.
+
+```text
+InvariantViolationRecord {
+  id,
+  family,
+  severity,
+  path,
+  expected,
+  actualPreview,
+  action,
+  sourceOperationKey,
+  detectedTurn,
+  resolvedTurn,
+  notes
+}
+```
+
+```text
+RepairActionRecord {
+  id,
+  violationId,
+  actionType,
+  path,
+  beforePreview,
+  afterPreview,
+  source,
+  safe,
+  createdTurn,
+  notes
+}
+```
+
+Allowed actions:
+
+```text
+report_only
+repair_structural
+clamp_structural
+quarantine_payload
+block_release
+```
+
+Forbidden repairs:
+
+```text
+award stats
+award XP
+heal player
+remove active condition
+remove stable ability
+remove active inventory
+silently rewrite formula profile
+```
+
+---
+
+# 13. Formula and stat activation levels
+
+## Stage 0 — Unknown stats
+
+```text
+baseStats empty/unknown
+progression tracks XP
+combat/stat math deferred
+```
+
+## Stage 1 — Setup-confirmed base stats
+
+```text
+structured startup can set base stats before lock
+values must pass invariant checks
+```
+
+## Stage 2 — Derived values active
+
+```text
+formula profile has enabled derived rules
+derivedSnapshot recalculates from base stats/modifiers
+```
+
+## Stage 3 — Level-up stat changes
+
+```text
+formula profile supports stat progression
+level-up emits stat changes through owner rules
+```
+
+Stage 3 is allowed only if formulas and tests are fully defined. Otherwise it must remain WARN/deferred.
+
+---
+
+# 14. CanonValidator stat/modifier rules
+
+Accept setup stat initialization only when:
+
+```text
+structured startup source before lock
+stat profile active or setup schema explicitly supports stats
+stat value numeric and within allowed range
+operation key present
+```
+
+Reject stat change when any are true:
+
+```text
+vague stronger/faster/smarter phrasing
+training-only claim
+ability use claim
+dream/quote/rumor/prophecy
+command/context/card/audit/debug source
+manual command
+impossible negative/nonnumeric value
+formula profile missing for formula-derived change
+```
+
+Accept modifier only when:
+
+```text
+active condition/injury/status exists or is accepted in same batch
+modifier mapping rule exists
+source is safe
+operation key present
+```
+
+Reject modifier when:
+
+```text
+condition is only rumored/quoted/dreamed
+source is command/context/card/audit/debug
+equipment/race/ability modifier tries to activate before its owner chunk
+```
+
+---
+
+# 15. DerivedValueCalculator behavior
+
+DerivedValueCalculator should:
+
+```text
+read base stats
+read active modifiers
+read formula rules
+calculate derived values
+write derivedSnapshot only through owner reducer/checker path
+mark stale if inputs change
+never mutate base stats
+never mutate active conditions
+never award resources as healing
+```
+
+If formula missing:
+
+```text
+derived value remains unknown/deferred
+ReleaseCheck WARN if feature claimed active
+```
+
+---
+
+# 16. InvariantChecker behavior
+
+InvariantChecker should run after reducer batches and through diagnostic commands.
+
+It should check:
+
+```text
+required stat structures exist
+base stat values valid
+resource current/max valid
+modifiers have source/status/duration
+condition modifiers link to active conditions
+expired modifiers inactive
+derived values match inputs if active
+level/formula profile consistency
+no duplicate active modifiers without stacking policy
+no command/card/context source as stat truth
+cleanup protected paths intact
+```
+
+Allowed checker actions:
+
+```text
+report warning
+clamp structural resource overflow
+quarantine malformed modifier/stat record
+mark derivedSnapshot stale
+block ReleaseCheck
+```
+
+---
+
+# 17. ProgressionReducer stat-safe hooks
+
+ProgressionReducer may interact with stats only through explicit stat rules.
+
+Allowed:
+
+```text
+on level-up, check stat formula profile
+if stat formula active, emit stat change records according to formula
+if inactive, add level history only and stat progression pending/warn
+```
+
+Forbidden:
+
+```text
+level-up automatically gives random stat points
+level-up heals to full by default
+level-up changes HP max without resource formula
+level-up changes world scaling
+```
+
+---
+
+# 18. Body/resource integration
+
+Rules:
+
+```text
+maxHP/maxMP/maxEP may derive from stats/formulas
+currentHP/currentMP/currentEP does not auto-fill to new max unless policy active
+structural clamp from above max is not healing
+if max decreases below current, current clamps down structurally with audit
+if max increases, current remains same unless heal/recovery/fill policy is accepted
+```
+
+This prevents false healing from formula recalculation.
+
+---
+
+# 19. Equipment/ability/race modifier boundaries
+
+Equipment modifiers:
+
+```text
+iron sword equipped does not add attack bonus yet
+armor does not change AC unless equipment formula spec is active
+```
+
+Ability modifiers:
+
+```text
+ability cost/cooldown labels remain descriptive
+ability use does not change stats unless a future ability effect spec validates it
+```
+
+Race/form modifiers:
+
+```text
+race/form consequences are mostly PC13
+wolf form may produce constraint labels if validated, but not full stat formula unless rule active
+```
+
+---
+
+# 20. Operation keys
+
+Required keys:
+
+```text
+stat.setup.<statKey>.<startupKey>
+stat.change.<statKey>.<deltaOrValue>.<sourceHash>
+stat.modifier.add.<modifierKey>.<sourceHash>
+stat.modifier.expire.<modifierKey>.<sourceHash>
+derived.recalc.<formulaProfileId>.<inputsHash>
+resource.max.recalc.<resourceKey>.<inputsHash>
+resource.clamp.<resourceKey>.<sourceHash>
+invariant.check.<turnBucket>.<schemaVersion>
+invariant.violation.<family>.<pathHash>.<actualHash>
+repair.structural.<pathHash>.<sourceHash>
+quarantine.stat.<pathHash>.<sourceHash>
+```
+
+Stat change keys are durable. Derived recalculation keys may be cache-like. Repair/quarantine keys should prevent repeated spam.
+
+---
+
+# 21. Dirty targets
+
+Stat/resource updates should mark:
+
+```text
+player_sheet
+body_status
+progression
+context
+```
+
+Mapping:
+
+```text
+base stat change -> player_sheet, progression, context
+modifier change -> player_sheet, body_status if condition-related, context
+derived recalculation -> player_sheet, body_status if resource-related, context
+resource clamp -> body_status, player_sheet, context
+invariant warning -> stateaudit/releasecheck only unless gameplay-relevant
+```
+
+---
+
+# 22. Command and context updates
+
+`/sheet` should show:
+
+```text
+level/XP summary
+base stats if known
+formula profile
+derived values if active
+stat automation warnings/deferred notes
+world scaling boundary summary
+```
+
+`/status` should show:
+
+```text
+resources current/max/known
+active conditions
+condition modifiers if active
+injuries
+death boundary
+resource formula warnings
+```
+
+Optional `/stats` should show:
+
+```text
+base stats
+active modifiers
+derived values
+formula profile
+last invariant result
+```
+
+ContextBuilder should include only relevant stat/body facts, not raw stat JSON or unknown stats as fake values.
+
+---
+
+# 23. Cleanup protections
+
+Cleanup may compact:
+
+```text
+old low-risk invariant logs
+old duplicate stale-derived warnings
+old repair spam after summary
+old inactive modifier history after archive policy
+```
+
+Cleanup must not delete:
+
+```text
+base stats
+active modifiers
+active condition sources
+derived formula rules
+formula profile
+XP/level records
+active body resources
+unresolved invariant violations
+quarantine records
+repair action records needed for audit
+```
+
+Cleanup must not heal, level, assign stats, or change formulas.
+
+---
+
+# 24. ReleaseCheck gates for this chunk
+
+Add or verify PC11-specific gates:
+
+```text
+PC11-G01 StatBlock schema exists or equivalent stat structure exists
+PC11-G02 BaseStatRecord schema exists or equivalent base stat record exists if stats active
+PC11-G03 StatModifierRecord schema exists or equivalent modifier structure exists
+PC11-G04 DerivedValueRecord schema exists or equivalent derived snapshot structure exists
+PC11-G05 ResourceFormulaRecord schema exists or equivalent resource formula structure exists
+PC11-G06 ConditionModifierRecord schema exists or equivalent condition modifier bridge exists
+PC11-G07 InvariantViolationRecord and RepairActionRecord exist or equivalent audit structures exist
+PC11-G08 CanonValidator rejects vague/training/command/card/context stat gains
+PC11-G09 DerivedValueCalculator does not mutate base stats
+PC11-G10 ProgressionReducer does not auto-assign stats without formula authority
+PC11-G11 resource max/current recalculation does not heal by default
+PC11-G12 condition modifiers link to active conditions and deactivate on resolution
+PC11-G13 InvariantChecker detects impossible stat/resource/modifier states
+PC11-G14 cleanup preserves base stats, active modifiers, active conditions, formula profiles, and unresolved violations
+PC11-G15 command/context/card stat text cannot become canon
+PC11-G16 equipment/ability/race/form stat modifiers remain deferred unless owner rules active
+PC11-G17 world scaling remains no-rubber-band
+PC11-G18 optional /stats or /sheet+/status displays stat state honestly
+PC11-G19 durable stat/modifier/resource/repair keys exist
+PC11-G20 player-breaker stat/invariant tests registered
+```
+
+ReleaseCheck must fail if vague stat gains apply, derived values overwrite base stats, cleanup heals/removes active modifiers, or resource recalculation heals the player silently.
+
+---
+
+# 25. Required tests
+
+```text
+PC11-001 Unknown stats not defaulted silently
+PC11-002 Structured setup stats accepted with operation keys
+PC11-003 Vague “you feel stronger” no stat gain
+PC11-004 Training no stat gain by default
+PC11-005 Command stat text non-canon
+PC11-006 Story Card stat prose non-canon
+PC11-007 Context stat prose non-canon
+PC11-008 Level-up without stat formula does not assign stats
+PC11-009 Level-up with stat formula applies only formula-defined changes
+PC11-010 Derived value recalculates from inputs
+PC11-011 Derived value does not overwrite base stat
+PC11-012 Resource max increase does not heal
+PC11-013 Resource max decrease clamps structurally
+PC11-014 Resource current cannot exceed max
+PC11-015 Negative resource rejected/quarantined or structurally clamped
+PC11-016 Condition modifier active only with active condition
+PC11-017 Resolved condition deactivates modifier
+PC11-018 Cleanup does not heal condition modifier
+PC11-019 Duplicate modifier skipped without stacking policy
+PC11-020 Equipment modifier deferred
+PC11-021 Ability modifier deferred
+PC11-022 Race/form modifier deferred unless rule active
+PC11-023 Invalid stat record quarantined
+PC11-024 Formula profile cannot silently change stats
+PC11-025 World scaling remains disabled
+PC11-026 Stats display honest
+PC11-027 Integrity command actionable and non-mutating
+```
+
+Minimum expectation:
+
+```text
+27 PC11 tests registered
+0 critical PC11 failures
+```
+
+Regression tiers:
+
+```text
+T1 State/Runtime/Command Foundation Tests
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+---
+
+# 26. Beginner implementation order
+
+1. Copy accepted progression build:
+
+```text
+WorldLedgerV0.17.10_PROGRESSION_BASELINE_ACCEPTED.txt
+```
+
+2. Create working file:
+
+```text
+WorldLedgerV0.17.11_STATS_INVARIANTS_WORKING.txt
+```
+
+3. Add helper functions:
+
+```text
+ensureStatBlockShape
+makeBaseStatRecord
+makeStatModifierRecord
+makeDerivedValueRecord
+makeResourceFormulaRecord
+makeConditionModifierRecord
+makeInvariantViolationRecord
+makeRepairActionRecord
+normalizeStatKey
+normalizeModifierType
+isUnsafeStatSource
+isVagueStatGain
+```
+
+4. Add DerivedValueCalculator shell.
+5. Add ModifierManager / ConditionModifierBridge.
+6. Update stat CanonValidator rules.
+7. Update ProgressionReducer stat-safe hooks.
+8. Update InvariantChecker.
+9. Update `/sheet`, `/status`, and optional `/stats`.
+10. Update ContextBuilder stat/body packet.
+11. Add PC11-G01 through PC11-G20 ReleaseCheck gates.
+12. Add PC11-001 through PC11-027 tests.
+13. Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/sheet
+/status
+/stats if available
+```
+
+14. Save accepted build:
+
+```text
+WorldLedgerV0.17.11_STATS_INVARIANTS_ACCEPTED.txt
+```
+
+---
+
+# 27. Pass / warn / fail criteria
+
+## PASS
+
+```text
+stat structures exist and are source-aware
+base stats and derived values are separated
+modifiers have source/status/duration/keys
+condition modifiers link to active conditions
+derived values recalculate from formula inputs only
+resource max/current recalculation does not heal by default
+level-up does not assign stats without formula authority
+vague/training/command/card/context stat gains are rejected
+InvariantChecker detects impossible values and records actions
+cleanup preserves active stat/body/formula truth
+stats display honestly
+PC11 tests pass
+ReleaseCheck has no PC11 FAIL/BLOCKED gates
+```
+
+## WARN
+
+```text
+stats remain unknown because no profile is active
+stat formulas are partially deferred
+combat derived values are deferred
+race/form/equipment modifiers are deferred
+derived snapshots are display-only until combat formulas activate
+```
+
+## FAIL
+
+```text
+unknown stats default silently
+vague narration increases stats
+training increases stats by default
+command/context/card text mutates stats
+level-up assigns stats without formula authority
+resource max increase heals current HP/MP/EP by default
+derived values overwrite base stats
+condition cleanup removes active penalties
+modifiers duplicate without stacking policy
+world enemies scale from player stats
+InvariantChecker repairs gameplay truth by awarding/healing/deleting active state
+```
+
+---
+
+# 28. Handoff to Production Chunk 12
+
+When this chunk passes, Production Chunk 12 begins:
+
+```text
+Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver
+```
+
+Production Chunk 12 may now safely use:
+
+```text
+known resources
+active conditions
+injuries
+stat labels/modifiers
+derived values if active
+duplicate-safe operation keys
+invariant checks
+```
+
+Production Chunk 11 must leave stat/body math reliable enough that PC12 can ask:
+
+```text
+What HP/MP/EP values are known?
+Which modifiers are active?
+Are derived combat values known, stale, or deferred?
+Can damage/healing safely change resources?
+Will duplicate combat output apply twice?
+Will cleanup accidentally heal or remove penalties?
+```
+
+---
+
+# 29. Final doctrine
+
+Production Chunk 11 is where numbers stop being vibes.
+
+Final rule:
+
+```text
+Stats are source-bound.
+Derived values are calculated.
+Modifiers are owned.
+Resources are clamped safely.
+Conditions are not cleanup noise.
+Invariants catch corruption before it spreads.
+No unsafe text source, formula drift, or convenience repair can rewrite the character.
+```
+
+Once this passes, the project can safely build combat event and damage/healing resolution in Production Chunk 12.

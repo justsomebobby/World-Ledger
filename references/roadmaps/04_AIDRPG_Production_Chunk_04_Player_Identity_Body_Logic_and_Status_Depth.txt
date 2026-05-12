@@ -1,0 +1,392 @@
+# AIDRPG Production Chunk 04 — Player Identity, Body Logic, and Status Depth
+
+## Document status
+
+Production sequence: 04 of 25.
+Build target: WorldLedger V0.17.3 schema-readiness accepted build.
+Purpose: Deepen player identity, body truth, current form, conditions, injuries, resources, fatigue/exhaustion, recovery, and death-boundary behavior without identity drift or false body canon.
+
+## Doctrine
+
+```text
+True identity is not current form.
+Current form is not disguise.
+Disguise is not body truth.
+Rumor is not body truth.
+Dream is not body truth.
+Quote is not body truth.
+Fatigued is not exhausted.
+Unconscious is not dead.
+Dying is not dead.
+Recovery requires a recovery event.
+Cleanup is not healing.
+```
+
+## Allowed changes
+
+```text
+Player state helpers
+Body state helpers
+BodyReducer
+Body CanonValidator rules
+Body ProposalBuilder event types
+Body EventScannerLite hints
+/status and /sheet renderers
+ContextBuilder player/body packets
+InvariantChecker body/player checks
+ReleaseCheck body gates
+Regression/player-breaker body tests
+```
+
+Forbidden:
+
+```text
+full combat engine
+full transformation/evolution engine
+absorption/devour
+race/lineage power automation
+advanced progression formulas
+manual /setrace /setform /heal /kill
+reputation/social automation from body form
+full non-humanoid equipment rules
+```
+
+## Identity model requirements
+
+Player identity must distinguish:
+
+```text
+true identity
+confirmed name
+aliases
+origin
+world knowledge status
+true race/species
+lineage
+current form
+body type
+body traits
+disguise
+illusion
+presentation
+candidate traits
+pending traits
+rumored traits
+unknown traits
+```
+
+True identity cannot be overwritten by current form, disguise, illusion, rumor, NPC quote, dream, temporary wording unless validated, command display, card prose, or context prose.
+
+Current form is the active body presentation or validated body state. It may affect future constraints, but this chunk only prepares/display constraints unless transformation is explicitly validated.
+
+Disguise/illusion are presentation states unless validated as actual body/form changes.
+
+Candidate and pending traits remain unconfirmed.
+
+## Origin and world knowledge model
+
+Fields or equivalents:
+
+```text
+origin.status
+origin.type
+origin.source
+worldKnowledgeStatus
+worldIntegrationStatus
+centralityAssumption
+```
+
+Recommended values:
+
+```text
+origin.type = unknown | native | outsider | world_emerged | scenario_defined
+worldKnowledgeStatus = unknown | limited | local | trained | expert | hidden_lore_unlocked
+worldIntegrationStatus = unknown | outsider | tolerated | recognized | entangled | influential
+centralityAssumption = none | local_only | scenario_defined
+```
+
+Unknown origin does not mean native. Unknown race does not mean human. Limited world knowledge is default unless setup proves otherwise.
+
+## Body resource model
+
+Resources:
+
+```text
+hp mp ep
+```
+
+Each supports current, max, known, source, lastChangedTurn, notes. Unknown numeric resources must display unknown rather than fake values like HP 100/100.
+
+Rules:
+
+```text
+current cannot exceed max when both known
+current cannot be below 0 when known
+max cannot be below 1 when known
+structural clamp is not healing
+recovery requires accepted recovery/rest/healing event
+```
+
+## Fatigue/exhaustion model
+
+States:
+
+```text
+rested winded fatigued weary exhausted collapsed unknown
+```
+
+Severities:
+
+```text
+none minor moderate major critical unknown
+```
+
+Fatigued/worn out does not become exhausted unless strong wording confirms it. Exhausted/can barely stand/drained completely may become exhausted if validated. Collapsed/unable to stand may become collapsed/critical if validated.
+
+## Condition model
+
+Condition examples:
+
+```text
+bleeding burned poisoned sick stunned blinded deafened frozen chilled cursed infected exhausted fatigued unconscious restrained
+```
+
+ConditionRecord:
+
+```text
+id, key, displayName, family, severity, status, sourceOperationKey, sourceEventId, createdTurn, updatedTurn, expiresTurn, location, cause, evidence, notes
+```
+
+Statuses:
+
+```text
+active worsening improving resolved suppressed pending rejected
+```
+
+Condition gain requires direct validated body/status event. Resolution requires recovery/resolution event. Cleanup cannot resolve active conditions.
+
+## Injury model
+
+Injury examples:
+
+```text
+wolf bite on left arm
+burned palm
+sprained ankle
+broken rib
+cut cheek
+arrow wound in shoulder
+```
+
+InjuryRecord:
+
+```text
+id, key, displayName, bodyPart, severity, status, bleeding, infectionRisk, sourceOperationKey, sourceEventId, createdTurn, updatedTurn, healedTurn, cause, evidence, notes
+```
+
+Threats, attempts, metaphors, dreams, quotes, and card/context/command text do not create injuries.
+
+## Death boundary model
+
+Allowed:
+
+```text
+alive unconscious dying dead captured unknown
+```
+
+Rules:
+
+```text
+alive is not perfect health
+unconscious is not dead
+dying is not dead
+dead requires direct validated death outcome
+captured is not dead
+unknown means unknown, not dead
+```
+
+Reject death from rumor, quote, dream, metaphor, threat, insult, prophecy, card, context, command, or story title text.
+
+## Body trait and form constraint shell
+
+May store/display traits and constraints such as claws, wings, tail, fur, scales, no human hands, cannot speak normally, quadruped movement, large body constraints. Deep mechanics are deferred. Illusions/disguises do not create physical constraints. Candidate traits do not create confirmed constraints.
+
+## CanonValidator body expansion
+
+Accept direct physical/body outcomes:
+
+```text
+Your arm bleeds from the wolf bite.
+Your palm is burned and blistered.
+Your legs shake and you are exhausted.
+The poison fades from your veins.
+Your bleeding stops.
+You collapse unconscious.
+```
+
+Reject unsafe/nonliteral outcomes:
+
+```text
+Mara says "you are poisoned"
+People say you died
+You feel dead tired
+In a dream, you burn alive
+The prophecy says you will die
+The card says you are wounded
+[AIDRPG] Status: Bleeding
+```
+
+Pending uncertain wording:
+
+```text
+You feel strange.
+A chill passes through you.
+You might be poisoned.
+The wound could be infected.
+Your form seems different.
+```
+
+## Proposal event types
+
+```text
+body.status_gain_candidate
+body.status_loss_candidate
+body.injury_candidate
+body.resource_change_candidate
+body.resource_state_candidate
+body.recovery_candidate
+body.death_boundary_candidate
+body.form_change_candidate
+body.trait_candidate
+identity.trait_candidate
+identity.form_candidate
+identity.disguise_candidate
+identity.illusion_candidate
+```
+
+## BodyReducer behavior
+
+Status gain creates/updates ConditionRecord, sets active/severity, records operation key, marks body_status/context dirty, audits compactly.
+
+Injury gain creates/updates InjuryRecord, body part/severity/bleeding if known, marks body_status/context dirty.
+
+Recovery sets condition/injury improving or resolved and does not delete history immediately.
+
+Resource change applies validated delta/state, clamps safely, records source key.
+
+Death boundary change requires direct validated outcome, durable key, dirty targets, high-severity audit. Unsafe flags cause reject/no-op.
+
+## Operation keys
+
+```text
+body.status.add.<statusKey>.<clauseHash>
+body.status.resolve.<statusKey>.<clauseHash>
+body.injury.add.<injuryKey>.<clauseHash>
+body.injury.resolve.<injuryKey>.<clauseHash>
+body.resource.<resourceKey>.<deltaOrState>.<clauseHash>
+body.deathboundary.<newStatus>.<clauseHash>
+body.form.<formKey>.<sourceKey>
+identity.trait.candidate.<traitKey>.<sourceKey>
+identity.presentation.<presentationKey>.<sourceKey>
+```
+
+## Dirty targets
+
+```text
+body condition/injury/resource/fatigue -> body_status, context
+player identity/form/disguise/trait -> player_sheet, context
+critical death boundary -> body_status, player_sheet, context, audit
+```
+
+## Command/context updates
+
+`/sheet` displays confirmed identity, origin/world knowledge, true race/species, lineage, current form, body type, disguise/illusion/presentation, candidate/pending traits, protected fields, unknown fields.
+
+`/status` displays resources, fatigue/exhaustion, active conditions, active injuries, recovery/resolved recent statuses, death boundary, body traits/constraints, warnings.
+
+ContextBuilder includes concise player/body packets and clearly labels candidate/pending truth.
+
+## PC04 ReleaseCheck gates
+
+```text
+PC04-G01 player identity/form/disguise fields separated
+PC04-G02 unknown race/species not defaulted to human
+PC04-G03 world knowledge starts limited/unknown unless confirmed
+PC04-G04 body resource model supports known/unknown values
+PC04-G05 fatigue and exhaustion are separated
+PC04-G06 condition record schema exists
+PC04-G07 injury record schema exists
+PC04-G08 death boundary allowed values enforced
+PC04-G09 body CanonValidator rejects rumor/quote/dream/metaphor death/status
+PC04-G10 BodyReducer rejects unsafe routed body/death events
+PC04-G11 recovery requires accepted recovery event
+PC04-G12 cleanup cannot heal/remove active body state
+PC04-G13 body/player dirty targets created
+PC04-G14 /sheet displays confirmed/candidate/unknown fields honestly
+PC04-G15 /status displays body states honestly
+PC04-G16 body context packet labels candidate/pending truth correctly
+PC04-G17 operation keys exist for repeat-sensitive body effects
+PC04-G18 player-breaker body/death tests registered
+```
+
+## Required tests
+
+```text
+PC04-001 Unknown race not assumed human
+PC04-002 Current form does not overwrite true race
+PC04-003 Disguise does not overwrite body truth
+PC04-004 Candidate lineage stays candidate
+PC04-005 Fatigued not exhausted
+PC04-006 Exhausted explicit
+PC04-007 Injury created from direct physical outcome
+PC04-008 Threat does not injure
+PC04-009 Recovery resolves condition
+PC04-010 Cleanup does not heal
+PC04-011 Rumor death rejected
+PC04-012 Quote death rejected
+PC04-013 Dream death rejected
+PC04-014 Dead tired metaphor rejected
+PC04-015 Unconscious distinct from dead
+PC04-016 Dying distinct from dead
+PC04-017 Direct death requires explicit policy
+PC04-018 Resource clamp structural only
+PC04-019 Command status non-canon
+PC04-020 Card body prose non-canon
+PC04-021 Context body prose non-canon
+PC04-022 Body duplicate key skip
+PC04-023 Body dirty targets
+PC04-024 Status command display clarity
+```
+
+## Implementation order
+
+```text
+1. Copy V0.17.3 schema-readiness accepted build.
+2. Add/verify player and body helper functions.
+3. Update Body CanonValidator rules.
+4. Update ProposalBuilder body event support.
+5. Update BodyReducer.
+6. Update /sheet and /status.
+7. Update ContextBuilder body/player packets.
+8. Update IntegrityChecker body/player checks.
+9. Add PC04 ReleaseCheck gates.
+10. Add PC04 tests.
+11. Run foundationcheck, releasecheck, integrity, playerbreakercheck, regressioncheck, status, sheet.
+12. Save as WorldLedgerV0.17.4_BODY_IDENTITY_ACCEPTED.txt.
+```
+
+## Pass / warn / fail
+
+PASS if identity/form/disguise/candidates separate, unknown race is not assumed, resources support known/unknown, fatigue/exhaustion separate, conditions/injuries persist, recovery requires accepted event, death rejects unsafe sources, BodyReducer rejects unsafe routed events, displays are honest, context is concise/labeled, duplicate keys work, tests pass.
+
+WARN if numeric HP/MP/EP unknown, transformation consequences deferred, race/lineage powers deferred, form/equipment constraints display-only, death automation safety-limited.
+
+FAIL if current form overwrites true race, candidate trait displays confirmed, fatigue becomes exhaustion too easily, cleanup heals active conditions, rumor/quote/dream sets death, command/context/card text creates body state, duplicate injury repeats, or BodyReducer trusts unsafe data.
+
+## Final doctrine
+
+```text
+The player is a protected identity with a body state.
+The body can be injured, tired, changed, disguised, or recovering.
+But none of those truths are created by rumor, quote, dream, command text, card text, context text, or cleanup.
+```

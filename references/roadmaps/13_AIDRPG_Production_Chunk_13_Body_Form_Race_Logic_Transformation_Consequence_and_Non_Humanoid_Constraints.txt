@@ -1,0 +1,2400 @@
+# AIDRPG Production Chunk 13 — Body Form, Race Logic, Transformation Consequence, and Non-Humanoid Constraints
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 13 — Body Form, Race Logic, Transformation Consequence, and Non-Humanoid Constraints  
+**Production sequence:** 13 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.12 combat-event accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen race/species identity, current form, transformation events, body traits, form capabilities, non-humanoid constraints, form consequences, and form-aware display/context without identity drift, fake transformations, or unsafe power grants.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver.  
+**This document does not contain final script code.**
+
+Production Chunk 13 is where form finally starts to matter.
+
+This is the chunk that lets the game support things like wolf form, winged form, scaled body, ghostly partial form, large monster body, tiny familiar body, water-breathing form, clawed hands, no hands, tail balance, horns, fur, shell, nonhuman speech limits, and nonhuman tool limits.
+
+But it must do this without repeating the old failure loops:
+
+```text
+current form overwriting true identity
+illusion becoming body truth
+disguise becoming species
+rumor becoming lineage
+dream transformation becoming real
+race label granting full powers
+non-humanoid body still using every human tool normally
+cleanup deleting active form consequences
+combat damage proving a race power without validation
+card/context text changing body truth
+```
+
+This chunk should feel fun in gameplay because forms and bodies create real consequences.
+
+It should also be strict because identity/body corruption can break every future system.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+True race/species is not current form.
+Current form is not disguise.
+Disguise is not illusion.
+Illusion is not body truth.
+Temporary transformation is not permanent identity.
+Rumor is not lineage.
+Dream form is not real form.
+Cosmetic label is not physical capability.
+Physical form must create physical constraints.
+Non-humanoid bodies must not behave like default humans.
+Race/lineage labels do not grant powers without validated rules.
+```
+
+Form should be playable, visible, and consequential.
+
+But every form truth must have source, duration, owner, rollback behavior, and tests.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 12 created safe combat event handling.
+
+Body form comes next because future systems depend on it:
+
+```text
+equipment compatibility
+inventory carrying/use constraints
+combat reach, bite, claws, wings, size, posture
+ability use and spellcasting limitations
+social reaction and witness memory
+creature ecology
+race/species world rules
+transformation powers
+absorption/evolution later
+world bible race/creature references later
+encounter threat logic
+party/summon forms later
+```
+
+If form/race logic is not safe now, later world and combat systems will keep patching around identity drift.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 13 may change:
+
+```text
+Player identity/body form helpers
+Body form schema helpers
+BodyReducer form/trait/constraint behavior
+FormReducer or FormLogic helper if separated
+RaceSpecies registry shell
+Transformation event validator
+CanonValidator form/race/transformation rules
+ProposalBuilder form event types
+EventScannerLite form/race hints
+CommandRenderers /sheet, /status, optional /form
+ContextBuilder form/body packet
+OperationLedger form/transformation keys
+DirtyQueue form/body/social/inventory targets
+IntegrityChecker form/race/body checks
+ReleaseCheck form/race gates
+Regression/player-breaker form tests
+```
+
+Production Chunk 13 may add:
+
+```text
+RaceSpeciesRecord schema
+FormRecord schema
+TransformationEventRecord schema
+BodyTraitRecord schema
+BodyConstraintRecord schema
+FormCapabilityRecord schema
+FormConsequenceRecord schema
+FormDurationRecord schema
+FormAccessProfile schema
+FormSourceRecord schema
+SocialVisibilityRecord shell
+EquipmentCompatibility shell
+form rollback/expiry model
+form-aware command/context summaries
+```
+
+Production Chunk 13 may not add:
+
+```text
+full world bible import
+full race power automation
+full lineage/divine power system
+absorption/evolution system
+full equipment stat compatibility engine
+full reputation/social reaction automation
+full creature ecology rules
+manual /setrace /setform /transform commands
+live CardSync writes
+generated form/race cards
+old card prose form import
+```
+
+World Bible import/reference layer is Production Chunk 15.
+
+Creature ecology is Production Chunk 17.
+
+Absorption/evolution is Production Chunk 24.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+PlayerState helpers
+BodyState helpers
+FormLogic helper
+BodyReducer form/trait/constraint path
+CanonValidator form/race rules
+ProposalBuilder form proposals
+EventScannerLite form/race hints
+Resolver form/race target binding
+CommandRenderers: /sheet, /status, optional /form
+ContextBuilderLite form/body packet
+OperationLedger form keys
+DirtyQueue form/body/social/inventory dirty targets
+AuditLogger form lines
+InvariantChecker form checks
+ReleaseCheckLite PC13 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+InventoryReducer except form-related dirty/display warnings
+Equipment stat formulas
+Combat damage formulas
+Ability power grants
+Actor reputation automation
+World Bible full import
+Creature ecology
+Absorption/evolution
+Manual mutation commands
+CardSync live writes
+```
+
+---
+
+# 5. Identity/form authority model
+
+Every race/form/body trait must have authority.
+
+Authority levels:
+
+```text
+unknown
+setup_confirmed
+validated_story_transformation
+validated_temporary_form
+validated_disguise
+validated_illusion
+validated_body_trait
+candidate_trait
+rumor_only
+dream_only
+card_context_command_blocked
+world_bible_reference_later
+deferred_manual_override
+invalid_quarantined
+```
+
+Rules:
+
+```text
+setup_confirmed can set true race/species before startup lock
+validated_story_transformation can set current form but not necessarily true race/species
+validated_disguise changes presentation, not body truth
+validated_illusion changes appearance/perception, not physical constraints unless illusion rules later support it
+candidate_trait displays as candidate only
+world_bible_reference_later can guide rules later, not mutate player state now
+```
+
+---
+
+# 6. RaceSpeciesRecord schema
+
+Race/species records describe true body identity, not temporary form.
+
+Required shape:
+
+```text
+RaceSpeciesRecord {
+  id,
+  key,
+  displayName,
+  category,
+  confirmed,
+  authority,
+  sourceOperationKey,
+  sourceType,
+  knownToPlayer,
+  bodyDefaults,
+  traitDefaults,
+  constraintDefaults,
+  powerDefaultsDeferred,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Categories:
+
+```text
+human
+humanoid
+beast
+draconic
+undead
+construct
+elemental
+spirit
+celestial_deferred
+infernal_deferred
+fae_deferred
+plant
+ooze
+aberration_deferred
+unknown
+```
+
+Rules:
+
+```text
+true race/species must not be inferred from current form alone
+unknown race/species must remain unknown
+race/species does not grant powers unless rule owner exists
+race/species body defaults can prepare constraints but must not override validated current form without policy
+```
+
+---
+
+# 7. FormRecord schema
+
+FormRecord describes the player's current or historical body form.
+
+Required shape:
+
+```text
+FormRecord {
+  id,
+  key,
+  displayName,
+  formType,
+  status,
+  physical,
+  sourceOperationKey,
+  sourceEventId,
+  sourceType,
+  authority,
+  durationKey,
+  bodyTraitKeys,
+  constraintKeys,
+  capabilityKeys,
+  consequenceKeys,
+  createdTurn,
+  activatedTurn,
+  expiresTurn,
+  endedTurn,
+  warnings,
+  notes
+}
+```
+
+Form types:
+
+```text
+base_body
+transformed_body
+partial_transformation
+disguise
+illusion
+cosmetic_presentation
+injury_altered
+temporary_effect
+candidate_form
+unknown
+```
+
+Statuses:
+
+```text
+active
+inactive
+pending
+candidate
+resolved
+reverted
+rejected
+expired
+unknown
+```
+
+Rules:
+
+```text
+active physical form can create constraints
+active disguise can create social/presentation notes, not physical constraints
+active illusion can create perception notes, not physical constraints unless future illusion rules enable them
+candidate form cannot change body behavior
+expired/reverted form must deactivate active constraints but preserve history
+```
+
+---
+
+# 8. TransformationEventRecord schema
+
+Transformation is an event, not a label.
+
+Required shape:
+
+```text
+TransformationEventRecord {
+  id,
+  key,
+  fromFormKey,
+  toFormKey,
+  transformationType,
+  permanence,
+  physicality,
+  sourceOperationKey,
+  sourceEventId,
+  trigger,
+  validated,
+  rejectedReason,
+  createdTurn,
+  resolvedTurn,
+  warnings,
+  notes
+}
+```
+
+Transformation types:
+
+```text
+voluntary
+involuntary
+curse
+spell
+disease
+lineage_manifestation_deferred
+artifact_deferred
+environmental
+combat_consequence
+dream_rejected
+illusion_only
+disguise_only
+unknown
+```
+
+Permanence:
+
+```text
+momentary
+temporary
+scene_limited
+time_limited
+conditional
+permanent
+unknown
+```
+
+Physicality:
+
+```text
+physical
+cosmetic
+illusory
+social_presentation
+unknown
+```
+
+Rules:
+
+```text
+physical transformation can alter current form
+cosmetic/illusory transformation cannot alter body truth
+permanence unknown should default temporary/pending, not permanent
+transformation history is preserved even after revert
+```
+
+---
+
+# 9. BodyTraitRecord schema
+
+Body traits are physical or presentation features.
+
+Required shape:
+
+```text
+BodyTraitRecord {
+  id,
+  key,
+  displayName,
+  traitFamily,
+  physical,
+  visible,
+  functional,
+  sourceFormKey,
+  sourceOperationKey,
+  status,
+  createdTurn,
+  endedTurn,
+  notes
+}
+```
+
+Trait families:
+
+```text
+claws
+fangs
+wings
+tail
+horns
+fur
+scales
+gills
+shell
+extra_limbs
+missing_limbs
+quadruped_posture
+large_size
+small_size
+incorporeal_deferred
+amphibious
+night_vision_label
+speech_altered
+hands_lost
+hands_changed
+unknown
+```
+
+Rules:
+
+```text
+functional traits can affect capabilities/constraints
+visible traits can affect social visibility later
+cosmetic traits should not create physical capability
+candidate traits should not be functional
+```
+
+---
+
+# 10. BodyConstraintRecord schema
+
+Constraints are the fun part because they make forms matter.
+
+Required shape:
+
+```text
+BodyConstraintRecord {
+  id,
+  key,
+  displayName,
+  constraintFamily,
+  severity,
+  sourceFormKey,
+  sourceTraitKey,
+  appliesTo,
+  status,
+  createdTurn,
+  endedTurn,
+  notes
+}
+```
+
+Constraint families:
+
+```text
+no_human_hands
+limited_grip
+cannot_speak_normally
+altered_speech
+cannot_wear_humanoid_armor
+cannot_use_humanoid_weapons_normally
+quadruped_movement
+too_large_for_space
+too_small_for_tool
+water_required
+air_breathing_limited
+sunlight_sensitive_deferred
+corporeality_deferred
+socially_obvious
+unknown
+```
+
+Applies to:
+
+```text
+inventory_use
+equipment
+speech
+movement
+combat
+ability_use
+social_visibility
+travel
+scene_interaction
+unknown
+```
+
+Rules:
+
+```text
+constraints should be visible in commands/context
+constraints do not automatically hard-block every action unless rule owner exists
+constraints should guide AI Dungeon narration and future validators
+constraints must deactivate when source form ends
+```
+
+---
+
+# 11. FormCapabilityRecord schema
+
+Capabilities describe what a form can do or might do.
+
+Required shape:
+
+```text
+FormCapabilityRecord {
+  id,
+  key,
+  displayName,
+  capabilityFamily,
+  status,
+  sourceFormKey,
+  sourceTraitKey,
+  validated,
+  mechanicalOwner,
+  createdTurn,
+  notes
+}
+```
+
+Capability families:
+
+```text
+bite
+claw_attack
+flight_deferred
+glide_deferred
+swim
+water_breathing
+night_sight_label
+scent_tracking_label
+wall_crawl_deferred
+incorporeal_passage_deferred
+natural_armor_deferred
+size_advantage_label
+speech
+tool_use
+unknown
+```
+
+Rules:
+
+```text
+capability labels do not create combat formulas by themselves
+flight/glide/wall-crawl/incorporeal passage require future movement/ability rules unless explicitly safe
+bite/claw can be combat method labels, not automatic damage formulas
+water breathing can affect context/constraints if validated
+```
+
+---
+
+# 12. FormConsequenceRecord schema
+
+Consequences make transformation meaningful without over-automating.
+
+Required shape:
+
+```text
+FormConsequenceRecord {
+  id,
+  key,
+  consequenceType,
+  summary,
+  sourceFormKey,
+  affectedSystem,
+  severity,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  resolvedTurn,
+  notes
+}
+```
+
+Consequence types:
+
+```text
+inventory_constraint
+equipment_constraint
+speech_constraint
+movement_constraint
+combat_method_label
+social_visibility
+quest_complication
+actor_reaction_candidate
+place_access_issue
+ability_use_constraint
+body_resource_warning
+unknown
+```
+
+Affected systems:
+
+```text
+inventory
+equipment
+combat
+abilities
+actors
+quests
+places
+body
+context
+unknown
+```
+
+Rules:
+
+```text
+consequences are records/context guidance
+other owner systems decide actual state mutation
+actor reactions remain candidate/evidence, not reputation automation
+quest complications require QuestReducer validation
+place access issues require PlaceReducer/validator support
+```
+
+---
+
+# 13. FormDurationRecord schema
+
+Forms need duration and rollback logic.
+
+Required shape:
+
+```text
+FormDurationRecord {
+  id,
+  formKey,
+  durationType,
+  durationText,
+  expiresTurn,
+  expiresOnSceneChange,
+  expiresOnRest,
+  expiresOnConditionResolved,
+  reversionTargetFormKey,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Duration types:
+
+```text
+instant
+scene
+time_limited
+until_rest
+until_dismissed
+until_condition_resolved
+permanent
+unknown
+```
+
+Rules:
+
+```text
+unknown duration should not be treated as permanent by default
+temporary forms need reversion target if known
+expiration deactivates constraints/capabilities from that form
+history remains after reversion
+```
+
+---
+
+# 14. FormAccessProfile schema
+
+This is a read-only helper profile for later systems.
+
+Required shape:
+
+```text
+FormAccessProfile {
+  formKey,
+  hasHumanHands,
+  gripQuality,
+  canSpeakNormally,
+  locomotionMode,
+  sizeClass,
+  canUseHumanoidTools,
+  canWearHumanoidArmor,
+  canUseKnownWeaponsNormally,
+  obviousToBystanders,
+  breathesAir,
+  breathesWater,
+  notes
+}
+```
+
+Values should be conservative and derived from traits/constraints.
+
+Rules:
+
+```text
+profile informs commands/context/validators
+profile does not directly mutate inventory/equipment/combat
+unknown values remain unknown, not convenient defaults
+```
+
+---
+
+# 15. SocialVisibilityRecord shell
+
+Social visibility is not reputation automation.
+
+Required shape:
+
+```text
+SocialVisibilityRecord {
+  id,
+  formKey,
+  visibleTraits,
+  obviousness,
+  witnessScope,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Obviousness:
+
+```text
+hidden
+subtle
+noticeable
+obvious
+alarming
+unknown
+```
+
+Rules:
+
+```text
+obvious wolf form can create witness/social visibility context
+it does not automatically create public reputation
+ActorReducer may record witness memory if actors are present and validation accepts it
+Faction/reputation automation remains deferred
+```
+
+---
+
+# 16. EquipmentCompatibility shell
+
+Equipment compatibility must be prepared, not fully solved.
+
+Required shape:
+
+```text
+EquipmentCompatibilityNote {
+  id,
+  formKey,
+  itemKey,
+  slot,
+  compatibility,
+  reason,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Compatibility:
+
+```text
+compatible
+awkward
+incompatible
+deferred
+unknown
+```
+
+Rules:
+
+```text
+wolf form with no human hands should warn about humanoid weapons/tools
+large form should warn about normal armor
+small form should warn about oversized gear
+equipment stat effects remain deferred
+InventoryReducer remains owner of item/equipment state
+```
+
+---
+
+# 17. Race and lineage power boundary
+
+Race/species/lineage can be fun, but must not grant powers by label alone.
+
+Examples that must be controlled:
+
+```text
+angel lineage
+demon blood
+dragonborn ancestry
+storm-touched blood
+vampire curse
+fae-marked child
+construct body
+undead nature
+```
+
+Rules:
+
+```text
+confirmed lineage may display as identity/body/lore fact
+candidate lineage remains candidate
+lineage powers are deferred unless ability/form/race rule validates them
+race/species body constraints may apply if physical and validated
+cosmic/divine/infernal powers wait for future mini-spec/world bible/divine chunks
+```
+
+This prevents:
+
+```text
+"You are part dragon" -> automatic breath weapon
+"You have angel blood" -> automatic wings/healing
+"You are undead" -> automatic immortality
+```
+
+---
+
+# 18. Transformation fun rules
+
+Forms should matter in ways that are fun and readable.
+
+Allowed consequences in this chunk:
+
+```text
+wolf form: no human hands, altered speech, quadruped movement, scent-tracking label, bite/claw method label
+winged form: visible wings, possible glide/flight deferred, armor/clothing warning
+fish/amphibious form: water-breathing capability if validated, land movement warning if appropriate
+large beast form: size access warning, armor/tool compatibility warning, intimidation visibility label
+tiny familiar form: small tool/use warning, stealth/size label, carrying capacity warning
+ghostly form: incorporeal/corporeal rules deferred unless validated, social alarm label
+construct form: pain/bleeding logic deferred to creature/body chunks unless fully validated
+undead form: death/bleeding/fatigue rules deferred unless race/body rule active
+```
+
+Not allowed automatically:
+
+```text
+free stat bonuses
+free combat damage formulas
+free spell powers
+free social reputation shifts
+free quest completion
+free equipment transformation
+free immortality
+free flight mechanics without rules
+```
+
+---
+
+# 19. Form CanonValidator expansion
+
+CanonValidator must enforce form safety.
+
+## 19.1 Accept physical transformation when
+
+All are true:
+
+```text
+safe story output directly states physical body transformation
+source is not command/context/card/audit/debug
+not dream/vision-only
+not quoted claim only
+not disguise/illusion/cosmetic wording
+target form is bound
+physicality is clear enough
+operation key not duplicate
+```
+
+Examples:
+
+```text
+Your bones crack and your body becomes a wolf.
+Scales spread across your arms, hard and real beneath your fingers.
+Your hands twist into claws, changing how you grip the sword.
+```
+
+## 19.2 Accept disguise/presentation when
+
+```text
+safe source states clothing/mask/makeup/behavior changes appearance
+physical body does not change
+```
+
+Result:
+
+```text
+disguise/presentation active
+no body constraints unless outfit itself affects movement/equipment later
+```
+
+## 19.3 Accept illusion when
+
+```text
+safe source states magical/perceptual appearance change
+body remains physically same unless text directly says otherwise
+```
+
+Result:
+
+```text
+illusion active
+social/perception label
+no physical capabilities/constraints by default
+```
+
+## 19.4 Reject transformation when
+
+Any are true:
+
+```text
+dream/vision only
+rumor/prophecy only
+quote says transformation happened
+metaphor/simile only
+pretend/roleplay only
+command/context/card/audit/debug source
+candidate/uncertain wording only
+```
+
+---
+
+# 20. Form ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+form.physical_transformation_candidate
+form.partial_transformation_candidate
+form.reversion_candidate
+form.disguise_candidate
+form.illusion_candidate
+form.presentation_candidate
+form.trait_gain_candidate
+form.trait_loss_candidate
+form.constraint_candidate
+form.capability_candidate
+form.consequence_candidate
+race.true_species_candidate
+race.lineage_candidate
+race.candidate_trait
+form.social_visibility_candidate
+form.equipment_compatibility_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+physical current form change
+partial transformation
+reversion/expiry
+validated disguise
+validated illusion
+body trait/constraint/capability labels
+form consequences
+candidate race/lineage traits
+social visibility shell
+```
+
+---
+
+# 21. EventScannerLite form/race hints
+
+EventScannerLite may detect form/race hints, but detection is not canon.
+
+Hint families:
+
+```text
+transform/become/turn into/shift/morph
+sprout/grow/change/crack/twist
+fur/scales/claws/fangs/wings/tail/horns/gills
+mask/disguise/appears as/looks like
+illusion/glamour/seeming
+lineage/blood/ancestry/race/species
+revert/return to normal/change back
+```
+
+Must flag:
+
+```text
+physicalTransformation
+disguiseOnly
+illusionOnly
+cosmeticOnly
+candidateOnly
+rumorOrClaim
+quotedSpeech
+dreamOrVision
+metaphorOrSimile
+pretendOnly
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+identityOverwriteRisk
+powerGrantRisk
+```
+
+Parser cannot mutate race/form directly.
+
+---
+
+# 22. BodyReducer/FormLogic behavior
+
+BodyReducer or FormLogic owns:
+
+```text
+player.currentForm
+player.trueRaceSpecies references
+player.lineage/candidate traits
+body.bodyTraits
+body.formConstraints
+body.formCapabilities
+body.formConsequences
+body.formHistory
+```
+
+## 22.1 Physical transformation commit
+
+Accepted transformation should:
+
+```text
+create TransformationEventRecord
+create/update FormRecord
+set currentForm to active physical form
+add validated body traits
+add derived constraints/capability labels
+create duration record if known
+mark player_sheet, body_status, context dirty
+mark inventory_equipment/social_memory dirty if constraints/visibility changed
+audit compactly
+```
+
+## 22.2 Partial transformation commit
+
+Accepted partial change should:
+
+```text
+add body traits and constraints without replacing whole currentForm unless appropriate
+preserve base form reference
+record affected body parts
+```
+
+## 22.3 Reversion commit
+
+Accepted reversion should:
+
+```text
+set active form inactive/reverted
+restore previous/base form if known
+end constraints/capabilities sourced from reverted form
+preserve transformation history
+mark dirty targets
+```
+
+## 22.4 Disguise/illusion commit
+
+Accepted disguise/illusion should:
+
+```text
+create FormRecord type disguise or illusion
+set presentation/illusion fields
+not change physical currentForm
+not add physical constraints unless explicitly physical
+```
+
+## 22.5 Race/species commit
+
+True race/species change is protected.
+
+Allowed only from:
+
+```text
+structured startup before lock
+explicit validated permanent species transformation with strict policy
+future migration/override spec
+```
+
+Default:
+
+```text
+store candidate/pending lineage/species traits
+do not overwrite trueRaceSpecies
+```
+
+---
+
+# 23. Form defensive guards
+
+BodyReducer/FormLogic must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+dream/vision-only
+quote-only
+rumor-only
+metaphor/simile only
+disguise trying to overwrite body truth
+illusion trying to create physical capability
+candidate trait trying to become confirmed
+race/lineage label trying to grant powers
+current form trying to overwrite true race/species
+missing form key
+wrong owner reducer
+```
+
+Reducer must not blindly trust upstream.
+
+---
+
+# 24. Non-humanoid constraint behavior
+
+Non-humanoid constraints should affect display/context and future validation.
+
+## 24.1 Hands and tool use
+
+If form has no human hands:
+
+```text
+/sheet and /status show limited/no human hands
+/inventory may warn equipped humanoid weapons/tools are awkward/deferred
+context reminds model not to assume normal tool use
+```
+
+Do not delete items or unequip automatically unless future equipment policy supports it.
+
+## 24.2 Speech
+
+If form cannot speak normally:
+
+```text
+context should say speech is altered/limited
+actor/social systems may later react if witnessed
+commands remain available out-of-story
+```
+
+## 24.3 Movement
+
+If quadruped, winged, aquatic, tiny, or huge:
+
+```text
+context should include movement constraints
+place/travel validators may later use them
+```
+
+## 24.4 Combat method labels
+
+Claws/bite/tail may become combat method labels.
+
+```text
+bite/claw can be attack method
+no automatic damage formula
+combat still validates attempts/hits/damage
+```
+
+---
+
+# 25. Operation keys
+
+Required form/race operation keys:
+
+```text
+form.transform.<fromFormKey>.<toFormKey>.<clauseHash>
+form.partial.<traitKey>.<bodyPart>.<clauseHash>
+form.revert.<formKey>.<clauseHash>
+form.disguise.<presentationKey>.<clauseHash>
+form.illusion.<illusionKey>.<clauseHash>
+form.trait.add.<traitKey>.<sourceFormKey>.<clauseHash>
+form.trait.remove.<traitKey>.<sourceFormKey>.<clauseHash>
+form.constraint.add.<constraintKey>.<sourceFormKey>.<clauseHash>
+form.capability.add.<capabilityKey>.<sourceFormKey>.<clauseHash>
+form.consequence.<consequenceType>.<sourceFormKey>.<clauseHash>
+race.true.set.<raceKey>.<startupOrStrictSourceKey>
+race.lineage.candidate.<lineageKey>.<sourceHash>
+race.trait.candidate.<traitKey>.<sourceHash>
+```
+
+Rules:
+
+```text
+physical transformation keys are durable
+reversion keys are durable
+trait/constraint keys prevent duplicate consequences
+candidate race/lineage keys do not confirm truth
+cleanup must preserve durable transformation history
+```
+
+---
+
+# 26. Dirty targets
+
+Form/race updates should mark:
+
+```text
+player_sheet
+body_status
+context
+inventory_equipment
+social_memory
+current_location if size/movement affects scene access
+combat if active form affects combat method labels
+```
+
+Mapping:
+
+```text
+physical transformation -> player_sheet, body_status, context, inventory_equipment, social_memory
+trait/constraint/capability -> body_status, context, inventory_equipment if relevant
+reversion -> player_sheet, body_status, context, inventory_equipment, social_memory
+disguise/illusion -> player_sheet, context, social_memory if visible
+candidate race/lineage -> player_sheet, context only if important
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 27. `/sheet`, `/status`, and optional `/form` updates
+
+## 27.1 `/sheet`
+
+Must show:
+
+```text
+true race/species
+lineage confirmed/candidate
+current physical form
+disguise/presentation
+illusion
+candidate traits
+form duration/status
+unknowns
+```
+
+Display rules:
+
+```text
+current form separate from true race/species
+candidate lineage separate from confirmed lineage
+disguise/illusion separate from physical form
+unknown stays unknown
+```
+
+## 27.2 `/status`
+
+Must show:
+
+```text
+active body traits
+active form constraints
+active capabilities/labels
+injuries/conditions that interact with form
+form-related warnings
+```
+
+## 27.3 Optional `/form`
+
+If command budget permits, add:
+
+```text
+/form
+```
+
+Should show:
+
+```text
+current form
+physicality
+duration
+traits
+constraints
+capabilities
+consequences
+reversion target
+unsafe/deferred power notes
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 28. ContextBuilder form/body packet
+
+Context should help AI Dungeon narrate forms correctly.
+
+Include:
+
+```text
+current physical form
+important body traits
+important constraints
+speech/tool/movement limitations
+obvious visible traits if present actors can witness them
+candidate traits only if clearly labeled
+```
+
+Do not include:
+
+```text
+candidate lineage as confirmed truth
+illusion as physical body
+race powers as active without rules
+full raw form history
+hidden world bible race lore before PC15/knowledge gating
+```
+
+Example packet:
+
+```text
+Form: You are physically in wolf form. You have no human hands, move on four legs, and cannot speak normally. Bite/claw are possible combat methods, but damage still requires combat validation.
+```
+
+---
+
+# 29. IntegrityChecker form/race checks
+
+Add checks:
+
+```text
+true race/species not overwritten by currentForm
+currentForm has valid FormRecord
+physical form constraints link to active form/traits
+disguise/illusion not marked physical unless validated
+candidate traits not in confirmed trait list
+expired forms do not leave active constraints
+reverted forms preserve history
+race/lineage powers not active without owner rules
+command/card/context source not active form truth
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not transform the player, confirm lineage, grant powers, or erase active form consequences.
+
+---
+
+# 30. Cleanup form/race protections
+
+Cleanup may compact:
+
+```text
+old rejected form claims
+old low-risk candidate trait spam
+old expired form warning logs after summary
+old duplicate constraint audit spam
+```
+
+Cleanup must not delete:
+
+```text
+active current form
+true race/species
+active body traits
+active constraints/capabilities
+active form duration records
+transformation history needed for reversion/audit
+candidate lineage evidence still relevant
+quarantine records
+```
+
+Cleanup must not revert transformation, heal body traits, confirm lineage, or remove active constraints.
+
+---
+
+# 31. ReleaseCheck gates for this chunk
+
+Add or verify PC13-specific gates:
+
+```text
+PC13-G01 RaceSpeciesRecord schema exists or equivalent race/species structure exists
+PC13-G02 FormRecord schema exists or equivalent current form structure exists
+PC13-G03 TransformationEventRecord schema exists or equivalent transformation event structure exists
+PC13-G04 BodyTraitRecord and BodyConstraintRecord schemas exist or equivalents exist
+PC13-G05 FormCapabilityRecord and FormConsequenceRecord schemas exist or equivalents exist
+PC13-G06 true race/species, current physical form, disguise, illusion, and candidate traits are separated
+PC13-G07 CanonValidator rejects dream/quote/rumor/metaphor/command/card/context transformations
+PC13-G08 BodyReducer/FormLogic rejects unsafe routed form/race events
+PC13-G09 physical transformations create traits/constraints/capability labels, not free powers
+PC13-G10 disguise/illusion do not overwrite physical body truth
+PC13-G11 race/lineage labels do not grant powers without owner rules
+PC13-G12 non-humanoid constraints are displayed/contextualized
+PC13-G13 reversion/expiry deactivates form-sourced constraints without deleting history
+PC13-G14 operation keys exist for transformation/reversion/traits/constraints
+PC13-G15 /sheet and /status or /form display form state honestly
+PC13-G16 command/context/card form/race text cannot become canon
+PC13-G17 cleanup preserves active form, traits, constraints, true race/species, and history
+PC13-G18 equipment/ability/combat/reputation/world-bible power systems remain deferred unless owner rules active
+PC13-G19 player-breaker form/race tests registered
+```
+
+ReleaseCheck must fail if current form overwrites true race/species, dream/quote/card/context transformation becomes real, or race/lineage labels grant powers automatically.
+
+---
+
+# 32. Required tests
+
+## PC13-001 — Wolf form physical transformation
+
+Output:
+
+```text
+Your bones crack and your body becomes a wolf.
+```
+
+Expected:
+
+```text
+currentForm = wolf form
+physical FormRecord active
+traits/constraints added: no human hands, quadruped movement, altered speech if supported
+trueRaceSpecies unchanged unless strict permanent species policy validates it
+```
+
+---
+
+## PC13-002 — Wolf form does not overwrite true race
+
+Setup:
+
+```text
+trueRaceSpecies = Human
+```
+
+Output:
+
+```text
+Your body becomes a wolf.
+```
+
+Expected:
+
+```text
+trueRaceSpecies remains Human
+currentForm = wolf form
+```
+
+---
+
+## PC13-003 — Disguise does not change body truth
+
+Output:
+
+```text
+You put on a noble mask and disguise yourself as a courtier.
+```
+
+Expected:
+
+```text
+disguise/presentation active
+physical currentForm unchanged
+trueRaceSpecies unchanged
+```
+
+---
+
+## PC13-004 — Illusion does not create physical claws
+
+Output:
+
+```text
+A glamour makes your hands appear clawed, though they feel unchanged.
+```
+
+Expected:
+
+```text
+illusion/presentation trait only
+no physical claw capability
+no tool-use constraint unless illusion rules later support social effects
+```
+
+---
+
+## PC13-005 — Dream transformation rejected
+
+Output:
+
+```text
+In a dream, you become a dragon and wake human.
+```
+
+Expected:
+
+```text
+no real currentForm change
+possible dream claim/rejected audit only
+```
+
+---
+
+## PC13-006 — Quote transformation rejected
+
+Output:
+
+```text
+Mira says, "You are a monster now."
+```
+
+Expected:
+
+```text
+no race/form change
+possible social/relationship evidence only if actor system validates it
+```
+
+---
+
+## PC13-007 — Rumored lineage candidate only
+
+Output:
+
+```text
+Some villagers whisper that your blood is touched by storms.
+```
+
+Expected:
+
+```text
+storm-touched candidate lineage/trait only
+not confirmed lineage
+no storm powers
+```
+
+---
+
+## PC13-008 — Metaphor rejected
+
+Output:
+
+```text
+You become a wolf among sheep.
+```
+
+Expected:
+
+```text
+no wolf form
+metaphor rejected/pending only
+```
+
+---
+
+## PC13-009 — Partial claws transformation
+
+Output:
+
+```text
+Your fingernails harden into black claws.
+```
+
+Expected:
+
+```text
+partial transformation/trait claws active
+currentForm may remain base body with claw trait
+claw combat method label possible
+no automatic damage formula
+```
+
+---
+
+## PC13-010 — Wings visible but flight deferred
+
+Output:
+
+```text
+Wings tear from your back, spreading wide behind you.
+```
+
+Expected:
+
+```text
+wing trait active and visible
+social visibility/consequence record
+flight/glide capability deferred unless flight rule validates it
+```
+
+---
+
+## PC13-011 — Gills and water breathing
+
+Output:
+
+```text
+Gills open along your neck, and you can breathe underwater.
+```
+
+Expected:
+
+```text
+gills trait active
+water_breathing capability label active if validated
+no unrelated stat/power grants
+```
+
+---
+
+## PC13-012 — No hands affects inventory context but does not delete items
+
+Setup:
+
+```text
+player owns sword
+currentForm = wolf form with no human hands
+```
+
+Expected:
+
+```text
+inventory/equipment warning/context says humanoid weapon use is awkward/deferred
+sword not deleted
+no automatic unequip unless equipment policy supports it
+```
+
+---
+
+## PC13-013 — Altered speech affects context, not commands
+
+Setup:
+
+```text
+currentForm = wolf form, cannot speak normally
+```
+
+Expected:
+
+```text
+context notes speech limitation
+AI Dungeon commands remain usable out-of-story
+```
+
+---
+
+## PC13-014 — Bite attack method, not automatic damage
+
+Input:
+
+```text
+I bite the goblin.
+```
+
+Setup:
+
+```text
+currentForm has bite capability label
+```
+
+Expected:
+
+```text
+combat attack method can be bite
+no damage unless CombatValidator confirms hit/damage
+```
+
+---
+
+## PC13-015 — Race label no free breath weapon
+
+Output:
+
+```text
+You realize you have dragon blood.
+```
+
+Expected:
+
+```text
+dragon lineage candidate/confirmed only if validation supports it
+no breath weapon ability unless Ability/Form rule validates it
+```
+
+---
+
+## PC13-016 — Angel lineage no free healing
+
+Output:
+
+```text
+Mira claims you descend from angels.
+```
+
+Expected:
+
+```text
+claim/candidate lineage only
+no healing power
+no wings unless physical transformation validates them
+```
+
+---
+
+## PC13-017 — Undead label no immortality
+
+Output:
+
+```text
+The priest calls you undead.
+```
+
+Expected:
+
+```text
+no true species change from claim alone
+no immortality/death-boundary change
+```
+
+---
+
+## PC13-018 — Reversion deactivates constraints
+
+Setup:
+
+```text
+wolf form active with no human hands/quadruped constraints
+```
+
+Output:
+
+```text
+Your body shifts back into its normal human shape.
+```
+
+Expected:
+
+```text
+wolf form reverted/inactive
+wolf-sourced constraints inactive
+history preserved
+trueRaceSpecies remains unchanged
+```
+
+---
+
+## PC13-019 — Temporary form expires safely
+
+Setup:
+
+```text
+scene-limited hawk form active
+scene changes
+```
+
+Expected:
+
+```text
+form expiry/reversion if duration policy says scene-limited
+constraints deactivated
+history preserved
+```
+
+---
+
+## PC13-020 — Command form non-canon
+
+Run:
+
+```text
+/sheet
+/status
+/form if available
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no form/race/trait mutation from command text
+```
+
+---
+
+## PC13-021 — Story Card form prose non-canon
+
+Story Card text:
+
+```text
+The player is a dragon with wings and fire breath.
+```
+
+Expected:
+
+```text
+no race/form/power mutation
+quarantine/audit only if surfaced
+```
+
+---
+
+## PC13-022 — Context form prose non-canon
+
+Context text:
+
+```text
+Current form: wolf.
+```
+
+Expected:
+
+```text
+no currentForm mutation from context text
+```
+
+---
+
+## PC13-023 — Duplicate transformation skipped
+
+Repeat:
+
+```text
+Your body becomes a wolf.
+```
+
+Expected:
+
+```text
+no duplicate form/trait/constraint records
+operation key skip/update audit
+```
+
+---
+
+## PC13-024 — Cleanup preserves active form
+
+Setup:
+
+```text
+wolf form active
+constraints active
+candidate lineage evidence exists
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active form/constraints preserved
+candidate evidence preserved or compactly summarized
+no forced reversion
+```
+
+---
+
+## PC13-025 — Form display honest
+
+State:
+
+```text
+trueRaceSpecies = Human
+currentForm = Wolf
+activeDisguise = none
+candidateLineage = Storm-touched
+constraints = no human hands, quadruped movement
+```
+
+Run:
+
+```text
+/sheet
+/status
+/form if available
+```
+
+Expected:
+
+```text
+Human true race shown separately
+Wolf current form shown separately
+Storm-touched candidate only
+constraints shown clearly
+```
+
+---
+
+## PC13-026 — Social visibility without reputation automation
+
+Output:
+
+```text
+The villagers stare as your wolf form pads into the square.
+```
+
+Expected:
+
+```text
+social visibility/witness candidate may record if actors/present group validated
+no reputation/faction automation
+```
+
+---
+
+## PC13-027 — Manual form commands disabled
+
+Run:
+
+```text
+/setrace dragon
+/setform wolf
+/transform angel
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no race/form mutation
+```
+
+---
+
+# 33. Regression placement
+
+Add PC13 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+27 PC13 tests registered
+0 critical PC13 failures
+```
+
+---
+
+# 34. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+player.trueRaceSpecies
+player.lineage
+player.currentForm
+player.disguise
+player.illusion
+player.presentation
+player.candidateTraits
+body.bodyTraits
+body.formConstraints
+body.formCapabilities
+body.formConsequences
+body.formHistory
+RaceSpeciesRecord shape
+FormRecord shape
+TransformationEventRecord shape
+BodyTraitRecord shape
+BodyConstraintRecord shape
+FormCapabilityRecord shape
+FormConsequenceRecord shape
+FormDurationRecord shape
+FormAccessProfile shape
+SocialVisibilityRecord shell
+EquipmentCompatibility shell
+```
+
+These fields were prepared by PC03 and touched by PC04, but PC13 gives them real behavior and consequences.
+
+---
+
+# 35. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+physical transformation detection
+disguise/illusion/presentation separation
+race/species/lineage candidate detection
+body trait/constraint/capability detection
+reversion/expiry detection
+nonliteral transformation rejection
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+full race power parser
+absorption/evolution parser
+manual form mutation parser
+world bible race import parser
+reputation/faction reaction parser
+card/context form import
+```
+
+---
+
+# 36. Reducer/checker changes
+
+Allowed:
+
+```text
+BodyReducer/FormLogic physical form changes
+partial transformation
+reversion/expiry
+body traits/constraints/capability labels
+candidate lineage/traits
+form integrity checks
+form dirty targets
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+free stat bonuses
+free combat damage formulas
+free ability grants
+true species overwrite from current form
+manual /setform reducer
+reputation/faction mutation
+full equipment compatibility mutation
+```
+
+---
+
+# 37. Command/context/card changes
+
+Allowed:
+
+```text
+/sheet form/race display
+/status body trait/constraint display
+/form optional command
+/context form/body packet
+/cardaudit form mirror labels if dry-run
+/releasecheck PC13 gates
+/playerbreakercheck form/race cases
+```
+
+Forbidden:
+
+```text
+/setrace
+/setform
+/transform
+/givewings
+/givepower
+live card writes that create form truth
+```
+
+---
+
+# 38. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted combat build
+
+Start from:
+
+```text
+WorldLedgerV0.17.12_COMBAT_EVENTS_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.13_FORM_RACE_CONSTRAINTS_WORKING.txt
+```
+
+## Step 2 — Add/verify form/race helper functions
+
+Create helpers for:
+
+```text
+ensureFormShape
+makeRaceSpeciesRecord
+makeFormRecord
+makeTransformationEventRecord
+makeBodyTraitRecord
+makeBodyConstraintRecord
+makeFormCapabilityRecord
+makeFormConsequenceRecord
+makeFormDurationRecord
+makeFormAccessProfile
+isUnsafeFormSource
+isPhysicalTransformation
+isDisguiseOnly
+isIllusionOnly
+isCandidateTraitOnly
+```
+
+## Step 3 — Add FormLogic helper
+
+Build helper responsibilities:
+
+```text
+separate true race/current form/disguise/illusion
+derive constraints from physical traits
+derive access profile
+expire/revert form-sourced traits and constraints
+protect true race/species
+```
+
+## Step 4 — Update form CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+physical transformation
+partial transformation
+reversion
+disguise
+illusion
+race/species candidate
+lineage candidate
+trait/constraint/capability labels
+```
+
+## Step 5 — Update ProposalBuilder form support
+
+Ensure proposals carry:
+
+```text
+from form
+to form
+physicality
+permanence/duration
+traits
+constraints
+capabilities
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 6 — Update BodyReducer/FormLogic commits
+
+Implement safe commits for:
+
+```text
+physical current form
+partial traits
+reversion
+active constraints
+capability labels
+candidate lineage/traits
+disguise/illusion/presentation
+```
+
+## Step 7 — Update `/sheet`, `/status`, optional `/form`
+
+Make form state clear and fun to read.
+
+## Step 8 — Update ContextBuilder form/body packet
+
+Make the AI Dungeon model remember physical constraints naturally.
+
+## Step 9 — Update IntegrityChecker form/race checks
+
+Add checks for identity overwrite, expired constraints, candidate/confirmed separation, and unsafe sources.
+
+## Step 10 — Add PC13 ReleaseCheck gates
+
+Add PC13-G01 through PC13-G19.
+
+## Step 11 — Add PC13 tests
+
+Add PC13-001 through PC13-027.
+
+## Step 12 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/sheet
+/status
+/form if available
+```
+
+## Step 13 — Save accepted form/race build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.13_FORM_RACE_CONSTRAINTS_ACCEPTED.txt
+```
+
+---
+
+# 39. What this chunk produces
+
+Production Chunk 13 should produce:
+
+```text
+WorldLedger V0.17.13 form/race/constraints accepted script if code changes are made
+RaceSpeciesRecord/FormRecord/TransformationEvent schemas
+BodyTrait/BodyConstraint/FormCapability/FormConsequence schemas
+FormLogic helper
+body form/reversion behavior
+non-humanoid constraint system
+form access profile
+/sheet /status /form display improvements
+form/body context packet
+form/race integrity checks
+PC13 ReleaseCheck gates
+PC13 regression/player-breaker tests
+form/race acceptance report
+updated planning zip with Production Chunk 13 added
+```
+
+It should not produce:
+
+```text
+full race power system
+full world bible import
+absorption/evolution
+manual race/form commands
+full equipment stat compatibility
+full social reputation automation
+full creature ecology
+live CardSync writes
+old card prose form import
+```
+
+---
+
+# 40. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 13 passes if:
+
+```text
+true race/species, current form, disguise, illusion, and candidate traits are separated
+physical transformations create form records, traits, constraints, and consequences
+disguise/illusion do not overwrite body truth
+race/lineage labels do not grant powers automatically
+non-humanoid constraints are visible and context-aware
+reversion/expiry deactivates form-sourced constraints without deleting history
+operation keys prevent duplicate transformations/traits/constraints
+/sheet /status /form display honestly
+command/context/card form text cannot become canon
+cleanup preserves active form truth and history
+PC13 tests pass
+ReleaseCheck has no PC13 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+race power mechanics are deferred
+flight/wall-crawl/incorporeal mechanics are deferred
+equipment compatibility is warning/context-only
+social reaction is visibility/evidence-only
+world bible race rules are deferred to PC15+
+creature ecology body logic is deferred to PC17
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+current form overwrites true race/species
+unknown race defaults to human without source
+dream/quote/rumor/metaphor transforms player
+card/context/command text changes form
+race/lineage label grants powers automatically
+disguise/illusion creates physical constraints incorrectly
+non-humanoid body behaves as default human with no warning/context
+reversion deletes history or leaves active constraints behind
+duplicate transformation spams traits/constraints
+cleanup reverts form or deletes active form truth
+BodyReducer/FormLogic trusts unsafe routed data
+```
+
+---
+
+# 41. Handoff to Production Chunk 14
+
+When this chunk passes, Production Chunk 14 begins:
+
+```text
+Production Chunk 14 — Threat Benchmark, Encounter Logic, and World Scaling Boundaries
+```
+
+Production Chunk 14 may use form/body constraints to compare threat and encounter logic, but it must not rubber-band enemies to the player.
+
+Production Chunk 13 must leave form/race state reliable enough that PC14 can ask:
+
+```text
+What is the player's true race/species?
+What is the player's current physical form?
+What body traits are active?
+What constraints affect movement, speech, tools, equipment, and combat method labels?
+Which traits are only candidate or illusory?
+Can this form reasonably fight, flee, carry, speak, or pass through a place?
+```
+
+---
+
+# 42. Final doctrine
+
+Production Chunk 13 is where transformation becomes playable instead of cosmetic.
+
+Final rule:
+
+```text
+Forms should be fun because they change what the body can do.
+Forms should be safe because they never overwrite identity, grant powers, or mutate reality from unsafe text.
+A wolf form should feel like a wolf body.
+An illusion should feel like an illusion.
+A rumor should stay a rumor.
+A transformation should have consequences, duration, and rollback.
+```
+
+Once this passes, the project can safely deepen threat benchmarks, encounter logic, and world scaling boundaries in Production Chunk 14.

@@ -1,0 +1,36 @@
+# AIDRPG Pre-Code Gap Closure Status
+
+Status: COMPLETE FOR MVP FOUNDATION PRE-CODE SAFETY.
+
+Included in this package:
+
+- Script Build Roadmap v1
+- Gap Closure Addendum v1
+- Gap Chunk A — Old Fix Salvage Matrix
+- Gap Chunk B — Runtime and Hook Contract Spec
+- Gap Chunk C — Story Card API Adapter and Protected Singleton Contract
+- Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy
+- Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec
+- Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec
+- Gap Chunk G — Startup, Identity Drift, and Natural Confirmation Spec
+
+Conclusion:
+Gap Chunks A–G are enough to begin MVP foundation planning/build chunks without restarting the same old bug cycle.
+
+Not yet unlocked:
+- Generated CardSync Beta
+- Combat/Progression v0.2
+- Economy / Transaction Ledger
+- Crafting / Materials
+- Investigation / Evidence
+- Reputation / Faction / Titles
+- Party / Followers / Summons / Multi-Protagonist
+- Scale / Group Combat / Warfare
+- Body Compatibility / Death Boundary
+- Ability Formation / Cost / Alias Advanced
+- Absorption / Evolution
+- Whole-System Tester Build Spec
+- Full Regression Matrix v1
+
+Next step:
+Build Chunk 1 — Implementation Start Packet.

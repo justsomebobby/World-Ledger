@@ -1,0 +1,840 @@
+# AIDRPG Production Chunk 24 — Advanced Combat, Party/Summon Coordination, Absorption/Evolution, and Warfare Activation Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 24 — Advanced Combat, Party/Summon Coordination, Absorption/Evolution, and Warfare Activation Boundaries  
+**Production sequence:** 24 of 25 production chunks  
+**Build target:** WorldLedger V0.17.23 domains/bases accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Define activation gates and safety records for advanced combat, party/summon coordination, formation/tactics, absorption/evolution, essence/source material, inheritance, battlefield operations, siege/warfare, and large-scale consequences without enabling them as shortcuts or allowing a single victory sentence to rewrite the save.  
+**Status:** Endgame/advanced-system boundary production chunk.  
+**Follows:** Production Chunk 23 — Domains, Bases, Buildings, Territories, and Large-Scale Asset Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 24 is where the system prepares for the wild stuff without accidentally turning it all on.
+
+This includes:
+
+```text
+advanced combat tactics
+party coordination
+summon commands in combat
+formations
+combo actions
+absorption/evolution
+essence extraction
+power inheritance
+large battlefield operations
+sieges
+warfare
+army orders
+territory consequences
+```
+
+These systems are exciting, but they are also exactly how a script destroys itself if every dramatic line becomes truth.
+
+```text
+You absorb the dragon's power.
+Your army wins the war.
+The castle falls.
+Your summon kills them all.
+Your companions obey perfectly.
+You evolve into a god.
+```
+
+Those sentences must not bypass validators, owners, keys, eligibility, cost, source material, or release gates.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Advanced systems are gates, not shortcuts.
+Party coordination respects autonomy.
+Summons respect control and duration.
+Tactic plan is not tactic success.
+Formation is not victory.
+Absorption attempt is not power gain.
+Essence visible is not essence owned.
+Essence owned is not essence consumed.
+Consumed essence is not automatic evolution.
+Evolution candidate is not evolution.
+Battle order is not battle result.
+Battlefield victory is not territory ownership.
+Siege breach is not legal control.
+No single victory sentence rewrites the whole save.
+```
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 23 secured bases, property, and territory claims.
+
+Advanced combat and warfare need all previous owners stable:
+
+```text
+Combat events from PC12
+Party/companions from PC21
+Pets/mounts/summons/vehicles from PC22
+Domains/territory from PC23
+Threat/encounter boundaries from PC14
+Creature/bestiary rules from PC17
+Stats/body/progression/inventory/quests/lore from earlier chunks
+```
+
+This chunk does not fully implement every advanced system.
+It defines how they are allowed to activate and what stays blocked until code and tests exist.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 24 may change:
+
+```text
+AdvancedSystemFlag helper
+AdvancedCombatCoordinator shell
+PartyCoordination helper
+SummonCoordination helper
+Tactic/Formation helpers
+Absorption/Evolution boundary helpers
+Essence/SourceMaterial records
+WarfareOperation shell
+BattlefieldResult boundary
+SiegeConsequence boundary
+CanonValidator advanced-system rules
+ProposalBuilder advanced event types
+EventScannerLite advanced hints
+CommandRenderers /tactics /party /summons /warfare /evolution if available
+ContextBuilder advanced packet
+OperationLedger advanced keys
+DirtyQueue advanced targets
+IntegrityChecker advanced-system checks
+ReleaseCheck PC24 gates
+Regression/player-breaker advanced tests
+```
+
+Production Chunk 24 may add:
+
+```text
+AdvancedSystemFlagRecord
+PartyOrderRecord
+PartyCoordinationRecord
+SummonDirectiveRecord
+FormationRecord
+TacticPlanRecord
+TacticOutcomeRecord
+ComboActionRecord
+AbsorptionAttemptRecord
+EssenceRecord
+SourceMaterialRecord
+EvolutionCandidateRecord
+EvolutionEventRecord
+PowerInheritanceRecord
+WarfareOperationRecord
+BattlefieldUnitRecord
+BattlefieldOrderRecord
+BattlefieldResultRecord
+SiegeEventRecord
+LargeScaleConsequenceRecord
+AdvancedSystemAuditRecord
+```
+
+Production Chunk 24 may not add by default:
+
+```text
+automatic party obedience
+automatic summon perfect control
+automatic combo success
+automatic absorption power gain
+automatic evolution
+automatic army victory
+automatic territory transfer
+automatic XP/loot/reputation from warfare
+manual /absorb /evolve /winwar mutation commands
+live card writes
+```
+
+---
+
+# 4. Feature flags and activation model
+
+Advanced systems must be flag-gated.
+
+```text
+advancedCombat.enabled = false unless gates pass
+partyCoordination.enabled = cautious/shell unless gates pass
+summonCoordination.enabled = cautious/shell unless gates pass
+absorption.enabled = false unless gates pass
+evolution.enabled = false unless gates pass
+warfare.enabled = false unless gates pass
+siegeConsequences.enabled = false unless gates pass
+```
+
+AdvancedSystemFlagRecord:
+
+```text
+AdvancedSystemFlagRecord {
+  id,
+  key,
+  systemName,
+  enabled,
+  mode,
+  requiredGateKeys,
+  ownerSystemsReady,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Modes:
+
+```text
+disabled
+shell_only
+display_only
+validator_only
+owner_routed_active
+full_active_later
+unknown
+```
+
+Rules:
+
+```text
+shell_only can record intent/candidates, not consequences
+owner_routed_active requires owner reducers and tests
+full_active_later is not allowed without explicit future gates
+```
+
+---
+
+# 5. Party and summon coordination records
+
+## PartyOrderRecord
+
+```text
+PartyOrderRecord {
+  id,
+  key,
+  issuerActorKey,
+  targetActorKeys,
+  orderType,
+  sourceOperationKey,
+  createdTurn,
+  status,
+  notes
+}
+```
+
+Statuses:
+
+```text
+issued
+accepted
+refused
+failed
+partially_followed
+completed
+deferred
+unknown
+```
+
+## PartyCoordinationRecord
+
+```text
+PartyCoordinationRecord {
+  id,
+  key,
+  participantKeys,
+  coordinationType,
+  autonomyRespected,
+  outcomeKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## SummonDirectiveRecord
+
+```text
+SummonDirectiveRecord {
+  id,
+  key,
+  summonEntityKey,
+  controllerActorKey,
+  directiveType,
+  controlStatus,
+  durationStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+order is not obedience
+accepted order is not success
+party members have autonomy
+summons must be active and controlled enough to receive directives
+summon directives cannot extend duration unless owner rules validate it
+```
+
+---
+
+# 6. Formation, tactic, and combo records
+
+```text
+FormationRecord {
+  id,
+  key,
+  participantKeys,
+  formationType,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+TacticPlanRecord {
+  id,
+  key,
+  plannerActorKey,
+  participantKeys,
+  tacticType,
+  targetKey,
+  sourceOperationKey,
+  createdTurn,
+  status,
+  notes
+}
+```
+
+```text
+TacticOutcomeRecord {
+  id,
+  key,
+  tacticPlanKey,
+  outcomeStatus,
+  appliedEffects,
+  blockedEffects,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+ComboActionRecord {
+  id,
+  key,
+  participantKeys,
+  comboType,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+formation provides context, not auto-bonus
+tactic plan requires output validation for success
+combo action requires every participant ability/presence/autonomy validation
+damage/healing/routes still use Combat/Body owners
+```
+
+---
+
+# 7. Absorption and evolution records
+
+## AbsorptionAttemptRecord
+
+```text
+AbsorptionAttemptRecord {
+  id,
+  key,
+  absorberActorKey,
+  sourceEntityKey,
+  sourceMaterialKey,
+  attemptType,
+  eligibilityStatus,
+  resultStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## EssenceRecord
+
+```text
+EssenceRecord {
+  id,
+  key,
+  displayName,
+  sourceEntityKey,
+  essenceType,
+  custodyStatus,
+  purityLabel,
+  stabilityLabel,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Custody statuses:
+
+```text
+visible
+available
+extracted
+contained
+owned
+consumed
+lost
+dissipated
+unknown
+```
+
+## SourceMaterialRecord
+
+```text
+SourceMaterialRecord {
+  id,
+  key,
+  sourceType,
+  itemKey,
+  creatureKey,
+  corpseKey,
+  essenceKey,
+  custodyStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## EvolutionCandidateRecord and EvolutionEventRecord
+
+```text
+EvolutionCandidateRecord {
+  id,
+  key,
+  actorKey,
+  candidateType,
+  eligibilityEvidence,
+  requirementsMet,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+EvolutionEventRecord {
+  id,
+  key,
+  actorKey,
+  fromStateKey,
+  toStateKey,
+  eventType,
+  validated,
+  appliedOwnerEffects,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## PowerInheritanceRecord
+
+```text
+PowerInheritanceRecord {
+  id,
+  key,
+  actorKey,
+  sourceEntityKey,
+  inheritedThingType,
+  inheritedThingKey,
+  status,
+  ownerSystem,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+absorption attempt is not power gain
+essence visible is not owned
+essence owned is not consumed
+consumed essence is not automatic evolution
+evolution candidate is not evolution
+power inheritance routes to Ability/Form/Progression owner systems and remains pending unless validated
+corpse/loot/source material routes through Inventory/Creature/Combat boundaries
+```
+
+---
+
+# 8. Warfare records
+
+## WarfareOperationRecord
+
+```text
+WarfareOperationRecord {
+  id,
+  key,
+  operationType,
+  commanderActorKey,
+  sideKeys,
+  objectiveText,
+  status,
+  placeKey,
+  territoryClaimKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## BattlefieldUnitRecord
+
+```text
+BattlefieldUnitRecord {
+  id,
+  key,
+  operationKey,
+  unitType,
+  displayName,
+  countLabel,
+  factionKey,
+  commanderKey,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## BattlefieldOrderRecord
+
+```text
+BattlefieldOrderRecord {
+  id,
+  key,
+  operationKey,
+  issuerActorKey,
+  unitKey,
+  orderType,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## BattlefieldResultRecord
+
+```text
+BattlefieldResultRecord {
+  id,
+  key,
+  operationKey,
+  resultType,
+  summary,
+  ownerConsequencesPending,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+## SiegeEventRecord and LargeScaleConsequenceRecord
+
+```text
+SiegeEventRecord {
+  id,
+  key,
+  targetPropertyKey,
+  eventType,
+  breachStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+```text
+LargeScaleConsequenceRecord {
+  id,
+  key,
+  consequenceType,
+  affectedOwnerSystem,
+  pendingOwnerValidation,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Rules:
+
+```text
+battle order is not battlefield result
+battlefield victory is not territory ownership
+siege breach is not legal control
+army victory is not automatic XP/reputation/loot/taxes
+owner systems validate property, territory, faction, law, inventory, and progression effects
+```
+
+---
+
+# 9. CanonValidator rules
+
+Accept advanced intent/order records from safe input, but not outcomes.
+Accept outcomes only from safe output with bound participants and owner route.
+Reject from command/context/card/debug source.
+Reject automatic power/territory/loot/XP/reputation from victory text.
+Reject absorption/evolution unless eligibility, source material, and owner systems validate.
+Reject warfare consequences unless owner systems validate them.
+
+Default behavior:
+
+```text
+record candidate/intention/planning when useful
+block or defer consequences until owner path exists
+```
+
+---
+
+# 10. Owner-routing contracts
+
+```text
+CombatReducer owns hit/damage/healing/death.
+Party/Actor systems own autonomy, consent, presence, loyalty.
+ControlledEntity owns summon/mount/pet/vehicle control and duration.
+Inventory owns essence/source material/corpse/item custody.
+Ability owns power gain.
+Form/Body owns evolution body changes.
+Progression owns XP/stat/level changes.
+Domain/Faction/Law own territory, legitimacy, reputation, crime, rule.
+Quest owns objective completion.
+Economy owns wages/upkeep/taxes/war costs.
+Threat/Encounter owns danger context.
+```
+
+AdvancedCoordinator may coordinate, but it does not own consequences outside its scope.
+
+---
+
+# 11. Display/context rules
+
+Commands may include:
+
+```text
+/tactics
+/party
+/summons
+/evolution
+/warfare
+```
+
+or fold into `/combat`, `/actors`, `/status`, `/domain`, `/stateaudit`.
+
+Display must separate:
+
+```text
+orders issued vs followed
+plans vs outcomes
+summon directives vs results
+absorption attempts vs gains
+essence visible/available/owned/consumed
+evolution candidate vs evolution event
+battle orders vs battle results
+battlefield result vs territory/property/faction consequences
+```
+
+Context should warn:
+
+```text
+Your companions are coordinating but retain autonomy.
+Your raven summon is active but duration-limited.
+Dragon essence is visible/available, not absorbed.
+The battle was won tactically, but territory control is pending legal/domain validation.
+```
+
+---
+
+# 12. Operation keys
+
+```text
+advanced.flag.<systemName>.<mode>.<version>
+party.order.<issuerKey>.<targetHash>.<orderType>.<sourceHash>
+party.response.<orderKey>.<sourceHash>
+summon.directive.<summonKey>.<directiveType>.<sourceHash>
+formation.set.<participantHash>.<formationType>.<sourceHash>
+tactic.plan.<plannerKey>.<tacticType>.<sourceHash>
+tactic.outcome.<tacticPlanKey>.<outcomeStatus>.<sourceHash>
+combo.action.<participantHash>.<comboType>.<sourceHash>
+absorb.attempt.<actorKey>.<sourceMaterialKey>.<sourceHash>
+essence.record.<essenceKey>.<sourceHash>
+essence.consume.<essenceKey>.<actorKey>.<sourceHash>
+evolution.candidate.<actorKey>.<candidateType>.<sourceHash>
+evolution.event.<actorKey>.<toStateKey>.<sourceHash>
+power.inheritance.<actorKey>.<sourceEntityKey>.<ownerSystem>.<sourceHash>
+warfare.operation.<operationKey>.<sourceHash>
+warfare.order.<operationKey>.<unitKey>.<orderType>.<sourceHash>
+warfare.result.<operationKey>.<resultType>.<sourceHash>
+siege.event.<propertyKey>.<eventType>.<sourceHash>
+large.consequence.<affectedOwnerSystem>.<sourceHash>
+```
+
+---
+
+# 13. ReleaseCheck gates
+
+```text
+PC24-G01 AdvancedSystemFlagRecord exists and risky systems default disabled/shell-only.
+PC24-G02 PartyOrder/Coordination records exist and respect autonomy.
+PC24-G03 SummonDirectiveRecord exists and respects active summon/control/duration.
+PC24-G04 Formation/Tactic/Outcome/Combo records exist and separate plan from result.
+PC24-G05 AbsorptionAttempt/Essence/SourceMaterial records exist and separate attempt/source/custody/consumption.
+PC24-G06 EvolutionCandidate/Event records exist and separate candidate from evolution.
+PC24-G07 PowerInheritanceRecord routes to owner systems and defaults pending unless validated.
+PC24-G08 WarfareOperation/Unit/Order/Result records exist and separate order/result/consequence.
+PC24-G09 Siege/LargeScaleConsequence records do not grant ownership/control automatically.
+PC24-G10 CanonValidator rejects victory text as XP/loot/power/reputation/territory by default.
+PC24-G11 Owner-routing contracts intact.
+PC24-G12 Duplicate advanced operation keys exist.
+PC24-G13 Command/context/card advanced text cannot become canon.
+PC24-G14 Display separates plans/candidates/results/pending consequences honestly.
+PC24-G15 Cleanup preserves active orders, essence, candidates, warfare operations, and keys.
+PC24-G16 Manual advanced mutation commands disabled.
+PC24-G17 Live advanced systems remain disabled unless gates activate them.
+PC24-G18 Absorption/evolution cannot bypass Ability/Form/Progression owners.
+PC24-G19 Warfare cannot bypass Domain/Faction/Law owners.
+PC24-G20 Player-breaker tests registered.
+```
+
+---
+
+# 14. Required tests
+
+```text
+PC24-001 Party attack order creates order, not damage.
+PC24-002 Companion refusal prevents forced outcome.
+PC24-003 Party tactic plan does not become success.
+PC24-004 Validated tactic outcome records result without auto-damage unless Combat validates.
+PC24-005 Summon directive requires active summon.
+PC24-006 Expired summon cannot obey directive.
+PC24-007 Formation provides context only, not auto-bonus.
+PC24-008 Combo attempt requires participant presence/autonomy/ability checks.
+PC24-009 Absorption attempt does not grant power.
+PC24-010 Visible essence is not owned.
+PC24-011 Extracted essence is not consumed.
+PC24-012 Consumed essence does not auto-evolve without owner validation.
+PC24-013 Evolution candidate does not change body/stats/abilities.
+PC24-014 Validated evolution routes form/body/ability/progression changes through owners.
+PC24-015 Dragon power inheritance does not grant breath weapon by text alone.
+PC24-016 Defeated enemy does not auto-create essence.
+PC24-017 Corpse/source material custody routes through Inventory/Creature boundaries.
+PC24-018 Battle order does not create victory.
+PC24-019 Battlefield victory does not grant territory.
+PC24-020 Siege breach does not grant legal ownership.
+PC24-021 War victory does not grant taxes/income automatically.
+PC24-022 War victory does not grant faction reputation automatically.
+PC24-023 War victory does not grant XP/loot automatically.
+PC24-024 Story Card evolution claim non-canon.
+PC24-025 Context warfare result non-canon.
+PC24-026 Command /evolution output non-canon.
+PC24-027 Duplicate absorption skipped.
+PC24-028 Duplicate warfare result skipped.
+PC24-029 Cleanup preserves essence/evolution candidates/war operations.
+PC24-030 Manual /absorb /evolve /winwar /conquer disabled.
+```
+
+---
+
+# 15. Beginner implementation order
+
+```text
+1. Copy WorldLedgerV0.17.23 accepted build.
+2. Add AdvancedSystemFlagRecord and default disabled/shell flags.
+3. Add party/summon coordination records.
+4. Add tactic/formation/combo records.
+5. Add absorption/essence/source material/evolution records.
+6. Add warfare/battlefield/siege/consequence records.
+7. Update CanonValidator advanced-system rules.
+8. Update ProposalBuilder and EventScannerLite.
+9. Add owner-routing checks.
+10. Update commands/context display.
+11. Add operation keys and duplicate checks.
+12. Add ReleaseCheck gates and tests.
+13. Save WorldLedgerV0.17.24_ADVANCED_BOUNDARIES_ACCEPTED.txt.
+```
+
+---
+
+# 16. Pass / warn / fail criteria
+
+## PASS
+
+```text
+risky advanced systems default disabled/shell-only
+orders/plans separated from outcomes
+absorption/evolution separated into attempt/source/candidate/event
+warfare separated into order/result/consequence
+owner routing intact
+unsafe sources blocked
+PC24 tests pass
+```
+
+## WARN
+
+```text
+full tactical AI deferred
+full absorption/evolution mechanics deferred
+full warfare simulation deferred
+combo bonuses deferred
+army logistics deferred
+```
+
+## FAIL
+
+```text
+party order forces obedience/damage
+summon directive ignores duration/control
+absorption attempt grants power
+essence visible becomes consumed
+evolution candidate changes body/stats
+battle victory grants territory/reputation/XP/loot
+siege breach grants ownership
+command/context/card activates advanced consequences
+```
+
+---
+
+# 17. Final doctrine
+
+```text
+Advanced systems are where the final game becomes epic, but only if they stay owner-routed.
+The coordinator may coordinate; it does not own reality.
+Victory text is evidence, not a universal mutation command.
+Absorption, evolution, formations, summons, parties, battles, sieges, and wars all need gates before consequences.
+```
+
+When this passes, Production Chunk 25 can assemble the final QA and release-candidate handoff.

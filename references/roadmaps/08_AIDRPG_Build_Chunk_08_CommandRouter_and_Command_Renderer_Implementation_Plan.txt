@@ -1,0 +1,1638 @@
+AIDRPG Build Chunk 8 — CommandRouter and Command Renderer Implementation Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 8 — CommandRouter and Command Renderer Implementation Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact command detection, routing, alias handling, disabled-command behavior, command renderer ownership, command output suppression, and command safety tests before command code is generated.
+Status: Practical build document.
+Follows: Build Chunk 7 — AuditLogger and OperationLedger Implementation Plan.
+This document does not contain final script code.
+
+This chunk is useful because commands are the player’s main way to see, test, and debug the system.
+
+If commands mutate state, command output becomes a hidden gameplay system.
+
+If commands lie, the player cannot trust the script.
+
+If command output is parsed as story, old duplication bugs return.
+
+If aliases are inconsistent, old test workflows break.
+
+If disabled commands activate deferred systems, the MVP boundary collapses.
+
+Build Chunk 8 makes command behavior exact before coding.
+
+⸻
+
+1. Command doctrine
+
+The command doctrine is:
+
+Commands inspect state.
+Commands explain state.
+Commands route safely.
+Commands suppress their own output.
+Commands do not mutate gameplay state.
+Commands do not activate deferred systems.
+
+Commands may update runtime command metadata and diagnostic audit lines.
+
+Commands may not create gameplay truth.
+
+⸻
+
+2. Why this chunk comes before parser/reducer work
+
+Command safety must exist before parser/reducer automation.
+
+Reason:
+
+Once parser/reducer systems become active, command output becomes dangerous unless suppression is already locked.
+
+Examples:
+
+* /inventory displaying Rusty Dagger must not create another dagger.
+* /quests displaying Reward: 15 gold promised must not pay the reward.
+* /abilities displaying Shadow Step — candidate must not stabilize Shadow Step.
+* /actors displaying Mara — elsewhere must not make Mara present.
+* /location displaying Travel Intent: chapel must not move the player to chapel.
+
+Build Chunk 8 protects those cases before automation starts.
+
+⸻
+
+3. Placement in final script
+
+CommandRouter belongs in:
+
+Section 09 — Command Router
+
+Command renderers belong in:
+
+Section 10 — Command Renderers
+
+They depend on:
+
+Constants
+Utils
+StateManager
+Runtime suppression helpers
+AuditLogger
+OperationLedger summary helpers
+ReleaseCheckLite for /releasecheck
+
+They must not depend on:
+
+EventScannerLite for command output parsing
+ProposalBuilder for command output
+CanonValidator for command mutation
+ReducerRegistry for MVP gameplay mutation
+CardSync live writes
+Cleanup destructive actions
+Migration aggressive import
+
+⸻
+
+4. CommandRouter responsibilities
+
+CommandRouter owns:
+
+* slash command detection
+* command text normalization
+* command argument parsing
+* command alias resolution
+* active command dispatch
+* disabled command dispatch
+* unknown command handling
+* command output suppression integration
+* command audit line if desired
+* safe command error handling
+
+CommandRouter does not own:
+
+* gameplay mutation
+* state schema repair beyond StateManager call
+* command output formatting details beyond dispatch
+* releasecheck logic itself
+* card sync live writes
+* cleanup destructive actions
+* manual mutation behavior
+
+⸻
+
+5. Command renderer responsibilities
+
+Command renderers own:
+
+* readable command output text
+* state summaries
+* empty-state display
+* warning display
+* disabled system message formatting
+* alias note display
+* output truncation/summarization
+
+Command renderers do not own:
+
+* command detection
+* alias routing
+* gameplay mutation
+* StateManager repairs
+* OperationLedger mutation
+* parser/reducer calls
+* card API calls
+* quarantine resolution
+
+⸻
+
+6. Required CommandRouter functions
+
+The final script should provide these functions or equivalent section-scoped functions.
+
+CommandRouter.isCommand(text)
+CommandRouter.parse(text)
+CommandRouter.normalizeCommandName(name)
+CommandRouter.resolveAlias(commandName)
+CommandRouter.route(root, inputText)
+CommandRouter.dispatchActive(root, parsedCommand)
+CommandRouter.dispatchDisabled(root, parsedCommand, disabledInfo)
+CommandRouter.renderUnknown(root, parsedCommand)
+CommandRouter.safeRoute(root, inputText)
+CommandRouter.getDisabledInfo(commandName)
+CommandRouter.isActiveCommand(commandName)
+CommandRouter.isDisabledCommand(commandName)
+CommandRouter.markCommandAudit(root, commandName, outcome)
+
+Names may change in code, but responsibilities must exist.
+
+⸻
+
+7. Required command renderer functions
+
+The final script should provide renderers for every active MVP command.
+
+Commands.renderHelp(root, context)
+Commands.renderVersion(root, context)
+Commands.renderSheet(root, context)
+Commands.renderStatus(root, context)
+Commands.renderInventory(root, context)
+Commands.renderAbilities(root, context)
+Commands.renderQuests(root, context)
+Commands.renderActors(root, context)
+Commands.renderLocation(root, context)
+Commands.renderTime(root, context)
+Commands.renderDebugLast(root, context)
+Commands.renderCardAudit(root, context)
+Commands.renderContextAudit(root, context)
+Commands.renderStateAudit(root, context)
+Commands.renderLedger(root, context)
+Commands.renderDirty(root, context)
+Commands.renderMigration(root, context)
+Commands.renderQuarantine(root, context)
+Commands.renderReleaseCheck(root, context)
+Commands.renderStartupAudit(root, context)
+Commands.renderDisabled(root, disabledInfo, context)
+Commands.renderUnknown(root, parsedCommand, context)
+Commands.withHeader(title, status, bodyLines)
+Commands.truncateOutput(text, maxChars)
+
+Renderer function names may vary, but every output from Build Chunk 4 must be supported.
+
+⸻
+
+8. Command detection rules
+
+8.1 Command prefix
+
+A command is an input beginning with:
+
+/
+
+followed by at least one command character.
+
+Examples:
+
+/help
+/inventory
+/releasecheck
+/craft sword
+/cardsync live on
+
+8.2 Non-command examples
+
+These are not commands:
+
+I swing my sword.
+Mara says /help as a joke.
+The sign reads: /inventory.
+I type the symbol / in the dust.
+
+Only player input beginning with / at the start of the input is a command.
+
+8.3 Whitespace
+
+Leading whitespace may be trimmed for command detection.
+
+Examples:
+
+  /help
+
+should route as /help.
+
+8.4 Case
+
+Commands should be case-insensitive.
+
+Examples:
+
+/HELP
+/Inventory
+/ReLeAsEcHeCk
+
+should normalize to:
+
+/help
+/inventory
+/releasecheck
+
+⸻
+
+9. Command parse result schema
+
+CommandRouter should parse command input into a structured object.
+
+ParsedCommand {
+  rawText: string,
+  commandName: string,
+  normalizedName: string,
+  argsText: string,
+  args: string[],
+  isCommand: boolean,
+  aliasOf: string,
+  routeStatus: 'active' | 'disabled' | 'unknown' | 'error',
+  notes: string[]
+}
+
+9.1 Example
+
+Input:
+
+/questlog active
+
+Parsed:
+
+rawText = '/questlog active'
+commandName = 'questlog'
+normalizedName = 'quests'
+argsText = 'active'
+args = ['active']
+isCommand = true
+aliasOf = 'questlog'
+routeStatus = 'active'
+
+9.2 Args in MVP
+
+Most MVP commands ignore args or treat them as informational.
+
+MVP should not implement mutation args like:
+
+/additem Crown
+/setlevel 99
+
+Those remain disabled.
+
+⸻
+
+10. Active MVP command set
+
+The active MVP commands are:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+/startupaudit
+
+These commands are inspect-only or diagnostic-only.
+
+No active MVP command may directly mutate gameplay state.
+
+⸻
+
+11. Active command dispatch map
+
+The command router should use a dispatch map.
+
+help -> renderHelp
+version -> renderVersion
+sheet -> renderSheet
+status -> renderStatus
+inventory -> renderInventory
+abilities -> renderAbilities
+quests -> renderQuests
+actors -> renderActors
+location -> renderLocation
+time -> renderTime
+debuglast -> renderDebugLast
+cardaudit -> renderCardAudit
+contextaudit -> renderContextAudit
+stateaudit -> renderStateAudit
+ledger -> renderLedger
+dirty -> renderDirty
+migration -> renderMigration
+quarantine -> renderQuarantine
+releasecheck -> renderReleaseCheck
+startupaudit -> renderStartupAudit
+
+Avoid a large tangled if/else chain if a map/object is safer in the target environment.
+
+A clear switch statement is acceptable if simpler.
+
+⸻
+
+12. Active alias map
+
+The router must support old/common aliases safely.
+
+questlog -> quests
+finalcheck -> releasecheck
+finalrelease -> releasecheck
+rc -> releasecheck
+cardedits -> cardaudit
+tombstones -> cardaudit
+startup -> startupaudit
+continuity -> stateaudit or contextaudit, MVP preference: stateaudit
+memory -> contextaudit
+selftest -> releasecheck
+
+12.1 Alias output note
+
+When alias is used, command output may include:
+
+Alias: /questlog -> /quests
+
+This helps the user understand what happened.
+
+12.2 Alias safety
+
+Aliases must not bypass disabled system gates.
+
+Example:
+
+/cardsync live on
+
+must not enable live CardSync through an alias or args.
+
+⸻
+
+13. Disabled command families
+
+The router must recognize disabled command families and return an honest disabled message.
+
+13.1 Economy disabled commands
+
+/shop
+/buy
+/sell
+/economy
+/price
+/barter
+/debt
+
+Disabled reason:
+
+Economy / Transaction Ledger Mini-Spec required.
+
+13.2 Crafting disabled commands
+
+/craft
+/crafting
+/recipes
+/materials
+/forge
+/alchemy
+
+Disabled reason:
+
+Crafting / Materials Mini-Spec required.
+
+13.3 Investigation disabled commands
+
+/cases
+/case
+/clues
+/clue
+/evidence
+/investigation
+
+Disabled reason:
+
+Investigation / Evidence Mini-Spec required.
+
+13.4 Reputation/faction disabled commands
+
+/reputation
+/rep
+/factions
+/faction
+/titles
+
+Disabled reason:
+
+Reputation / Faction / Titles Mini-Spec required.
+
+Note:
+
+/sheet may display titles already stored, but title automation is deferred.
+
+13.5 Domain/labor disabled commands
+
+/domain
+/workers
+/labor
+/projects
+/base
+/settlement
+
+Disabled reason:
+
+Domain / Labor Mini-Spec required.
+
+13.6 Absorption/evolution disabled commands
+
+/absorb
+/evolve
+/devour
+/consume_power
+/evolution
+
+Disabled reason:
+
+Absorption / Evolution Mini-Spec required.
+
+13.7 Party/summon/multi-protagonist disabled or limited commands
+
+/party
+/followers
+/summons
+/summon
+/protagonists
+/players
+/groups
+
+MVP behavior:
+
+* /party may map to /actors if it only displays companions.
+* advanced party controls are disabled.
+* multi-protagonist commands are disabled.
+
+Disabled reason:
+
+Party / Followers / Summons / Multi-Protagonist Spec required.
+
+13.8 Scale/warfare disabled commands
+
+/scale
+/warfare
+/battlefield
+/army
+/armies
+/groupcombat
+/threat
+/combat
+
+MVP behavior:
+
+* /combat may return disabled or status-only message.
+* full combat automation is not active.
+
+Disabled reason:
+
+Combat/Progression v0.2 or Scale / Group Combat Spec required.
+
+13.9 CardSync live/generated disabled commands
+
+/cardsync
+/generatecards
+/cardlive
+/cards live
+/cardsync live on
+
+MVP behavior:
+
+* /cardaudit is active diagnostic.
+* live generated cards remain disabled.
+* live CardSync write toggles are disabled.
+
+Disabled reason:
+
+Story Card API Adapter tests and Generated CardSync Beta Spec required.
+
+13.10 Manual mutation disabled commands
+
+/additem
+/removeitem
+/sethp
+/setmp
+/setep
+/setlevel
+/addxp
+/setability
+/completequest
+/payreward
+/setactor
+/setlocation
+/settime
+/importcard
+/resolvequarantine
+
+Disabled reason:
+
+Manual Override Spec required.
+
+⸻
+
+14. Unknown command behavior
+
+If a command starts with / but is not active, aliased, or recognized as disabled, return unknown command output.
+
+Required behavior:
+
+* no crash
+* no gameplay mutation
+* command output suppression active
+* suggest /help
+
+Example:
+
+[AIDRPG] Unknown Command
+Status: Not Recognized
+Command: /banana
+Use /help to see active MVP commands.
+No gameplay state was changed.
+
+⸻
+
+15. Command routing flow
+
+Command routing should follow this order:
+
+1. Receive input text from Input hook.
+2. Parse command.
+3. Normalize command name.
+4. Resolve alias.
+5. If active command: dispatch active renderer.
+6. Else if disabled command/family: render disabled message.
+7. Else: render unknown command message.
+8. Truncate output if needed.
+9. Return command output to Runtime.
+10. Runtime marks command suppression.
+
+CommandRouter itself should not return raw undefined/null.
+
+If renderer fails, CommandRouter safeRoute should return fail-soft command error text.
+
+⸻
+
+16. Command output suppression integration
+
+CommandRouter returns command output.
+
+Runtime marks suppression.
+
+Recommended integration:
+
+const output = CommandRouter.safeRoute(root, inputText)
+Runtime.setCommandSuppression(root, parsedCommand.normalizedName, output)
+return output
+
+16.1 Command output prefix
+
+Every command output should begin with:
+
+[AIDRPG]
+
+Runtime may use this as secondary suppression detection.
+
+16.2 Command output hash
+
+Runtime should hash the final command output after truncation.
+
+This becomes:
+
+runtime.lastCommandHash
+
+16.3 Command output must not be scanned
+
+The Output hook must skip parser/proposal/reducer processing for suppressed command output.
+
+⸻
+
+17. Renderer safety rules
+
+Every renderer must:
+
+* tolerate missing/malformed bucket values
+* use safe defaults/display
+* show none for empty lists
+* avoid full raw JSON dumps
+* cap long output
+* not call reducers
+* not call parser
+* not call CardSync live writes
+* not call cleanup destructive actions
+* not enable feature flags
+* not resolve quarantine
+
+Renderers can call read-only helpers.
+
+⸻
+
+18. Renderer formatting helpers
+
+Command renderers should share small formatting helpers.
+
+Recommended helpers:
+
+Commands.header(title, status)
+Commands.section(title, lines)
+Commands.line(label, value)
+Commands.noneIfEmpty(list)
+Commands.renderList(list, formatter, maxItems)
+Commands.renderWarnings(list, maxItems)
+Commands.truncate(text, maxChars)
+Commands.aliasNote(aliasOf, normalizedName)
+Commands.safetyNote(lines)
+Commands.safeJoin(list, fallback)
+
+These helpers must not mutate gameplay state.
+
+⸻
+
+19. Output caps by command
+
+Use Build Chunk 4 caps.
+
+/help: 2000
+/version: 1200
+/sheet: 1500
+/status: 1200
+/inventory: 1800
+/abilities: 1800
+/quests: 2200
+/actors: 1800
+/location: 1500
+/time: 900
+/debuglast: 2500
+/cardaudit: 2500
+/contextaudit: 2200
+/stateaudit: 2500
+/ledger: 1800
+/dirty: 1800
+/migration: 1800
+/quarantine: 2200
+/releasecheck: 3000
+/startupaudit: 1800
+
+If output is too long:
+
+* keep high-priority sections
+* summarize remaining records
+* include omitted count
+
+⸻
+
+20. Active command renderer requirements
+
+20.1 /help
+
+Must include:
+
+* active player commands
+* diagnostic commands
+* disabled systems
+* safety notes
+* generated cards disabled
+
+Must not claim advanced systems are active.
+
+20.2 /version
+
+Must include:
+
+* project/build/schema
+* build stage
+* authority
+* feature flags
+* migration status
+* last releasecheck result
+
+20.3 /sheet
+
+Must include:
+
+* identity
+* build
+* progression
+* stats
+* temporary identity effects
+
+Must separate name/title/disguise/illusion.
+
+20.4 /status
+
+Must include:
+
+* HP/MP/EP
+* fatigue
+* death boundary
+* body traits
+* injuries
+* conditions
+
+Must not heal/damage.
+
+20.5 /inventory
+
+Must separate:
+
+* currency
+* equipped
+* owned inventory
+* available nearby
+* unavailable/custody
+* lost/sold/destroyed/consumed
+
+Must not move items.
+
+20.6 /abilities
+
+Must separate:
+
+* stable
+* unstable
+* candidate/hinted
+* passives/talents
+* sealed/unavailable
+
+Must not stabilize abilities.
+
+20.7 /quests
+
+Must separate:
+
+* rumored/offered
+* active
+* blocked
+* ready to turn in
+* completed/rewarded
+* failed/archived
+
+Must distinguish promised/ready/paid/disputed rewards.
+
+20.8 /actors
+
+Must separate:
+
+* companions/familiars
+* important actors
+* scene-only actors
+* custody notes
+* uncertain/claimed information
+
+Must not promote scene actors.
+
+20.9 /location
+
+Must show:
+
+* current location
+* current scene
+* present actors
+* visible/available items
+* hazards
+* exits
+* travel intent separately
+
+Must not change location.
+
+20.10 /time
+
+Must show:
+
+* time text
+* turn
+* last advance
+* deadlines
+
+Must not advance time.
+
+20.11 /debuglast
+
+Must show:
+
+* last turn summary
+* recent proposal summaries
+* recent validation summaries
+* runtime warnings/errors
+* parser shell status if inactive
+
+Must not replay anything.
+
+20.12 /cardaudit
+
+Must show:
+
+* dry-run/safe mode
+* live writes status
+* generated card status
+* API status
+* protected registry status
+* dirty cards
+* duplicate warnings
+* tombstones
+* recent card audit
+
+Must not write cards.
+
+20.13 /contextaudit
+
+Must show:
+
+* ContextBuilder mode
+* read-only guard
+* last context hash
+* budget
+* selected/skipped packets if available
+
+Must not generate gameplay.
+
+20.14 /stateaudit
+
+Must show:
+
+* schema status
+* integrity warnings/errors
+* state size/caps
+* migration/quarantine
+* cleanup
+* important warnings
+
+Must not dump full state.
+
+20.15 /ledger
+
+Must show:
+
+* key bucket counts
+* recent duplicate skips if available
+* ledger warnings
+
+Must not add/remove keys.
+
+20.16 /dirty
+
+Must show:
+
+* total targets
+* queued/processed/blocked/error counts
+* highest priority targets
+* dirty protected cards
+* context dirty reasons
+
+Must not process dirty targets.
+
+20.17 /migration
+
+Must show:
+
+* migration status
+* current migration version
+* counts
+* warnings/errors
+* old card prose non-canon note
+
+Must not run aggressive migration.
+
+20.18 /quarantine
+
+Must show:
+
+* unresolved count
+* records by severity
+* preview/reason/suggested action
+* non-gameplay note
+
+Must not resolve/import/delete quarantine.
+
+20.19 /releasecheck
+
+Must run ReleaseCheckLite and render result.
+
+May update releasecheck audit result through official ReleaseCheck/Audit path.
+
+Must not fix gameplay state or enable features.
+
+20.20 /startupaudit
+
+Must show:
+
+* setup status
+* setup imported
+* gameplay started
+* setup locked turn
+* imported fields
+* rejected fields
+* warnings
+
+Must not rerun startup import.
+
+⸻
+
+21. Disabled command renderer requirements
+
+Disabled command output must include:
+
+[AIDRPG] <System Name>
+Status: Disabled in Core MVP v0.1
+<system> is not active yet.
+Required before activation: <mini-spec/build phase>.
+No gameplay state was changed.
+
+21.1 Disabled command must not
+
+* create placeholder project
+* create item
+* change currency
+* toggle feature flag
+* resolve quarantine
+* write cards
+* add ability
+* advance time
+
+⸻
+
+22. Command non-mutation enforcement
+
+Because JavaScript-like environments do not automatically enforce read-only renderers, the plan must rely on boundaries and tests.
+
+22.1 Required enforcement methods
+
+* renderers do not call reducers
+* renderers do not call parser
+* renderers do not call CardSync live writes
+* renderers do not call Cleanup destructive actions
+* commands have tests comparing gameplay buckets before/after
+* ReleaseCheck verifies command mutation risk
+
+22.2 Optional future enforcement
+
+A future test harness may snapshot gameplay buckets before/after command rendering.
+
+If any gameplay bucket changes from command rendering, command test fails.
+
+⸻
+
+23. Command audit behavior
+
+CommandRouter may add light audit lines.
+
+Examples:
+
+Command routed: /questlog -> /quests.
+Command disabled: /craft requires Crafting Mini-Spec.
+Unknown command: /banana.
+
+Command audit must be capped.
+
+Do not audit every command forever unbounded.
+
+Command audit is diagnostic only.
+
+⸻
+
+24. Command error handling
+
+If command rendering throws an error:
+
+CommandRouter safe route should return:
+
+[AIDRPG] Command Error
+Status: Failed Safely
+The command failed safely. Gameplay state was not intentionally changed.
+Run /debuglast or /stateaudit for details.
+
+Runtime should also record runtime error through fail-soft if the exception escapes router.
+
+Command failure must not erase state.
+
+⸻
+
+25. Command output and parser interaction
+
+Command output is explicitly non-canon.
+
+25.1 Parser must not scan command output
+
+Output hook suppression must happen before EventScannerLite.
+
+25.2 Command output prefix
+
+[AIDRPG] is a non-story marker.
+
+Parser should reject text beginning with [AIDRPG] as non-canon source even if suppression flag fails.
+
+25.3 Commands that display dangerous words
+
+Commands may display dangerous words like:
+
+* gold
+* XP
+* stable ability
+* candidate ability
+* active quest
+* Crown of Dawn
+* Mara
+* dead
+* reward paid
+
+These are display only.
+
+They must not create or modify state.
+
+⸻
+
+26. ReleaseCheck requirements for commands
+
+ReleaseCheck must verify:
+
+* active command list exists
+* command output prefix is used
+* suppression integration exists
+* disabled command families are recognized
+* unknown command handler exists
+* commands are inspect-only in MVP
+* manual mutation commands disabled
+* generated CardSync commands disabled
+* /help honesty requirements satisfied
+* /releasecheck command exists
+
+ReleaseCheck must fail if:
+
+* command output can be scanned as story
+* /help claims disabled systems are active
+* manual mutation commands are enabled
+* generated cards can be enabled by command
+* disabled commands mutate gameplay
+
+ReleaseCheck may warn if:
+
+* alias coverage is incomplete
+* command output caps are not fully implemented
+* some diagnostic commands are shell-only
+
+⸻
+
+27. Command implementation sequence
+
+When coding begins, implement commands in this order:
+
+1. command detection
+2. parse result object
+3. active command set
+4. alias map
+5. disabled command family map
+6. unknown command renderer
+7. disabled command renderer
+8. shared renderer formatting helpers
+9. /help
+10. /version
+11. /sheet, /status, /inventory, /abilities, /quests
+12. /actors, /location, /time
+13. diagnostic renderers
+14. /releasecheck renderer integration
+15. suppression integration with Runtime
+16. command tests
+
+Do not start by implementing manual mutation commands.
+
+⸻
+
+28. Required command tests
+
+BC8-001 — Slash command detected
+
+Input:
+
+/help
+
+Expected:
+
+* parsed as command
+* normalized name help
+
+Fail if:
+
+* treated as story input
+
+⸻
+
+BC8-002 — Non-command not detected
+
+Input:
+
+Mara says /help as a joke.
+
+Expected:
+
+* not a command because input does not begin with command token
+
+Fail if:
+
+* routed as /help
+
+⸻
+
+BC8-003 — Leading whitespace command detected
+
+Input:
+
+   /inventory
+
+Expected:
+
+* routed to inventory
+
+Fail if:
+
+* treated as story
+
+⸻
+
+BC8-004 — Case-insensitive command
+
+Input:
+
+/ReLeAsEcHeCk
+
+Expected:
+
+* normalized to releasecheck
+
+Fail if:
+
+* unknown due to case
+
+⸻
+
+BC8-005 — Alias /questlog maps to /quests
+
+Input:
+
+/questlog
+
+Expected:
+
+* routes to quests renderer
+* optional alias note
+* no quest mutation
+
+Fail if:
+
+* unknown or mutates quest
+
+⸻
+
+BC8-006 — Alias /finalcheck maps to /releasecheck
+
+Input:
+
+/finalcheck
+
+Expected:
+
+* routes to releasecheck
+* no gameplay mutation
+
+Fail if:
+
+* unknown or false PASS without checks
+
+⸻
+
+BC8-007 — Unknown command safe
+
+Input:
+
+/banana
+
+Expected:
+
+* unknown command output
+* starts with [AIDRPG]
+* no gameplay mutation
+* suppression will be set by Runtime
+
+Fail if:
+
+* crash or parser story processing
+
+⸻
+
+BC8-008 — Disabled crafting safe
+
+Input:
+
+/craft iron sword
+
+Expected:
+
+* disabled message
+* no crafting project
+* no item created
+* no feature flag enabled
+
+Fail if:
+
+* crafting activates
+
+⸻
+
+BC8-009 — Disabled economy safe
+
+Input:
+
+/buy potion
+
+Expected:
+
+* disabled economy message
+* currency unchanged
+* no potion added
+
+Fail if:
+
+* transaction occurs
+
+⸻
+
+BC8-010 — Disabled generated cards safe
+
+Input:
+
+/cardsync live on
+
+Expected:
+
+* disabled CardSync live message
+* generatedCardsEnabled false
+* liveWritesEnabled false
+
+Fail if:
+
+* live/generate toggles enabled
+
+⸻
+
+BC8-011 — Disabled manual mutation safe
+
+Input:
+
+/additem Crown of Dawn
+
+Expected:
+
+* manual mutation disabled message
+* no Crown added
+
+Fail if:
+
+* item added
+
+⸻
+
+BC8-012 — /help honest
+
+Run /help.
+
+Expected:
+
+* active commands listed
+* disabled systems listed
+* safety notes included
+* no false active claims
+
+Fail if:
+
+* economy/crafting/generated cards claimed active
+
+⸻
+
+BC8-013 — /inventory non-mutating
+
+State before:
+
+* one Rusty Dagger
+
+Run /inventory.
+
+Expected:
+
+* one Rusty Dagger still
+* no item duplicated
+
+Fail if:
+
+* command changes inventory
+
+⸻
+
+BC8-014 — /quests non-mutating
+
+State before:
+
+* quest reward promised 15 gold
+* currency 0 gold
+
+Run /quests.
+
+Expected:
+
+* reward remains promised
+* currency remains 0 gold
+
+Fail if:
+
+* command pays reward
+
+⸻
+
+BC8-015 — /abilities non-mutating
+
+State before:
+
+* Shadow Step candidate
+
+Run /abilities.
+
+Expected:
+
+* Shadow Step remains candidate
+
+Fail if:
+
+* command stabilizes ability
+
+⸻
+
+BC8-016 — /actors non-mutating
+
+State before:
+
+* Mara elsewhere
+
+Run /actors.
+
+Expected:
+
+* Mara remains elsewhere
+
+Fail if:
+
+* command makes Mara present
+
+⸻
+
+BC8-017 — /location non-mutating
+
+State before:
+
+* current location Old Mill
+* travel intent chapel
+
+Run /location.
+
+Expected:
+
+* current location remains Old Mill
+* chapel remains travel intent only
+
+Fail if:
+
+* command moves player
+
+⸻
+
+BC8-018 — Command output prefix present
+
+Run every active command.
+
+Expected:
+
+* each output begins with [AIDRPG]
+
+Fail if:
+
+* any command lacks prefix
+
+⸻
+
+BC8-019 — Command output cap works
+
+Setup:
+
+* inventory has many records
+
+Run /inventory.
+
+Expected:
+
+* output capped/summarized
+* no crash
+* omitted count if needed
+
+Fail if:
+
+* huge unbounded output
+
+⸻
+
+BC8-020 — Renderer handles malformed bucket safely
+
+Setup:
+
+* abilities.records malformed
+
+Run /abilities.
+
+Expected:
+
+* safe warning output
+* no crash
+* StateManager may repair structural issue if designed
+
+Fail if:
+
+* command crashes
+
+⸻
+
+BC8-021 — Command renderer error fail-soft
+
+Simulate renderer throw.
+
+Expected:
+
+* command error output
+* no gameplay mutation
+* runtime/audit error recorded if possible
+
+Fail if:
+
+* uncaught crash
+
+⸻
+
+BC8-022 — Command suppression integration
+
+Run /inventory, then simulate its output through Output hook.
+
+Expected:
+
+* Output hook suppresses scan
+* no duplicated items
+
+Fail if:
+
+* command output scanned as story
+
+⸻
+
+BC8-023 — Command audit capped
+
+Run many commands.
+
+Expected:
+
+* command/debug audit capped
+* no unbounded audit growth
+
+Fail if:
+
+* debugMessages grows endlessly
+
+⸻
+
+BC8-024 — /releasecheck catches command hazards
+
+Test unsafe config:
+
+* manualMutationCommandsEnabled true
+
+Run /releasecheck.
+
+Expected:
+
+* FAIL
+* clear reason
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+29. Command acceptance checklist
+
+Build Chunk 8 is complete when implementation will clearly support:
+
+* command detection
+* command parsing
+* command normalization
+* active command dispatch
+* alias routing
+* disabled command family recognition
+* unknown command handling
+* command output prefix
+* command output suppression integration
+* shared renderer helpers
+* all active command renderers
+* disabled command renderer
+* command caps/summarization
+* renderer fail-soft handling
+* command non-mutation boundaries
+* releasecheck command safety checks
+* tests BC8-001 through BC8-024
+
+⸻
+
+30. Relationship to previous build chunks
+
+Build Chunk 8 depends on:
+
+* Build Chunk 1 for active and forbidden systems
+* Build Chunk 2 for section placement and command renderer ownership
+* Build Chunk 3 for state bucket names
+* Build Chunk 4 for exact command output formats
+* Build Chunk 5 for StateManager safety before command rendering
+* Build Chunk 6 for Runtime command suppression
+* Build Chunk 7 for audit/ledger command summaries
+* Gap Chunk E for command honesty and disabled behavior
+
+⸻
+
+31. What Build Chunk 9 should do next
+
+Next build document:
+
+Build Chunk 9 — EventScannerLite Parser Shell Plan
+
+Build Chunk 9 should plan the safe parser shell and the first limited event scanning boundaries:
+
+* non-canon source suppression
+* parser hit schema
+* safety flags
+* quote/negation/hypothetical/dream detection shell
+* input intent only
+* output parser gating
+* no direct state mutation
+* parser tests before proposal/validator activation
+
+Build Chunk 9 should not yet build full reducers.
+
+⸻
+
+32. Final Build Chunk 8 doctrine
+
+Commands are not gameplay.
+
+Commands are a safe inspection interface.
+
+They must be predictable before parser and reducer automation becomes active.
+
+Final rule:
+
+Detect commands only at the input command surface.
+Route aliases safely.
+Disable deferred systems honestly.
+Render state without changing it.
+Prefix and suppress every command output.
+Never let command text become story canon.
+
+With CommandRouter and command renderers planned, the next safe step is the parser shell.

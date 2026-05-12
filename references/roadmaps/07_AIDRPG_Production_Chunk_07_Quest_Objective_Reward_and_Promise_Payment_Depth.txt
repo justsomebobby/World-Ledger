@@ -1,0 +1,2158 @@
+# AIDRPG Production Chunk 07 — Quest, Objective, Reward, and Promise/Payment Depth
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 07 — Quest, Objective, Reward, and Promise/Payment Depth  
+**Production sequence:** 07 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.6 ability-depth accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen quest records, objective states, quest offers, quest acceptance, objective progress, completion, reward promises, reward readiness, reward payment, and duplicate-safe reward behavior without rumor activation or promise/payment confusion.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 06 — Ability Candidate, Training, Use, Failure, and Stability Depth.  
+**This document does not contain final script code.**
+
+Production Chunk 07 exists because quest and reward handling is one of the most dangerous RPG automation areas.
+
+Old systems often blurred:
+
+```text
+rumor
+offer
+accepted quest
+active objective
+objective progress
+objective completion
+ready to turn in
+quest completion
+promised reward
+paid reward
+duplicate paid reward
+```
+
+That cannot happen in the final system.
+
+A quest must move through explicit states.
+
+Rewards must be promised, ready, paid, denied, disputed, or duplicate-skipped with clear audit.
+
+A promised reward is not currency.
+
+A completed objective is not payment.
+
+A command display is not reward collection.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Rumor is not a quest.
+Offer is not acceptance.
+Acceptance is not completion.
+Progress is not completion.
+Completion is not payment.
+Ready reward is not paid reward.
+Promised gold is not currency.
+Paid once means paid once.
+Quest text is not inventory.
+Command display is not reward collection.
+```
+
+Quest and reward truth must be stateful, duplicate-safe, and explainable.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 05 made inventory/currency safe.
+
+Production Chunk 06 made abilities safe.
+
+Quest/reward depth comes next because it depends on both:
+
+```text
+quest item custody and ownership
+currency payment through InventoryReducer
+ability training objectives
+body injury/recovery objectives
+actor quest givers
+location objectives
+future progression XP rewards
+future reputation/faction/domain consequences
+```
+
+If quest and reward states are not safe now, future systems will duplicate rewards, activate rumor quests, auto-complete objectives, and hide broken progression behind command displays.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 07 may change:
+
+```text
+Quest schema helpers
+QuestReducerLite
+Reward handling helpers
+QuestObjectiveSanitizer
+RewardNameSanitizer
+CanonValidator quest/reward rules
+ProposalBuilder quest/reward event types
+EventScannerLite quest/reward hints
+CommandRenderers /quests
+ContextBuilder quest packet
+OperationLedger quest/reward keys
+DirtyQueue quest targets
+IntegrityChecker quest/reward checks
+ReleaseCheck quest/reward gates
+Regression/player-breaker quest/reward tests
+```
+
+Production Chunk 07 may add:
+
+```text
+QuestRecord schema depth
+ObjectiveRecord schema
+RewardRecord schema
+QuestStatus model
+ObjectiveStatus model
+RewardStatus model
+quest giver/turn-in actor references
+quest location references
+quest progress history
+reward promise/readiness/payment states
+reward duplicate ledger
+split-result reward payment contract with InventoryReducer
+quest audit summaries
+```
+
+Production Chunk 07 may not add:
+
+```text
+full reputation automation
+full economy buy/sell/barter/debt
+full crafting quest material system
+full progression XP/level automation unless explicit shell only
+manual /completequest /payreward commands
+quest generation engine
+generated quest Story Cards
+old card prose quest import
+```
+
+Progression, reputation, domain, economy, crafting, and generated cards remain deferred unless specifically scoped later.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+QuestState helpers
+QuestReducerLite
+Reward helpers
+QuestObjectiveSanitizer
+RewardNameSanitizer
+CanonValidator quest/reward rules
+ProposalBuilder quest/reward proposals
+EventScannerLite quest/reward hints
+Resolver quest/reward target binding
+CommandRenderers: /quests and reward references in /inventory
+ContextBuilderLite quest packet
+OperationLedger quest/reward keys
+DirtyQueue quest dirty targets
+AuditLogger quest/reward lines
+InvariantChecker quest/reward checks
+ReleaseCheckLite PC07 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+InventoryReducer except explicit split-result currency gain contract
+ProgressionReducer except XP reward shell/deferred display
+ActorReducer except quest giver/turn-in references
+PlaceReducer except location objective references
+AbilityReducer except ability objective references only
+BodyReducer except injury/recovery objective references only
+Economy/crafting/reputation/domain systems
+CardSync live writes
+WorldBible import
+manual mutation commands
+```
+
+---
+
+# 5. Quest state model
+
+Quests bucket should support:
+
+```text
+records
+active
+offered
+rumored
+readyToTurnIn
+completed
+failed
+abandoned
+rewardLedger
+warnings
+notes
+```
+
+Recommended shape:
+
+```text
+quests: {
+  records: {},
+  active: [],
+  offered: [],
+  rumored: [],
+  readyToTurnIn: [],
+  completed: [],
+  failed: [],
+  abandoned: [],
+  rewardLedger: {},
+  warnings: [],
+  notes: []
+}
+```
+
+If existing code uses arrays, keep stable quest keys and owner helpers.
+
+Do not maintain multiple conflicting quest records for the same quest key.
+
+---
+
+# 6. QuestRecord schema
+
+Required quest record fields:
+
+```text
+QuestRecord {
+  id,
+  key,
+  title,
+  normalizedTitle,
+  status,
+  originStatus,
+  giverActorKey,
+  giverDisplayName,
+  turnInActorKey,
+  turnInPlaceKey,
+  locationKeys,
+  objectives,
+  rewards,
+  promisedRewards,
+  paidRewards,
+  failedReasons,
+  abandonedReason,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  completedTurn,
+  rewardedTurn,
+  historyKeys,
+  warnings,
+  notes
+}
+```
+
+## 6.1 Quest identity rules
+
+```text
+quest key is stable
+quest key is family-scoped
+quest key does not contain full raw output
+quest key does not contain command/card/context text
+quest title is readable
+quest title is not just raw objective paragraph unless no better title exists
+same giver + same core objective should usually bind to existing quest
+```
+
+## 6.2 Quest origin status
+
+Quest origin status should identify how the quest entered state:
+
+```text
+rumored
+offered
+accepted_from_input
+accepted_from_output
+structured_startup
+system_generated_later_disabled
+unknown
+```
+
+Origin status helps prevent rumor/offer from becoming active automatically.
+
+---
+
+# 7. Quest status model
+
+Allowed quest statuses:
+
+```text
+rumored
+offered
+active
+progressing
+ready_to_turn_in
+completed
+rewarded
+failed
+abandoned
+expired
+unknown
+```
+
+Rules:
+
+```text
+rumored is not active
+offered is not accepted
+active is not completed
+ready_to_turn_in is not rewarded
+completed is not automatically rewarded
+rewarded requires payment/status event
+failed/abandoned should preserve history
+expired requires explicit time/deadline policy later
+```
+
+---
+
+# 8. ObjectiveRecord schema
+
+Required objective fields:
+
+```text
+ObjectiveRecord {
+  id,
+  key,
+  questKey,
+  verb,
+  targetKey,
+  targetDisplayName,
+  description,
+  status,
+  progressCurrent,
+  progressRequired,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  completedTurn,
+  evidence,
+  warnings,
+  notes
+}
+```
+
+Objective statuses:
+
+```text
+inactive
+active
+in_progress
+complete
+failed
+optional
+hidden
+unknown
+```
+
+Rules:
+
+```text
+objective mention is not completion
+partial progress is not completion
+completion requires accepted objective_complete event
+completion of one objective does not complete unrelated objectives
+automatic all-objectives-complete status change must be explicit and tested
+```
+
+---
+
+# 9. Objective verb support
+
+QuestObjectiveSanitizer must support broad objective types without over-confirming them.
+
+Required verbs:
+
+```text
+recover
+find
+repair
+escort
+clear
+deliver
+investigate
+protect
+bring
+retrieve
+rescue
+defeat
+survey
+track
+report to
+speak with
+collect
+gather
+return
+seal
+open
+close
+survive
+train
+learn
+stabilize
+heal
+cure
+```
+
+Adding a verb to objective support does not mean the objective is completed when the verb is mentioned.
+
+Examples:
+
+```text
+repair the north wall -> objective title Repair the North Wall
+escort Bram to the chapel -> Escort Bram to the Chapel
+investigate the burned tavern -> Investigate the Burned Tavern
+train Ember Ward -> Train Ember Ward, ability objective only
+```
+
+---
+
+# 10. RewardRecord schema
+
+Required reward fields:
+
+```text
+RewardRecord {
+  id,
+  key,
+  questKey,
+  rewardType,
+  description,
+  amount,
+  currencyType,
+  itemKey,
+  itemDisplayName,
+  xpAmount,
+  status,
+  promisedByActorKey,
+  paidByActorKey,
+  sourceOperationKeys,
+  paymentOperationKey,
+  promisedTurn,
+  readyTurn,
+  paidTurn,
+  deniedTurn,
+  disputedTurn,
+  warnings,
+  notes
+}
+```
+
+Reward types:
+
+```text
+currency
+item
+xp
+favor
+information
+access
+title
+reputation_deferred
+unknown
+```
+
+Reward statuses:
+
+```text
+promised
+ready
+paid
+denied
+disputed
+duplicate_skipped
+forfeited
+unknown
+```
+
+Rules:
+
+```text
+promised is not paid
+ready is not paid
+paid requires accepted payment event
+item reward requires InventoryReducer item event if actually handed over
+currency reward requires InventoryReducer currency event
+XP reward requires ProgressionReducer event if progression active
+reputation reward remains deferred unless reputation spec active
+```
+
+---
+
+# 11. QuestObjectiveSanitizer depth
+
+QuestObjectiveSanitizer should clean objective text without losing meaning.
+
+Examples:
+
+```text
+repair the north wall -> Repair the North Wall
+escort Bram to the chapel -> Escort Bram to the Chapel
+investigate the burned tavern -> Investigate the Burned Tavern
+clear the mill wolves -> Clear the Mill Wolves
+retrieve the Crown of Dawn from the ash shrine -> Retrieve the Crown of Dawn from the Ash Shrine
+train Ember Ward until stable -> Train Ember Ward Until Stable
+```
+
+It must not:
+
+```text
+strip destination from escort objectives
+turn objective mention into completion
+turn reward text into objective completion
+turn quest title into active quest without acceptance
+```
+
+---
+
+# 12. RewardNameSanitizer depth
+
+RewardNameSanitizer must separate promise, readiness, and payment.
+
+Must recognize:
+
+```text
+15 gold
+fifteen gold
+3 silver
+one hundred copper
+red healing potion as reward
+training scroll as reward
+20 XP if progression reward active later
+favor from Old Bren
+access to the north gate
+```
+
+Promise markers:
+
+```text
+promises to pay
+will pay
+reward will be
+offers if
+payment after
+```
+
+Ready markers:
+
+```text
+your reward is ready
+come collect your reward
+Bren has the coins waiting
+```
+
+Payment markers:
+
+```text
+pays you
+hands you the promised coins
+gives you 15 gold
+places the reward in your hand
+counts out the gold
+```
+
+Denial/dispute markers:
+
+```text
+refuses to pay
+denies the reward
+claims you failed
+offers less than promised
+disputes the reward
+withholds payment
+```
+
+---
+
+# 13. Quest CanonValidator expansion
+
+CanonValidator must enforce quest state transitions.
+
+## 13.1 Accept quest offer when
+
+```text
+safe story output has NPC/job/board/request offering a task
+objective target is bound enough
+not quoted hypothetically only
+not dream/rumor only unless status = rumored
+not command/context/card source
+```
+
+Result:
+
+```text
+quest offered or rumored
+not active unless accepted
+```
+
+## 13.2 Accept quest acceptance when
+
+```text
+player explicitly accepts in input and output/structure supports quest start
+or safe output clearly states quest accepted/started
+or structured startup quest starts active before lock
+```
+
+Result:
+
+```text
+quest active
+objectives initialized
+```
+
+## 13.3 Accept objective progress when
+
+```text
+safe output directly shows partial progress toward active objective
+objective exists or can bind to active quest
+not merely intent
+not command/context/card source
+```
+
+## 13.4 Accept objective completion when
+
+```text
+safe output directly confirms required objective completed
+objective target binds to active quest objective
+not duplicate
+not merely arriving near objective
+not merely seeing target
+```
+
+## 13.5 Accept quest completion when
+
+```text
+safe output directly confirms quest completed
+or all required objectives complete and policy allows status ready/completed
+not duplicate
+```
+
+Completion should normally lead to:
+
+```text
+ready_to_turn_in
+```
+
+unless reward/payment is also explicitly validated.
+
+---
+
+# 14. Reward CanonValidator expansion
+
+## 14.1 Promise accepted as promise only
+
+Example:
+
+```text
+Old Bren promises to pay you 15 gold if you clear the wolves.
+```
+
+Expected:
+
+```text
+reward.promise_candidate accepted/pending
+currency.gain rejected
+payment rejected
+```
+
+## 14.2 Ready reward accepted as ready only
+
+Example:
+
+```text
+Old Bren says your 15 gold reward is ready.
+```
+
+Expected:
+
+```text
+reward.ready_candidate accepted
+currency unchanged
+```
+
+## 14.3 Payment accepted only when
+
+```text
+safe output directly confirms payment/handoff
+amount/item reward target is bound
+payer/source is plausible
+not denied/disputed/withheld
+operation key not duplicate
+```
+
+## 14.4 Payment rejected when
+
+```text
+promises to pay
+will pay later
+could pay
+reward is listed on quest board
+/ref command displays reward
+Story Card says reward paid
+context says reward paid
+refuses/denies/disputes payment
+```
+
+---
+
+# 15. Quest ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+quest.rumor_candidate
+quest.offer_candidate
+quest.accept_candidate
+quest.objective_progress_candidate
+quest.objective_complete_candidate
+quest.ready_to_turn_in_candidate
+quest.completed_candidate
+quest.failed_candidate
+quest.abandoned_candidate
+quest.expired_candidate
+reward.promise_candidate
+reward.ready_candidate
+reward.payment_candidate
+reward.denied_candidate
+reward.disputed_candidate
+currency.gain_candidate
+item.reward_handoff_candidate
+xp.reward_candidate_deferred
+```
+
+Current chunk may commit safe:
+
+```text
+quest rumor/offer/acceptance
+objective progress/completion
+ready_to_turn_in
+quest completion status
+reward promise/ready/paid/denied/disputed
+currency gain only through explicit InventoryReducer split-result payment
+item reward handoff only through InventoryReducer split-result item event
+```
+
+XP reward remains deferred unless ProgressionReducer exact XP handling is already active and ReleaseCheck allows it.
+
+---
+
+# 16. EventScannerLite quest/reward hints
+
+EventScannerLite may detect quest/reward hints, but detection is not canon.
+
+Allowed scan families:
+
+```text
+request/help/job/task/quest/mission
+accept/agree/take the job
+repair/recover/escort/clear/deliver/investigate/protect/rescue/defeat
+progress markers
+completion markers
+turn-in markers
+reward promise markers
+reward ready markers
+reward payment markers
+reward denial/dispute markers
+```
+
+Must flag:
+
+```text
+rumorOrClaim
+quotedSpeech
+hypothetical
+futureIntent
+attemptOnly
+dreamOrVision
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+promiseOnly
+readyOnly
+paymentConfirmed
+deniedOrDisputed
+```
+
+Parser cannot mutate quest or reward state.
+
+---
+
+# 17. QuestReducerLite detailed behavior
+
+QuestReducerLite owns:
+
+```text
+quests.records
+quests.active
+quests.offered
+quests.rumored
+quests.readyToTurnIn
+quests.completed
+quests.failed
+quests.abandoned
+quests.rewardLedger
+quests.warnings
+```
+
+## 17.1 Rumor commit
+
+Accepted rumor should:
+
+```text
+create/update quest as rumored
+store source/evidence
+not activate quest
+mark quest_log/context dirty if useful
+```
+
+## 17.2 Offer commit
+
+Accepted offer should:
+
+```text
+create/update quest as offered
+store giver if known
+store objective candidates
+store promised rewards if present
+not activate quest unless accepted separately
+```
+
+## 17.3 Acceptance commit
+
+Accepted acceptance should:
+
+```text
+create/update quest as active
+initialize objectives
+preserve promised rewards
+record operation key
+mark quest_log/context dirty
+```
+
+## 17.4 Objective progress commit
+
+Accepted progress should:
+
+```text
+update objective progressCurrent/status
+append evidence/history
+not complete unless threshold/direct completion reached and accepted
+```
+
+## 17.5 Objective completion commit
+
+Accepted completion should:
+
+```text
+set objective status complete
+record completedTurn
+check duplicate key
+if all required objectives complete, mark quest ready_to_turn_in or completed according to policy
+not pay reward automatically
+```
+
+## 17.6 Quest completion commit
+
+Accepted quest completion should:
+
+```text
+set quest status completed or ready_to_turn_in according to source
+preserve reward status as promised/ready unless payment exists
+not award currency/items/XP automatically
+```
+
+## 17.7 Failure/abandonment commit
+
+Accepted failure/abandonment should:
+
+```text
+set status failed/abandoned
+record reason/source
+preserve history
+not delete quest immediately
+```
+
+---
+
+# 18. Reward behavior details
+
+## 18.1 Reward promise commit
+
+Accepted promise should:
+
+```text
+create/update RewardRecord
+status promised
+store amount/item/xp/favor/access if parsed
+store promisedByActorKey if known
+mark quest_log/context dirty
+no inventory/currency/progression mutation
+```
+
+## 18.2 Reward ready commit
+
+Accepted ready should:
+
+```text
+set reward status ready
+record readyTurn
+no inventory/currency/progression mutation
+```
+
+## 18.3 Reward payment commit
+
+Accepted payment should:
+
+```text
+check reward payment key
+set reward status paid
+record paidTurn/paidByActorKey
+mark quest_log/context dirty
+emit or pair with explicit InventoryReducer currency/item event if reward is currency/item
+```
+
+Preferred safe policy:
+
+```text
+QuestReducer marks reward paid.
+InventoryReducer receives separate accepted currency.gain_candidate or item.reward_handoff_candidate.
+Both share a related payment key.
+```
+
+If split result cannot be implemented yet, mark payment status and defer currency mutation rather than paying unsafely.
+
+## 18.4 Reward denied/disputed commit
+
+Accepted denial/dispute should:
+
+```text
+set status denied or disputed
+record reason/source
+no payment
+no currency/item/XP mutation
+```
+
+---
+
+# 19. QuestReducer defensive guards
+
+QuestReducer must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+rumor-only as active quest
+hypothetical offer as active quest
+promise as payment
+ready as payment
+objective mention as completion
+unbound quest target for durable completion
+duplicate payment key
+missing quest key
+wrong owner reducer
+```
+
+Reducer should not blindly trust upstream.
+
+If unsafe routed data reaches QuestReducer, it must not mutate quest/reward truth.
+
+---
+
+# 20. Split-owner reward payment contract
+
+Because inventory/currency is owned by InventoryReducer, reward payment needs explicit handoff.
+
+## 20.1 Currency reward flow
+
+Example:
+
+```text
+Old Bren pays you the promised 15 gold.
+```
+
+Validated results:
+
+```text
+reward.payment_candidate -> QuestReducer marks reward paid
+currency.gain_candidate -> InventoryReducer adds 15 gold
+```
+
+Both should share:
+
+```text
+rewardPaymentKey
+payerKey
+questKey
+amount
+currencyType
+sourceClauseHash
+```
+
+## 20.2 Item reward flow
+
+Example:
+
+```text
+Bren hands you the silver wolf charm as your reward.
+```
+
+Validated results:
+
+```text
+reward.payment_candidate -> QuestReducer marks item reward paid/received
+item.reward_handoff_candidate -> InventoryReducer adds item
+```
+
+## 20.3 XP reward flow
+
+XP reward should remain deferred unless ProgressionReducer exact XP support is active.
+
+If deferred:
+
+```text
+reward status can be ready/paid as narrative status
+XP mutation deferred/pending
+ReleaseCheck warns honestly
+```
+
+---
+
+# 21. Operation keys
+
+Required quest/reward operation keys:
+
+```text
+quest.rumor.<questKey>.<sourceHash>
+quest.offer.<questKey>.<giverKey>.<clauseHash>
+quest.accept.<questKey>.<giverKey>.<clauseHash>
+quest.objective.progress.<questKey>.<objectiveKey>.<progressHash>
+quest.objective.complete.<questKey>.<objectiveKey>.<clauseHash>
+quest.ready.<questKey>.<sourceKey>
+quest.complete.<questKey>.<sourceKey>
+quest.fail.<questKey>.<sourceKey>
+quest.abandon.<questKey>.<sourceKey>
+quest.reward.promise.<questKey>.<rewardKey>.<sourceHash>
+quest.reward.ready.<questKey>.<rewardKey>.<sourceHash>
+quest.reward.pay.<questKey>.<payerKey>.<rewardKey>
+quest.reward.deny.<questKey>.<payerKey>.<rewardKey>
+quest.reward.dispute.<questKey>.<payerKey>.<rewardKey>
+```
+
+Inventory/Progression related keys:
+
+```text
+currency.gain.<amount>.<currencyType>.<rewardPaymentKey>
+item.reward.<itemKey>.<rewardPaymentKey>
+xp.reward.<amount>.<rewardPaymentKey> deferred until progression active
+```
+
+Rules:
+
+```text
+payment keys are durable
+objective completion keys are durable or quest-scoped durable
+progress keys prevent spam on output replay
+promise keys prevent duplicate promised reward records
+```
+
+---
+
+# 22. Dirty targets
+
+Quest/reward updates should mark:
+
+```text
+quest_log
+context
+inventory_equipment when currency/item reward split result occurs
+player_sheet if progression reward eventually applies
+social_memory if actor promise/payment memory later applies
+```
+
+Mapping:
+
+```text
+quest rumor/offer/accept/progress/complete/fail/abandon -> quest_log, context
+reward promise/ready/paid/denied/disputed -> quest_log, context
+currency/item payment split -> quest_log, inventory_equipment, context
+```
+
+Dirty targets do not write cards directly.
+
+CardSync remains mirror/dry-run unless later live writes are enabled.
+
+---
+
+# 23. `/quests` updates
+
+`/quests` must display quest and reward states honestly.
+
+Required sections:
+
+```text
+Active quests
+Offered quests
+Rumored quests
+Ready to turn in
+Completed quests
+Failed / abandoned quests
+Objectives
+Promised rewards
+Ready rewards
+Paid rewards
+Denied / disputed rewards
+Warnings
+```
+
+Display rules:
+
+```text
+rumored quests not listed as active
+offered quests not listed as accepted
+objective progress not listed as complete
+completed quest not listed as rewarded unless reward paid
+promised reward not listed as paid
+ready reward not listed as paid
+paid reward shown once
+XP reward displayed as deferred if progression inactive
+```
+
+Example:
+
+```text
+[AIDRPG] Quests
+
+Active:
+- Clear the Mill Wolves
+  Objective: Defeat or drive off wolves near Old Mill — in progress
+  Reward: 15 gold promised by Old Bren — not paid
+
+Ready to turn in:
+- None recorded
+
+Paid rewards:
+- None recorded
+```
+
+---
+
+# 24. `/inventory` reward reference consistency
+
+`/inventory` should not count promised rewards as currency.
+
+If promised reward exists:
+
+```text
+Promised rewards are shown in /quests and do not count as paid currency.
+```
+
+If reward is paid and InventoryReducer applied currency:
+
+```text
+Currency: Gold 15 confirmed
+```
+
+If QuestReducer marks paid but InventoryReducer currency event is deferred due missing split support:
+
+```text
+Reward marked paid in quest log, currency update pending/deferred due split-result policy.
+```
+
+Do not silently lie.
+
+---
+
+# 25. ContextBuilder quest packet
+
+ContextBuilder should include concise quest facts.
+
+Include:
+
+```text
+active quest objectives
+ready turn-ins
+urgent failed/deadline states
+promised vs paid reward status when relevant
+```
+
+Do not include:
+
+```text
+all old completed quests every turn
+rumored quest as active
+promised reward as paid
+full raw quest JSON
+old quarantined quest claims
+```
+
+Example packet:
+
+```text
+Quest: Clear the Mill Wolves is active. Old Bren promised 15 gold, but it has not been paid. Objective: drive off or defeat the wolves near Old Mill.
+```
+
+---
+
+# 26. IntegrityChecker quest/reward checks
+
+Add checks:
+
+```text
+active quest records have stable keys
+objectives have stable keys and statuses
+reward promises and payments are separate
+paid reward has paymentOperationKey
+paid currency reward has matching inventory/currency key or deferred warning
+no duplicate paid reward keys
+rumored/offered quests not also active unless accepted key exists
+completed quest not automatically rewarded without payment key
+manual/card/context quest sources not active truth
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not complete quests or pay rewards.
+
+---
+
+# 27. Cleanup quest/reward protections
+
+Cleanup may compact:
+
+```text
+old low-risk quest history entries
+old completed quest summaries if archived policy exists
+old rejected reward claim audits
+quest warnings cap
+```
+
+Cleanup must not delete:
+
+```text
+active quests
+ready-to-turn-in quests
+unpaid promised rewards
+paid reward ledger keys
+objective evidence needed for audit
+failed/abandoned important quest history
+```
+
+Cleanup must not convert promised rewards into paid rewards or remove duplicate protection keys.
+
+---
+
+# 28. ReleaseCheck gates for this chunk
+
+Add or verify PC07-specific gates:
+
+```text
+PC07-G01 QuestRecord schema exists or equivalent stable quest record exists
+PC07-G02 ObjectiveRecord schema exists or equivalent objective structure exists
+PC07-G03 RewardRecord schema exists or equivalent reward structure exists
+PC07-G04 quest status model separates rumored/offered/active/ready/completed/rewarded/failed/abandoned
+PC07-G05 objective status model separates progress/completion/failure
+PC07-G06 reward status model separates promised/ready/paid/denied/disputed/duplicate_skipped
+PC07-G07 QuestObjectiveSanitizer supports broad objective verbs without auto-completion
+PC07-G08 RewardNameSanitizer separates promise/ready/payment/denial/dispute
+PC07-G09 CanonValidator rejects rumor-only active quest and promise-as-payment
+PC07-G10 QuestReducer rejects unsafe routed quest/reward events
+PC07-G11 split-owner reward payment contract exists or payment currency mutation is safely deferred
+PC07-G12 reward/currency duplicate keys exist
+PC07-G13 /quests displays quest/reward states honestly
+PC07-G14 /inventory does not show promised rewards as paid currency
+PC07-G15 command/context/card quest/reward text cannot become canon
+PC07-G16 cleanup does not delete active quests or reward keys
+PC07-G17 economy/reputation/domain remain disabled
+PC07-G18 player-breaker quest/reward tests registered
+```
+
+ReleaseCheck must fail if promised rewards can become currency, command quest output can pay rewards, or duplicate reward payment is possible.
+
+---
+
+# 29. Required tests
+
+## PC07-001 — Quest offer not active
+
+Output:
+
+```text
+Old Bren asks you to clear the wolves from the Old Mill.
+```
+
+Expected:
+
+```text
+quest offered or pending
+not active unless accepted
+```
+
+---
+
+## PC07-002 — Rumor not active quest
+
+Output:
+
+```text
+People say someone should clear the wolves from the Old Mill.
+```
+
+Expected:
+
+```text
+rumored quest or rumor note
+not active
+```
+
+---
+
+## PC07-003 — Accept quest active
+
+Input/output:
+
+```text
+I accept Old Bren's job to clear the wolves from the Old Mill.
+```
+
+Expected:
+
+```text
+quest active
+objective initialized
+operation key added
+```
+
+---
+
+## PC07-004 — Objective progress not completion
+
+Output:
+
+```text
+You drive one wolf away from the Old Mill, but others remain.
+```
+
+Expected:
+
+```text
+objective progress updated
+objective not complete unless threshold reached
+quest not completed
+```
+
+---
+
+## PC07-005 — Objective completion
+
+Output:
+
+```text
+The last wolf flees, leaving the Old Mill clear.
+```
+
+Expected:
+
+```text
+clear wolves objective complete if active quest binds
+quest ready_to_turn_in or completed according to policy
+reward not paid
+```
+
+---
+
+## PC07-006 — Completion does not pay reward
+
+Setup:
+
+```text
+quest has promised 15 gold reward
+objective complete
+```
+
+Expected:
+
+```text
+currency unchanged
+reward still promised/ready, not paid
+```
+
+---
+
+## PC07-007 — Reward promise no currency
+
+Output:
+
+```text
+Old Bren promises to pay you 15 gold if you clear the wolves.
+```
+
+Expected:
+
+```text
+reward promised
+currency unchanged
+```
+
+---
+
+## PC07-008 — Reward ready no currency
+
+Output:
+
+```text
+Old Bren says your 15 gold reward is ready.
+```
+
+Expected:
+
+```text
+reward ready
+currency unchanged
+```
+
+---
+
+## PC07-009 — Reward payment once
+
+Output:
+
+```text
+Old Bren pays you the promised 15 gold.
+```
+
+Expected:
+
+```text
+reward paid
+currency +15 only if split InventoryReducer currency result accepted
+payment key added
+```
+
+---
+
+## PC07-010 — Reward payment duplicate skipped
+
+Repeat:
+
+```text
+Old Bren pays you the promised 15 gold.
+```
+
+Expected:
+
+```text
+no second payment
+reward duplicate skipped/audited
+currency not added twice
+```
+
+---
+
+## PC07-011 — Reward denied no payment
+
+Output:
+
+```text
+Old Bren refuses to pay, claiming you failed the job.
+```
+
+Expected:
+
+```text
+reward denied/disputed
+currency unchanged
+```
+
+---
+
+## PC07-012 — Reward disputed no payment
+
+Output:
+
+```text
+Old Bren offers only 5 gold instead of the promised 15, disputing the reward.
+```
+
+Expected:
+
+```text
+reward disputed
+currency unchanged unless a separate accepted partial payment event exists
+```
+
+---
+
+## PC07-013 — Quest board reward not paid
+
+Output:
+
+```text
+The quest board lists a reward of 15 gold for clearing the wolves.
+```
+
+Expected:
+
+```text
+reward promise/listing only
+currency unchanged
+```
+
+---
+
+## PC07-014 — Command quests non-canon
+
+Run:
+
+```text
+/quests
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no quest/reward/currency mutation
+```
+
+---
+
+## PC07-015 — Story Card quest prose non-canon
+
+Story Card text:
+
+```text
+Quest Clear the Mill Wolves is completed and paid.
+```
+
+Expected:
+
+```text
+no quest completion/payment mutation
+quarantine/audit only if surfaced
+```
+
+---
+
+## PC07-016 — Context quest prose non-canon
+
+Context text:
+
+```text
+Old Bren has paid the player 15 gold.
+```
+
+Expected:
+
+```text
+no currency/reward mutation from context text
+```
+
+---
+
+## PC07-017 — Objective verb breadth repair
+
+Input/output:
+
+```text
+I accept the job to repair the north wall.
+```
+
+Expected:
+
+```text
+quest objective Repair the North Wall
+verb repair recognized
+quest active if accepted
+```
+
+---
+
+## PC07-018 — Escort objective preserved
+
+Input/output:
+
+```text
+I accept the job to escort Bram to the chapel.
+```
+
+Expected:
+
+```text
+objective Escort Bram to the Chapel
+Bram and Chapel preserved
+```
+
+---
+
+## PC07-019 — Ability objective does not grant ability
+
+Quest:
+
+```text
+Train Ember Ward until stable.
+```
+
+Expected:
+
+```text
+quest objective can reference Ember Ward
+Ember Ward not made stable by quest text alone
+```
+
+---
+
+## PC07-020 — Item objective does not grant item
+
+Quest:
+
+```text
+Retrieve the Crown of Dawn.
+```
+
+Expected:
+
+```text
+quest objective references Crown of Dawn
+Crown not added to inventory
+```
+
+---
+
+## PC07-021 — Completed quest display honest
+
+State:
+
+```text
+quest completed
+reward promised but unpaid
+```
+
+Run:
+
+```text
+/quests
+```
+
+Expected:
+
+```text
+quest completed or ready
+reward shown unpaid/promised or ready, not paid
+```
+
+---
+
+## PC07-022 — Paid reward display honest
+
+State:
+
+```text
+reward paid
+currency event applied
+```
+
+Run:
+
+```text
+/quests
+/inventory
+```
+
+Expected:
+
+```text
+/quests shows reward paid once
+/inventory shows confirmed currency
+```
+
+---
+
+## PC07-023 — Cleanup does not delete active quest
+
+Setup:
+
+```text
+active quest with objective and promised reward
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active quest preserved
+promised reward preserved
+reward keys preserved
+```
+
+---
+
+## PC07-024 — Manual quest commands disabled
+
+Run:
+
+```text
+/completequest Clear the Mill Wolves
+/payreward
+```
+
+Expected:
+
+```text
+disabled messages
+no quest/reward/currency mutation
+```
+
+---
+
+## PC07-025 — Reputation reward deferred
+
+Output:
+
+```text
+Old Bren promises the village will honor your name if you clear the wolves.
+```
+
+Expected:
+
+```text
+favor/reputation_deferred reward promise or note
+no reputation automation active
+```
+
+---
+
+## PC07-026 — XP reward deferred unless active
+
+Output:
+
+```text
+The quest promises 20 XP.
+```
+
+Expected:
+
+```text
+XP reward promise/deferred
+no XP mutation unless ProgressionReducer exact XP reward system active and separately validated
+```
+
+---
+
+# 30. Regression placement
+
+Add PC07 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T8 Deferred System Disabled Tests
+T7 Long-Run Stability Tests
+```
+
+Minimum expectation:
+
+```text
+26 PC07 tests registered
+0 critical PC07 failures
+```
+
+---
+
+# 31. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+quests.records
+quests.active
+quests.offered
+quests.rumored
+quests.readyToTurnIn
+quests.completed
+quests.failed
+quests.abandoned
+quests.rewardLedger
+QuestRecord shape
+ObjectiveRecord shape
+RewardRecord shape
+quest status model
+objective status model
+reward status model
+quest/reward history keys
+sourceOperationKeys
+```
+
+These fields should already be prepared by PC03, but PC07 gives them behavior and display depth.
+
+---
+
+# 32. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+quest offer/accept/progress/completion/failure/abandonment detection refinement
+reward promise/ready/payment/denial/dispute detection refinement
+objective sanitizer breadth
+promise/payment separation
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+reputation automation parser
+full economy transaction parser
+manual quest mutation parser
+card/context quest import
+quest generation engine
+```
+
+---
+
+# 33. Reducer changes
+
+Allowed:
+
+```text
+QuestReducer rumor/offer/accept/progress/objective complete/ready/completed/failed/abandoned/reward promise/reward ready/reward payment/reward denied/reward disputed behavior
+QuestReducer unsafe routed-data rejection
+reward split-result coordination with InventoryReducer
+history recording
+dirty targets
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+manual complete quest reducer
+manual pay reward reducer
+XP/stat award unless progression active and validated
+reputation/faction mutation
+inventory/currency mutation inside QuestReducer except explicit split contract if chosen
+```
+
+---
+
+# 34. Command/context/card changes
+
+Allowed:
+
+```text
+/quests display depth
+/inventory reward reference consistency
+/context quest packet
+/cardaudit quest mirror labels if dry-run
+/releasecheck PC07 gates
+/playerbreakercheck quest/reward cases
+```
+
+Forbidden:
+
+```text
+/completequest active
+/payreward active
+/acceptquest manual mutation command if it bypasses story validation
+live card writes that create quest truth
+```
+
+---
+
+# 35. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted ability build
+
+Start from:
+
+```text
+WorldLedgerV0.17.6_ABILITY_DEPTH_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.7_QUEST_REWARD_DEPTH_WORKING.txt
+```
+
+## Step 2 — Add/verify quest helper functions
+
+Create helpers for:
+
+```text
+ensureQuestsShape
+makeQuestRecord
+makeObjectiveRecord
+makeRewardRecord
+normalizeQuestStatus
+normalizeObjectiveStatus
+normalizeRewardStatus
+isUnsafeQuestSource
+isPaymentConfirmed
+isPromiseOnly
+isReadyOnly
+```
+
+## Step 3 — Deepen QuestObjectiveSanitizer
+
+Support broad objective verbs and preserve important targets/destinations.
+
+## Step 4 — Deepen RewardNameSanitizer
+
+Separate promise, ready, payment, denial, dispute, amount, currency, item, XP, favor/access.
+
+## Step 5 — Update quest/reward CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+rumor
+offer
+acceptance
+objective progress
+objective completion
+quest completion
+reward promise
+reward ready
+reward payment
+reward denial/dispute
+```
+
+## Step 6 — Update ProposalBuilder quest/reward support
+
+Ensure proposals carry:
+
+```text
+quest target
+objective target
+reward target
+giver/payer target
+amount/currency/item/XP/favor if parsed
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 7 — Update QuestReducerLite
+
+Implement safe commits for:
+
+```text
+rumor
+offer
+acceptance
+objective progress
+objective completion
+ready/completed
+failed/abandoned
+reward promise/ready/payment/denied/disputed
+```
+
+## Step 8 — Coordinate split reward payment with InventoryReducer
+
+Use separate accepted inventory/currency results when possible.
+
+If not ready, defer currency mutation honestly.
+
+## Step 9 — Update `/quests` and `/inventory` reward references
+
+Make displays honest.
+
+## Step 10 — Update ContextBuilder quest packet
+
+Keep it concise and state-accurate.
+
+## Step 11 — Update IntegrityChecker quest/reward checks
+
+Add promise/payment separation, duplicate reward, active quest, objective status, and source checks.
+
+## Step 12 — Add PC07 ReleaseCheck gates
+
+Add PC07-G01 through PC07-G18.
+
+## Step 13 — Add PC07 tests
+
+Add PC07-001 through PC07-026.
+
+## Step 14 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/quests
+/inventory
+```
+
+## Step 15 — Save accepted quest/reward build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.7_QUEST_REWARD_DEPTH_ACCEPTED.txt
+```
+
+---
+
+# 36. What this chunk produces
+
+Production Chunk 07 should produce:
+
+```text
+WorldLedger V0.17.7 quest/reward-depth accepted script if code changes are made
+quest helper depth
+QuestReducer state transition behavior
+QuestObjectiveSanitizer depth
+RewardNameSanitizer depth
+quest/reward CanonValidator refinement
+/quests display improvement
+inventory reward reference consistency
+quest context packet
+quest/reward integrity checks
+PC07 ReleaseCheck gates
+PC07 regression/player-breaker tests
+quest/reward acceptance report
+updated planning zip with Production Chunk 07 added
+```
+
+It should not produce:
+
+```text
+full economy system
+full reputation system
+full domain/faction automation
+manual quest/reward mutation commands
+progression XP automation unless separately active
+generated quest cards
+live CardSync writes
+old card prose quest import
+```
+
+---
+
+# 37. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 07 passes if:
+
+```text
+quest statuses are separated
+objective statuses are separated
+reward statuses are separated
+rumor/offer does not become active automatically
+objective progress/completion works without reward payment
+reward promise/ready/payment separation works
+reward/currency duplicates are prevented
+QuestReducer rejects unsafe routed quest/reward events
+split-owner payment contract exists or payment mutation is safely deferred
+/quests displays quest/reward states honestly
+/inventory does not show promised rewards as paid currency
+command/context/card quest/reward text cannot become canon
+cleanup preserves active quests and reward keys
+PC07 tests pass
+ReleaseCheck has no PC07 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+XP rewards are deferred
+reputation rewards are deferred
+favor/access rewards are descriptive only
+quest generation is not active
+economy integration is deferred
+some automatic all-objectives-complete behavior is conservative
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+rumor-only quest becomes active
+quest offer becomes accepted without acceptance
+objective mention completes objective
+quest completion pays reward automatically
+reward promise gives currency
+reward ready gives currency
+reward payment duplicates
+command/context/card text completes quest or pays reward
+/quests displays promised as paid
+/inventory displays promised reward as currency
+manual /completequest or /payreward mutates state
+QuestReducer trusts unsafe routed data
+cleanup deletes active quest or reward keys
+```
+
+---
+
+# 38. Handoff to Production Chunk 08
+
+When this chunk passes, Production Chunk 08 begins:
+
+```text
+Production Chunk 08 — Actor Presence, Social Memory, Witnessing, and Relationship Depth
+```
+
+Production Chunk 08 may use quest giver, payer, witness, and turn-in actor references, but should not turn private quest interactions into public reputation automatically.
+
+Production Chunk 07 must leave quest/reward state reliable enough that future chunks can ask:
+
+```text
+Is this quest rumored, offered, active, ready, completed, failed, abandoned, or rewarded?
+Which objectives are active, progressing, or complete?
+Was the reward promised, ready, paid, denied, or disputed?
+Was currency actually added?
+Has this reward already been paid?
+```
+
+---
+
+# 39. Final doctrine
+
+Production Chunk 07 is where quest truth stops being a loose story note.
+
+Final rule:
+
+```text
+Quests have states.
+Objectives have states.
+Rewards have states.
+Promises are not payment.
+Completion is not payment.
+Payment is duplicate-safe.
+Commands, cards, context, rumors, and vague mentions cannot complete quests or pay rewards.
+```
+
+Once this passes, the project can safely deepen actors, witnesses, social memory, and relationship state in Production Chunk 08.

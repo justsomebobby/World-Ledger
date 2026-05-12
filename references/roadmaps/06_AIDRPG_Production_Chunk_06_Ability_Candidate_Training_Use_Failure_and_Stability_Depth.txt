@@ -1,0 +1,1126 @@
+# AIDRPG Production Chunk 06 — Ability Candidate, Training, Use, Failure, and Stability Depth
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 06 — Ability Candidate, Training, Use, Failure, and Stability Depth  
+**Production sequence:** 06 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.5 inventory-depth accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen ability records, training evidence, use evidence, failed attempts, candidate/unstable/stable separation, naming safety, duplicate-use protection, and ability command/context display without false ability unlocks.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 05 — Inventory, Equipment, Scene Items, and Custody Depth.  
+**This document does not contain final script code.**
+
+Production Chunk 06 exists because ability handling was one of the easiest places for old builds to become corrupted.
+
+The system must never again treat every ability mention, output title, quote, dream, failed attempt, or training phrase as stable mastery.
+
+Abilities must grow through validated evidence.
+
+Training can create candidates. Repeated use can build evidence. Failures can be recorded without becoming unlocks. Only validated stabilization can create a stable ability.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Mentioned is not learned.
+Named is not mastered.
+Tried is not stable.
+Failed is not unlocked.
+Pretended is not usable.
+Quoted is not known.
+Dreamed is not real mastery.
+Training is evidence, not automatic mastery.
+Output-only “You learned X” is not enough by default.
+Only validated stabilization creates a stable ability.
+```
+
+Ability truth must be conservative, evidence-based, duplicate-safe, and explainable.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 05 made inventory reliable. Abilities come next because later combat, progression, race/lineage powers, spellcasting, cooldowns, failures, quest abilities, and world-threat interactions all depend on clean ability state.
+
+If abilities are not safe now, later systems will repeatedly create junk powers, duplicate evidence, false mastery, and broken progression.
+
+---
+
+# 3. What this chunk may change
+
+Allowed changes:
+
+```text
+Ability schema helpers
+AbilityReducer
+AbilityNameSanitizer
+CanonValidator ability rules
+ProposalBuilder ability event types
+EventScannerLite ability/training/use hints
+CommandRenderers /abilities
+ContextBuilder ability packet
+OperationLedger ability keys
+DirtyQueue ability targets
+IntegrityChecker ability checks
+ReleaseCheck ability gates
+Regression/player-breaker ability tests
+```
+
+Allowed additions:
+
+```text
+AbilityRecord schema depth
+AbilityEvidenceRecord schema
+ability status model
+training evidence model
+use success/failure evidence model
+reliability labels
+cost/cooldown labels as descriptive shells
+stabilization requirement model
+sealed/unavailable status handling
+ability audit summaries
+```
+
+Forbidden additions in this chunk:
+
+```text
+full magic economy
+full cooldown/resource math
+race/lineage power automation
+absorption/evolution power gain
+manual /giveability or /learn commands
+combat damage automation
+stat gain from ability training
+generated ability Story Cards
+old card prose ability import
+```
+
+Progression/stat effects remain deferred to later chunks.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+AbilityState helpers
+AbilityReducer
+AbilityNameSanitizer
+CanonValidator ability rules
+ProposalBuilder ability proposals
+EventScannerLite ability hints
+Resolver ability target binding
+CommandRenderers: /abilities
+ContextBuilderLite ability packet
+OperationLedger ability keys
+DirtyQueue ability dirty targets
+AuditLogger ability lines
+InvariantChecker ability checks
+ReleaseCheckLite PC06 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+ProgressionReducer except no-direct-XP guard
+BodyReducer except cost/resource effects remain deferred unless explicitly validated
+InventoryReducer except training tools/foci as references only
+QuestReducer except quest-granted ability remains deferred unless validated
+CombatReducer because advanced combat is not active yet
+WorldBible import
+CardSync live writes
+manual mutation commands
+```
+
+---
+
+# 5. Ability state model
+
+The `abilities` bucket should support:
+
+```text
+records
+stable
+unstable
+candidates
+hints
+failed
+sealed
+unavailable
+evidenceLog
+warnings
+notes
+```
+
+Recommended shape:
+
+```text
+abilities: {
+  records: {},
+  stable: [],
+  unstable: [],
+  candidates: [],
+  hints: [],
+  failed: [],
+  sealed: [],
+  unavailable: [],
+  evidenceLog: [],
+  warnings: [],
+  notes: []
+}
+```
+
+If older code uses arrays, keyed records are still preferred. If converting to maps is risky, keep arrays but require stable ability keys and dedupe helpers.
+
+---
+
+# 6. AbilityRecord schema
+
+Required fields:
+
+```text
+AbilityRecord {
+  id,
+  key,
+  displayName,
+  normalizedName,
+  status,
+  family,
+  sourceType,
+  evidence,
+  evidenceScore,
+  useCount,
+  successCount,
+  failureCount,
+  trainingCount,
+  reliability,
+  costLabels,
+  cooldownLabels,
+  sealedReason,
+  unavailableReason,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  lastUsedTurn,
+  lastTrainedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+key is stable and family-scoped
+key does not contain full raw output
+key does not contain training purpose text unless it is truly part of the name
+key does not contain quote/dream/command text
+key does not contain item/place/object text from non-ability actions
+displayName is human-readable
+normalizedName is resolver-safe
+sourceOperationKeys record the evidence that created/updated the record
+```
+
+Allowed statuses:
+
+```text
+hint
+candidate
+unstable
+stable
+sealed
+unavailable
+failed_only
+unknown
+```
+
+Status rules:
+
+```text
+hint is not usable
+candidate is not stable
+unstable may be attempted but unreliable if gameplay rules allow
+failed_only is not usable mastery
+sealed means known but blocked/unusable
+unavailable means mentioned or known as unavailable
+stable requires explicit validated stabilization
+```
+
+---
+
+# 7. AbilityEvidenceRecord schema
+
+Required shape:
+
+```text
+AbilityEvidenceRecord {
+  evidenceId,
+  abilityKey,
+  evidenceType,
+  result,
+  confidence,
+  sourceOperationKey,
+  sourceEventId,
+  sourceTurn,
+  localClauseSummary,
+  safetyFlags,
+  createdTurn,
+  notes
+}
+```
+
+Evidence types:
+
+```text
+training
+use_attempt
+use_success
+use_failure
+teacher_confirmation
+controlled_demonstration
+source_grant
+seal
+unavailable_claim
+hint
+rumor
+```
+
+Results:
+
+```text
+supports_candidate
+supports_unstable
+supports_stable
+supports_failure
+supports_sealed
+supports_unavailable
+noncanon_reference
+rejected
+```
+
+Evidence is not always mastery.
+
+---
+
+# 8. Ability status transition model
+
+## Hint to candidate
+
+Allowed when the ability is mentioned with plausible training/use relevance, the player trains toward it, or a teacher/source discusses it as a real technique. No stable mastery yet.
+
+## Candidate to unstable
+
+Allowed when repeated training evidence exists, first unstable manifestation/use success exists, or validator marks unstable/candidate manifestation.
+
+## Candidate/unstable to stable
+
+Allowed only when CanonValidator accepts `ability.stabilize_candidate` or equivalent.
+
+Strong sources may include:
+
+```text
+validated startup structured ability
+teacher/training culmination plus demonstration
+successful controlled manifestation
+validated source-grant/transformation event
+future mini-spec source such as absorption/evolution when enabled
+```
+
+## Any status to sealed/unavailable
+
+Allowed from direct validated sealing/unavailability event or setup marking. Sealed/unavailable does not delete history.
+
+---
+
+# 9. AbilityNameSanitizer depth
+
+AbilityNameSanitizer must be owner-specific and must not leak into shared cleanup.
+
+It must clean:
+
+```text
+I train Ember Ward to protect allies from heat -> Ember Ward
+I practice Frost Step by moving across slick stones -> Frost Step
+I drill Stoneguard until my stance holds under impact -> Stoneguard
+I train Moonblade by practicing careful crescent cuts -> Moonblade
+I refine Crimson Lotus Fang through repeated strikes -> Crimson Lotus Fang
+```
+
+It must preserve meaningful ability names:
+
+```text
+Shield Against Dawn
+Step Across Stars
+Song for the Dead
+Blade of the North
+Ward from Below
+```
+
+It must not create abilities from non-ability actions:
+
+```text
+I travel to the smithy -> no smithy ability
+I inspect the old wooden door -> no door ability
+I use the iron key on the cellar door -> no key/door ability
+I ask Mara about Moonblade -> hint/reference only unless training/use context exists
+```
+
+---
+
+# 10. Ability context detection
+
+Ability context exists when local clause includes clear ability/training/use language:
+
+```text
+train/practice/drill/refine/work on/meditate on/spar with
+use/cast/channel/activate/manifest
+spell/skill/technique/power/ability/talent/passive
+learn/unlock/master/stabilize/seal/unseal
+```
+
+Weak mention is not enough for mastery:
+
+```text
+Mara mentions Moonblade.
+The book is titled Crimson Lotus Fang.
+A rumor speaks of Azure Dragon Step.
+```
+
+These can become hints/references, not stable abilities.
+
+---
+
+# 11. Ability CanonValidator expansion
+
+Accept training evidence only when:
+
+```text
+source is safe input intent or safe story output
+local clause has clear training/practice/refinement intent
+ability target is bound by AbilityNameSanitizer
+not pretend-only
+not quoted-only
+not dream-only
+not denied/no usable technique
+not command/context/card/audit/debug source
+```
+
+Training normally creates or updates candidate/evidence. Training does not create stable mastery by default.
+
+Accept use success evidence only when:
+
+```text
+safe story output confirms ability use or manifestation succeeded
+ability target is bound
+not dream/quote/pretend/metaphor only
+not failed/collapsed/no effect
+operation key not duplicate
+```
+
+Use success may add evidence and reliability, but it does not automatically stabilize unless a separate stabilize result is accepted.
+
+Accept use failure evidence when:
+
+```text
+safe input/output states attempt/failure/collapse/no effect
+ability target is bound
+not command/context/card source
+```
+
+Failure evidence must not create stable mastery.
+
+Accept stable ability only when:
+
+```text
+structured startup ability before lock
+validated teacher/training culmination
+successful controlled demonstration with stabilization wording
+validated grant/source event
+future enabled mini-spec event
+```
+
+Reject stable ability when:
+
+```text
+output-only unsupported “You learned X”
+quoted instruction only
+dream/vision only
+pretend use
+failed/collapsed/no effect
+scroll/book/title only
+rumor only
+manual command output
+context/card/audit/debug source
+input attempt only with no output support
+non-ability target
+wrong sanitizer used
+```
+
+---
+
+# 12. Critical old-failure rules
+
+## Output-only learning rule
+
+Example:
+
+```text
+You learned Moonblade.
+```
+
+Default result:
+
+```text
+pending or rejected unsupported learning claim
+no stable ability
+no direct AbilityReducer stable commit
+```
+
+It may become evidence only if surrounding context supports it through training arc, teacher confirmation, demonstration, startup, or source-grant.
+
+## Failed ability rule
+
+Examples:
+
+```text
+You attempt Void Lantern Veil, but it collapses.
+Azure Dragon Step flickers and fails.
+Your spell fizzles with no effect.
+```
+
+Expected:
+
+```text
+failure evidence recorded
+status may remain candidate/unstable/failed_only
+stable ability not created
+```
+
+## Pretend / quote / dream rules
+
+```text
+You pretend to use Azure Dragon Step. -> no real ability use
+Mira says, "Use Hollow Star Palm." -> hint/reference only
+In a dream, you master Star Chain. -> no real stable ability
+```
+
+---
+
+# 13. Ability ProposalBuilder event types
+
+Add or verify:
+
+```text
+ability.hint_candidate
+ability.train_intent
+ability.train_candidate
+ability.use_attempt
+ability.use_success_candidate
+ability.use_failure_candidate
+ability.evidence_candidate
+ability.output_only_learning_claim
+ability.learn_candidate
+ability.stabilize_candidate
+ability.seal_candidate
+ability.unavailable_candidate
+ability.failed_only_candidate
+```
+
+Current chunk may safely commit hints, candidates, training evidence, use attempt evidence, use success evidence, use failure evidence, failed-only, sealed/unavailable when directly validated, and stable only from strict validated stabilize/source event.
+
+---
+
+# 14. EventScannerLite ability hints
+
+EventScannerLite may detect ability/training/use hints, but detection is not canon.
+
+Allowed scan families:
+
+```text
+training phrases
+practice phrases
+spell/skill/technique/power words
+use/cast/channel/activate/manifest phrases
+learn/unlock/master/stabilize phrases
+failed/fizzle/collapse/no effect phrases
+seal/unavailable phrases
+```
+
+Must flag:
+
+```text
+quotedSpeech
+dreamOrVision
+rumorOrClaim
+pretendOnly
+failedOrRevoked
+noEffect
+outputOnlyLearning
+hypothetical
+futureIntent
+attemptOnly
+nonAbilityContext
+commandSource
+contextSource
+cardSource
+auditSource
+```
+
+Parser cannot mutate abilities.
+
+---
+
+# 15. AbilityReducer detailed behavior
+
+AbilityReducer owns:
+
+```text
+abilities.records
+abilities.stable
+abilities.unstable
+abilities.candidates
+abilities.hints
+abilities.failed
+abilities.sealed
+abilities.unavailable
+abilities.evidenceLog
+abilities.warnings
+```
+
+Hint commit:
+
+```text
+create/update ability hint record
+status hint unless stronger existing status exists
+record evidence type hint
+not make usable/stable
+mark abilities/context dirty
+audit compactly
+```
+
+Training commit:
+
+```text
+create/update ability record
+status candidate unless existing status stronger
+append training evidence
+increment trainingCount
+record sourceOperationKey
+mark abilities/context dirty
+audit compactly
+```
+
+Use success commit:
+
+```text
+append use_success evidence
+increment useCount and successCount
+increase reliability label if policy exists
+keep status candidate/unstable unless stabilize event is accepted
+mark abilities/context dirty
+```
+
+Use failure commit:
+
+```text
+append use_failure evidence
+increment useCount and failureCount
+set or keep status candidate/unstable/failed_only as appropriate
+not create stable ability
+mark abilities/context dirty
+```
+
+Stabilize commit:
+
+```text
+require validationResult.eventType = ability.stabilize_candidate or equivalent
+check durable operation key
+set status stable
+add to stable list
+remove from candidate/unstable display lists if needed
+preserve evidence history
+mark abilities/context dirty
+audit high-importance line
+```
+
+Sealed/unavailable commit:
+
+```text
+set status sealed or unavailable
+record reason
+preserve evidence/history
+mark abilities/context dirty
+```
+
+---
+
+# 16. AbilityReducer defensive guards
+
+AbilityReducer must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+quoted-only stable creation
+dream-only stable creation
+pretend-only stable creation
+failed/no-effect stable creation
+output-only unsupported stable creation
+non-ability target
+wrong sanitizer used
+missing ability key
+```
+
+Reducer should not blindly trust upstream.
+
+---
+
+# 17. Reliability, cost, and cooldown shells
+
+This chunk may add descriptive reliability labels:
+
+```text
+unknown
+unproven
+in_training
+unstable
+inconsistent
+reliable
+mastered
+sealed
+unavailable
+```
+
+Rules:
+
+```text
+reliability label is display/support only unless later mechanics use it
+label does not replace ability status
+failure evidence can lower label
+success evidence can improve label
+stable status still requires stabilization rules
+```
+
+Cost/cooldown labels are descriptive only:
+
+```text
+costLabels: ['drains stamina']
+cooldownLabels: ['requires focus before reuse']
+```
+
+No numeric resource drain or cooldown enforcement unless future Body/Progression/resource systems explicitly validate and enable it.
+
+---
+
+# 18. Ability operation keys
+
+Required operation keys:
+
+```text
+ability.hint.<abilityKey>.<sourceHash>
+ability.train.<abilityKey>.<clauseHash>
+ability.evidence.<abilityKey>.<evidenceType>.<clauseHash>
+ability.use.<abilityKey>.<resultKind>.<outputHash>
+ability.failure.<abilityKey>.<clauseHash>
+ability.stabilize.<abilityKey>.<sourceKey>
+ability.seal.<abilityKey>.<sourceKey>
+ability.unavailable.<abilityKey>.<sourceKey>
+```
+
+Rules:
+
+```text
+stabilize keys are durable
+training/use evidence keys are recent or durable depending importance
+duplicate use evidence should not spam counts on replay
+output-only rejected claim should not create stable key
+```
+
+---
+
+# 19. Dirty targets and context
+
+Ability updates should mark:
+
+```text
+abilities
+context
+player_sheet if stable ability materially changes player sheet
+body_status only if validated ability cost/body effect occurs later
+```
+
+ContextBuilder should include concise ability facts, not the full evidence log.
+
+Example packet:
+
+```text
+Abilities: Ember Ward is a candidate under training, not stable. Void Lantern Veil collapsed during an attempt and is not unlocked.
+```
+
+Do not include hints as stable powers, failed attempts as usable abilities, quoted/dream/rumor abilities as real mastery, or quarantined ability claims.
+
+---
+
+# 20. `/abilities` display requirements
+
+Required sections:
+
+```text
+Stable abilities
+Unstable abilities
+Candidate abilities
+Hints / mentions
+Training evidence
+Failed or collapsed attempts
+Sealed / unavailable abilities
+Warnings
+```
+
+Display rules:
+
+```text
+candidate abilities are not listed as stable
+hints are not listed as usable
+failed attempts are not listed as learned
+sealed/unavailable abilities are not listed as usable unless later unsealed
+output-only unsupported claims are displayed as pending/rejected evidence, not stable
+```
+
+Example:
+
+```text
+[AIDRPG] Abilities
+
+Stable:
+- None recorded
+
+Candidate:
+- Ember Ward — training evidence recorded; not stable yet
+
+Failed / collapsed:
+- Void Lantern Veil — attempt collapsed; no stable ability unlocked
+
+Hints:
+- Moonblade — unsupported learning claim; not confirmed stable
+```
+
+---
+
+# 21. IntegrityChecker and Cleanup protections
+
+IntegrityChecker must check:
+
+```text
+no duplicate stable ability keys
+candidate/stable lists match record statuses
+hint does not appear in stable list
+failed_only does not appear in stable list
+sealed/unavailable abilities not displayed as usable
+ability records have stable keys
+ability keys not polluted by training suffixes
+ability records do not come from command/card/context source
+output-only learning claim not stable unless validation source exists
+```
+
+Cleanup may compact low-value evidence or rejected-claim audits, but must not delete stable abilities, sealed/unavailable histories, important candidate training evidence, durable stabilization keys, or source evidence needed for audit.
+
+Cleanup must not promote candidates to stable or remove failures to make an ability look cleaner.
+
+---
+
+# 22. ReleaseCheck gates for this chunk
+
+Add or verify PC06 gates:
+
+```text
+PC06-G01 AbilityRecord schema exists or equivalent stable record exists
+PC06-G02 AbilityEvidenceRecord schema exists or equivalent evidence log exists
+PC06-G03 ability status model separates hint/candidate/unstable/stable/sealed/unavailable/failed_only
+PC06-G04 AbilityNameSanitizer is owner-specific and does not live in shared cleaner
+PC06-G05 training suffix cleanup works for Ember Ward/Frost Step/Stoneguard examples
+PC06-G06 non-ability actions do not create abilities
+PC06-G07 CanonValidator accepts training as evidence/candidate, not mastery
+PC06-G08 output-only learning claim does not create stable ability by default
+PC06-G09 failed/pretend/quote/dream ability claims do not create stable abilities
+PC06-G10 AbilityReducer rejects unsafe routed ability events
+PC06-G11 stabilization requires explicit validated stabilize/source event
+PC06-G12 duplicate ability evidence/use/stabilization keys exist
+PC06-G13 /abilities displays candidate/stable/failed/sealed honestly
+PC06-G14 command/context/card ability text cannot become canon
+PC06-G15 cleanup does not delete stable abilities or promote candidates
+PC06-G16 progression/stat gains from ability training remain deferred unless separately validated
+PC06-G17 player-breaker ability tests registered
+```
+
+ReleaseCheck must fail if output-only, failed, pretend, quoted, dreamed, command, card, or context ability claims can become stable abilities.
+
+---
+
+# 23. Required tests
+
+```text
+PC06-001 Ember Ward training -> candidate/evidence, not stable
+PC06-002 Frost Step cleanup -> Frost Step, not full method phrase
+PC06-003 Stoneguard cleanup -> Stoneguard
+PC06-004 Shield Against Dawn preserved, not stripped to Shield
+PC06-005 travel to smithy -> no smithy ability
+PC06-006 inspect old wooden door -> no door ability
+PC06-007 use iron key on cellar door -> no key/door ability
+PC06-008 You learned Moonblade -> no stable Moonblade
+PC06-009 scroll title says “You learned Crimson Lotus Fang” but you learn nothing -> no ability unlock
+PC06-010 Void Lantern Veil collapses -> failure evidence, no stable
+PC06-011 pretend Azure Dragon Step -> no unlock
+PC06-012 quoted Hollow Star Palm instruction -> hint only/no unlock
+PC06-013 dream Star Chain mastery -> no real stable ability
+PC06-014 use success evidence does not auto-stabilize
+PC06-015 explicit stabilization accepted only through stabilize validation
+PC06-016 duplicate training does not spam evidence
+PC06-017 duplicate stabilization skipped
+PC06-018 /abilities command output cannot become canon
+PC06-019 Story Card says mastered Moonblade -> no stable ability
+PC06-020 Context says player knows Star Chain -> no ability mutation
+PC06-021 /abilities display separates stable/candidate/failed/hint
+PC06-022 ability cleanup does not affect item/place cleanup
+PC06-023 sealed ability not usable
+PC06-024 ability training does not award XP directly
+PC06-025 cleanup does not promote/delete ability truth
+```
+
+Minimum expectation:
+
+```text
+25 PC06 tests registered
+0 critical PC06 failures
+```
+
+---
+
+# 24. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+ability/training/use/failure/stabilization detection refinement
+owner-specific ability name cleanup
+output-only learning safety
+pretend/quote/dream/failure guards
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+full combat parser
+race/lineage power parser
+absorption/evolution parser
+manual ability mutation parser
+card/context ability import
+```
+
+---
+
+# 25. Reducer changes
+
+Allowed:
+
+```text
+AbilityReducer hint/candidate/training/use success/use failure/stabilization/sealed/unavailable behavior
+AbilityReducer unsafe routed-data rejection
+ability evidence logging
+dirty targets
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+XP/stat award from training
+resource cost drain without validated body/progression rule
+manual give ability reducer
+combat damage from ability use
+auto quest completion from ability use
+```
+
+---
+
+# 26. Command/context/card changes
+
+Allowed:
+
+```text
+/abilities display depth
+/context ability packet
+/cardaudit ability mirror labels if dry-run
+/releasecheck PC06 gates
+/playerbreakercheck ability cases
+```
+
+Forbidden:
+
+```text
+/giveability
+/learn
+/master
+/unlock
+manual ability mutation commands
+live card writes that create ability truth
+```
+
+---
+
+# 27. Beginner implementation order
+
+1. Copy `WorldLedgerV0.17.5_INVENTORY_DEPTH_ACCEPTED.txt` to `WorldLedgerV0.17.6_ABILITY_DEPTH_WORKING.txt`.
+2. Add/verify ability helper functions: `ensureAbilitiesShape`, `makeAbilityRecord`, `makeAbilityEvidenceRecord`, `normalizeAbilityStatus`, `normalizeReliabilityLabel`, `isStableAbilityStatus`, `isUnsafeAbilitySource`, and `shouldPreserveAbilityNamePhrase`.
+3. Deepen AbilityNameSanitizer and verify it does not affect shared/item/place cleanup.
+4. Update ability CanonValidator rules for training, use attempt, use success, use failure, output-only learning, stabilization, sealed, and unavailable.
+5. Update ProposalBuilder ability support so proposals carry ability target, evidence type, result kind, source/localClause/safety flags, sanitizerUsed, and operation key suggestion.
+6. Update AbilityReducer to safely commit hint, candidate/training evidence, use success evidence, use failure evidence, stabilization, sealed, and unavailable.
+7. Update `/abilities` display.
+8. Update ContextBuilder ability packet.
+9. Update IntegrityChecker ability checks.
+10. Add PC06-G01 through PC06-G17 ReleaseCheck gates.
+11. Add PC06-001 through PC06-025 tests.
+12. Run `/foundationcheck`, `/releasecheck`, `/integrity`, `/playerbreakercheck`, `/regressioncheck`, and `/abilities`.
+13. Save accepted build as `WorldLedgerV0.17.6_ABILITY_DEPTH_ACCEPTED.txt`.
+
+---
+
+# 28. What this chunk produces
+
+Production Chunk 06 should produce:
+
+```text
+WorldLedger V0.17.6 ability-depth accepted script if code changes are made
+ability helper depth
+AbilityReducer evidence/status behavior
+AbilityNameSanitizer depth
+ability CanonValidator refinement
+/abilities display improvement
+ability context packet
+ability integrity checks
+PC06 ReleaseCheck gates
+PC06 regression/player-breaker tests
+ability acceptance report
+updated planning zip with Production Chunk 06 added
+```
+
+It should not produce:
+
+```text
+full combat system
+full magic resource economy
+race/lineage power automation
+absorption/evolution power gain
+manual ability mutation commands
+stat/XP training rewards
+live CardSync writes
+generated ability cards
+old card prose import
+```
+
+---
+
+# 29. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 06 passes if:
+
+```text
+ability statuses are separated
+training creates evidence/candidate, not mastery
+output-only learning does not create stable ability
+failed/pretend/quote/dream ability claims do not create stable ability
+AbilityNameSanitizer cleans ability suffixes without global cleanup leaks
+AbilityReducer rejects unsafe routed ability events
+stabilization requires explicit validated stabilize/source event
+duplicate evidence/use/stabilization keys work
+/abilities displays candidate/stable/failed/sealed honestly
+command/context/card ability text cannot become canon
+cleanup preserves stable/candidate/failure truth safely
+PC06 tests pass
+ReleaseCheck has no PC06 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+cost/cooldown labels are descriptive only
+resource costs are deferred
+progression XP/stat effects are deferred
+race/lineage powers are deferred
+combat ability effects are deferred
+stabilization threshold is conservative
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+You learned Moonblade creates stable Moonblade by default
+failed/pretend/quote/dream ability becomes stable
+travel/inspect/use-object creates junk ability
+ability cleanup breaks item/place names
+candidate displays as stable
+hint displays as usable
+training awards XP directly
+command/context/card text creates ability
+duplicate stabilization or evidence spams records
+cleanup deletes stable ability or promotes candidate
+AbilityReducer trusts unsafe routed data
+```
+
+---
+
+# 30. Handoff to Production Chunk 07
+
+When this chunk passes, Production Chunk 07 begins:
+
+```text
+Production Chunk 07 — Quest, Objective, Reward, and Promise/Payment Depth
+```
+
+Production Chunk 07 may use ability facts for quest objectives such as “train Ember Ward” or “stabilize Moonblade,” but should not let quest text create stable abilities without ability validation.
+
+Production Chunk 06 must leave abilities reliable enough that future chunks can ask:
+
+```text
+Is this ability only a hint?
+Is it a candidate?
+Was it tried and failed?
+Is it unstable?
+Is it stable?
+Is it sealed or unavailable?
+What evidence supports that status?
+```
+
+---
+
+# 31. Final doctrine
+
+Production Chunk 06 is where ability truth stops being a string-matching accident.
+
+Final rule:
+
+```text
+Abilities are records with evidence and status.
+Training is evidence.
+Use is evidence.
+Failure is evidence.
+Hints are not powers.
+Candidates are not mastery.
+Stable abilities require validation.
+No unsafe source can create a power.
+```
+
+Once this passes, the project can safely deepen quests, objectives, and rewards in Production Chunk 07.

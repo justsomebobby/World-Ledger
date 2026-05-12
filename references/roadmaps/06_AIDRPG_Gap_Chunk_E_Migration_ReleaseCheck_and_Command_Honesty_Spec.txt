@@ -1,0 +1,2062 @@
+AIDRPG Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk E — Migration, ReleaseCheck, and Command Honesty Spec
+Purpose: Define how AIDRPG repairs old/polluted state, quarantines unsafe legacy data, reports readiness through /releasecheck, and keeps commands honest before coding begins.
+Status: Pre-code blocker.
+Applies after: Gap Chunk D — Parser Rulebook, Resolver, and Name/Trigger Policy.
+Applies before: Script v0.1 coding, old-save migration, live CardSync, command implementation, and any public release check.
+This document does not contain final script code.
+
+This chunk exists because old AIDRPG/TASIS versions created many safety-related command and migration problems:
+
+* old state shapes changed across versions
+* duplicate managed cards could exist
+* old Story Card text could contain false canon
+* old generated cards could have junk triggers
+* protected cards could be manually edited or duplicated
+* old commands could claim systems worked when they were partial
+* debug/finalcheck commands could be inconsistent
+* setup/import could overwrite player identity
+* old polluted saves could carry malformed data
+* cleanup could remove or preserve the wrong things
+* migration could accidentally create truth from card prose
+* command output could be parsed as story if not suppressed
+
+Gap Chunk E makes those risks explicit.
+
+⸻
+
+1. Migration and command doctrine
+
+The doctrine is:
+
+Old data is evidence, not canon.
+Commands inspect unless explicitly manual.
+ReleaseCheck must fail loudly when safety is missing.
+Migration repairs structure, not story truth.
+Quarantine beats guessing.
+
+No old state, old Story Card, old command output, debug text, or help text may create gameplay truth.
+
+Migration is allowed to repair schema shape and preserve clearly valid data.
+
+Migration is not allowed to invent items, quests, actors, abilities, XP, or rewards from old prose.
+
+⸻
+
+2. Scope of Gap Chunk E
+
+This chunk defines:
+
+1. Legacy migration rules
+2. Polluted-save repair rules
+3. Quarantine rules
+4. Old Story Card handling rules
+5. Migration audit commands
+6. /releasecheck command requirements
+7. Diagnostic command requirements
+8. Command honesty rules
+9. Disabled/deferred command behavior
+10. Old command alias behavior
+11. Command output suppression requirements
+12. Tests E001–E030
+
+This chunk does not define:
+
+* final migration code
+* actual Story Card API calls
+* generated CardSync beta logic
+* advanced economy/crafting/investigation/domain migration
+* manual mutation command implementation
+
+⸻
+
+3. Migration authority
+
+Migration may be triggered only by:
+
+StateManager.migrate
+/migration command inspection
+explicit safe migration pass during initialization
+
+Migration may not be triggered by:
+
+* Story Card text
+* Context text
+* normal parser hits
+* generated card content
+* old help/debug output
+* normal AI output unless it is an explicit migration command, which MVP should not support as gameplay text
+
+⸻
+
+4. Migration source types
+
+Migration must treat sources differently.
+
+4.1 State object data
+
+Old structured state data may be imported if:
+
+* field is recognized
+* type is safe or repairable
+* value passes sanitizer/validator
+* source does not contradict newer state
+* import does not duplicate records
+
+4.2 Old Story Cards
+
+Old Story Cards are not canon.
+
+They may be:
+
+* detected
+* matched to protected card definitions
+* quarantined
+* ignored
+* marked for manual review
+* used for duplicate detection
+
+But card prose may not directly create gameplay state.
+
+4.3 Old debug/audit logs
+
+Old logs are not canon.
+
+They may be archived, compressed, or ignored.
+
+They must not generate events.
+
+4.4 Old command/help text
+
+Old command/help output is not canon.
+
+It must not be parsed into state.
+
+4.5 Old player setup text
+
+Old setup text may be considered only through Startup Setup Import rules.
+
+If gameplay already started, setup import is locked unless manual override exists.
+
+⸻
+
+5. Migration state fields
+
+Root state must include a migration bucket.
+
+migration: {
+  currentMigrationVersion: string,
+  lastMigrationTurn: number,
+  migrationStatus: 'none' | 'needed' | 'in_progress' | 'completed' | 'completed_with_warnings' | 'failed' | 'blocked',
+  imported: MigrationRecord[],
+  quarantined: QuarantineRecord[],
+  ignored: MigrationIgnoredRecord[],
+  repaired: MigrationRepairRecord[],
+  neutralizedCards: MigrationCardActionRecord[],
+  duplicateCards: MigrationCardActionRecord[],
+  warnings: string[],
+  errors: string[],
+  migrationOperationKeys: string[]
+}
+
+5.1 MigrationRecord
+
+MigrationRecord {
+  source: 'state' | 'card' | 'setup' | 'manual' | 'system',
+  sourceKey: string,
+  targetBucket: string,
+  targetId?: string,
+  action: 'imported' | 'mapped' | 'merged',
+  reason: string,
+  turn: number
+}
+
+5.2 QuarantineRecord
+
+QuarantineRecord {
+  quarantineId: string,
+  source: 'state' | 'card' | 'setup' | 'manual' | 'system',
+  sourceKey: string,
+  originalPreview: string,
+  reason: string,
+  severity: 'info' | 'warning' | 'danger' | 'blocked',
+  suggestedAction: 'ignore' | 'manual_review' | 'repair_later' | 'delete_later' | 'map_later',
+  createdTurn: number,
+  resolved: boolean,
+  resolution?: string
+}
+
+5.3 MigrationIgnoredRecord
+
+MigrationIgnoredRecord {
+  source: string,
+  sourceKey: string,
+  reason: string,
+  turn: number
+}
+
+5.4 MigrationRepairRecord
+
+MigrationRepairRecord {
+  targetBucket: string,
+  fieldPath: string,
+  oldValuePreview: string,
+  newValuePreview: string,
+  reason: string,
+  turn: number
+}
+
+5.5 MigrationCardActionRecord
+
+MigrationCardActionRecord {
+  cardRef: string,
+  title: string,
+  action: 'detected' | 'linked' | 'quarantined' | 'duplicate_warning' | 'neutralization_planned' | 'neutralized' | 'ignored' | 'manual_review',
+  canonicalKey?: string,
+  reason: string,
+  turn: number
+}
+
+⸻
+
+6. Migration idempotency
+
+Migration must be safe to run more than once.
+
+Required rule:
+
+Running migration twice must not duplicate imported records, protected cards, items, quests, actors, abilities, XP, rewards, or warnings beyond capped audit records.
+
+6.1 Migration operation keys
+
+Every meaningful migration action needs a stable operation key.
+
+Examples:
+
+migration.init.schema_v1
+migration.import.player.name
+migration.repair.body.ep.default
+migration.quarantine.card.old_inventory_crown
+migration.neutralize.duplicate.protected.player_sheet.card_002
+migration.ignore.old_debug_log.block_7
+
+6.2 Permanent migration keys
+
+These should not expire:
+
+* schema migration completed
+* protected card duplicate neutralization
+* old generated card tombstone
+* player identity import
+* starting inventory import
+* reward migration
+
+6.3 Idempotency tests
+
+Migration must pass:
+
+* run once produces expected repair records
+* run twice produces no duplicate state
+* run twice does not create duplicate cards
+* run twice does not add duplicate warnings beyond capped audit
+
+⸻
+
+7. Safe import rules
+
+7.1 Player state import
+
+Safe to import from old structured state if:
+
+* name is valid and not generic/junk
+* race/species is valid text
+* age is valid text or number
+* appearance is valid text
+* level is safe positive number
+* stats are safe positive numbers
+* build identity is valid text
+
+Must not import from old Story Card prose unless manual review confirms.
+
+7.2 Body state import
+
+Safe to import:
+
+* HP/MP/EP current/max if numeric and sane
+* injuries if structured and sanitized
+* conditions if structured and sanitized
+* fatigue if known enum
+* deathBoundary if known enum
+
+Repair if:
+
+* EP missing: add default
+* current > max: clamp current to max and audit
+* negative resource: clamp to 0 and audit
+* unknown fatigue: quarantine or default to normal with warning
+
+7.3 Inventory import
+
+Safe to import structured items if:
+
+* item name passes sanitizer
+* item has owner/custody/access or can be safely defaulted
+* quantity is positive
+* duplicate canonical key is handled
+* sold/destroyed/consumed/lost states preserved
+
+Do not import inventory from card prose.
+
+Quarantine if:
+
+* item name is junk
+* item has impossible state
+* item duplicates unique item without clear merge
+* item appears only in old card text
+
+7.4 Ability import
+
+Safe to import structured abilities if:
+
+* name passes ability name policy
+* status is known
+* candidate/stable distinction exists or can be safely inferred
+* cost label is known or unknown
+* evidence is structured or omitted safely
+
+If status unclear:
+
+import as candidate or quarantine, not stable
+
+Do not import stable ability from old card prose alone.
+
+7.5 Quest import
+
+Safe to import structured quests if:
+
+* title is valid or can be generated safely
+* status is known or mapped
+* objectives are structured
+* rewards are separated into promised/ready/paid
+* reward keys are not duplicated
+
+If old quest says reward was paid but ledger missing:
+
+* quarantine payment status or mark disputed
+* do not add currency from old text
+
+7.6 Actor import
+
+Safe to import structured actors if:
+
+* name passes actor name policy
+* importance is known or inferred conservatively
+* presence is known or default unknown
+* status is known or default unknown
+* memories have truthStatus or default claimed/unknown
+
+Do not import random old scene actors as persistent actors unless important.
+
+7.7 Place import
+
+Safe to import structured places if:
+
+* name passes place name policy
+* current location can be identified
+* generic scene-only locations are not promoted
+
+If old current location is unclear:
+
+* keep currentLocation confidence unknown/likely
+* do not create many place cards
+
+⸻
+
+8. Quarantine rules
+
+Quarantine is used when data might matter but is unsafe to import.
+
+8.1 Quarantine instead of guessing
+
+Quarantine if:
+
+* source is old card prose
+* field type is wrong but possibly meaningful
+* item/actor/place/ability name fails sanitizer
+* reward/payment status is contradictory
+* player identity conflicts
+* duplicate unique record exists
+* old state references missing IDs
+* old generated card has broad trigger
+* old quest status cannot be mapped
+
+8.2 Quarantine must be visible
+
+Quarantined records must be inspectable through:
+
+/quarantine
+/migration
+/stateaudit
+/releasecheck
+
+8.3 Quarantine must not affect gameplay
+
+A quarantined item is not inventory.
+
+A quarantined quest is not active.
+
+A quarantined actor is not present.
+
+A quarantined ability is not usable.
+
+A quarantined card does not become canon.
+
+8.4 Quarantine resolution
+
+MVP may not include manual resolution commands.
+
+Later manual tools may resolve quarantined records explicitly.
+
+Until then, quarantine is read-only.
+
+⸻
+
+9. Polluted-save repair rules
+
+A polluted save is a save containing unsafe old state/cards/logs that could contaminate new canon.
+
+9.1 Pollution indicators
+
+* duplicate protected cards
+* old generated cards with generic triggers
+* old managed card text containing inventory/quest/ability facts
+* old malformed state fields
+* old patch-layer flags
+* old pending candidates with junk names
+* old dirty queues with unknown targets
+* old debug text stored in gameplay buckets
+* old command outputs stored as story facts
+
+9.2 Polluted-save repair actions
+
+Allowed actions:
+
+* repair schema shape
+* quarantine unsafe records
+* mark duplicate card warning
+* tombstone old junk managed card if safe
+* clear stale temporary parser candidates
+* cap logs
+* rebuild protected card registry from state
+* set generatedCardsEnabled false
+* set CardSync dry-run/safe mode
+
+Forbidden actions:
+
+* import old card prose as gameplay truth
+* delete user-created cards blindly
+* create missing inventory from old Inventory card
+* create missing quest from old Quest card
+* create stable ability from old Ability card
+* create actor biography from old Social card
+* enable generated cards automatically
+
+⸻
+
+10. Old Story Card migration rules
+
+Old cards must be handled by category.
+
+10.1 Old protected card equivalent
+
+Examples:
+
+* old Player Summary
+* old Body Status
+* old Ability Index
+* old Inventory Summary
+* old Quest Summary
+* old Actor Memory
+* old Time/Route Summary
+
+Action:
+
+* detect as old managed/protected-equivalent
+* do not import prose
+* link only if exact safe singleton match
+* otherwise mark duplicate/manual review
+
+10.2 Old generated actor/place/item/ability cards
+
+Action:
+
+* do not import as canon
+* check for junk/generic names
+* check broad triggers
+* quarantine or tombstone if clearly managed junk
+* leave user cards alone unless clearly managed and unsafe
+
+10.3 Old card with safe marker but unknown key
+
+Action:
+
+* quarantine/manual review
+* do not delete
+* do not import
+
+10.4 Old card with broad trigger
+
+Action:
+
+* mark warning
+* if managed by old AIDRPG/TASIS and safe mode permits, plan neutralization
+* otherwise manual review
+
+10.5 Old card prose examples
+
+Old card says:
+
+Player owns Crown of Dawn.
+
+Result:
+
+* no Crown in inventory
+* quarantine card claim
+* audit warning
+
+Old card says:
+
+Active Quest: Clear the Mill Wolves.
+
+Result:
+
+* no active quest unless state already has it
+* quarantine/manual review
+
+Old card says:
+
+Mara is your companion.
+
+Result:
+
+* no companion status unless state confirms
+* possible quarantine claim
+
+⸻
+
+11. Migration conflict handling
+
+11.1 Player identity conflict
+
+If old structured state conflicts with current protected state:
+
+* preserve current newer state
+* quarantine old conflicting value
+* audit conflict
+
+Example:
+
+current player name = Arin
+old card says player name = Joren
+
+Result:
+
+* player remains Arin
+* Joren claim quarantined
+
+11.2 Inventory conflict
+
+If two old items appear to be same unique item:
+
+* use resolver/sanitizer
+* merge only with high confidence
+* otherwise quarantine duplicate
+
+11.3 Quest reward conflict
+
+If old quest says rewardStatus paid but currency does not show payment:
+
+* do not add currency automatically
+* mark rewardStatus disputed or quarantine conflict
+* require future manual resolution
+
+11.4 Actor presence conflict
+
+If old actor state says Mara present but current scene does not include her:
+
+* preserve current scene truth
+* set presence unknown/elsewhere if needed
+* quarantine old presence if from card
+
+⸻
+
+12. Migration command contract
+
+12.1 /migration
+
+Purpose:
+
+Show migration status.
+
+Must display:
+
+* currentMigrationVersion
+* migrationStatus
+* imported count
+* repaired count
+* quarantined count
+* ignored count
+* neutralized card count
+* warnings/errors
+* last migration turn
+
+Must not:
+
+* import new data from command output
+* perform unsafe repairs unless explicitly designed later
+* parse its own output
+
+12.2 /quarantine
+
+Purpose:
+
+Show unsafe legacy data waiting for review.
+
+Must display:
+
+* quarantineId
+* source
+* preview
+* reason
+* severity
+* suggestedAction
+* resolved status
+
+Must not:
+
+* restore quarantined data automatically
+* mutate gameplay state
+
+12.3 /cleanup
+
+MVP behavior:
+
+* show cleanup status or run safe lightweight cleanup only if explicitly allowed
+* never remove important truth
+* audit any destructive action
+
+Default MVP recommendation:
+
+/cleanup is diagnostic only until Cleanup Spec is coded.
+
+12.4 /stateaudit
+
+Shows:
+
+* schema status
+* missing field repairs
+* integrity warnings
+* malformed/quarantined buckets
+* state size/budget warnings
+
+Must not mutate gameplay state except diagnostic metadata.
+
+⸻
+
+13. ReleaseCheck doctrine
+
+/releasecheck is the script’s truthfulness gate.
+
+It must not say the build is safe unless the required systems exist and pass their checks.
+
+ReleaseCheck must be honest, even if the answer is bad.
+
+It should produce:
+
+PASS
+WARN
+FAIL
+BLOCKED
+
+13.1 PASS
+
+All required checks pass for current build stage.
+
+13.2 WARN
+
+System can run but has known non-blocking risks.
+
+13.3 FAIL
+
+A required safety check failed.
+
+13.4 BLOCKED
+
+A required spec/system/test is missing for a requested feature.
+
+⸻
+
+14. /releasecheck required sections
+
+/releasecheck output must include these sections.
+
+AIDRPG Release Check
+Build Version
+Build Stage
+Authority Stack
+Runtime Hooks
+State Schema
+Command Safety
+Parser Safety
+Canon Validation
+Reducer Ownership
+OperationLedger
+Inventory/Custody
+Ability Candidate Safety
+Quest/Reward Safety
+Actor/Place Safety
+Context No-Write
+CardSync Safety
+Migration/Quarantine
+Cleanup/Dirty Queue
+Testing Gates
+Deferred Systems
+Warnings
+Failures
+Final Result
+
+⸻
+
+15. /releasecheck exact checks
+
+15.1 Build/version checks
+
+Must verify:
+
+* version exists
+* schemaVersion exists
+* build stage exists
+* MVP/deferred feature flags exist
+* generatedCardsEnabled false in MVP
+
+Fail if:
+
+* version missing
+* generated cards enabled in MVP
+* feature flags missing
+
+15.2 Runtime hook checks
+
+Must verify:
+
+* runtime bucket exists
+* valid return behavior defined
+* fail-soft handler exists
+* input/context/output contracts exist
+* command suppression exists
+* duplicate output hash exists
+
+Fail if:
+
+* Context can mutate gameplay
+* command output can be parsed
+* output replay can duplicate consequences
+
+15.3 State schema checks
+
+Must verify required buckets:
+
+player
+body
+progression
+inventory
+abilities
+quests
+actors
+places
+time
+cards
+operationLedger
+audits
+runtime
+migration
+cleanup
+
+Fail if core bucket missing.
+
+Warn if optional/deferred bucket missing.
+
+15.4 Parser safety checks
+
+Must verify:
+
+* parser hit schema includes all safety flags
+* parser cannot mutate state directly
+* non-canon source suppression exists
+* quote/negation/hypothetical/dream/rumor markers exist
+* input is intent only
+
+Fail if:
+
+* visible item can become inventory directly
+* parser writes inventory/quests/XP directly
+* command/context/card text can be parsed
+
+15.5 Canon validation checks
+
+Must verify:
+
+* CanonValidator exists
+* source eligibility rules exist
+* confidence thresholds exist
+* duplicate check exists
+* actor presence check exists
+* item custody check exists
+* ability status check exists
+* quest reward status check exists
+
+Fail if accepted proposals can bypass CanonValidator.
+
+15.6 Reducer ownership checks
+
+Must verify:
+
+* ReducerRegistry exists
+* unknown reducer rejected
+* each event type has one owner
+* reducers do not process unvalidated proposals
+
+Fail if multiple modules can write same truth without owner boundary.
+
+15.7 OperationLedger checks
+
+Must verify buckets:
+
+permanentKeys
+recentKeys
+rewardKeys
+cardKeys
+sourceUseKeys
+
+Must verify max recent keys.
+
+Fail if:
+
+* reward keys missing
+* duplicate detection missing
+* card keys missing while CardSync enabled
+
+15.8 Inventory/custody checks
+
+Must verify access states:
+
+visible
+available_loot
+held
+equipped
+stored
+npc_custody
+inaccessible
+lost
+sold
+destroyed
+consumed
+
+Fail if:
+
+* visible can be owned
+* available_loot can be used before pickup
+* npc_custody item can be used
+* sold/destroyed/consumed item can be used
+
+15.9 Ability safety checks
+
+Must verify statuses:
+
+unknown
+hint
+candidate
+unstable
+stable
+sealed
+unavailable
+
+Fail if:
+
+* candidate equals stable
+* failed attempt creates stable ability
+* sealed ability can be used
+* candidate ability creates generated card
+
+15.10 Quest/reward checks
+
+Must verify:
+
+* quest statuses exist
+* promised/ready/paid/disputed reward states exist
+* reward payment uses permanent key
+
+Fail if:
+
+* promised reward adds currency
+* objective complete pays automatically
+* reward can pay twice
+
+15.11 Actor/place checks
+
+Must verify:
+
+* actor presence states exist
+* absent actor actions blocked
+* scene-only actors expire
+* relation phrase safety exists
+* travel intent differs from arrival
+* place substring safety exists
+
+Fail if:
+
+* absent companion can act
+* head toward changes location
+* Old Chapel Road resolves to Old Chapel incorrectly
+
+15.12 Context checks
+
+Must verify:
+
+* ContextBuilder read-only
+* packet priority exists
+* packet budget exists
+* uncertainty labels exist
+* context audit exists
+
+Fail if Context mutates gameplay state.
+
+15.13 CardSync checks
+
+Must verify:
+
+* generated cards disabled in MVP
+* Card API adapter exists before live writes
+* protected singleton map exists
+* card text cannot create state
+* broad triggers rejected
+* write budget exists
+
+Fail if:
+
+* generated cards enabled early
+* duplicate protected card creation possible without detection
+* live writes enabled without adapter
+* card prose can create canon
+
+15.14 Migration/quarantine checks
+
+Must verify:
+
+* migration bucket exists
+* quarantine bucket exists
+* migration idempotency keys exist
+* old card prose not imported as canon
+* migration audit exists
+
+Fail if:
+
+* migration can import card prose as inventory/quest/ability
+* repeated migration duplicates records
+
+15.15 Cleanup/dirty queue checks
+
+Must verify:
+
+* dirty queue exists
+* cleanup is conservative
+* cleanup may never remove important truth
+* cleanup audit exists
+
+Fail if cleanup can delete active inventory, active quests, important actors, permanent keys, reward keys, or protected registry.
+
+15.16 Testing gate checks
+
+Must verify whether tests have passed:
+
+* MVP Gate 1
+* MVP Gate 2
+* MVP Gate 3
+* MVP Gate 4
+* MVP Gate 5
+* MVP Gate 6
+* MVP Gate 7
+* MVP Gate 8
+* Gap tests A/B/C/D/E as applicable
+
+Fail if build stage claims complete without required tests.
+
+15.17 Deferred system checks
+
+Must verify these remain disabled in MVP:
+
+* economy
+* crafting
+* investigation
+* reputation/factions
+* domain/labor
+* absorption/evolution
+* generated cards
+* multi-protagonist
+* advanced combat/warfare
+
+Fail if any active without mini-spec and build unlock.
+
+⸻
+
+16. ReleaseCheck result format
+
+Recommended output shape:
+
+AIDRPG Release Check — v0.1
+Result: FAIL
+PASS: Runtime hooks installed
+PASS: State schema complete
+FAIL: OperationLedger.rewardKeys missing
+FAIL: Generated cards enabled during MVP
+WARN: Card API capabilities not checked; live writes disabled
+BLOCKED: Crafting command requested but Crafting Mini-Spec missing
+Required Fixes:
+1. Add rewardKeys bucket.
+2. Disable generatedCardsEnabled.
+3. Keep crafting disabled until mini-spec.
+
+ReleaseCheck must be readable.
+
+Do not dump full state.
+
+⸻
+
+17. Command honesty doctrine
+
+Commands are a user-facing contract.
+
+They must not exaggerate.
+
+They must not hide disabled systems.
+
+They must not mutate gameplay unless explicitly manual and audited.
+
+MVP command rule:
+
+Commands inspect. Commands do not play the game for the player.
+
+⸻
+
+18. Active MVP commands
+
+18.1 /help
+
+Must show:
+
+* active commands
+* disabled systems
+* current build stage
+* generated cards disabled in MVP
+* no full economy/crafting/investigation/domain yet
+
+Must not claim future systems are active.
+
+18.2 /version
+
+Must show:
+
+* script version
+* schema version
+* build stage
+* authority stack summary
+* mode flags
+
+18.3 /sheet
+
+Shows player identity, level, XP, stats, build identity, specialization.
+
+18.4 /status
+
+Shows HP/MP/EP, injuries, conditions, fatigue, death boundary.
+
+18.5 /inventory
+
+Must separate:
+
+Equipped
+Inventory
+Available Nearby
+Unavailable / In Custody
+Lost/Sold/Destroyed/Consumed if relevant
+
+18.6 /abilities
+
+Must separate:
+
+Stable
+Unstable
+Candidates
+Passives/Talents
+Sealed/Unavailable
+
+18.7 /quests
+
+Must separate:
+
+Rumored/Offered
+Active
+Blocked
+Ready to Turn In
+Completed
+Rewarded
+Failed/Archived
+
+Must show reward status as promised/ready/paid/disputed.
+
+18.8 /actors
+
+Shows important actors, companions, presence, relationships, custody notes.
+
+Scene-only NPCs should be limited.
+
+18.9 /location
+
+Shows current location, current scene, present actors, visible/available items, hazards, exits, travel intent.
+
+18.10 /time
+
+Shows current time text, last time advance, active deadlines.
+
+18.11 /debuglast
+
+Shows last proposals, validation outcomes, commits, duplicates, dirty targets, runtime warnings.
+
+18.12 /cardaudit
+
+Shows card mode, protected registry, dirty cards, duplicate warnings, API status, generated card suppression.
+
+18.13 /contextaudit
+
+Shows selected/skipped packets, budget reasons, correction packets, hashes.
+
+18.14 /stateaudit
+
+Shows schema/integrity/migration/quarantine warnings.
+
+18.15 /ledger
+
+Shows recent/permanent/reward/card key summary without dumping everything.
+
+18.16 /dirty
+
+Shows dirty targets and queued protected card/context updates.
+
+18.17 /migration
+
+Shows migration status.
+
+18.18 /quarantine
+
+Shows quarantined unsafe legacy records.
+
+18.19 /releasecheck
+
+Runs readiness checks.
+
+⸻
+
+19. Disabled/deferred command behavior
+
+If a command references a disabled system, respond honestly.
+
+19.1 Economy commands
+
+Example:
+
+/shop
+/buy
+/sell
+/economy
+
+MVP response:
+
+Economy is not active in MVP. Simple currency display may exist, but full buying/selling requires Economy Mini-Spec and a later build phase.
+
+19.2 Crafting commands
+
+Example:
+
+/craft
+/recipes
+/materials
+
+MVP response:
+
+Crafting is not active in MVP. Materials may appear as inventory items, but crafting projects require Crafting Mini-Spec.
+
+19.3 Investigation commands
+
+Example:
+
+/cases
+/clues
+/evidence
+
+MVP response:
+
+Investigation is not active in MVP. Claims may be stored as actor/quest notes, but cases and evidence require Investigation Mini-Spec.
+
+19.4 Domain/labor commands
+
+Example:
+
+/domain
+/workers
+/projects
+
+MVP response:
+
+Domain and labor systems are not active in MVP. They require Domain/Labor Mini-Spec.
+
+19.5 Absorption/evolution commands
+
+Example:
+
+/absorb
+/evolve
+/devour
+
+MVP response:
+
+Absorption and evolution are not active in MVP. Attempts may be treated narratively, but mechanical gains require Absorption/Evolution Mini-Spec.
+
+19.6 Generated CardSync commands
+
+Example:
+
+/cardsync live on
+/generatecards
+
+MVP response:
+
+Generated cards are disabled in MVP. Protected card dry-run/audit may exist, but generated CardSync requires beta unlock and tests.
+
+⸻
+
+20. Old command alias mapping
+
+Old commands should not crash.
+
+They either map safely or return disabled.
+
+Old Command	New Behavior
+/questlog	map to /quests
+/actormemory	map to /actors or /stateaudit social section
+/memory	map to /contextaudit or disabled explanation
+/finalcheck	map to /releasecheck
+/finalrelease	map to /releasecheck
+/rc	map to /releasecheck if accepted alias
+/hardening	map to /stateaudit or disabled explanation
+/selftest	map to /releasecheck or test summary
+/cardedits	map to /cardaudit
+/tombstones	map to /cardaudit tombstone section
+/cardaudit	active diagnostic
+/falsepositiveaudit	active or diagnostic alias to parser audit when available
+/startup	map to /startupaudit if implemented
+/cardsync live on	disabled until beta
+/scale	disabled until Scale Spec
+/warfare	disabled until Scale Spec
+/groups	disabled until Party/Scale Spec
+/battlefield	disabled until Scale Spec
+/protagonists	disabled until Multi-Protagonist Spec
+/players	disabled until Multi-Protagonist Spec
+/reputation	disabled or simple actor notes only until Reputation Spec
+/party	disabled or simple companions via /actors until Party Spec
+/combat	disabled/basic status only until Combat v0.2
+/continuity	map to /stateaudit or /contextaudit
+/threat	disabled until Combat/Threat Spec
+
+⸻
+
+21. Command output suppression
+
+Every command output must set:
+
+suppressEventScanForCommandOutput = true
+
+Command output must not become parser input.
+
+21.1 Required command suppression examples
+
+/inventory displays:
+
+Rusty Dagger
+
+Result:
+
+* no new dagger
+
+/quests displays:
+
+Reward: 15 gold promised
+
+Result:
+
+* no currency added
+
+/abilities displays:
+
+Shadow Step — candidate
+
+Result:
+
+* no stable Shadow Step
+
+/actors displays:
+
+Mara — elsewhere
+
+Result:
+
+* Mara does not become present
+
+⸻
+
+22. Diagnostic commands must be non-canon
+
+Diagnostic commands include:
+
+/debuglast
+/stateaudit
+/cardaudit
+/contextaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+
+These commands may show:
+
+* item names
+* quest names
+* actor names
+* card names
+* XP values
+* rewards
+* warnings
+
+But none of that output can create gameplay state.
+
+⸻
+
+23. Manual mutation commands deferred
+
+Commands like these are not MVP:
+
+/additem
+/removeitem
+/sethp
+/setmp
+/setep
+/setlevel
+/addxp
+/setability
+/completequest
+/payreward
+/setactor
+/setlocation
+/settime
+/importcard
+/resolvequarantine
+
+If added later, they require:
+
+* Manual Override Spec
+* explicit confirmation
+* audit record
+* operation key
+* sourceHook = manual
+* no hidden use through ordinary commands
+
+MVP should not include them.
+
+⸻
+
+24. Help text requirements
+
+/help must be stage-aware.
+
+24.1 Required /help sections
+
+AIDRPG Core MVP
+Active Commands
+Diagnostic Commands
+Disabled Systems
+Safety Notes
+Next Build Locks
+
+24.2 Required safety notes
+
+Help should tell the truth:
+
+* generated cards disabled
+* economy/crafting/investigation/domain/absorption deferred
+* command output does not change story state
+* visible items are not inventory until picked up
+* candidate abilities are not stable
+* quest rewards are promised until paid
+
+24.3 Help must not include
+
+* unsupported commands as active
+* false claim that full combat exists
+* false claim that generated cards are live
+* false claim that economy/crafting are active
+* hidden debug schemas unless diagnostic mode
+
+⸻
+
+25. Version command requirements
+
+/version should show:
+
+AIDRPG Core MVP v0.1
+Schema Version: 1
+Build Stage: pre-code / phase 1 / phase 2 etc.
+Generated Cards: disabled
+CardSync: dry-run/safe/live protected as applicable
+Deferred Systems: economy, crafting, investigation, domain, absorption, generated cards
+Last Migration: status
+ReleaseCheck: last result if available
+
+This command must not mutate gameplay state.
+
+⸻
+
+26. Audit output style rules
+
+Audit output should be readable, not raw schema dumps.
+
+26.1 Good audit style
+
+Rejected item pickup: "jeweled cup" was hypothetical, not acquired.
+Skipped reward payment: duplicate reward key already used.
+Suppressed generated card: generated cards are disabled in MVP.
+
+26.2 Bad audit style
+
+ValidationResult[0].p.flags.negated == true therefore p.f.write=false
+
+Raw details may appear in debug mode, but normal diagnostics should be readable.
+
+⸻
+
+27. Migration + command tests
+
+These tests must exist before coding proceeds beyond foundation.
+
+E001 — Missing migration bucket repaired
+
+Starting state:
+
+state.aidrpg exists but migration bucket missing
+
+Action:
+
+Run StateManager repair or /stateaudit.
+
+Expected:
+
+* migration bucket created
+* existing inventory/player state preserved
+* repair audit recorded
+
+Fail if:
+
+* state reset or inventory erased
+
+⸻
+
+E002 — Migration idempotency
+
+Starting state:
+
+Old schema needing repair.
+
+Action:
+
+Run migration twice.
+
+Expected:
+
+* no duplicate records
+* no duplicate protected cards
+* no duplicate item imports
+* migration keys prevent repeated action
+
+Fail if:
+
+* second run changes gameplay again
+
+⸻
+
+E003 — Old Inventory card does not create item
+
+Old card text:
+
+Player owns Crown of Dawn.
+
+State inventory has no Crown.
+
+Expected:
+
+* no Crown added
+* card claim quarantined/ignored
+* migration audit records non-canon card text
+
+Fail if:
+
+* Crown enters inventory
+
+⸻
+
+E004 — Old Quest card does not create active quest
+
+Old card text:
+
+Active Quest: Clear the Mill Wolves.
+
+State has no quest.
+
+Expected:
+
+* no active quest created
+* card claim quarantined/manual review
+
+Fail if:
+
+* quest appears in state
+
+⸻
+
+E005 — Duplicate protected card warning
+
+Setup:
+
+Two old Player Sheet cards detected.
+
+Expected:
+
+* duplicate warning
+* no third card created
+* no blind delete unless safe policy active
+
+Fail if:
+
+* third Player Sheet created
+
+⸻
+
+E006 — Old generated junk card quarantined
+
+Old card:
+
+Title: Street
+Trigger: street
+Managed marker present
+
+Expected:
+
+* junk/broad trigger warning
+* quarantine/tombstone planned
+* no durable place state created
+
+Fail if:
+
+* Street becomes generated place/card in new registry as active canon
+
+⸻
+
+E007 — Player identity conflict quarantined
+
+State:
+
+player.name = Arin
+
+Old card says:
+
+Player Name: Joren
+
+Expected:
+
+* Arin preserved
+* Joren quarantined/manual review
+
+Fail if:
+
+* player renamed to Joren
+
+⸻
+
+E008 — Ability status ambiguity downgraded
+
+Old state has ability:
+
+Void Emperor Oblivion Wave
+status missing
+
+Expected:
+
+* import as candidate/unknown or quarantine
+* not stable by default
+
+Fail if:
+
+* stable mastered ability created
+
+⸻
+
+E009 — Reward payment conflict quarantined
+
+Old quest says:
+
+rewardStatus = paid
+reward = 15 gold
+
+Currency does not show payment and ledger missing.
+
+Expected:
+
+* no currency added automatically
+* reward conflict quarantined/disputed
+
+Fail if:
+
+* 15 gold added from old inconsistency
+
+⸻
+
+E010 — /help is honest
+
+Action:
+
+Run /help.
+
+Expected:
+
+* active MVP commands listed
+* deferred systems listed as disabled
+* no claim full economy/crafting/generated cards active
+
+Fail if:
+
+* help says disabled systems are active
+
+⸻
+
+E011 — Disabled crafting command safe
+
+Input:
+
+/craft
+
+Expected:
+
+* disabled message
+* no crafting state/project created
+
+Fail if:
+
+* crafting system activates
+
+⸻
+
+E012 — Old alias /questlog maps safely
+
+Input:
+
+/questlog
+
+Expected:
+
+* maps to /quests or safe alias output
+* no gameplay mutation
+
+Fail if:
+
+* crash or quest mutation
+
+⸻
+
+E013 — /cardsync live on blocked in MVP
+
+Input:
+
+/cardsync live on
+
+Expected:
+
+* disabled until beta message
+* liveWritesEnabled remains false unless protected live mode explicitly unlocked by spec/tests
+* generatedCardsEnabled remains false
+
+Fail if:
+
+* generated cards/live writes enable silently
+
+⸻
+
+E014 — /releasecheck fails missing ledger
+
+Starting state:
+
+OperationLedger missing rewardKeys.
+
+Action:
+
+Run /releasecheck.
+
+Expected:
+
+* FAIL
+* explains missing rewardKeys
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+E015 — /releasecheck fails generated cards enabled in MVP
+
+Starting state:
+
+generatedCardsEnabled = true
+buildStage = MVP
+
+Expected:
+
+* FAIL
+* says generated cards disabled in MVP
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+E016 — /releasecheck fails parser direct mutation
+
+Setup:
+
+Parser direct inventory write detected/configured.
+
+Expected:
+
+* FAIL
+* says parser must produce proposals only
+
+Fail if:
+
+* releasecheck passes
+
+⸻
+
+E017 — /inventory output non-canon
+
+Inventory contains one Rusty Dagger.
+
+Input:
+
+/inventory
+
+Expected:
+
+* displays dagger
+* no duplicate dagger
+* command suppression active
+
+Fail if:
+
+* duplicate dagger added
+
+⸻
+
+E018 — /quests promised reward non-canon
+
+Quest command displays:
+
+Reward: 15 gold promised
+
+Expected:
+
+* currency unchanged
+* no reward paid
+
+Fail if:
+
+* command output pays reward
+
+⸻
+
+E019 — /abilities candidate non-canon
+
+Command displays:
+
+Shadow Step — candidate
+
+Expected:
+
+* Shadow Step remains candidate
+* not stable
+
+Fail if:
+
+* command output stabilizes ability
+
+⸻
+
+E020 — /migration output non-canon
+
+Command displays quarantined Crown of Dawn claim.
+
+Expected:
+
+* Crown remains quarantined
+* no inventory item
+
+Fail if:
+
+* command output imports Crown
+
+⸻
+
+E021 — /quarantine read-only
+
+Action:
+
+Run /quarantine.
+
+Expected:
+
+* displays records
+* resolves none unless explicit future command exists
+* no gameplay mutation
+
+Fail if:
+
+* quarantined item becomes active
+
+⸻
+
+E022 — /stateaudit read-only
+
+Action:
+
+Run /stateaudit.
+
+Expected:
+
+* reports warnings
+* may repair missing diagnostic bucket only if StateManager allows
+* no gameplay item/quest/actor/XP mutation
+
+Fail if:
+
+* audit creates gameplay state
+
+⸻
+
+E023 — /releasecheck warning for duplicate protected card
+
+Setup:
+
+Duplicate protected Player Sheet detected.
+
+Expected:
+
+* WARN or FAIL depending policy
+* no silent pass
+
+Fail if:
+
+* duplicate ignored
+
+⸻
+
+E024 — Old broad trigger flagged
+
+Old managed card trigger:
+
+sword
+
+Expected:
+
+* cardaudit/releasecheck warning
+* not accepted as safe trigger
+
+Fail if:
+
+* broad trigger passes silently
+
+⸻
+
+E025 — Old malformed resource repaired
+
+Old state:
+
+hp.current = 150
+hp.max = 100
+
+Expected:
+
+* current clamped to 100 or quarantined
+* audit repair
+
+Fail if:
+
+* impossible value persists silently
+
+⸻
+
+E026 — Old negative currency repaired/quarantined
+
+Old state:
+
+currency.copperBase = -500
+
+Expected:
+
+* quarantine or clamp with warning depending policy
+* no hidden debt system unless Economy Spec exists
+
+Fail if:
+
+* negative currency silently active as economy debt
+
+⸻
+
+E027 — Old scene actor not persistent
+
+Old state has scene actor:
+
+a guard
+
+Expected:
+
+* scene-only or quarantined
+* not persistent important actor
+
+Fail if:
+
+* random guard becomes durable actor
+
+⸻
+
+E028 — Old logs capped
+
+Old audit log has thousands of entries.
+
+Expected:
+
+* compact/cap logs
+* preserve recent critical warnings
+* no timeout
+
+Fail if:
+
+* script scans/dumps all logs every command
+
+⸻
+
+E029 — /version truthful
+
+Action:
+
+Run /version.
+
+Expected:
+
+* correct build stage
+* generated cards disabled in MVP
+* deferred systems listed
+* migration status shown
+
+Fail if:
+
+* version claims final/complete when MVP only
+
+⸻
+
+E030 — Disabled manual mutation command rejected
+
+Input:
+
+/additem Crown of Dawn
+
+Expected:
+
+* manual mutation commands not active in MVP
+* no Crown added
+* message says manual override spec required
+
+Fail if:
+
+* item added
+
+⸻
+
+28. Gap Chunk E completion checklist
+
+Gap Chunk E is complete when:
+
+* migration doctrine is defined
+* migration source types are defined
+* migration state fields are defined
+* quarantine schema is defined
+* safe import rules are defined
+* polluted-save repair rules are defined
+* old Story Card handling rules are defined
+* migration conflict handling is defined
+* /migration and /quarantine command contracts are defined
+* /releasecheck doctrine is defined
+* /releasecheck sections and checks are defined
+* active MVP commands are defined
+* disabled command behavior is defined
+* old command alias map is defined
+* command output suppression is defined
+* manual mutation commands are deferred
+* tests E001–E030 are accepted
+
+⸻
+
+29. Final Gap Chunk E doctrine
+
+Migration must not be brave.
+
+It must be careful.
+
+Commands must not be impressive.
+
+They must be honest.
+
+ReleaseCheck must not flatter the build.
+
+It must protect the player from false confidence.
+
+The final rule is:
+
+When old data is unsafe, quarantine it.
+When a system is disabled, say so.
+When a check fails, fail loudly.
+When a command prints state, do not parse it as story.
+When a card says something, do not treat it as canon.
+
+Next required gap chunk:
+
+Gap Chunk F — Context, Dirty Queue, Cleanup, and Performance Spec

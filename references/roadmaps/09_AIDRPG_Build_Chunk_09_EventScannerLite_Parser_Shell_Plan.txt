@@ -1,0 +1,1798 @@
+AIDRPG Build Chunk 9 — EventScannerLite Parser Shell Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 9 — EventScannerLite Parser Shell Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact safe parser shell, parser source rules, parser hit schema, safety-flag detection, family boundaries, and parser tests before parser code is generated.
+Status: Practical build document.
+Follows: Build Chunk 8 — CommandRouter and Command Renderer Implementation Plan.
+This document does not contain final script code.
+
+This chunk is useful because the parser is where many old bugs begin.
+
+If the parser is too aggressive, visible items become inventory, promises become payments, rumors become facts, failed abilities become stable abilities, and dreams become canon.
+
+If the parser mutates state directly, CanonValidator and reducers become useless.
+
+If the parser scans commands, context, cards, or audit text, the script corrupts itself.
+
+Build Chunk 9 locks the parser as a safe detector only.
+
+⸻
+
+1. Parser shell doctrine
+
+The parser doctrine is:
+
+The parser detects possible events.
+The parser does not create truth.
+The parser does not mutate gameplay state.
+The parser does not decide canon.
+The parser does not bypass validation.
+
+The parser output is a ParserHit.
+
+A ParserHit is not an accepted event.
+
+A ParserHit is only evidence that later systems may turn into an EventProposal.
+
+⸻
+
+2. Why this chunk is a shell, not full parser automation
+
+Build Chunk 9 should not activate the full game parser all at once.
+
+The first parser implementation should be conservative and structurally correct.
+
+It should prove:
+
+* source suppression works
+* command output is ignored
+* context/card/debug text is ignored
+* safety flags are detected
+* input is intent only
+* output can produce candidate hits
+* parser hits have the right shape
+* parser hits do not mutate state
+* parser output is capped and auditable
+
+Full event interpretation belongs to later proposal, validator, and reducer chunks.
+
+⸻
+
+3. Placement in final script
+
+EventScannerLite belongs in:
+
+Section 12 — Event Scanner Lite Shell
+
+It depends on:
+
+Constants
+Utils
+Runtime read-only suppression status
+AuditLogger for debug/proposal-shell audit if needed
+
+It must not depend on:
+
+ReducerRegistry
+InventoryReducer
+QuestReducerLite
+AbilityReducer
+ProgressionReducerLite
+CardSyncLite
+ContextBuilderLite mutation
+StateManager gameplay repair
+
+EventScannerLite may read state lightly for source suppression or current parser mode, but should avoid heavy world scans.
+
+⸻
+
+4. Parser responsibilities
+
+EventScannerLite owns:
+
+* deciding whether a text source is eligible to scan
+* splitting current text into safe windows/clauses
+* detecting safety flags
+* detecting broad event-family hints
+* emitting ParserHit records
+* capping parser hits
+* recording parser shell audit if useful
+
+EventScannerLite does not own:
+
+* creating EventProposal objects
+* resolving exact canonical targets
+* validating events
+* mutating inventory
+* mutating abilities
+* mutating quests
+* mutating actors
+* mutating places
+* mutating time
+* awarding XP
+* paying rewards
+* creating Story Cards
+
+⸻
+
+5. Required EventScannerLite public functions
+
+The final script should provide these functions or equivalents.
+
+EventScannerLite.shouldScanSource(sourceInfo, root)
+EventScannerLite.scanInput(text, root)
+EventScannerLite.scanOutput(text, root)
+EventScannerLite.scanText(text, sourceHook, root)
+EventScannerLite.splitIntoWindows(text)
+EventScannerLite.detectSafetyFlags(windowText)
+EventScannerLite.detectFamilyHints(windowText, flags, sourceHook)
+EventScannerLite.makeHit(data)
+EventScannerLite.capHits(hits, maxHits)
+EventScannerLite.rejectNonCanonSource(reason)
+EventScannerLite.isCommandOutput(text, root)
+EventScannerLite.isAidRpgDiagnosticText(text)
+EventScannerLite.auditScan(root, summary)
+
+Names may change in code, but the responsibilities must exist.
+
+⸻
+
+6. Parser source authority
+
+Parser must respect source authority.
+
+Allowed scan sources in MVP shell:
+
+input
+output
+
+Disallowed scan sources:
+
+command_output
+context
+story_card
+protected_card
+generated_card
+debug
+audit
+help
+releasecheck
+migration_log
+old_log
+archive
+unknown_noncanon
+
+6.1 Input source rule
+
+Input can create intent/attempt hits only.
+
+Input must not create completed success hits.
+
+Example:
+
+I take the sword.
+
+Input hit may be:
+
+item_take_attempt
+completedAction = false
+attemptOnly = true
+
+Input must not add sword to inventory.
+
+6.2 Output source rule
+
+Output can create possible completed consequence hits if wording is clear and safe.
+
+Example:
+
+You pick up the sword.
+
+Output hit may be:
+
+inventory.item_pickup
+completedAction = true
+
+But the parser still does not commit.
+
+6.3 Command output rule
+
+Command output is never a gameplay source.
+
+Any text beginning with:
+
+[AIDRPG]
+
+should be treated as non-canon diagnostic/command text unless explicitly proven otherwise by the hook contract.
+
+⸻
+
+7. SourceInfo schema
+
+Parser source checks should use a source info object when possible.
+
+SourceInfo {
+  sourceHook: 'input' | 'output' | 'context' | 'command' | 'manual' | 'migration' | 'setup' | 'system' | 'unknown',
+  textHash: string,
+  isCommandOutput: boolean,
+  isContextText: boolean,
+  isCardText: boolean,
+  isAuditText: boolean,
+  isDebugText: boolean,
+  isHelpText: boolean,
+  scanAllowed: boolean,
+  reason: string
+}
+
+For early v0.1, the sourceInfo may be simple, but the distinction must be planned.
+
+⸻
+
+8. ParserHit schema
+
+Every parser hit must use the universal ParserHit schema from Gap Chunk D.
+
+ParserHit {
+  hitId: string,
+  sourceHook: 'input' | 'output' | 'manual' | 'migration' | 'setup',
+  rawText: string,
+  normalizedText: string,
+  matchedText: string,
+  eventFamily: string,
+  eventType: string,
+  subjectText: string,
+  objectText: string,
+  actorText: string,
+  itemText: string,
+  placeText: string,
+  questText: string,
+  abilityText: string,
+  completedAction: boolean,
+  attemptOnly: boolean,
+  negated: boolean,
+  hypothetical: boolean,
+  quotedSpeech: boolean,
+  dreamOrVision: boolean,
+  rumorOrClaim: boolean,
+  failedOrRevoked: boolean,
+  conditional: boolean,
+  futureIntent: boolean,
+  confidence: number,
+  truthStatus: string,
+  evidenceType: string,
+  parserNotes: string[]
+}
+
+8.1 Required safe defaults
+
+If a field is unknown, use safe defaults:
+
+completedAction = false
+attemptOnly = true if sourceHook is input or wording is unclear
+negated = false unless detected
+hypothetical = false unless detected
+quotedSpeech = false unless detected
+dreamOrVision = false unless detected
+rumorOrClaim = false unless detected
+failedOrRevoked = false unless detected
+conditional = false unless detected
+futureIntent = false unless detected
+confidence = low/moderate, not high by default
+truthStatus = 'unknown' or 'observed' depending family
+evidenceType = 'parser_shell'
+parserNotes = []
+
+8.2 Hit ID rule
+
+Hit IDs should be stable enough for audit, not random-only.
+
+Recommended pattern:
+
+hit.<sourceHook>.<eventFamily>.<hash(windowText)>.<index>
+
+⸻
+
+9. Text normalization rules
+
+Parser normalization should be safe and meaning-preserving.
+
+9.1 Normalize for matching
+
+Allowed:
+
+* convert to safe string
+* trim leading/trailing whitespace
+* collapse repeated whitespace
+* create lowercase matching copy
+* normalize curly quotes to plain quotes for quote detection
+
+9.2 Do not strip safety words
+
+Never remove or ignore safety words like:
+
+not
+never
+no
+don't
+didn't
+can't
+failed
+almost
+could
+might
+would
+if
+unless
+dream
+vision
+rumor
+says
+claims
+will
+later
+
+These words often decide whether a hit is safe.
+
+9.3 Raw text preservation
+
+Every hit must keep a raw/matched text preview for audit.
+
+Do not store huge full output text in every hit.
+
+Use window text and short previews.
+
+⸻
+
+10. Window splitting rules
+
+Parser should scan current input/output text in windows, not the whole campaign history.
+
+10.1 Window sources
+
+Windows may be:
+
+* sentences
+* clauses
+* short line segments
+* command-free text chunks
+
+10.2 Why windows matter
+
+Output:
+
+You reach for the sword, but Mara stops you. The dagger falls to the ground.
+
+The parser should not treat the whole paragraph as a successful sword pickup.
+
+Each candidate should be considered in its clause/window.
+
+10.3 MVP window limit
+
+Recommended early limits:
+
+maxInputTextLengthToParse = 3000 characters
+maxOutputTextLengthToParse = 5000 characters
+maxWindows = 30
+maxWindowLength = 500 characters
+
+If exceeded:
+
+* scan first safe windows or highest relevance windows
+* audit skip if needed
+* do not crash
+
+⸻
+
+11. Safety flag detection shell
+
+EventScannerLite must detect key safety flags before family-specific parsing.
+
+Required flags:
+
+negated
+hypothetical
+attemptOnly
+failedOrRevoked
+quotedSpeech
+rumorOrClaim
+dreamOrVision
+conditional
+futureIntent
+
+These flags must be included in every ParserHit.
+
+⸻
+
+12. Negation detection
+
+12.1 Markers
+
+Detect negation markers such as:
+
+not
+never
+no longer
+doesn't
+didn't
+do not
+don't
+cannot
+can't
+without taking
+refuse
+refuses
+decline
+declines
+avoid
+avoids
+stop short of
+fail to
+fails to
+
+12.2 Examples
+
+You do not take the sword.
+
+Hit may be item-related, but:
+
+negated = true
+completedAction = false for pickup success
+Old Bren refuses to pay you.
+
+Hit may be reward-related, but:
+
+negated/failedOrRevoked = true
+no payment success
+
+⸻
+
+13. Hypothetical detection
+
+13.1 Markers
+
+could
+might
+may
+would
+should
+if you wanted
+possible
+possibly
+perhaps
+maybe
+imagine
+suppose
+in theory
+
+13.2 Examples
+
+You could take the ring.
+
+Result:
+
+hypothetical = true
+completedAction = false
+Perhaps Old Bren would pay you later.
+
+Result:
+
+hypothetical = true
+futureIntent = true maybe
+no payment success
+
+⸻
+
+14. Attempt detection
+
+14.1 Markers
+
+try to
+tries to
+attempt to
+attempts to
+reach for
+start to
+begin to
+prepare to
+move to
+aim to
+plan to
+intend to
+head toward
+set out for
+
+14.2 Examples
+
+You try to pick up the gem.
+
+Result:
+
+attemptOnly = true
+completedAction = false
+I head toward the chapel.
+
+Input result:
+
+place.location_intent
+attemptOnly = true
+completedAction = false
+
+⸻
+
+15. Failure/revocation detection
+
+15.1 Markers
+
+fails
+failed
+fizzles
+nothing happens
+no effect
+collapses
+breaks apart
+slips away
+drops before you can take it
+vanishes before you touch it
+refuses
+backfires
+is interrupted
+is stopped
+is blocked
+is denied
+almost
+pulls it back
+
+15.2 Examples
+
+The spell fizzles.
+
+Result:
+
+failedOrRevoked = true
+no stable ability success
+Mara almost hands you the pouch, then pulls it back.
+
+Result:
+
+failedOrRevoked = true
+no item transfer success
+
+⸻
+
+16. Quoted speech detection
+
+16.1 Quote markers
+
+Detect spans inside:
+
+"..."
+'...'
+“...”
+‘...’
+
+Also detect reported speech frames:
+
+says
+said
+tells you
+asks
+commands
+orders
+reads
+is written
+
+16.2 Examples
+
+Mara says, "Take the key."
+
+Result:
+
+quotedSpeech = true
+actor speech/request, not item acquisition
+The scroll reads, "Shadow Step bends space."
+
+Result:
+
+quotedSpeech = true
+information/hint only, not stable ability
+
+⸻
+
+17. Rumor/claim detection
+
+17.1 Markers
+
+rumor
+people say
+it is said
+claims
+claimed
+says
+said
+tells you
+mentions
+heard that
+supposedly
+allegedly
+believed to be
+
+17.2 Examples
+
+People say Lord Veyr killed Dalen.
+
+Result:
+
+rumorOrClaim = true
+truthStatus = 'rumored'
+no confirmed murder fact
+Mara claims she owns the sword.
+
+Result:
+
+rumorOrClaim = true
+truthStatus = 'claimed'
+no automatic custody transfer
+
+⸻
+
+18. Dream/vision/illusion detection
+
+18.1 Markers
+
+dream
+vision
+hallucination
+memory flash
+prophecy
+nightmare
+illusion
+imagines
+in your mind
+symbolic
+
+18.2 Examples
+
+In your dream, you receive the Crown of Dawn.
+
+Result:
+
+dreamOrVision = true
+no real inventory item
+A vision shows you standing in the Ash Shrine.
+
+Result:
+
+dreamOrVision = true
+no current location change
+
+⸻
+
+19. Conditional and future intent detection
+
+19.1 Conditional markers
+
+if
+unless
+when you
+once you
+provided that
+as long as
+should you
+
+19.2 Future markers
+
+will
+shall
+going to
+later
+tomorrow
+soon
+next time
+
+19.3 Examples
+
+Old Bren will pay you 15 gold if you clear the wolves.
+
+Result:
+
+conditional = true
+futureIntent = true
+reward promise, not payment
+Mara says she will give you the sword tomorrow.
+
+Result:
+
+futureIntent = true
+no item acquisition
+
+⸻
+
+20. Event family hint detection
+
+EventScannerLite should identify broad event families without committing state.
+
+Initial families:
+
+item
+handoff
+ability
+body
+quest
+reward
+actor
+place
+time
+progression
+unknown
+
+20.1 Family hint is not proposal ownership
+
+A family hint only says:
+
+This text might matter to that system.
+
+It does not decide:
+
+* target entity
+* final event type
+* validity
+* state mutation
+
+⸻
+
+21. Item family shell
+
+21.1 Detect possible item mentions
+
+Item family shell may detect patterns like:
+
+you see X
+there is X
+X lies nearby
+X drops Y
+you pick up X
+you take X
+you collect X
+you drop X
+you lose X
+
+21.2 Output hit examples
+
+You see a silver ring on the table.
+
+Hit:
+
+eventFamily = 'item'
+eventType = 'item_visible_candidate'
+completedAction = true
+truthStatus = 'observed'
+You pick up the rusty dagger.
+
+Hit:
+
+eventFamily = 'item'
+eventType = 'item_pickup_candidate'
+completedAction = true
+
+21.3 Input hit examples
+
+I take the rusty dagger.
+
+Hit:
+
+eventFamily = 'item'
+eventType = 'item_pickup_attempt'
+attemptOnly = true
+completedAction = false
+
+21.4 Must not
+
+Item parser shell must not:
+
+* add item to inventory
+* move scene item to owned
+* equip item
+* consume item
+* create currency
+
+⸻
+
+22. Handoff family shell
+
+22.1 Detect possible handoff language
+
+Patterns:
+
+hands you
+gives you
+passes you
+places X in your hand
+slips X into your pouch
+returns X to you
+you accept X from
+receive X from
+
+22.2 Rejected handoff patterns should still flag safety
+
+Examples:
+
+Mara will give you the sword tomorrow.
+Mara says, "Take the key."
+Mara almost hands you the pouch.
+Mara offers the ring, but you refuse.
+
+These may produce handoff-related hits but with safety flags that prevent success later.
+
+22.3 Must not
+
+Handoff shell must not transfer custody.
+
+It only records possible handoff text.
+
+⸻
+
+23. Ability family shell
+
+23.1 Detect possible ability mentions
+
+Patterns:
+
+you cast X
+you use X
+X activates
+X fizzles
+nothing happens
+ability
+spell
+skill
+power
+passive
+talent
+
+23.2 Input attempt
+
+I try to use Shadow Step.
+
+Hit:
+
+eventFamily = 'ability'
+eventType = 'ability_attempt_candidate'
+attemptOnly = true
+completedAction = false
+
+23.3 Output success/failure candidates
+
+Shadow Step fizzles.
+
+Hit:
+
+eventFamily = 'ability'
+eventType = 'ability_failure_candidate'
+failedOrRevoked = true
+completedAction = false
+Mana Slash erupts from your blade.
+
+Hit:
+
+eventFamily = 'ability'
+eventType = 'ability_success_candidate'
+completedAction = true
+
+23.4 Must not
+
+Ability shell must not:
+
+* create stable abilities
+* spend MP/EP
+* create generated ability card
+* unseal ability
+* add permanent stat/trait
+
+⸻
+
+24. Body family shell
+
+24.1 Detect body/status hints
+
+Patterns:
+
+you are hit
+you are struck
+you are wounded
+you bleed
+you are poisoned
+you recover
+you heal
+you regain MP
+you are exhausted
+
+24.2 Must not
+
+Body shell must not:
+
+* change HP/MP/EP
+* add conditions
+* heal injuries
+* kill player
+
+It only emits body-related hits.
+
+⸻
+
+25. Quest/reward family shell
+
+25.1 Quest patterns
+
+asks you to
+requests that you
+job
+quest
+contract
+objective
+complete
+completed
+clear the wolves
+deliver the letter
+
+25.2 Reward patterns
+
+promises X gold
+offers X if
+will pay
+pays you
+hands you your reward
+gives you the promised coins
+
+25.3 Must distinguish promise vs payment flags
+
+Old Bren promises to pay you 15 gold.
+
+Hit:
+
+eventFamily = 'reward'
+eventType = 'reward_promise_candidate'
+futureIntent/conditional maybe true
+completedAction = false for payment
+Old Bren pays you 15 gold.
+
+Hit:
+
+eventFamily = 'reward'
+eventType = 'reward_payment_candidate'
+completedAction = true
+
+Still not committed.
+
+25.4 Must not
+
+Quest/reward shell must not:
+
+* activate quests
+* complete objectives
+* add currency
+* pay rewards
+* award XP
+
+⸻
+
+26. Actor family shell
+
+26.1 Detect actor hints
+
+Patterns:
+
+named actor appears
+Mara says
+Captain Mora enters
+Old Bren asks
+A guard approaches
+
+26.2 Generic actor rule
+
+Generic actors like:
+
+a guard
+a stranger
+a merchant
+someone
+
+may be scene-actor candidates only later.
+
+Parser shell should not promote them.
+
+26.3 Relation phrase caution
+
+If text includes:
+
+Mara's sister
+Joren's son
+Captain Mora's guard
+
+parser should preserve full phrase and note relation risk.
+
+Do not resolve as base actor in parser.
+
+26.4 Must not
+
+Actor shell must not:
+
+* create persistent actors
+* change presence
+* confirm claims
+* kill actors
+* transfer item custody
+
+⸻
+
+27. Place/time/progression family shells
+
+27.1 Place patterns
+
+head toward X
+set out for X
+arrive at X
+reach X
+enter X
+
+Input:
+
+I head toward chapel.
+
+Hit:
+
+place.location_intent_candidate
+completedAction = false
+
+Output:
+
+You arrive at the chapel.
+
+Hit:
+
+place.location_arrival_candidate
+completedAction = true
+
+Parser still does not move player.
+
+27.2 Time patterns
+
+an hour passes
+minutes later
+morning comes
+you sleep through the night
+
+Parser shell emits time candidates only.
+
+It does not advance time.
+
+27.3 Progression patterns
+
+you gain 20 XP
+Strength increases by 1
+you level up
+
+Parser shell may emit progression candidates only if explicit.
+
+It does not award XP or levels.
+
+27.4 Must not
+
+These shells must not:
+
+* change current location
+* advance time
+* age player
+* add XP
+* increase stats
+
+⸻
+
+28. Confidence defaults
+
+Parser confidence is preliminary.
+
+Suggested initial confidence:
+
+clear output completed action = 0.70 to 0.75
+player input intent = 0.45 to 0.55
+quoted speech = 0.25 to 0.35
+rumor = 0.20 to 0.30
+hypothetical = 0.15 to 0.25
+dream/vision = 0.15 to 0.25
+negated success = 0.05
+command/context/card/audit source = 0.00 and scan rejected
+
+28.1 Confidence cannot override flags
+
+A hit with strong words but bad safety flags must not become canon later.
+
+Example:
+
+In a dream, you receive the Crown of Dawn.
+
+Even though the phrase says receive, dream flag blocks real acquisition.
+
+⸻
+
+29. Parser output caps
+
+Recommended caps:
+
+maxInputParserHits = 10
+maxOutputParserHits = 20
+maxWindows = 30
+maxHitPreviewLength = 160
+maxParserAuditLines = 10 per turn
+
+If caps are exceeded:
+
+* keep higher-confidence/high-safety hits first if cheap
+* otherwise keep first hits and audit skip
+* do not crash
+* do not scan entire history to compensate
+
+⸻
+
+30. Parser audit summary
+
+Parser audit should be compact.
+
+Possible summary:
+
+Parser shell scanned output: 4 windows, 2 hits, 1 skipped by command/context suppression.
+
+Possible hit summary:
+
+Parser hit: item_pickup_candidate from output, matched "pick up the rusty dagger", completedAction=true.
+
+Do not store huge full text.
+
+⸻
+
+31. Parser and Runtime relationship
+
+Runtime decides when parser may run.
+
+Parser must only run after Runtime confirms:
+
+* source is Output hook or Input intent shell
+* command output suppression did not trigger
+* duplicate output replay did not trigger
+* text is not [AIDRPG] diagnostic output
+* parser feature/shell mode allows scanning
+
+Parser should still have its own non-canon source rejection as a backup.
+
+⸻
+
+32. Parser and CommandRouter relationship
+
+CommandRouter handles commands in Input hook.
+
+Parser must not parse command text.
+
+Input:
+
+/inventory
+
+must never produce item hits.
+
+Command output beginning with [AIDRPG] must never produce hits.
+
+⸻
+
+33. Parser and ProposalBuilder relationship
+
+Parser produces ParserHits.
+
+ProposalBuilder later converts ParserHits to EventProposals.
+
+Forbidden path:
+
+ParserHit -> Reducer
+
+Allowed path:
+
+ParserHit -> ProposalBuilder -> CanonValidator -> ReducerRegistry -> OwnerReducer
+
+Build Chunk 9 stops at ParserHit.
+
+⸻
+
+34. Parser and AuditLogger relationship
+
+Parser may call AuditLogger for summary/debug only.
+
+Parser audit must not become gameplay source.
+
+Parser should not over-audit every tiny hit forever.
+
+Use caps.
+
+⸻
+
+35. Parser and StateManager relationship
+
+Parser assumes StateManager already initialized state.
+
+Parser must not repair state.
+
+Parser must not use StateManager as a hidden mutation path.
+
+If parser detects malformed state dependency, it should return no hits and audit warning, not repair gameplay.
+
+⸻
+
+36. Parser and Story Cards
+
+Parser must not scan Story Card text.
+
+Parser must not scan protected card text.
+
+Parser must not scan generated card text.
+
+Parser must not create Story Cards.
+
+Generated cards remain disabled.
+
+⸻
+
+37. Early v0.1 activation level
+
+For Core MVP v0.1 foundation, parser can be in one of two acceptable modes.
+
+37.1 Inert shell mode
+
+EventScannerLite exists but returns no hits.
+
+It reports:
+
+Parser shell present; full scanning disabled.
+
+This is acceptable only before parser tests are needed.
+
+37.2 Safe hit shell mode
+
+EventScannerLite detects safety flags and a limited set of family hints, returning ParserHits.
+
+It still does not create proposals or mutate state.
+
+Preferred for Build Chunk 9 implementation.
+
+⸻
+
+38. Parser releasecheck requirements
+
+ReleaseCheck must verify:
+
+* parser exists or is honestly marked shell-only
+* parser cannot mutate state directly
+* parser source suppression exists
+* command output cannot be parsed
+* context/card/audit/help text cannot be parsed
+* ParserHit schema includes safety flags
+* input parser produces intent/attempt only
+* output parser gated by Runtime duplicate/suppression checks
+* parser hit caps exist
+
+ReleaseCheck must fail if:
+
+* parser writes inventory/quests/abilities/XP directly
+* parser scans command output
+* parser scans Story Card text as canon
+* parser omits safety flags
+* parser treats player input as completed success
+
+ReleaseCheck may warn if:
+
+* parser shell is present but not fully active
+* family detection is limited
+* resolver/proposal/validator not active yet
+
+⸻
+
+39. Required parser tests
+
+BC9-001 — Parser does not mutate state
+
+Input/output text:
+
+You pick up the rusty dagger.
+
+Action:
+
+Run parser shell only.
+
+Expected:
+
+* ParserHit may be emitted
+* inventory unchanged
+
+Fail if:
+
+* dagger added to inventory
+
+⸻
+
+BC9-002 — Command input not parsed
+
+Input:
+
+/inventory
+
+Expected:
+
+* CommandRouter handles it
+* EventScannerLite not called or returns no hits
+
+Fail if:
+
+* parser treats /inventory as story
+
+⸻
+
+BC9-003 — Command output prefix suppressed
+
+Text:
+
+[AIDRPG] Inventory
+- Rusty Dagger
+
+Expected:
+
+* parser rejects as diagnostic/command output
+* no item hit
+
+Fail if:
+
+* Rusty Dagger hit emitted from command output
+
+⸻
+
+BC9-004 — Context text not parsed
+
+Context text:
+
+The Iron Sword is in Mara's custody.
+
+Source:
+
+context
+
+Expected:
+
+* scan rejected
+* no item/custody hit
+
+Fail if:
+
+* context reminder creates hit for gameplay commit
+
+⸻
+
+BC9-005 — Story Card text not parsed
+
+Card text:
+
+Player owns Crown of Dawn.
+
+Source:
+
+story_card
+
+Expected:
+
+* scan rejected
+* no Crown hit
+
+Fail if:
+
+* card prose creates parser hit for acquisition
+
+⸻
+
+BC9-006 — Input is attempt only
+
+Input:
+
+I take the jeweled crown.
+
+Expected:
+
+* item attempt hit may be emitted
+* completedAction=false
+* attemptOnly=true
+* inventory unchanged
+
+Fail if:
+
+* completedAction=true from input alone or item added
+
+⸻
+
+BC9-007 — Output pickup candidate
+
+Output:
+
+You pick up the rusty dagger.
+
+Expected:
+
+* item_pickup_candidate hit
+* completedAction=true
+* no inventory mutation
+
+Fail if:
+
+* no hit in active safe-hit mode, or state mutates
+
+⸻
+
+BC9-008 — Visible item not pickup
+
+Output:
+
+You see a silver ring on the table.
+
+Expected:
+
+* item_visible_candidate hit
+* not item_pickup_candidate
+* inventory unchanged
+
+Fail if:
+
+* pickup hit or owned item created
+
+⸻
+
+BC9-009 — Available loot not pickup
+
+Output:
+
+The goblin drops a rusty dagger.
+
+Expected:
+
+* item_available_loot_candidate hit
+* not owned inventory
+
+Fail if:
+
+* item pickup success emitted/committed
+
+⸻
+
+BC9-010 — Negated pickup flagged
+
+Output:
+
+You do not take the sword.
+
+Expected:
+
+* item-related hit may exist
+* negated=true
+* completedAction=false for pickup success
+
+Fail if:
+
+* successful pickup candidate without negation
+
+⸻
+
+BC9-011 — Hypothetical flagged
+
+Output:
+
+You could take the jeweled cup if you wanted.
+
+Expected:
+
+* hypothetical=true
+* completedAction=false
+
+Fail if:
+
+* successful pickup candidate
+
+⸻
+
+BC9-012 — Dream item flagged
+
+Output:
+
+In a dream, you receive the Crown of Dawn.
+
+Expected:
+
+* dreamOrVision=true
+* no real pickup success
+
+Fail if:
+
+* acquisition candidate lacks dream flag
+
+⸻
+
+BC9-013 — Quoted handoff flagged
+
+Output:
+
+Mara says, "Take the iron key."
+
+Expected:
+
+* quotedSpeech=true
+* actor speech/request hit possible
+* no item handoff success
+
+Fail if:
+
+* item acquisition success hit
+
+⸻
+
+BC9-014 — Future handoff flagged
+
+Output:
+
+Mara says she will give you the sword tomorrow.
+
+Expected:
+
+* futureIntent=true
+* no current handoff success
+
+Fail if:
+
+* current transfer hit without future flag
+
+⸻
+
+BC9-015 — Failed ability flagged
+
+Output:
+
+You attempt Shadow Step, but nothing happens.
+
+Expected:
+
+* ability hit
+* attemptOnly=true or failedOrRevoked=true
+* no stable ability creation
+
+Fail if:
+
+* ability success/stable implication
+
+⸻
+
+BC9-016 — Rumor flagged
+
+Output:
+
+People say Lord Veyr killed Dalen.
+
+Expected:
+
+* actor/claim hit possible
+* rumorOrClaim=true
+* truthStatus rumored/claimed
+
+Fail if:
+
+* confirmed fact hit
+
+⸻
+
+BC9-017 — Travel intent not arrival
+
+Input:
+
+I head toward the chapel.
+
+Expected:
+
+* place intent hit
+* completedAction=false
+
+Fail if:
+
+* arrival candidate from input alone
+
+⸻
+
+BC9-018 — Confirmed arrival candidate
+
+Output:
+
+After a short walk, you arrive at the chapel.
+
+Expected:
+
+* place arrival candidate
+* completedAction=true
+* no state mutation
+
+Fail if:
+
+* current location changed by parser
+
+⸻
+
+BC9-019 — Explicit XP candidate only
+
+Output:
+
+You gain 20 XP.
+
+Expected:
+
+* progression XP candidate hit if safe-hit mode active
+* no XP added
+
+Fail if:
+
+* XP mutates progression directly
+
+⸻
+
+BC9-020 — Vague experience not XP
+
+Output:
+
+This was a learning experience.
+
+Expected:
+
+* no XP candidate or low-confidence non-XP note
+
+Fail if:
+
+* XP gain candidate emitted
+
+⸻
+
+BC9-021 — Hit cap enforced
+
+Output contains many repeated candidate phrases.
+
+Expected:
+
+* hits capped at maxOutputParserHits
+* audit skip if needed
+* no crash
+
+Fail if:
+
+* unbounded hits
+
+⸻
+
+BC9-022 — Parser does not scan full history
+
+Given long campaign history, parser receives current output only.
+
+Expected:
+
+* scans current text/window only
+* no full-history parse
+
+Fail if:
+
+* parser loops over entire history every output
+
+⸻
+
+BC9-023 — ReleaseCheck catches parser mutation risk
+
+Test unsafe parser direct-write flag/path.
+
+Expected:
+
+* releasecheck FAIL
+
+Fail if:
+
+* releasecheck passes unsafe parser
+
+⸻
+
+BC9-024 — Parser shell honesty
+
+If parser is inert shell mode:
+
+Expected:
+
+* /debuglast or /releasecheck says parser shell inactive/limited
+* no false claim of full parser
+
+Fail if:
+
+* system claims full parsing active while returning no hits
+
+⸻
+
+40. Parser acceptance checklist
+
+Build Chunk 9 is complete when implementation will clearly support:
+
+* source authority checks
+* command output rejection
+* context/card/audit/help text rejection
+* ParserHit schema
+* safety flags on every hit
+* safe normalization
+* window splitting
+* hit caps
+* input intent-only scanning
+* output candidate scanning
+* item/handoff/ability/body/quest/reward/actor/place/time/progression family shells
+* no direct state mutation
+* audit summary
+* releasecheck parser safety checks
+* tests BC9-001 through BC9-024
+
+⸻
+
+41. Relationship to previous build chunks
+
+Build Chunk 9 depends on:
+
+* Build Chunk 1 for MVP scope and deferred systems
+* Build Chunk 2 for section placement and forbidden call paths
+* Build Chunk 3 for state ownership boundaries
+* Build Chunk 4 for command output non-canon formats
+* Build Chunk 5 for StateManager-first initialization
+* Build Chunk 6 for runtime command suppression and duplicate output gating
+* Build Chunk 7 for parser audit support
+* Build Chunk 8 for command routing and [AIDRPG] command output prefix
+* Gap Chunk D for parser rulebook, resolver/name/trigger safety
+
+⸻
+
+42. What Build Chunk 10 should do next
+
+Next build document:
+
+Build Chunk 10 — EventProposal and ProposalBuilder Plan
+
+Build Chunk 10 should plan:
+
+* EventProposal schema
+* how ParserHits become proposals
+* sourceHook preservation
+* resolver result placeholders
+* confidence/truth status transfer
+* operation key suggestions
+* proposal caps
+* proposal audit
+* no validation bypass
+* proposal tests
+
+Build Chunk 10 should not yet implement owner reducers.
+
+⸻
+
+43. Final Build Chunk 9 doctrine
+
+The parser is a detector, not a judge.
+
+The parser is a witness, not a reducer.
+
+The parser can notice dangerous language, but it cannot decide truth.
+
+Final rule:
+
+Scan only allowed sources.
+Flag danger words.
+Emit ParserHits.
+Never mutate state.
+Never parse commands, context, cards, or audits.
+Never treat player input as completed success.
+
+With EventScannerLite planned, the next safe step is the EventProposal and ProposalBuilder plan.

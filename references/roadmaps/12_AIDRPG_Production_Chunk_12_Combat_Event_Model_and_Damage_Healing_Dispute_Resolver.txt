@@ -1,0 +1,2032 @@
+# AIDRPG Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 12 — Combat Event Model and Damage/Healing Dispute Resolver  
+**Production sequence:** 12 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.11 stats/invariants accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add a conservative combat event model, attack/result separation, damage/healing dispute resolution, duplicate-safe combat operation keys, body/resource integration, combat display support, and combat regression gates without activating full advanced combat automation.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 11 — Stats, Derived Values, Conditions, and Invariant Checker.  
+**This document does not contain final script code.**
+
+Production Chunk 12 exists because combat is where AI Dungeon scripts can break the fastest.
+
+Old and rough builds often risked:
+
+```text
+player input attack automatically damaging enemies
+model narration applying damage twice
+miss/block/graze text still applying full damage
+healing from item names without validated use
+healing from /status or context text
+armor/equipment bonuses applying without formulas
+ability names becoming damage rules
+NPC death from rumor/threat/metaphor
+player death from dramatic wording
+combat victory granting XP automatically
+duplicate combat output repeating damage, healing, loot, XP, and death
+```
+
+This chunk creates combat as a structured event system. It does **not** build the full advanced combat engine. It does **not** attempt full tactical AI, encounter balancing, party combat, warfare, absorption, or creature-specific advanced logic. It creates the safe baseline needed before those systems can exist.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+An attack attempt is not a hit.
+A hit is not damage until validated.
+Damage is not death until the death boundary validates it.
+Healing is not recovery unless a healing/recovery event validates it.
+A miss is not damage.
+A block is not full damage.
+A graze is not full damage unless validated.
+Input intent cannot force outcome.
+Output contradiction beats input prediction.
+Duplicate output cannot repeat damage or healing.
+Combat victory is not XP unless exact XP is separately validated.
+```
+
+Combat truth must be proposal-based, outcome-aware, duplicate-safe, and integrated with Body/Stats without bypassing them.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 11 made stats, resources, conditions, derived values, and invariants safer.
+
+Combat comes now because it uses:
+
+```text
+body resources
+injuries
+conditions
+stat/derived labels
+inventory/equipment records
+ability status/evidence
+actor presence
+place/scene context
+XP/progression boundaries
+operation ledgers
+invariant checks
+```
+
+If combat is built before these layers, it becomes a pile of special cases. This chunk makes combat an event model that can later be expanded into advanced combat, creature ecology, party/summon handling, and warfare.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 12 may change:
+
+```text
+Combat schema helpers
+CombatEventReducer / CombatReducerLite shell
+CombatDisputeResolver
+DamageResolver shell
+HealingResolver shell
+CanonValidator combat/damage/healing rules
+ProposalBuilder combat event types
+EventScannerLite combat hints
+CommandRenderers /status, optional /combat
+ContextBuilder combat/body packet
+OperationLedger combat/damage/healing/death keys
+DirtyQueue combat/body/social targets
+IntegrityChecker combat checks
+ReleaseCheck combat gates
+Regression/player-breaker combat tests
+```
+
+Production Chunk 12 may add:
+
+```text
+CombatEventRecord schema
+CombatantRecord / CombatantSnapshot schema
+AttackAttemptRecord schema
+DefenseResultRecord schema
+DamageRecord schema
+HealingRecord schema
+CombatDisputeRecord schema
+CombatOutcomeRecord schema
+CombatSceneState schema
+combat result status model
+damage/healing split-owner contract with BodyReducer
+combat audit summaries
+```
+
+Production Chunk 12 may not add:
+
+```text
+full advanced combat automation
+full enemy stat generation
+full initiative/turn-order engine unless shell-only
+full equipment stat bonus engine
+full spell damage formula engine
+full creature ecology combat rules
+party/summon control
+warfare/group combat
+absorption/evolution on kill
+automatic combat XP
+manual /damage /heal /kill commands
+```
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+CombatState helpers
+CombatReducerLite / CombatEventReducer
+CombatDisputeResolver
+DamageResolver shell
+HealingResolver shell
+BodyReducer integration boundary
+ActorReducer reference boundary
+Inventory/equipment read-only references
+Ability read-only references
+Stats/derived read-only references
+CanonValidator combat rules
+ProposalBuilder combat proposals
+EventScannerLite combat hints
+CommandRenderers: /status, optional /combat
+ContextBuilderLite combat/body packet
+OperationLedger combat keys
+DirtyQueue combat/body dirty targets
+AuditLogger combat lines
+InvariantChecker combat checks
+ReleaseCheckLite PC12 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+ProgressionReducer except no automatic combat XP
+InventoryReducer except item use/hit references remain separate owner events
+AbilityReducer except ability use evidence remains separate owner event
+ActorReducer except actor status/death remains conservative and owner-routed
+PlaceReducer except scene danger labels only
+World threat/creature ecology systems
+Advanced combat systems
+Manual mutation commands
+CardSync live writes
+```
+
+---
+
+# 5. Combat state model
+
+Combat should have a bounded state area.
+
+Recommended shape:
+
+```text
+combat: {
+  active: false,
+  sceneState: null,
+  events: [],
+  recentAttempts: [],
+  recentOutcomes: [],
+  disputes: [],
+  warnings: [],
+  notes: []
+}
+```
+
+If no dedicated combat root exists, records may live in audits initially, but PC12 should prepare a stable `combat` bucket or equivalent. Combat state is not a full turn engine yet. It is an event ledger and dispute model.
+
+---
+
+# 6. Required combat schemas
+
+## 6.1 CombatSceneState
+
+```text
+CombatSceneState {
+  id,
+  active,
+  sceneKey,
+  placeKey,
+  combatantKeys,
+  threatLevelLabel,
+  lastCombatTurn,
+  startedTurn,
+  endedTurn,
+  status,
+  sourceOperationKey,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+none
+threatening
+engaged
+retreating
+resolved
+unknown
+```
+
+Rules:
+
+```text
+combat scene state is context/support, not automatic damage
+combat active does not mean every output causes damage
+combat resolved does not grant XP/loot by itself
+```
+
+## 6.2 CombatantSnapshot
+
+```text
+CombatantSnapshot {
+  id,
+  combatantKey,
+  combatantType,
+  displayName,
+  actorKey,
+  player,
+  presenceStatus,
+  bodyKnown,
+  resourceKnown,
+  threatLabel,
+  equipmentRefs,
+  abilityRefs,
+  conditionRefs,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Combatant types:
+
+```text
+player
+actor
+creature_deferred
+generic_enemy
+object
+hazard
+unknown
+```
+
+## 6.3 CombatEventRecord
+
+```text
+CombatEventRecord {
+  id,
+  key,
+  eventType,
+  attackerKey,
+  defenderKey,
+  sourceType,
+  sourceOperationKey,
+  sourceEventId,
+  localClauseSummary,
+  resultStatus,
+  damageKey,
+  healingKey,
+  disputeKey,
+  createdTurn,
+  applied,
+  duplicateOf,
+  warnings,
+  notes
+}
+```
+
+Event types:
+
+```text
+attack_attempt
+defense_attempt
+hit_confirmed
+miss_confirmed
+block_confirmed
+graze_confirmed
+damage_candidate
+healing_candidate
+combat_status_change
+retreat_candidate
+capture_candidate
+death_candidate
+victory_candidate
+defeat_candidate
+unknown
+```
+
+Result statuses:
+
+```text
+intent_only
+pending
+accepted
+rejected
+disputed
+applied
+skipped_duplicate
+deferred
+```
+
+## 6.4 AttackAttemptRecord
+
+```text
+AttackAttemptRecord {
+  id,
+  attackerKey,
+  defenderKey,
+  method,
+  weaponKey,
+  abilityKey,
+  targetBodyPart,
+  intentSource,
+  sourceOperationKey,
+  createdTurn,
+  status,
+  notes
+}
+```
+
+Rules:
+
+```text
+input attack creates attempt only
+output confirms result
+attempt can help bind later output
+attempt does not apply damage
+```
+
+## 6.5 DefenseResultRecord
+
+```text
+DefenseResultRecord {
+  id,
+  attackerKey,
+  defenderKey,
+  resultType,
+  method,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Result types:
+
+```text
+miss
+dodge
+parry
+block
+armor_absorb
+graze
+partial_hit
+full_hit
+counter_deferred
+unknown
+```
+
+## 6.6 DamageRecord
+
+```text
+DamageRecord {
+  id,
+  key,
+  targetKey,
+  targetType,
+  amount,
+  amountKnown,
+  damageType,
+  severityLabel,
+  bodyPart,
+  injuryKey,
+  conditionKeys,
+  hpDelta,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  applied,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+known amount can affect HP if BodyReducer/resource rules allow
+unknown amount can create injury/severity label if validated
+injury/condition goes through BodyReducer or actor/body owner
+damage does not directly set death unless death boundary validates
+```
+
+## 6.7 HealingRecord
+
+```text
+HealingRecord {
+  id,
+  key,
+  targetKey,
+  targetType,
+  amount,
+  amountKnown,
+  healingType,
+  resourceKey,
+  conditionKey,
+  injuryKey,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  applied,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+healing requires accepted healing/recovery event
+item name alone is not healing
+rest intent is not healing
+command/context/card healing text is not healing
+healing must not exceed resource max unless policy says so
+revival/death reversal is deferred/high-risk unless explicitly specified
+```
+
+## 6.8 CombatDisputeRecord
+
+```text
+CombatDisputeRecord {
+  id,
+  key,
+  disputeType,
+  attackerKey,
+  defenderKey,
+  inputClaim,
+  outputClaim,
+  resolvedResult,
+  confidence,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Dispute types:
+
+```text
+input_claimed_hit_output_miss
+input_claimed_damage_output_block
+output_claimed_damage_without_hit
+healing_claimed_but_failed
+death_claimed_but_unsafe
+duplicate_output
+ambiguous_target
+ambiguous_amount
+unknown
+```
+
+## 6.9 CombatOutcomeRecord
+
+```text
+CombatOutcomeRecord {
+  id,
+  eventKey,
+  attackerKey,
+  defenderKey,
+  outcomeType,
+  appliedEffects,
+  blockedEffects,
+  deferredEffects,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Outcome types:
+
+```text
+attempt_only
+miss
+block
+graze
+hit_no_damage
+hit_with_damage
+healing_applied
+healing_failed
+capture
+retreat
+victory
+defeat
+death_pending
+death_confirmed
+unknown
+```
+
+---
+
+# 7. Combat CanonValidator expansion
+
+CanonValidator must enforce combat safety.
+
+## 7.1 Accept attack attempt when
+
+```text
+safe input/output includes attack/swing/shoot/cast/use-hostile intent
+target is bound enough
+source is not command/context/card/audit/debug
+```
+
+Result:
+
+```text
+attack_attempt only
+no damage yet unless output also confirms hit/damage
+```
+
+## 7.2 Accept miss/block/dodge when
+
+```text
+safe output directly says miss/dodge/parry/block/deflect/no effect
+attacker/defender target can be bound
+```
+
+Result:
+
+```text
+combat outcome records miss/block
+damage blocked/rejected unless separate accepted damage clause exists
+```
+
+## 7.3 Accept hit when
+
+```text
+safe output directly confirms hit/strike/connects/lands
+not metaphor/quote/dream
+not command/context/card source
+```
+
+Result:
+
+```text
+hit confirmed
+no numeric damage unless damage clause validates
+injury/severity may be proposed if direct physical consequence exists
+```
+
+## 7.4 Accept damage when
+
+```text
+safe output directly confirms wound, HP loss, injury, burn, bleeding, etc.
+target is bound
+not denied/blocked/missed/no effect
+operation key not duplicate
+```
+
+## 7.5 Accept healing when
+
+```text
+safe output directly confirms HP restored, wound closes, bleeding stops, poison fades, etc.
+target is bound
+not failed/no effect/attempt only
+operation key not duplicate
+```
+
+---
+
+# 8. Combat rejection rules
+
+Reject or defer when any are true:
+
+```text
+input-only attack tries to deal damage
+miss/dodge/parry with no damage clause
+blocked attack with no damage clause
+dream/vision combat
+quote says someone is hit
+threat/intimidation only
+metaphor only
+training description not actual combat
+command/context/card/audit/debug source
+ambiguous target
+ambiguous amount when numeric damage required
+duplicate output
+manual damage/heal command
+```
+
+Examples:
+
+```text
+I stab the goblin. -> attempt only
+You miss the goblin. -> miss, no damage
+The goblin blocks your sword. -> block, no damage unless separate injury says otherwise
+Mira says, "The goblin is dead." -> no confirmed death
+[AIDRPG] Status: HP -5 -> no damage
+```
+
+---
+
+# 9. Damage/healing owner contract
+
+Combat should not bypass BodyReducer.
+
+Preferred owner contract:
+
+```text
+CombatReducer records combat event/outcome.
+DamageResolver creates validated body.damage_candidate or actor.damage_candidate.
+BodyReducer owns player HP, injuries, conditions, and death boundary.
+ActorReducer owns actor presence/status memory; NPC body depth remains conservative unless NPC body system exists.
+ProgressionReducer owns XP and must not auto-award combat XP.
+InventoryReducer owns item consumption, not CombatReducer.
+AbilityReducer owns ability evidence, not CombatReducer.
+```
+
+If a target owner system is not ready:
+
+```text
+record combat outcome and defer effect safely
+```
+
+Do not apply damage/healing by writing random fields.
+
+---
+
+# 10. DamageResolver behavior
+
+DamageResolver should:
+
+```text
+read validated combat outcome
+read target type
+read amount/severity/body part if known
+create DamageRecord
+route player body effects to BodyReducer
+route NPC damage conservatively to actor/status pending unless NPC body owner exists
+apply no effect if miss/block/no-effect wins dispute
+add operation key
+mark dirty targets
+```
+
+DamageResolver should not:
+
+```text
+invent numeric damage from dramatic prose
+kill target from damage unless death boundary validates
+apply armor/equipment math unless rules active
+apply ability damage formulas unless rules active
+award XP/loot
+```
+
+---
+
+# 11. HealingResolver behavior
+
+HealingResolver should:
+
+```text
+read validated healing/recovery outcome
+read target type
+read resource/condition/injury target if known
+create HealingRecord
+route player body effects to BodyReducer
+route NPC healing conservatively if owner exists
+skip if failed/no effect/attempt only
+add operation key
+mark dirty targets
+```
+
+HealingResolver should not:
+
+```text
+heal from item name alone
+consume item automatically unless InventoryReducer receives validated consume/use event
+revive dead target unless revival policy active
+clear all conditions broadly
+heal above max
+```
+
+---
+
+# 12. Dispute resolver behavior
+
+CombatDisputeResolver should run before reducers commit combat consequences.
+
+Priority rules:
+
+```text
+1. Command/context/card/debug source blocks effect.
+2. Duplicate output blocks repeated effect.
+3. Explicit miss/dodge/parry/no effect blocks damage.
+4. Explicit block/armor blocks or defers damage unless damage clause says partial/graze.
+5. Explicit hit permits hit outcome but not automatic numeric damage.
+6. Explicit wound/injury/HP loss permits damage candidate.
+7. Explicit healing success permits healing candidate.
+8. Explicit healing failure blocks healing.
+9. Death requires death-boundary validation.
+10. Ambiguous target blocks damage/healing until resolved.
+```
+
+This makes combat robust against AI Dungeon contradictions.
+
+---
+
+# 13. Input/output dispute examples
+
+## 13.1 Input claims damage, output says miss
+
+Input:
+
+```text
+I slash the goblin across the chest.
+```
+
+Output:
+
+```text
+The goblin ducks under your blade.
+```
+
+Expected:
+
+```text
+attack attempt recorded
+miss/dodge outcome recorded
+no damage
+```
+
+## 13.2 Input attempts healing, output says no effect
+
+Input:
+
+```text
+I drink the potion to heal my wounds.
+```
+
+Output:
+
+```text
+The potion is stale and has no effect.
+```
+
+Expected:
+
+```text
+item use/consume may be separately validated by InventoryReducer
+no healing
+failed healing outcome recorded
+```
+
+## 13.3 Output confirms wound
+
+Output:
+
+```text
+The goblin's spear cuts your side, and blood spills down your armor.
+```
+
+Expected:
+
+```text
+damage/injury candidate accepted
+BodyReducer records injury/bleeding if validated
+```
+
+---
+
+# 14. Combat ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+combat.attack_attempt
+combat.defense_result_candidate
+combat.hit_candidate
+combat.miss_candidate
+combat.block_candidate
+combat.graze_candidate
+combat.damage_candidate
+combat.healing_candidate
+combat.healing_failed_candidate
+combat.retreat_candidate
+combat.capture_candidate
+combat.victory_candidate
+combat.defeat_candidate
+combat.death_candidate
+combat.dispute_candidate
+body.damage_candidate
+body.healing_candidate
+body.injury_from_combat_candidate
+body.condition_from_combat_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+attack attempt
+miss/block/hit/graze outcome
+damage/healing records
+player body damage/healing routed to BodyReducer
+conservative actor/NPC status records
+combat dispute records
+combat scene active/resolved labels
+```
+
+---
+
+# 15. EventScannerLite combat hints
+
+EventScannerLite may detect combat hints, but detection is not canon.
+
+Hint families:
+
+```text
+attack verbs: attack, slash, stab, shoot, strike, punch, kick, bite
+hit verbs: hits, lands, connects, cuts, pierces, smashes
+miss/block verbs: misses, dodges, blocks, parries, deflects, no effect
+injury verbs: bleeds, breaks, burns, wounds, fractures, poisons
+healing verbs: heals, restores, closes, stops bleeding, cures, stabilizes
+combat outcome verbs: flees, surrenders, captures, defeats, dies
+```
+
+Must flag:
+
+```text
+inputIntentOnly
+missed
+blocked
+noEffect
+partialOrGraze
+healingFailed
+dreamOrVision
+quotedSpeech
+metaphor
+threatOnly
+trainingOnly
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+ambiguousTarget
+ambiguousAmount
+deathRisk
+```
+
+Parser cannot mutate combat/body state.
+
+---
+
+# 16. CombatReducerLite detailed behavior
+
+CombatReducerLite owns:
+
+```text
+combat.active
+combat.sceneState
+combat.events
+combat.recentAttempts
+combat.recentOutcomes
+combat.disputes
+combat.warnings
+```
+
+## 16.1 Attack attempt commit
+
+Accepted attack attempt should:
+
+```text
+create AttackAttemptRecord
+create CombatEventRecord eventType attack_attempt
+status intent_only or pending
+not apply damage
+mark combat/context dirty
+audit compactly
+```
+
+## 16.2 Defense/miss/block commit
+
+Accepted result should:
+
+```text
+update related attempt if found
+create DefenseResultRecord
+create CombatOutcomeRecord
+block damage unless separate accepted damage exists
+mark combat/context dirty
+```
+
+## 16.3 Hit commit
+
+Accepted hit should:
+
+```text
+update related attempt if found
+create hit outcome
+not apply numeric damage unless damage candidate accepted
+```
+
+## 16.4 Damage/healing commit
+
+Accepted damage/healing should:
+
+```text
+create DamageRecord or HealingRecord
+route body effects through owner reducer contract
+mark combat/body/context dirty
+add operation key after successful owner-routing or safe defer
+```
+
+## 16.5 Dispute commit
+
+Accepted dispute should:
+
+```text
+create CombatDisputeRecord
+store resolvedResult
+block/defer unsafe effects
+mark combat/context dirty
+```
+
+---
+
+# 17. CombatReducer defensive guards
+
+CombatReducer must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+input-only damage
+miss/block/no-effect damage
+healing failed but healing applied
+duplicate damage/healing/death
+ambiguous target
+death without death-boundary validation
+manual damage/heal/kill command
+wrong owner reducer
+```
+
+CombatReducer must not blindly trust upstream.
+
+---
+
+# 18. Operation keys
+
+Required combat operation keys:
+
+```text
+combat.attempt.<attackerKey>.<defenderKey>.<method>.<inputHash>
+combat.result.<attackerKey>.<defenderKey>.<resultType>.<clauseHash>
+combat.hit.<attackerKey>.<defenderKey>.<clauseHash>
+combat.damage.<targetKey>.<damageKey>.<clauseHash>
+combat.healing.<targetKey>.<healingKey>.<clauseHash>
+combat.dispute.<disputeType>.<clauseHash>
+combat.retreat.<combatantKey>.<clauseHash>
+combat.capture.<targetKey>.<clauseHash>
+combat.victory.<winnerKey>.<loserKey>.<clauseHash>
+combat.death.pending.<targetKey>.<clauseHash>
+```
+
+Body/owner linked keys:
+
+```text
+body.damage.<targetKey>.<damageKey>.<sourceCombatKey>
+body.healing.<targetKey>.<healingKey>.<sourceCombatKey>
+body.injury.combat.<injuryKey>.<sourceCombatKey>
+body.deathboundary.<newStatus>.<sourceCombatKey>
+```
+
+Rules:
+
+```text
+damage/healing/death keys are durable
+attempt keys can be recent unless needed for dispute binding
+same output replay cannot repeat damage/healing/death
+```
+
+---
+
+# 19. Dirty targets
+
+Combat updates should mark:
+
+```text
+combat
+body_status
+social_memory
+current_location
+context
+progression only if exact XP event separately accepted
+inventory_equipment only if item use/consumption separately accepted
+```
+
+Mapping:
+
+```text
+attack attempt -> combat, context
+hit/miss/block/graze -> combat, context
+player damage/healing -> combat, body_status, context
+actor damage/status -> combat, social_memory, context
+retreat/capture/victory -> combat, social_memory, current_location, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 20. `/status` and optional `/combat` updates
+
+## 20.1 `/status`
+
+Should show combat-relevant body state:
+
+```text
+current HP/MP/EP if known
+active injuries
+active combat conditions
+death boundary
+recent combat damage/healing if relevant
+```
+
+It must not show combat attempt as confirmed damage.
+
+## 20.2 Optional `/combat`
+
+If command budget permits, add:
+
+```text
+/combat
+```
+
+Should show:
+
+```text
+combat active/resolved status
+recent attempts
+recent confirmed outcomes
+damage/healing records
+blocked/deferred effects
+disputes
+warnings
+```
+
+If not, include combat summaries inside:
+
+```text
+/status
+/debuglast
+/stateaudit
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 21. ContextBuilder combat packet
+
+ContextBuilder should include concise combat facts.
+
+Include:
+
+```text
+active combat/threat status
+confirmed recent hit/miss/block only if relevant
+active injuries/conditions through body packet
+important enemy/actor status if known
+```
+
+Do not include:
+
+```text
+input attack attempts as confirmed hits
+blocked/rejected damage as applied damage
+full combat event ledger
+formula debug text
+exact enemy stats if unknown
+pending death as confirmed death
+```
+
+Example:
+
+```text
+Combat: Your last sword swing was blocked; no damage was confirmed. You have a bleeding cut on your side from the goblin's spear.
+```
+
+---
+
+# 22. IntegrityChecker combat checks
+
+Add checks:
+
+```text
+damage/healing records have operation keys
+applied damage has owner-routed body/actor effect or safe defer note
+miss/block/no-effect outcomes do not have applied damage unless separate damage record exists
+healing failure does not have applied healing
+death pending/confirmed follows death boundary rules
+duplicate damage/healing keys not repeated
+combat events do not originate from command/card/context source
+combat victory does not auto-create XP/loot
+```
+
+IntegrityChecker may warn/quarantine bad combat records. It may not apply damage, healing, loot, XP, or death.
+
+---
+
+# 23. Cleanup combat protections
+
+Cleanup may compact:
+
+```text
+old low-value attack attempts
+old duplicate combat warning spam
+old resolved dispute summaries
+old non-applied rejected outcomes
+```
+
+Cleanup must not delete:
+
+```text
+applied damage/healing records needed for audit
+active injuries/conditions
+death-boundary records
+durable combat/body operation keys
+important combat outcome history
+unresolved disputes
+```
+
+Cleanup must not heal, damage, kill, revive, award XP, or create loot.
+
+---
+
+# 24. ReleaseCheck gates for this chunk
+
+Add or verify PC12-specific gates:
+
+```text
+PC12-G01 CombatEventRecord schema exists or equivalent combat event structure exists
+PC12-G02 AttackAttemptRecord schema exists or equivalent attempt structure exists
+PC12-G03 DamageRecord schema exists or equivalent damage structure exists
+PC12-G04 HealingRecord schema exists or equivalent healing structure exists
+PC12-G05 CombatDisputeRecord schema exists or equivalent dispute structure exists
+PC12-G06 CanonValidator separates attempt/hit/miss/block/graze/damage/healing/death
+PC12-G07 input-only attacks do not apply damage
+PC12-G08 miss/block/no-effect prevents damage unless separate accepted damage exists
+PC12-G09 healing failure prevents healing
+PC12-G10 CombatReducer rejects unsafe routed combat events
+PC12-G11 damage/healing routes through BodyReducer/owner contract
+PC12-G12 death remains protected by death-boundary validation
+PC12-G13 duplicate damage/healing/death keys exist and are durable
+PC12-G14 command/context/card combat text cannot become canon
+PC12-G15 combat victory does not auto-award XP/loot
+PC12-G16 equipment/ability/stat advanced combat formulas remain deferred unless owner rules active
+PC12-G17 /status or /combat displays combat state honestly
+PC12-G18 cleanup preserves active combat/body truth and durable keys
+PC12-G19 advanced combat/party/warfare/absorption systems remain disabled
+PC12-G20 player-breaker combat tests registered
+```
+
+ReleaseCheck must fail if input attacks apply damage directly, repeated output duplicates damage/healing, command/context/card combat text mutates state, or combat victory awards XP/loot automatically.
+
+---
+
+# 25. Required tests
+
+## PC12-001 — Input attack attempt only
+
+Input:
+
+```text
+I slash the goblin across the chest.
+```
+
+Expected:
+
+```text
+attack attempt recorded
+no damage applied
+```
+
+## PC12-002 — Output miss blocks damage
+
+Input:
+
+```text
+I stab the goblin.
+```
+
+Output:
+
+```text
+The goblin sidesteps, and your blade misses.
+```
+
+Expected:
+
+```text
+miss outcome recorded
+no damage
+```
+
+## PC12-003 — Output block blocks damage
+
+Output:
+
+```text
+The goblin blocks your sword with its shield.
+```
+
+Expected:
+
+```text
+block outcome recorded
+no damage unless separate damage clause exists
+```
+
+## PC12-004 — Output graze creates minor damage only if validated
+
+Output:
+
+```text
+Your blade grazes the goblin's arm, drawing a thin line of blood.
+```
+
+Expected:
+
+```text
+graze outcome
+minor injury/damage candidate if target owner supports it
+not full damage
+```
+
+## PC12-005 — Confirmed player injury
+
+Output:
+
+```text
+The goblin's spear cuts your side, and blood spills down your armor.
+```
+
+Expected:
+
+```text
+damage/injury candidate accepted
+BodyReducer records side cut/bleeding if validated
+operation key added
+```
+
+## PC12-006 — Duplicate injury skipped
+
+Repeat same output.
+
+Expected:
+
+```text
+no duplicate injury/damage
+operation key skip/audit
+```
+
+## PC12-007 — Numeric HP loss accepted if resource policy active
+
+Output:
+
+```text
+The arrow hits you for 5 damage.
+```
+
+Expected:
+
+```text
+DamageRecord amount 5
+HP decreases only if HP numeric tracking/resource policy active
+otherwise damage/injury deferred or labeled
+```
+
+## PC12-008 — HP loss command non-canon
+
+Command output or user command:
+
+```text
+[AIDRPG] Status: HP -5.
+```
+
+Expected:
+
+```text
+no HP/damage mutation
+```
+
+## PC12-009 — Healing attempt failed
+
+Input:
+
+```text
+I drink the potion to heal.
+```
+
+Output:
+
+```text
+The potion is stale and has no effect.
+```
+
+Expected:
+
+```text
+healing failed outcome
+no healing
+InventoryReducer may handle item consumption only if separately validated
+```
+
+## PC12-010 — Healing success accepted
+
+Output:
+
+```text
+The potion closes the cut on your side and restores 5 HP.
+```
+
+Expected:
+
+```text
+HealingRecord amount 5
+BodyReducer heals/closes injury only according to body/resource policy
+operation key added
+```
+
+## PC12-011 — Duplicate healing skipped
+
+Repeat same healing output.
+
+Expected:
+
+```text
+no second healing
+operation key skip/audit
+```
+
+## PC12-012 — Healing from item name alone rejected
+
+Output:
+
+```text
+You hold the red healing potion.
+```
+
+Expected:
+
+```text
+no healing
+item possession/display only if inventory validates it
+```
+
+## PC12-013 — Victory no XP by itself
+
+Output:
+
+```text
+You defeat the goblin.
+```
+
+Expected:
+
+```text
+victory/combat resolved possible
+no XP
+no loot
+```
+
+## PC12-014 — Victory plus exact XP only XP clause applies
+
+Output:
+
+```text
+You defeat the goblin and gain 5 XP.
+```
+
+Expected:
+
+```text
+combat victory recorded
+XP +5 only through ProgressionReducer exact XP path
+no loot unless separate inventory event
+```
+
+## PC12-015 — Loot after combat not auto-owned
+
+Output:
+
+```text
+The goblin falls, dropping a rusty dagger.
+```
+
+Expected:
+
+```text
+combat outcome possible
+rusty dagger available loot scene item through InventoryReducer, not owned
+```
+
+## PC12-016 — Threat does not damage
+
+Output:
+
+```text
+The bandit threatens to gut you.
+```
+
+Expected:
+
+```text
+no damage
+possible threat/social memory only if actor system validates it
+```
+
+## PC12-017 — Dream combat no real damage
+
+Output:
+
+```text
+In a dream, the dragon burns you to ash.
+```
+
+Expected:
+
+```text
+no real damage/death
+```
+
+## PC12-018 — Quote combat no real death
+
+Output:
+
+```text
+Mira says, "The goblin is dead."
+```
+
+Expected:
+
+```text
+no confirmed goblin death from quote alone
+```
+
+## PC12-019 — Player death protected
+
+Output:
+
+```text
+Your heart stops, and you die on the stone floor.
+```
+
+Expected:
+
+```text
+death boundary changes only according to BodyReducer death policy
+if death automation safety-limited, death pending/deferred with audit
+```
+
+## PC12-020 — Dead tired not death
+
+Output:
+
+```text
+After the fight, you feel dead tired.
+```
+
+Expected:
+
+```text
+fatigue maybe recorded by body system
+no death boundary change
+```
+
+## PC12-021 — Armor mention no automatic formula
+
+Output:
+
+```text
+Your iron armor turns the blade aside.
+```
+
+Expected:
+
+```text
+block/armor outcome may record
+no armor stat formula unless equipment combat rule active
+```
+
+## PC12-022 — Ability damage formula deferred
+
+Output:
+
+```text
+Ember Ward explodes and burns the wolf for massive damage.
+```
+
+Expected:
+
+```text
+ability/combat evidence may record if validated
+damage amount not invented
+ability damage formula deferred unless rule active
+```
+
+## PC12-023 — Ambiguous target blocks damage
+
+Output:
+
+```text
+The blade strikes hard, and someone screams.
+```
+
+Expected:
+
+```text
+ambiguous target dispute
+no damage applied until target bound
+```
+
+## PC12-024 — Command combat non-canon
+
+Run:
+
+```text
+/status
+```
+
+or:
+
+```text
+/combat
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no combat/damage/healing mutation
+```
+
+## PC12-025 — Story Card combat prose non-canon
+
+Story Card text:
+
+```text
+The player has taken 10 damage from the goblin.
+```
+
+Expected:
+
+```text
+no damage mutation
+quarantine/audit only if surfaced
+```
+
+## PC12-026 — Context combat prose non-canon
+
+Context text:
+
+```text
+The goblin is dead and the player healed 5 HP.
+```
+
+Expected:
+
+```text
+no death/healing mutation from context text
+```
+
+## PC12-027 — Cleanup preserves combat/body truth
+
+Setup:
+
+```text
+active injury
+applied damage record
+combat operation key
+unresolved dispute
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active injury/key/dispute preserved
+only low-risk combat logs compacted
+```
+
+## PC12-028 — Manual combat commands disabled
+
+Run:
+
+```text
+/damage goblin 10
+/heal me 20
+/kill goblin
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no combat/body mutation
+```
+
+---
+
+# 26. Regression placement
+
+Add PC12 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+28 PC12 tests registered
+0 critical PC12 failures
+```
+
+---
+
+# 27. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+combat.active
+combat.sceneState
+combat.events
+combat.recentAttempts
+combat.recentOutcomes
+combat.disputes
+CombatSceneState shape
+CombatantSnapshot shape
+CombatEventRecord shape
+AttackAttemptRecord shape
+DefenseResultRecord shape
+DamageRecord shape
+HealingRecord shape
+CombatDisputeRecord shape
+CombatOutcomeRecord shape
+```
+
+---
+
+# 28. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+combat attempt/hit/miss/block/graze/damage/healing detection
+input vs output dispute flags
+damage/healing target binding
+nonliteral combat rejection
+duplicate key suggestions
+```
+
+Forbidden:
+
+```text
+advanced combat formulas
+full turn order/initiative engine
+manual damage/heal parser
+world threat scaling parser
+party/warfare parser
+card/context combat import
+```
+
+---
+
+# 29. Reducer/checker changes
+
+Allowed:
+
+```text
+CombatReducer attack/result/damage/healing/dispute records
+DamageResolver / HealingResolver shells
+BodyReducer owner-routed damage/healing integration
+combat duplicate skip results
+combat integrity checks
+```
+
+Forbidden:
+
+```text
+auto XP/loot rewards
+auto death bypass
+combat stat generation
+equipment/ability formula activation without owner rules
+party/warfare automation
+```
+
+---
+
+# 30. Command/context/card changes
+
+Allowed:
+
+```text
+/status combat-relevant display
+/combat optional display
+/context combat packet
+/cardaudit combat mirror labels if dry-run
+/releasecheck PC12 gates
+/playerbreakercheck combat cases
+```
+
+Forbidden:
+
+```text
+/damage
+/heal
+/kill
+/spawnfight
+/awardcombatxp
+live card writes that create combat truth
+```
+
+---
+
+# 31. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted stats/invariant build
+
+Start from:
+
+```text
+WorldLedgerV0.17.11_STATS_INVARIANTS_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.12_COMBAT_EVENTS_WORKING.txt
+```
+
+## Step 2 — Add/verify combat helper functions
+
+Create helpers for:
+
+```text
+ensureCombatShape
+makeCombatSceneState
+makeCombatantSnapshot
+makeCombatEventRecord
+makeAttackAttemptRecord
+makeDefenseResultRecord
+makeDamageRecord
+makeHealingRecord
+makeCombatDisputeRecord
+makeCombatOutcomeRecord
+isUnsafeCombatSource
+isInputIntentOnly
+isDamageBlockedByResult
+```
+
+## Step 3 — Add CombatDisputeResolver
+
+Implement the priority rules before reducers apply consequences.
+
+## Step 4 — Update combat CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+attack attempt
+hit/miss/block/graze
+damage
+healing
+healing failure
+victory/defeat
+capture/retreat
+death pending/confirmed
+```
+
+## Step 5 — Update ProposalBuilder combat support
+
+Ensure proposals carry:
+
+```text
+attacker
+defender
+method
+result type
+damage/healing data
+target body part if known
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 6 — Update CombatReducerLite
+
+Implement safe commits for:
+
+```text
+attack attempt
+miss/block/hit/graze outcome
+damage/healing record
+dispute record
+combat scene state
+```
+
+## Step 7 — Wire damage/healing to owner reducers
+
+Route player body effects to BodyReducer. Defer unsafe NPC body effects unless owner exists.
+
+## Step 8 — Update `/status` and optional `/combat`
+
+Make combat state display honest.
+
+## Step 9 — Update ContextBuilder combat packet
+
+Keep it concise and state-accurate.
+
+## Step 10 — Update IntegrityChecker combat checks
+
+Add applied damage/healing, duplicate, dispute, and unsafe-source checks.
+
+## Step 11 — Add PC12 ReleaseCheck gates
+
+Add PC12-G01 through PC12-G20.
+
+## Step 12 — Add PC12 tests
+
+Add PC12-001 through PC12-028.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/status
+/combat if available
+```
+
+## Step 14 — Save accepted combat-event build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.12_COMBAT_EVENTS_ACCEPTED.txt
+```
+
+---
+
+# 32. What this chunk produces
+
+Production Chunk 12 should produce:
+
+```text
+WorldLedger V0.17.12 combat-event accepted script if code changes are made
+combat helper depth
+CombatEvent/Attack/Damage/Healing/Dispute schemas
+CombatDisputeResolver
+DamageResolver and HealingResolver shells
+CombatReducerLite event/outcome behavior
+BodyReducer owner-routed damage/healing integration
+/status and optional /combat display improvements
+combat context packet
+combat integrity checks
+PC12 ReleaseCheck gates
+PC12 regression/player-breaker tests
+combat acceptance report
+updated planning zip with Production Chunk 12 added
+```
+
+It should not produce:
+
+```text
+full advanced combat engine
+full creature ecology combat logic
+party/summon combat
+warfare/group combat
+absorption/evolution on kill
+manual damage/heal/kill commands
+automatic combat XP/loot
+equipment/ability damage formulas without owner rules
+live CardSync writes
+old card prose combat import
+```
+
+---
+
+# 33. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 12 passes if:
+
+```text
+attack attempts and confirmed outcomes are separated
+input-only attacks do not apply damage
+miss/block/no-effect prevents damage unless separate damage validates
+healing failure prevents healing
+damage/healing routes through owner reducer contract
+death remains protected by death-boundary rules
+duplicate damage/healing/death keys work
+combat victory does not auto-award XP/loot
+/status or /combat displays honestly
+command/context/card combat text cannot become canon
+cleanup preserves active combat/body truth
+PC12 tests pass
+ReleaseCheck has no PC12 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+advanced combat formulas are deferred
+equipment/ability combat math is deferred
+NPC body depth is conservative
+initiative/turn order is shell-only or absent
+creature-specific combat logic is deferred
+party/warfare/absorption systems are disabled
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+input attack directly damages target
+miss/block still applies damage
+healing failure still heals
+damage/healing duplicates on replay
+command/context/card text damages/heals/kills
+combat victory grants XP or loot automatically
+BodyReducer death boundary is bypassed
+CombatReducer writes random body fields directly
+manual damage/heal/kill commands mutate state
+cleanup deletes active injury/combat keys
+CombatReducer trusts unsafe routed data
+```
+
+---
+
+# 34. Handoff to Production Chunk 13
+
+When this chunk passes, Production Chunk 13 begins:
+
+```text
+Production Chunk 13 — Body Form, Race Logic, Transformation Consequence, and Non-Humanoid Constraints
+```
+
+Production Chunk 13 may now use combat/body evidence to reason about form constraints, non-humanoid bodies, and transformation consequences, but should not use combat as proof of race/form powers without validation.
+
+Production Chunk 12 must leave combat reliable enough that future chunks can ask:
+
+```text
+Was there only an attempt?
+Was there a miss, block, graze, or hit?
+Was damage actually validated?
+Was healing actually validated?
+Was death only pending or confirmed?
+Was this effect already applied?
+Which owner reducer owns the resulting body/actor/progression/inventory change?
+```
+
+---
+
+# 35. Final doctrine
+
+Production Chunk 12 is where combat stops being outcome hallucination.
+
+Final rule:
+
+```text
+Combat is an event pipeline, not a shortcut.
+Attempts, outcomes, damage, healing, death, loot, and XP are separate.
+Every consequence must be validated, owner-routed, duplicate-safe, and honest in display.
+```
+
+Once this passes, the project can safely deepen race/form/transformation consequences in Production Chunk 13.

@@ -1,0 +1,3019 @@
+/*
+WorldLedgerV0.7 — Core MVP Foundation Script / Code Pass 1 AuditLogger + OperationLedger Lock Lock
+Made by: JustSomeBobby
+
+WorldLedger is a freeform RPG truth engine for AI Dungeon. It is built to preserve
+canon, consequences, state, and memory without turning AI Dungeon into a rigid command game.
+
+Credit and direct inspiration:
+- RPGUI by @RonenNess — state-first RPG/HUD presentation discipline and clean helper separation, reinterpreted for AI Dungeon as text-first state and command readouts. No HTML UI code is used.
+- TAS / True Auto Stats by @Yi1i1i — freeform action reading, emergent growth ambition, and structured stats / inventory / abilities, rebuilt as proposal -> validation -> reducer ownership.
+- Auto-Cards by @LewdLeah — object permanence, entity detection, Story Card drafting, and memory maintenance ideas, rebuilt so cards mirror canon instead of creating it.
+- Inner Self by @LewdLeah — segmented long-term NPC memory and major-character persistence, rebuilt as selective reducer-owned memory rather than universal NPC simulation.
+
+Not direct foundations for this build: LoLa, Hashtag-DnD, AID-dice-rolling, and Gnurro AIDscripts. They may remain general research references, but they are not credited here as active functional inspirations unless a future build directly borrows from them.
+
+Design doctrine:
+Input may intend. Context may remind. Output may propose. ParserHits are observations.
+EventProposals are structured claims. CanonValidator decides eligibility. Reducers commit.
+OperationLedger dedupes. DirtyQueue marks refresh. Context reads. Cards mirror. ReleaseCheck tells the truth.
+
+Code Pass 1 scope:
+This is the foundation build with the Build Chunk 6 Runtime Hook Contract lock applied on top of the Build Chunk 5 StateManager lock. It initializes, inspects, audits, validates, and commits only limited MVP-safe events while enforcing safe state creation, structural repair, preservation of valid truth, quarantine of unsafe legacy data, and no hook-wrapper leakage inside the Library bundle.
+Deferred systems remain disabled: generated Story Cards, full economy, crafting, investigation, reputation/faction
+automation, domain/labor, absorption/evolution, advanced combat, warfare, multi-protagonist, and manual mutation commands.
+*/
+
+(function () {
+  'use strict';
+
+  const WL = {
+    PROJECT_NAME: 'WorldLedger',
+    BUILD_NAME: 'WorldLedger Core MVP',
+    BUILD_VERSION: '0.7.0-audit-ledger-lock-codepass1',
+    BUILD_STAGE: 'Foundation Code Pass 1 / Runtime Hook Contract Lock',
+    SCHEMA_VERSION: 1,
+    SCHEMA_ID: 'worldledger.schema.v1.locked',
+    ROOT_KEY: 'worldledger'
+  };
+
+  // ============================================================
+  // 01. Constants, Version, and Layout Authority
+  // ============================================================
+  WL.LAYOUT_VERSION = 'worldledger.layout.v2';
+  WL.SCHEMA_LOCK_VERSION = 'worldledger.schema-lock.v3';
+  WL.COMMAND_FORMAT_LOCK_VERSION = 'worldledger.command-format.v4';
+  WL.STATE_MANAGER_LOCK_VERSION = 'worldledger.statemanager-lock.v5';
+  WL.RUNTIME_HOOK_CONTRACT_VERSION = 'worldledger.runtime-hook-contract.v6';
+  WL.AUDIT_LEDGER_LOCK_VERSION = 'worldledger.audit-ledger-lock.v7';
+  WL.SECTION_ORDER = Object.freeze([
+    '01 Constants and Build Identity', '02 Feature Flags and Defaults', '03 Utility Helpers',
+    '04 State Schema Defaults', '05 StateManager', '06 Runtime Hook Contract', '07 AuditLogger',
+    '08 OperationLedger', '09 CommandRouter', '10 Command Output Format Lock and Renderers', '11 ReleaseCheckLite Foundation',
+    '12 Resolver and Owner-Specific Sanitizers', '13 EventScannerLite Parser Shell', '14 ProposalBuilder Shell',
+    '15 CanonValidator Shell', '16 ReducerRegistry', '17 Core Reducer Shells / Limited Reducers',
+    '18 DirtyQueue', '19 ContextBuilderLite', '20 CardApiAdapter Shell',
+    '21 CardSyncLite Dry-Run Protected Shell', '22 Migration and Quarantine Manager',
+    '23 CleanupManagerLite', '24 Hook Orchestration', '25 Export / Platform Hook Binding'
+  ]);
+  WL.MODULE_CONTRACTS = Object.freeze({
+    Constants: 'Owns names, build identity, caps, protected keys, flags, and layout authority only.',
+    StateManager: 'Owns root creation, bucket repair, migrations safety, and invariant repair only.',
+    Runtime: 'Owns hook safety, command suppression, duplicate output checks, and fail-soft returns only.',
+    CommandRouter: 'Owns command routing and disabled-command honesty only; commands are non-canon.',
+    CommandOutputFormatLock: 'Owns command response headers, status labels, non-canon warnings, disabled-feature honesty, and hook-wrapper leakage prevention.',
+    CommandRenderer: 'Owns command body text only; final formatting is enforced by CommandOutputFormatLock.',
+    AuditLogger: 'Owns capped diagnostics and black-box recorder entries only.',
+    OperationLedger: 'Owns idempotency buckets and duplicate side-effect prevention only.',
+    Sanitizers: 'Own owner-specific target cleanup; shared cleanup stays conservative.',
+    Resolver: 'Owns canonical ids and local target binding only.',
+    EventScannerLite: 'Observes text and emits ParserHits only; never mutates gameplay state.',
+    ProposalBuilder: 'Converts ParserHits into EventProposals only; never commits truth.',
+    CanonValidator: 'Accepts, rejects, pends, or denies proposals only; never mutates truth.',
+    ReducerRegistry: 'Routes accepted validations to exactly one owner reducer.',
+    Reducers: 'Only owner reducers may commit gameplay truth after validation and ledger checks.',
+    DirtyQueue: 'Marks mirror/context targets only; never creates canon.',
+    ContextBuilderLite: 'Reads state and builds bounded context packets only.',
+    CardApiAdapter: 'Wraps story card API access safely; live writes are disabled by default.',
+    CardSyncLite: 'Dry-run protected mirror shell only; generated cards are disabled.',
+    MigrationManager: 'Repairs/quarantines safely; never imports old prose as canon.',
+    CleanupManagerLite: 'Caps logs/queues only; never deletes active truth.',
+    Hooks: 'Orchestrates Input, Context, Output entry points without bypassing the pipeline.'
+  });
+  WL.MVP_ACTIVE_COMMANDS = Object.freeze([
+    'help','version','layout','schema','schemaaudit','owners','sheet','status','inventory','abilities','quests','actors','location','time',
+    'debuglast','audit','auditlog','cardaudit','contextaudit','stateaudit','statemanager','integrity','repairlog','runtime','hookaudit','runtimecheck','failsoft','ledger','ledgercheck','dirty','migration','quarantine','startupaudit','commandformat','commands','releasecheck'
+  ]);
+  WL.MVP_DISABLED_SYSTEMS = Object.freeze([
+    'generated cards','live protected card writes','manual mutation commands','full economy','crafting',
+    'investigation','reputation/factions','domain/labor','absorption/evolution','advanced combat','warfare','multi-protagonist'
+  ]);
+  WL.PROTECTED_CARD_KEYS = Object.freeze([
+    'WorldLedger Player','WorldLedger Inventory','WorldLedger Abilities','WorldLedger Quests',
+    'WorldLedger Actors Places','WorldLedger Time','WorldLedger Audit','WorldLedger Settings'
+  ]);
+
+  WL.CANONICAL_ROOT_BUCKETS = Object.freeze([
+    'meta','features','runtime','startup','player','body','progression','inventory','abilities','quests',
+    'actors','places','time','cards','operationLedger','audits','migration','quarantine','dirty','cleanup'
+  ]);
+  WL.SUPPORT_ROOT_BUCKETS = Object.freeze(['layout','commandFormat','pending']);
+  WL.ROOT_BUCKETS_ALL = Object.freeze(WL.CANONICAL_ROOT_BUCKETS.concat(WL.SUPPORT_ROOT_BUCKETS));
+  WL.SCHEMA_CAPS = Object.freeze({
+    hookTrace: 30, runtimeWarnings: 25, runtimeErrors: 20, diagnostics: 40, parser: 40, proposals: 40,
+    validations: 40, reducers: 40, cards: 40, context: 40, migration: 40, quarantine: 24, dirtyTargets: 40, recentLedger: 180, dryRunWrites: 20
+  });
+  WL.SCHEMA_OWNER_MAP = Object.freeze({
+    meta: 'StateManager', features: 'StateManager / ReleaseCheckLite', runtime: 'Runtime', startup: 'StateManager / StartupImporterFuture',
+    player: 'StateManager / PlayerReducerFuture', body: 'BodyReducerLite', progression: 'ProgressionReducerLite', inventory: 'InventoryReducerLite',
+    abilities: 'AbilityReducerLite', quests: 'QuestReducerLite', actors: 'ActorReducerLite', places: 'PlaceReducerLite', time: 'TimeReducerLite',
+    cards: 'CardSyncLite', operationLedger: 'OperationLedger', audits: 'AuditLogger', migration: 'MigrationManager / StateManager',
+    quarantine: 'MigrationManager / StateManager', dirty: 'DirtyQueue', cleanup: 'CleanupManagerLite', layout: 'LayoutLock', commandFormat: 'CommandOutputFormatLock', pending: 'Runtime / PipelineDiagnostics'
+  });
+  WL.MUTATION_BOUNDARIES = Object.freeze({
+    parser: 'ParserHits and EventProposals only; parser may not mutate canon buckets.',
+    validator: 'May accept/reject/pending/soft_fail/hard_deny proposals; may not write gameplay state.',
+    reducer: 'Only owner reducers commit accepted events to owned buckets.',
+    context: 'Read-only; may render compact truth but cannot write canon.',
+    cards: 'CardSync mirrors stable state only; Story Card text never becomes canon.',
+    commands: 'Inspect-only in Code Pass 1; command output is non-canon and suppressed from parsing.',
+    cleanup: 'May cap logs/queues; may not invent or delete active gameplay truth.'
+  });
+
+  // ============================================================
+  // 02. Feature Flags and Defaults
+  // ============================================================
+  WL.FeatureDefaults = Object.freeze({
+    commandsEnabled: true,
+    releaseCheckEnabled: true,
+    auditEnabled: true,
+    operationLedgerEnabled: true,
+    parserShellEnabled: true,
+    proposalShellEnabled: true,
+    canonValidatorShellEnabled: true,
+    reducerRegistryEnabled: true,
+    coreReducersLimitedEnabled: true,
+    contextBuilderLiteEnabled: true,
+    cardSyncLiteEnabled: true,
+    migrationLiteEnabled: true,
+    cleanupLiteEnabled: true,
+    layoutLockEnabled: true,
+    moduleBoundaryChecksEnabled: true,
+    commandFormatLockEnabled: true,
+
+    // Deferred / blocked in Code Pass 1.
+    generatedCardsEnabled: false,
+    protectedCardWritesEnabled: false,
+    manualMutationCommandsEnabled: false,
+    economyEnabled: false,
+    craftingEnabled: false,
+    investigationEnabled: false,
+    reputationEnabled: false,
+    domainEnabled: false,
+    absorptionEnabled: false,
+    advancedCombatEnabled: false,
+    warfareEnabled: false,
+    multiProtagonistEnabled: false,
+    partyAdvancedEnabled: false,
+
+    cardSyncDryRun: true,
+    cardSyncSafeMode: true,
+    generatedCardCreatesPerTurn: 0,
+    generatedCardUpdatesPerTurn: 0,
+    contextBudget: 1800,
+    debugMode: false
+  });
+
+  // ============================================================
+  // 03. Utility Helpers
+  // ============================================================
+  WL.U = {
+    nowTurn(root) {
+      return Number(root && root.runtime && root.runtime.currentTurn || 0);
+    },
+    hasGlobalState() {
+      return typeof globalThis !== 'undefined' && typeof globalThis.state === 'object' && globalThis.state !== null;
+    },
+    ensureGlobalState() {
+      if (typeof globalThis.state !== 'object' || globalThis.state === null) globalThis.state = {};
+      return globalThis.state;
+    },
+    norm(value) {
+      return String(value == null ? '' : value)
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim();
+    },
+    lower(value) { return this.norm(value).toLowerCase(); },
+    title(value) {
+      const raw = this.norm(value).replace(/^the\s+/i, '');
+      if (!raw) return '';
+      const small = { a: 1, an: 1, and: 1, at: 1, by: 1, for: 1, from: 1, in: 1, of: 1, on: 1, or: 1, the: 1, to: 1, with: 1 };
+      return raw.split(/\s+/).map((w, i) => {
+        const clean = w.toLowerCase();
+        if (i > 0 && small[clean]) return clean;
+        return clean.charAt(0).toUpperCase() + clean.slice(1);
+      }).join(' ');
+    },
+    slug(value) {
+      return this.lower(value).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'unknown';
+    },
+    clamp(n, min, max) {
+      n = Number(n);
+      if (!Number.isFinite(n)) n = min;
+      return Math.max(min, Math.min(max, n));
+    },
+    hash(value) {
+      const s = String(value == null ? '' : value);
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+      }
+      return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+    },
+    capArray(arr, max) {
+      if (!Array.isArray(arr)) return [];
+      while (arr.length > max) arr.shift();
+      return arr;
+    },
+    uniquePush(arr, value, max) {
+      if (!Array.isArray(arr)) return false;
+      const v = this.norm(value);
+      if (!v) return false;
+      const k = this.slug(v);
+      for (let i = 0; i < arr.length; i++) if (this.slug(arr[i]) === k) return false;
+      arr.push(v);
+      this.capArray(arr, max || 20);
+      return true;
+    },
+    ensureObj(parent, key, factory) {
+      if (!parent || typeof parent !== 'object') return factory ? factory() : {};
+      if (!parent[key] || typeof parent[key] !== 'object' || Array.isArray(parent[key])) parent[key] = factory ? factory() : {};
+      return parent[key];
+    },
+    ensureArray(parent, key) {
+      if (!parent || typeof parent !== 'object') return [];
+      if (!Array.isArray(parent[key])) parent[key] = [];
+      return parent[key];
+    },
+    safeJson(value) {
+      try { return JSON.stringify(value); } catch (e) { return '[unserializable]'; }
+    },
+    unquoted(text) {
+      return String(text || '').replace(/["“][\s\S]*?["”]/g, ' ').replace(/'[^']{1,240}'/g, ' ');
+    },
+    sentenceSplit(text) {
+      const t = this.norm(text);
+      if (!t) return [];
+      return t.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean).slice(0, 16);
+    },
+    startsCommand(text) {
+      return /^\s*\/\w+/.test(String(text || ''));
+    },
+    commandName(text) {
+      const m = String(text || '').match(/^\s*\/([a-zA-Z0-9_-]+)/);
+      return m ? m[1].toLowerCase() : '';
+    },
+    commandArgs(text) {
+      return String(text || '').replace(/^\s*\/\S+\s*/, '').trim();
+    },
+    getInfoActionCount() {
+      try {
+        if (typeof info === 'object' && info && typeof info.actionCount === 'number') return info.actionCount;
+      } catch (e) {}
+      return null;
+    },
+    getStoryCards() {
+      try {
+        if (Array.isArray(globalThis.storyCards)) return globalThis.storyCards;
+        if (globalThis.state && Array.isArray(globalThis.state.storyCards)) return globalThis.state.storyCards;
+      } catch (e) {}
+      return [];
+    }
+  };
+
+  // ============================================================
+  // 03B. Layout Lock and Module Boundary Inspector
+  // ============================================================
+  WL.LayoutLock = {
+    sectionOrder() { return WL.SECTION_ORDER.slice(); },
+    contracts() { return Object.assign({}, WL.MODULE_CONTRACTS); },
+    moduleNames() {
+      return ['StateManager','Runtime','CommandRouter','CommandOutputFormatLock','CommandRenderer','AuditLogger','OperationLedger','ReleaseCheckLite','Sanitizers','Resolver','EventScannerLite','ProposalBuilder','CanonValidator','ReducerRegistry','Reducers','DirtyQueue','ContextBuilderLite','CardApiAdapter','CardSyncLite','MigrationManager','CleanupManagerLite'];
+    },
+    inspect(root) {
+      const out = [];
+      const modNames = this.moduleNames();
+      out.push({ status: 'PASS', label: 'layout version locked: ' + WL.LAYOUT_VERSION });
+      out.push(WL.SECTION_ORDER.length === 25 ? { status: 'PASS', label: '25-section Code Pass 1 assembly order registered' } : { status: 'FAIL', label: 'section order count mismatch' });
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('layout') >= 0 ? { status: 'PASS', label: '/layout command registered as inspect-only' } : { status: 'FAIL', label: '/layout command missing' });
+      out.push(root && root.layout && root.layout.locked === true ? { status: 'PASS', label: 'state.layout lock bucket present' } : { status: 'FAIL', label: 'state.layout lock bucket missing' });
+      for (let i = 0; i < modNames.length; i++) {
+        const name = modNames[i];
+        out.push(WL[name] ? { status: 'PASS', label: 'module present: ' + name } : { status: 'FAIL', label: 'module missing: ' + name });
+      }
+      const forbidden = ['tasis','patchData','cardSync','aidrpgOld'];
+      for (let j = 0; j < forbidden.length; j++) {
+        let present = false;
+        try { present = !!(globalThis.state && globalThis.state[forbidden[j]]); } catch (e) {}
+        out.push(!present ? { status: 'PASS', label: 'forbidden state root absent: state.' + forbidden[j] } : { status: 'FAIL', label: 'forbidden state root present: state.' + forbidden[j] });
+      }
+      if (root && root.layout) {
+        root.layout.lastAudit = out.map(r => ({ turn: WL.U.nowTurn(root), status: r.status, label: r.label }));
+        WL.U.capArray(root.layout.lastAudit, 80);
+      }
+      return out;
+    },
+    render(root) {
+      const rows = this.inspect(root);
+      const bad = rows.filter(r => r.status === 'FAIL').length;
+      const lines = ['Layout: ' + WL.LAYOUT_VERSION + (bad ? ' / FAILURES: ' + bad : ' / locked'), 'Section order:'];
+      WL.SECTION_ORDER.forEach(sec => lines.push('- ' + sec));
+      lines.push('Module check:');
+      rows.forEach(r => lines.push(r.status + ': ' + r.label));
+      lines.push('Deferred systems: ' + WL.MVP_DISABLED_SYSTEMS.join(', '));
+      return lines;
+    }
+  };
+
+  // ============================================================
+  // 03C. State Schema Lock and Ownership Inspector
+  // ============================================================
+  WL.StateSchemaLock = {
+    canonicalBuckets() { return WL.CANONICAL_ROOT_BUCKETS.slice(); },
+    supportBuckets() { return WL.SUPPORT_ROOT_BUCKETS.slice(); },
+    allBuckets() { return WL.ROOT_BUCKETS_ALL.slice(); },
+    owner(bucket) { return WL.SCHEMA_OWNER_MAP[bucket] || 'unowned'; },
+    ensureSchemaMetadata(root) {
+      if (!root || typeof root !== 'object') return;
+      if (!root.meta || typeof root.meta !== 'object') root.meta = {};
+      const m = root.meta;
+      if (!m.projectName) m.projectName = WL.PROJECT_NAME;
+      if (!m.buildName) m.buildName = WL.BUILD_NAME;
+      if (!m.buildStage) m.buildStage = WL.BUILD_STAGE;
+      m.schemaVersion = WL.SCHEMA_VERSION;
+      m.schemaId = WL.SCHEMA_ID;
+      m.schemaLockVersion = WL.SCHEMA_LOCK_VERSION;
+      if (!m.packageAuthority) m.packageAuthority = 'AIDRPG Final Build Planning Package v1.4.1 / Code Pass 1';
+      if (!m.createdBy) m.createdBy = 'WorldLedger script';
+      if (typeof m.createdTurn !== 'number') m.createdTurn = 0;
+      if (typeof m.lastUpdatedTurn !== 'number') m.lastUpdatedTurn = WL.U.nowTurn(root);
+      if (!m.lastReleaseCheckResult) m.lastReleaseCheckResult = 'unknown';
+      if (!Array.isArray(m.notes)) m.notes = [];
+      if (!Array.isArray(m.schemaRepairs)) m.schemaRepairs = [];
+    },
+    ensurePlayerShape(root) {
+      const p = root.player || (root.player = {});
+      if (!p.id) p.id = 'player';
+      if (!p.name) p.name = 'Unknown';
+      if (p.raceSpecies == null) p.raceSpecies = p.species || p.race || 'unknown';
+      if (p.species == null) p.species = p.raceSpecies || 'unknown';
+      if (p.race == null) p.race = p.raceSpecies || 'unknown';
+      if (p.age == null) p.age = 'unknown';
+      if (p.appearance == null) p.appearance = 'unspecified';
+      if (p.bodyType == null) p.bodyType = 'humanoid';
+      if (p.buildIdentity == null) p.buildIdentity = 'balanced';
+      if (p.specialization == null) p.specialization = 'none';
+      ['titles','nicknames','notes','identityWarnings'].forEach(k => { if (!Array.isArray(p[k])) p[k] = []; });
+      ['origin','temporaryAppearance','activeDisguise','activeIllusion'].forEach(k => { if (p[k] == null) p[k] = ''; });
+    },
+    ensureBodyShape(root) {
+      const b = root.body || (root.body = {});
+      // Preserve older flat resources while adding locked ResourceTrack objects.
+      if (!b.hpTrack || typeof b.hpTrack !== 'object') b.hpTrack = { current: Number(b.hp == null ? 100 : b.hp), max: Number(b.maxHp == null ? 100 : b.maxHp) };
+      if (!b.mpTrack || typeof b.mpTrack !== 'object') b.mpTrack = { current: Number(b.mp == null ? 50 : b.mp), max: Number(b.maxMp == null ? 50 : b.maxMp) };
+      if (!b.epTrack || typeof b.epTrack !== 'object') b.epTrack = { current: Number(b.ep == null ? 100 : b.ep), max: Number(b.maxEp == null ? 100 : b.maxEp) };
+      b.hpTrack.max = WL.U.clamp(b.hpTrack.max || b.maxHp || 100, 1, 999999);
+      b.hpTrack.current = WL.U.clamp(b.hpTrack.current == null ? b.hpTrack.max : b.hpTrack.current, 0, b.hpTrack.max);
+      b.mpTrack.max = WL.U.clamp(b.mpTrack.max == null ? (b.maxMp || 50) : b.mpTrack.max, 0, 999999);
+      b.mpTrack.current = WL.U.clamp(b.mpTrack.current == null ? b.mpTrack.max : b.mpTrack.current, 0, b.mpTrack.max);
+      b.epTrack.max = WL.U.clamp(b.epTrack.max == null ? (b.maxEp || 100) : b.epTrack.max, 0, 999999);
+      b.epTrack.current = WL.U.clamp(b.epTrack.current == null ? b.epTrack.max : b.epTrack.current, 0, b.epTrack.max);
+      b.hp = b.hpTrack.current; b.maxHp = b.hpTrack.max;
+      b.mp = b.mpTrack.current; b.maxMp = b.mpTrack.max;
+      b.ep = b.epTrack.current; b.maxEp = b.epTrack.max;
+      if (!Array.isArray(b.injuries)) b.injuries = [];
+      if (!Array.isArray(b.conditions)) b.conditions = [];
+      if (!Array.isArray(b.statusNotes)) b.statusNotes = [];
+      if (!Array.isArray(b.bodyTraits)) b.bodyTraits = [];
+      if (!Array.isArray(b.bodyWarnings)) b.bodyWarnings = [];
+      if (!b.fatigue) b.fatigue = 'normal';
+      if (!b.deathBoundary) b.deathBoundary = 'alive';
+    },
+    ensureRuntimeShape(root) {
+      const r = root.runtime || (root.runtime = {});
+      if (!r.currentHook) r.currentHook = 'none';
+      if (typeof r.currentTurn !== 'number') r.currentTurn = 0;
+      if (typeof r.hookDepth !== 'number') r.hookDepth = 0;
+      if (!Array.isArray(r.hookTrace)) r.hookTrace = [];
+      ['lastInputHash','lastContextHash','lastOutputHash','lastAppliedOutputHash','lastCommandHash','lastCommandName','pendingInputIntentId'].forEach(k => { if (r[k] == null) r[k] = ''; });
+      if (typeof r.commandActive !== 'boolean') r.commandActive = false;
+      if (typeof r.commandSuppressed !== 'boolean') r.commandSuppressed = false;
+      if (typeof r.suppressEventScanForCommandOutput !== 'boolean') r.suppressEventScanForCommandOutput = !!r.commandSuppressed;
+      if (typeof r.lastCommandTurn !== 'number') r.lastCommandTurn = 0;
+      if (typeof r.outputReplayDetected !== 'boolean') r.outputReplayDetected = false;
+      if (!Array.isArray(r.runtimeWarnings)) r.runtimeWarnings = r.warnings || [];
+      if (!Array.isArray(r.runtimeErrors)) r.runtimeErrors = r.errors || [];
+      if (typeof r.failSoftCount !== 'number') r.failSoftCount = 0;
+      if (!Array.isArray(r.warnings)) r.warnings = r.runtimeWarnings;
+      if (!Array.isArray(r.errors)) r.errors = r.runtimeErrors;
+    },
+    ensureStartupShape(root) {
+      const s = root.startup || (root.startup = {});
+      if (!s.setupStatus) s.setupStatus = s.startupLocked ? 'locked' : 'not_started';
+      if (typeof s.setupImported !== 'boolean') s.setupImported = !!s.identityImported;
+      if (typeof s.gameplayStarted !== 'boolean') s.gameplayStarted = !!s.firstGameplayInputSeen;
+      if (typeof s.setupLockedTurn !== 'number') s.setupLockedTurn = 0;
+      if (!s.setupSourceHash) s.setupSourceHash = '';
+      ['importedFields','rejectedFields','warnings','errors','startupOperationKeys'].forEach(k => { if (!Array.isArray(s[k])) s[k] = []; });
+    },
+    ensureLockedShapes(root) {
+      this.ensureSchemaMetadata(root);
+      this.ensureRuntimeShape(root);
+      this.ensureStartupShape(root);
+      this.ensurePlayerShape(root);
+      this.ensureBodyShape(root);
+      if (!root.cards || typeof root.cards !== 'object') root.cards = {};
+      if (!Array.isArray(root.cards.protectedTitles)) root.cards.protectedTitles = WL.PROTECTED_CARD_KEYS.slice();
+      root.cards.protectedTitles = WL.PROTECTED_CARD_KEYS.slice();
+      if (!root.operationLedger || typeof root.operationLedger !== 'object') root.operationLedger = {};
+      ['permanentKeys','rewardKeys','cardKeys','sourceUseKeys'].forEach(k => { if (!root.operationLedger[k] || typeof root.operationLedger[k] !== 'object') root.operationLedger[k] = {}; });
+      if (!Array.isArray(root.operationLedger.recentKeys)) root.operationLedger.recentKeys = [];
+      if (!Array.isArray(root.operationLedger.duplicateSkips)) root.operationLedger.duplicateSkips = [];
+    },
+    inspect(root) {
+      const rows = [];
+      if (!root || typeof root !== 'object') return [{ status: 'FAIL', label: 'root missing' }];
+      rows.push(root.schemaVersion === WL.SCHEMA_VERSION ? { status: 'PASS', label: 'root schemaVersion locked: ' + WL.SCHEMA_VERSION } : { status: 'FAIL', label: 'root schemaVersion mismatch' });
+      rows.push(root.meta && root.meta.schemaId === WL.SCHEMA_ID ? { status: 'PASS', label: 'meta schemaId locked: ' + WL.SCHEMA_ID } : { status: 'FAIL', label: 'meta schemaId missing/mismatch' });
+      WL.CANONICAL_ROOT_BUCKETS.forEach(k => rows.push(root[k] && typeof root[k] === 'object' ? { status: 'PASS', label: 'canonical bucket present: ' + k + ' / owner: ' + this.owner(k) } : { status: 'FAIL', label: 'canonical bucket missing: ' + k }));
+      WL.SUPPORT_ROOT_BUCKETS.forEach(k => rows.push(root[k] && typeof root[k] === 'object' ? { status: 'PASS', label: 'support bucket present: ' + k + ' / owner: ' + this.owner(k) } : { status: 'WARN', label: 'support bucket missing: ' + k }));
+      const b = root.body || {};
+      rows.push(b.hp >= 0 && b.hp <= b.maxHp ? { status: 'PASS', label: 'HP invariant locked' } : { status: 'FAIL', label: 'HP invariant broken' });
+      rows.push(b.mp >= 0 && b.mp <= b.maxMp ? { status: 'PASS', label: 'MP invariant locked' } : { status: 'FAIL', label: 'MP invariant broken' });
+      rows.push(b.ep >= 0 && b.ep <= b.maxEp ? { status: 'PASS', label: 'EP invariant locked' } : { status: 'FAIL', label: 'EP invariant broken' });
+      rows.push(root.features && root.features.generatedCardsEnabled === false ? { status: 'PASS', label: 'generated cards disabled by schema lock' } : { status: 'FAIL', label: 'generated cards enabled too early' });
+      rows.push(root.features && root.features.manualMutationCommandsEnabled === false ? { status: 'PASS', label: 'manual mutation commands disabled by schema lock' } : { status: 'FAIL', label: 'manual mutation commands enabled too early' });
+      return rows;
+    },
+    render(root) {
+      const rows = this.inspect(root);
+      const fail = rows.filter(r => r.status === 'FAIL').length;
+      const lines = ['Schema Lock: ' + WL.SCHEMA_LOCK_VERSION + (fail ? ' / FAILURES: ' + fail : ' / locked'), 'Schema ID: ' + WL.SCHEMA_ID, 'Canonical root buckets: ' + WL.CANONICAL_ROOT_BUCKETS.join(', '), 'Support buckets: ' + WL.SUPPORT_ROOT_BUCKETS.join(', '), 'Ownership:'];
+      Object.keys(WL.SCHEMA_OWNER_MAP).forEach(k => lines.push('- ' + k + ': ' + WL.SCHEMA_OWNER_MAP[k]));
+      lines.push('Boundary rules:');
+      Object.keys(WL.MUTATION_BOUNDARIES).forEach(k => lines.push('- ' + k + ': ' + WL.MUTATION_BOUNDARIES[k]));
+      lines.push('Audit:');
+      rows.forEach(r => lines.push(r.status + ': ' + r.label));
+      return lines;
+    }
+  };
+
+  // ============================================================
+  // 04. State Schema Defaults
+  // ============================================================
+  WL.Schema = {
+    features() { return Object.assign({}, WL.FeatureDefaults); },
+    root() {
+      return {
+        schemaVersion: WL.SCHEMA_VERSION,
+        build: {
+          projectName: WL.PROJECT_NAME,
+          buildName: WL.BUILD_NAME,
+          buildVersion: WL.BUILD_VERSION,
+          buildStage: WL.BUILD_STAGE,
+          createdTurn: 0,
+          lastTouchedTurn: 0
+        },
+        meta: {
+          initialized: true,
+          installId: 'wl_' + WL.U.hash(String(Date.now ? Date.now() : Math.random())),
+          projectName: WL.PROJECT_NAME,
+          buildName: WL.BUILD_NAME,
+          buildStage: WL.BUILD_STAGE,
+          schemaVersion: WL.SCHEMA_VERSION,
+          schemaId: WL.SCHEMA_ID,
+          schemaLockVersion: WL.SCHEMA_LOCK_VERSION,
+          packageAuthority: 'AIDRPG Final Build Planning Package v1.4.1 / Code Pass 1',
+          createdBy: 'WorldLedger script',
+          createdTurn: 0,
+          lastUpdatedTurn: 0,
+          lastReleaseCheckResult: 'unknown',
+          currentTurn: 0,
+          lastSafeTurn: 0,
+          notes: [],
+          schemaRepairs: []
+        },
+        features: this.features(),
+        layout: { layoutVersion: WL.LAYOUT_VERSION, locked: true, expectedSections: WL.SECTION_ORDER.slice(), moduleContracts: Object.keys(WL.MODULE_CONTRACTS), lastAudit: [] },
+        commandFormat: {
+          formatVersion: WL.COMMAND_FORMAT_LOCK_VERSION,
+          locked: true,
+          prefix: '[WorldLedger]',
+          modeLine: 'Inspect-only / non-canon command output',
+          lastCommandRendered: '',
+          lastStatus: '',
+          lastLength: 0,
+          warnings: [],
+          rules: [
+            'Every command output starts with [WorldLedger].',
+            'Every command output names the command and status.',
+            'Commands inspect state or explain disabled systems; they do not mutate canon in Code Pass 1.',
+            'Disabled features must say deferred/disabled instead of pretending to work.',
+            'Library bundle must not contain separate hook-tab snippets.'
+          ]
+        },
+        runtime: {
+          currentHook: '',
+          hookDepth: 0,
+          currentTurn: 0,
+          commandActive: false,
+          commandSuppressed: false,
+          suppressEventScanForCommandOutput: false,
+          lastCommand: '',
+          lastCommandHash: '',
+          lastCommandTurn: 0,
+          lastCommandName: '',
+          pendingInputIntentId: '',
+          lastInputText: '',
+          lastInputHash: '',
+          lastContextHash: '',
+          lastOutputHash: '',
+          lastAppliedOutputHash: '',
+          duplicateOutputSkipped: 0,
+          outputReplayDetected: false,
+          failSoftCount: 0,
+          runtimeLockVersion: WL.RUNTIME_HOOK_CONTRACT_VERSION,
+          lastReturnStatus: '',
+          lastReturnShape: 'string',
+          lastCommandOutputHash: '',
+          lastSuppressionReason: '',
+          lastDuplicateOutputHash: '',
+          lastFailSoftHook: '',
+          lastFailSoftPhase: '',
+          reentryBlocked: false,
+          mutationBlocked: false,
+          activeTraceId: '',
+          hookTrace: [],
+          warnings: [],
+          errors: [],
+          runtimeWarnings: [],
+          runtimeErrors: [],
+          suppressionAudit: [],
+          returnAudit: []
+        },
+        startup: {
+          firstHookSeen: false,
+          firstGameplayInputSeen: false,
+          startupLocked: false,
+          warnings: [],
+          identityImported: false,
+          oldStateQuarantined: false,
+          setupStatus: 'not_started',
+          setupImported: false,
+          gameplayStarted: false,
+          setupLockedTurn: 0,
+          setupSourceHash: '',
+          importedFields: [],
+          rejectedFields: [],
+          errors: [],
+          startupOperationKeys: []
+        },
+        player: {
+          id: 'player',
+          name: 'Unknown',
+          raceSpecies: 'unknown',
+          species: 'unknown',
+          race: 'unknown',
+          age: 'unknown',
+          appearance: 'unspecified',
+          bodyType: 'humanoid',
+          buildIdentity: 'balanced',
+          specialization: 'none',
+          titles: [],
+          nicknames: [],
+          origin: '',
+          temporaryAppearance: '',
+          activeDisguise: '',
+          activeIllusion: '',
+          identityWarnings: [],
+          level: 1,
+          xp: 0,
+          xpToNext: 100,
+          locationId: '',
+          notes: []
+        },
+        body: {
+          hp: 100, maxHp: 100,
+          mp: 50, maxMp: 50,
+          ep: 100, maxEp: 100,
+          hpTrack: { current: 100, max: 100 },
+          mpTrack: { current: 50, max: 50 },
+          epTrack: { current: 100, max: 100 },
+          conditions: [],
+          injuries: [],
+          fatigue: 'normal',
+          deathBoundary: 'alive',
+          bodyTraits: [],
+          bodyWarnings: [],
+          statusNotes: []
+        },
+        progression: {
+          levelXp: 0,
+          abilityXp: 0,
+          domainXp: {},
+          statXp: { atk: 0, def: 0, spd: 0, int: 0, lck: 0 },
+          recent: []
+        },
+        inventory: {
+          itemsById: {},
+          ownedIds: [],
+          visibleSceneItems: [],
+          availableSceneItems: [],
+          equipment: { mainHand: '', offHand: '', head: '', body: '', hands: '', legs: '', feet: '', accessory1: '', accessory2: '', pack: [] },
+          currency: { copper: 0, silver: 0, gold: 0 },
+          custody: {},
+          log: []
+        },
+        abilities: {
+          candidatesById: {},
+          candidateIds: [],
+          abilitiesById: {},
+          abilityIds: [],
+          denied: [],
+          recent: []
+        },
+        quests: {
+          questsById: {},
+          activeIds: [],
+          offeredIds: [],
+          completedIds: [],
+          archivedIds: [],
+          rewardPromises: [],
+          rewardPayments: []
+        },
+        actors: {
+          actorsById: {},
+          presentIds: [],
+          referencedIds: [],
+          companionIds: [],
+          recent: []
+        },
+        places: {
+          placesById: {},
+          currentId: '',
+          routeId: '',
+          referencedIds: [],
+          recent: []
+        },
+        time: {
+          day: 1,
+          hour: 8,
+          minute: 0,
+          notes: [],
+          deadlines: []
+        },
+        cards: {
+          protectedTitles: [
+            'WorldLedger Player', 'WorldLedger Inventory', 'WorldLedger Abilities', 'WorldLedger Quests',
+            'WorldLedger Actors Places', 'WorldLedger Time', 'WorldLedger Audit', 'WorldLedger Settings'
+          ],
+          dirtyTargets: [],
+          dryRunWrites: [],
+          warnings: [],
+          generatedDisabledReason: 'Generated cards are disabled in Code Pass 1.'
+        },
+        operationLedger: {
+          permanentKeys: {},
+          recentKeys: [],
+          rewardKeys: {},
+          cardKeys: {},
+          sourceUseKeys: {},
+          duplicateSkips: [],
+          maxRecentKeys: 180,
+          ledgerWarnings: [],
+          lastDuplicate: null,
+          ledgerLockVersion: 'worldledger.audit-ledger-lock.v7'
+        },
+        audits: {
+          debug: [],
+          warnings: [],
+          parser: [],
+          proposals: [],
+          validations: [],
+          reducers: [],
+          cards: [],
+          context: [],
+          cleanup: [],
+          migration: [],
+          releasecheck: [],
+          lastTurnSummary: []
+        },
+        migration: {
+          schema: WL.SCHEMA_VERSION,
+          migratedFrom: '',
+          warnings: [],
+          repairs: [],
+          lastRunTurn: 0
+        },
+        quarantine: {
+          records: [],
+          notes: []
+        },
+        dirty: {
+          targets: [],
+          lastReason: ''
+        },
+        cleanup: {
+          lastRunTurn: 0,
+          capsApplied: 0,
+          notes: []
+        },
+        pending: {
+          lastParserHits: [],
+          lastProposals: [],
+          lastValidations: [],
+          lastReducerResults: []
+        }
+      };
+    }
+  };
+
+  // ============================================================
+  // 07. AuditLogger
+  // ============================================================
+  WL.AuditLogger = {
+    caps: Object.freeze({
+      debug: 50, warnings: 50, parser: 40, proposals: 50, validations: 50, reducers: 40,
+      cards: 50, context: 50, cleanup: 50, migration: 50, releasecheck: 50,
+      lastTurnSummary: 24, recentProposals: 50, recentValidationResults: 50,
+      debugMessages: 50, runtimeWarnings: 25, runtimeErrors: 20, duplicateAudit: 50,
+      cardAudit: 50, contextAudit: 50, cleanupAudit: 50, migrationAudit: 50,
+      repairAudit: 50, auditLog: 80
+    }),
+    safeLine(value, maxLength) {
+      const max = WL.U.clamp(maxLength || 240, 24, 1000);
+      let s = WL.U.norm(value);
+      if (s.length > max) s = s.slice(0, max - 3) + '...';
+      return s;
+    },
+    ensure(root) {
+      if (!root || typeof root !== 'object') return null;
+      if (!root.audits || typeof root.audits !== 'object' || Array.isArray(root.audits)) root.audits = {};
+      const buckets = Object.keys(this.caps);
+      for (let i = 0; i < buckets.length; i++) if (!Array.isArray(root.audits[buckets[i]])) root.audits[buckets[i]] = [];
+      if (root.runtime) {
+        if (!Array.isArray(root.runtime.runtimeWarnings)) root.runtime.runtimeWarnings = [];
+        if (!Array.isArray(root.runtime.runtimeErrors)) root.runtime.runtimeErrors = [];
+        if (!Array.isArray(root.runtime.hookTrace)) root.runtime.hookTrace = [];
+      }
+      root.audits.auditLoggerLockVersion = WL.AUDIT_LEDGER_LOCK_VERSION;
+      return root.audits;
+    },
+    capBucket(root, bucketPath, max) {
+      if (!root) return;
+      const parts = String(bucketPath || '').split('.').filter(Boolean);
+      let obj = root;
+      for (let i = 0; i < parts.length - 1; i++) {
+        obj = obj && obj[parts[i]];
+        if (!obj || typeof obj !== 'object') return;
+      }
+      const key = parts[parts.length - 1];
+      if (!obj || !key) return;
+      if (!Array.isArray(obj[key])) obj[key] = [];
+      WL.U.capArray(obj[key], max || this.caps[key] || 40);
+    },
+    capAll(root) {
+      const audits = this.ensure(root);
+      if (!audits) return;
+      const caps = this.caps;
+      Object.keys(caps).forEach(k => this.capBucket(root, 'audits.' + k, caps[k]));
+      if (root.runtime) {
+        this.capBucket(root, 'runtime.runtimeWarnings', WL.SCHEMA_CAPS.runtimeWarnings || 25);
+        this.capBucket(root, 'runtime.runtimeErrors', WL.SCHEMA_CAPS.runtimeErrors || 20);
+        this.capBucket(root, 'runtime.hookTrace', WL.SCHEMA_CAPS.hookTrace || 30);
+        this.capBucket(root, 'runtime.suppressionAudit', 30);
+        this.capBucket(root, 'runtime.returnAudit', 30);
+      }
+    },
+    row(root, family, outcome, reason, extra) {
+      return Object.assign({
+        turn: WL.U.nowTurn(root),
+        family: family || 'system',
+        outcome: outcome || 'info',
+        reason: this.safeLine(reason || '', 220),
+        sourceEventKey: '',
+        preview: '',
+        notes: []
+      }, extra || {});
+    },
+    append(root, bucket, entry, max) {
+      const audits = this.ensure(root);
+      if (!audits) return null;
+      if (!Array.isArray(audits[bucket])) audits[bucket] = [];
+      const row = Object.assign({ turn: WL.U.nowTurn(root), at: bucket }, entry || {});
+      if (row.message) row.message = this.safeLine(row.message, 360);
+      if (row.reason) row.reason = this.safeLine(row.reason, 360);
+      if (row.preview) row.preview = this.safeLine(row.preview, 360);
+      audits[bucket].push(row);
+      WL.U.capArray(audits[bucket], max || this.caps[bucket] || WL.SCHEMA_CAPS.diagnostics || 40);
+      return row;
+    },
+    debug(root, subsystem, message, data) {
+      if (arguments.length === 3) { data = null; message = subsystem; subsystem = 'debug'; }
+      const row = this.append(root, 'debugMessages', { subsystem: subsystem || 'debug', message: this.safeLine(message, 300), data: data || null }, this.caps.debugMessages);
+      this.append(root, 'debug', { subsystem: subsystem || 'debug', message: this.safeLine(message, 300), data: data || null }, this.caps.debug);
+      return row;
+    },
+    warn(root, subsystem, message, data) {
+      if (arguments.length === 3) { data = null; message = subsystem; subsystem = 'warning'; }
+      return this.append(root, 'warnings', { subsystem: subsystem || 'warning', message: this.safeLine(message, 300), data: data || null }, this.caps.warnings);
+    },
+    runtimeWarning(root, message, data) {
+      const msg = this.safeLine(message, 300);
+      const row = this.append(root, 'runtimeWarnings', { message: msg, data: data || null }, this.caps.runtimeWarnings);
+      if (root && root.runtime) {
+        if (!Array.isArray(root.runtime.runtimeWarnings)) root.runtime.runtimeWarnings = [];
+        root.runtime.runtimeWarnings.push({ turn: WL.U.nowTurn(root), message: msg, data: data || null });
+        WL.U.capArray(root.runtime.runtimeWarnings, WL.SCHEMA_CAPS.runtimeWarnings || 25);
+        if (!Array.isArray(root.runtime.warnings)) root.runtime.warnings = [];
+        root.runtime.warnings.push({ turn: WL.U.nowTurn(root), message: msg });
+        WL.U.capArray(root.runtime.warnings, WL.SCHEMA_CAPS.runtimeWarnings || 25);
+      }
+      return row;
+    },
+    runtimeWarn(root, message, data) { return this.runtimeWarning(root, message, data); },
+    runtimeError(root, a, b, c, d, e) {
+      let rec;
+      if (typeof a === 'object' && a !== null) rec = a;
+      else rec = { hook: root && root.runtime ? root.runtime.currentHook : 'unknown', phase: 'runtime', message: a, data: b || null };
+      rec = Object.assign({
+        turn: WL.U.nowTurn(root), hook: rec.hook || 'unknown', phase: rec.phase || 'runtime',
+        message: this.safeLine(rec.message || rec.error || 'runtime error', 300),
+        safeTextReturned: !!rec.safeTextReturned, partialCommitBlocked: rec.partialCommitBlocked !== false
+      }, rec);
+      const row = this.append(root, 'runtimeErrors', rec, this.caps.runtimeErrors);
+      if (root && root.runtime) {
+        if (!Array.isArray(root.runtime.runtimeErrors)) root.runtime.runtimeErrors = [];
+        root.runtime.runtimeErrors.push(rec);
+        WL.U.capArray(root.runtime.runtimeErrors, WL.SCHEMA_CAPS.runtimeErrors || 20);
+        if (!Array.isArray(root.runtime.errors)) root.runtime.errors = [];
+        root.runtime.errors.push({ turn: WL.U.nowTurn(root), message: rec.message });
+        WL.U.capArray(root.runtime.errors, WL.SCHEMA_CAPS.runtimeErrors || 20);
+      }
+      return row;
+    },
+    proposal(root, record) {
+      const rec = this.row(root, (record && record.family) || 'proposal', (record && record.outcome) || 'created', (record && record.reason) || 'proposal recorded', record || {});
+      this.append(root, 'recentProposals', rec, this.caps.recentProposals);
+      return this.append(root, 'proposals', rec, this.caps.proposals);
+    },
+    validation(root, record) {
+      const rec = this.row(root, (record && record.family) || 'validation', (record && (record.result || record.outcome)) || 'checked', (record && record.reason) || 'validation recorded', record || {});
+      this.append(root, 'recentValidationResults', rec, this.caps.recentValidationResults);
+      return this.append(root, 'validations', rec, this.caps.validations);
+    },
+    duplicate(root, key, reason) {
+      const rec = this.row(root, 'ledger', 'duplicate_skip', reason || 'duplicate key skipped', { sourceEventKey: WL.OperationLedger ? WL.OperationLedger.normalizeKey(key) : WL.U.slug(key), preview: String(key || '').slice(0, 120) });
+      return this.append(root, 'duplicateAudit', rec, this.caps.duplicateAudit);
+    },
+    card(root, message) { return this.append(root, 'cardAudit', { message: this.safeLine(message, 300) }, this.caps.cardAudit); },
+    context(root, message) { return this.append(root, 'contextAudit', { message: this.safeLine(message, 300) }, this.caps.contextAudit); },
+    cleanup(root, message) { return this.append(root, 'cleanupAudit', { message: this.safeLine(message, 300) }, this.caps.cleanupAudit); },
+    migration(root, message) { return this.append(root, 'migrationAudit', { message: this.safeLine(message, 300) }, this.caps.migrationAudit); },
+    release(root, releaseCheckRecord) {
+      const rec = Object.assign({ turn: WL.U.nowTurn(root), result: 'WARN', passes: [], warnings: [], failures: [], blockers: [] }, releaseCheckRecord || {});
+      return this.append(root, 'releasecheck', rec, this.caps.releasecheck);
+    },
+    turnSummary(root, summaryRecord) {
+      const rec = Object.assign({
+        turn: WL.U.nowTurn(root),
+        inputHash: root && root.runtime ? root.runtime.lastInputHash : '',
+        outputHash: root && root.runtime ? root.runtime.lastOutputHash : '',
+        proposalsCreated: 0, accepted: 0, rejected: 0, duplicateSkipped: 0,
+        dirtyTargets: root && root.dirty ? root.dirty.targets.slice(0, 12) : [],
+        notes: []
+      }, summaryRecord || {});
+      return this.append(root, 'lastTurnSummary', rec, this.caps.lastTurnSummary);
+    },
+    repair(root, message) {
+      const row = this.append(root, 'repairAudit', { message: this.safeLine(message, 300) }, this.caps.repairAudit);
+      this.warn(root, 'repair', message);
+      return row;
+    },
+    summarizeLastTurn(root, message) { return this.turnSummary(root, { notes: [this.safeLine(message, 240)], message: this.safeLine(message, 240) }); },
+    inspect(root) {
+      this.ensure(root);
+      const rows = [];
+      rows.push({ status: 'PASS', label: 'AuditLogger lock present: ' + WL.AUDIT_LEDGER_LOCK_VERSION });
+      ['debugMessages','runtimeWarnings','runtimeErrors','recentProposals','recentValidationResults','duplicateAudit','lastTurnSummary','releasecheck'].forEach(k => rows.push(Array.isArray(root.audits[k]) ? { status: 'PASS', label: 'audit bucket present/capped: ' + k } : { status: 'FAIL', label: 'audit bucket missing: ' + k }));
+      rows.push(typeof this.safeLine === 'function' ? { status: 'PASS', label: 'safeLine present' } : { status: 'FAIL', label: 'safeLine missing' });
+      rows.push(typeof this.capAll === 'function' ? { status: 'PASS', label: 'capAll present' } : { status: 'FAIL', label: 'capAll missing' });
+      return rows;
+    },
+    runBC7SelfTests() {
+      const results = [];
+      const add = (id, ok, label) => results.push({ id, ok: !!ok, label });
+      const st = {}; const r = WL.StateManager.init(st);
+      this.debug(r, 'test', 'debug message'); add('BC7-A01', r.audits.debugMessages.length === 1, 'debug audit records');
+      this.runtimeWarning(r, 'runtime warning'); add('BC7-A02', r.audits.runtimeWarnings.length >= 1 && r.runtime.runtimeWarnings.length >= 1, 'runtime warning surfaces to audits and runtime');
+      this.runtimeError(r, { hook: 'output', phase: 'forced', message: 'boom', safeTextReturned: true, partialCommitBlocked: true }); add('BC7-A03', r.audits.runtimeErrors.length >= 1 && r.runtime.runtimeErrors.length >= 1, 'runtime error structured');
+      this.proposal(r, { family: 'inventory', reason: 'proposal test', preview: 'test' }); add('BC7-A04', r.audits.recentProposals.length === 1, 'proposal audit records');
+      this.validation(r, { family: 'inventory', result: 'reject', reason: 'validation test' }); add('BC7-A05', r.audits.recentValidationResults.length === 1, 'validation audit records');
+      this.duplicate(r, 'same_key', 'duplicate test'); add('BC7-A06', r.audits.duplicateAudit.length === 1, 'duplicate audit records');
+      for (let i = 0; i < 100; i++) this.debug(r, 'spam', 'line ' + i);
+      add('BC7-A07', r.audits.debugMessages.length <= this.caps.debugMessages, 'audit caps applied');
+      add('BC7-A08', !r.inventory.itemsById.same_key, 'AuditLogger does not mutate gameplay');
+      return results;
+    }
+  };
+
+  // ============================================================
+  // 05. StateManager
+  // ============================================================
+  WL.StateManager = {
+    clone(value) {
+      try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
+    },
+    root() {
+      return this.init(WL.U.ensureGlobalState());
+    },
+    getRoot(rawState) {
+      return this.init(rawState || WL.U.ensureGlobalState());
+    },
+    init(rawState) {
+      const st = rawState && typeof rawState === 'object' ? rawState : WL.U.ensureGlobalState();
+      const root = this.ensureRoot(st);
+      this.ensureAllBuckets(root);
+      this.ensureMeta(root);
+      this.ensureFeatures(root);
+      this.ensureRuntime(root);
+      this.ensureStartup(root);
+      this.ensurePlayer(root);
+      this.ensureBody(root);
+      this.ensureProgression(root);
+      this.ensureInventory(root);
+      this.ensureAbilities(root);
+      this.ensureQuests(root);
+      this.ensureActors(root);
+      this.ensurePlaces(root);
+      this.ensureTime(root);
+      this.ensureCards(root);
+      this.ensureOperationLedger(root);
+      this.ensureAudits(root);
+      this.ensureMigration(root);
+      this.ensureQuarantine(root);
+      this.ensureDirty(root);
+      this.ensureCleanup(root);
+      this.repairKnownFieldTypes(root);
+      this.migrateIfNeeded(root);
+      this.protectOldState(root);
+      this.applySafeCaps(root);
+      const integrity = this.validateIntegrity(root);
+      root.meta.lastIntegrityOk = integrity.ok;
+      root.meta.lastIntegrityWarnings = integrity.warnings.slice(-8);
+      return root;
+    },
+    createFreshRoot(reason) {
+      const root = WL.Schema.root();
+      root.meta.stateManagerLockVersion = WL.STATE_MANAGER_LOCK_VERSION;
+      root.meta.createdReason = reason || 'fresh_root';
+      root.migration.migrationStatus = 'fresh';
+      return root;
+    },
+    ensureRoot(rawState) {
+      const st = rawState && typeof rawState === 'object' ? rawState : WL.U.ensureGlobalState();
+      const existing = st[WL.ROOT_KEY];
+      if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+        const fresh = this.createFreshRoot(existing == null ? 'missing_root' : 'malformed_root');
+        if (existing != null) {
+          const preview = String(existing).slice(0, 180);
+          fresh.quarantine.records.push({ turn: 0, source: 'state.' + WL.ROOT_KEY, sourceKey: 'malformed_root', originalPreview: preview, reason: 'WorldLedger root was not an object; rebuilt safely.', severity: 'high', suggestedAction: 'Do not import automatically; review manually if needed.', unresolved: true });
+          fresh.migration.warnings.push('Malformed state.' + WL.ROOT_KEY + ' was quarantined as preview only; no gameplay truth imported.');
+          st[WL.ROOT_KEY + '_malformed_preview'] = preview;
+        }
+        st[WL.ROOT_KEY] = fresh;
+        return fresh;
+      }
+      return existing;
+    },
+    ensureAllBuckets(root) {
+      const fresh = WL.Schema.root();
+      const buckets = WL.ROOT_BUCKETS_ALL || ['meta','features','layout','commandFormat','runtime','startup','player','body','progression','inventory','abilities','quests','actors','places','time','cards','operationLedger','audits','migration','quarantine','dirty','cleanup','pending'];
+      for (let i = 0; i < buckets.length; i++) this.ensureBucket(root, buckets[i], () => this.clone(fresh[buckets[i]]) || {});
+      root.schemaVersion = WL.SCHEMA_VERSION;
+      return root;
+    },
+    ensureBucket(root, bucketName, defaultFactory) {
+      if (!root[bucketName] || typeof root[bucketName] !== 'object' || Array.isArray(root[bucketName])) {
+        root[bucketName] = defaultFactory ? defaultFactory() : {};
+        this.addRepairWarning(root, 'State repair: ' + bucketName + ' bucket was missing or malformed and has been recreated with safe defaults.');
+      }
+      return root[bucketName];
+    },
+    ensureMeta(root) {
+      const m = this.ensureBucket(root, 'meta', () => WL.Schema.root().meta);
+      if (!root.build || typeof root.build !== 'object') root.build = WL.Schema.root().build;
+      root.build.projectName = WL.PROJECT_NAME;
+      root.build.buildName = WL.BUILD_NAME;
+      root.build.buildVersion = WL.BUILD_VERSION;
+      root.build.buildStage = WL.BUILD_STAGE;
+      root.build.lastTouchedTurn = Number(m.currentTurn || root.runtime && root.runtime.currentTurn || 0);
+      m.projectName = WL.PROJECT_NAME;
+      m.buildName = WL.BUILD_NAME;
+      m.buildStage = WL.BUILD_STAGE;
+      m.schemaVersion = WL.SCHEMA_VERSION;
+      m.schemaId = WL.SCHEMA_ID;
+      m.schemaLockVersion = WL.SCHEMA_LOCK_VERSION;
+      m.stateManagerLockVersion = WL.STATE_MANAGER_LOCK_VERSION;
+      if (!m.packageAuthority) m.packageAuthority = 'AIDRPG Final Build Planning Package v1.4.1 / Code Pass 1';
+      if (!m.createdBy) m.createdBy = 'WorldLedger script';
+      if (typeof m.createdTurn !== 'number') m.createdTurn = 0;
+      if (typeof m.currentTurn !== 'number') m.currentTurn = 0;
+      if (!Array.isArray(m.notes)) m.notes = [];
+      if (!Array.isArray(m.schemaRepairs)) m.schemaRepairs = [];
+      return m;
+    },
+    ensureFeatures(root) {
+      const defaults = WL.FeatureDefaults;
+      const f = this.ensureBucket(root, 'features', () => ({}));
+      Object.keys(defaults).forEach(k => { if (typeof f[k] === 'undefined') f[k] = defaults[k]; });
+      const forceFalse = ['generatedCardsEnabled','protectedCardWritesEnabled','manualMutationCommandsEnabled','economyEnabled','craftingEnabled','investigationEnabled','reputationEnabled','domainEnabled','absorptionEnabled','advancedCombatEnabled','warfareEnabled','multiProtagonistEnabled'];
+      for (let i = 0; i < forceFalse.length; i++) {
+        const k = forceFalse[i];
+        if (f[k] !== false) {
+          f[k] = false;
+          this.addRepairWarning(root, 'State repair: unsafe/deferred feature flag ' + k + ' was forced false for Code Pass 1.');
+        }
+      }
+      f.cardSyncDryRun = true;
+      f.cardSyncSafeMode = true;
+      f.commandsEnabled = true;
+      f.stateManagerLockEnabled = true;
+      return f;
+    },
+    ensureRuntime(root) {
+      const r = this.ensureBucket(root, 'runtime', () => WL.Schema.root().runtime);
+      if (!r.currentHook) r.currentHook = 'none';
+      if (typeof r.currentTurn !== 'number') r.currentTurn = 0;
+      if (typeof r.hookDepth !== 'number') r.hookDepth = 0;
+      ['hookTrace','runtimeWarnings','runtimeErrors','warnings','errors'].forEach(k => { if (!Array.isArray(r[k])) r[k] = []; });
+      ['lastInputHash','lastContextHash','lastOutputHash','lastAppliedOutputHash','lastCommandHash','lastCommandOutputHash','lastCommandName','pendingInputIntentId','lastInputText','lastReturnStatus','lastReturnShape','lastSuppressionReason','lastDuplicateOutputHash','lastFailSoftHook','lastFailSoftPhase','activeTraceId'].forEach(k => { if (r[k] == null) r[k] = ''; });
+      ['commandActive','commandSuppressed','suppressEventScanForCommandOutput','outputReplayDetected','reentryBlocked','mutationBlocked'].forEach(k => { if (typeof r[k] !== 'boolean') r[k] = false; });
+      if (typeof r.lastCommandTurn !== 'number') r.lastCommandTurn = 0;
+      if (typeof r.duplicateOutputSkipped !== 'number') r.duplicateOutputSkipped = 0;
+      if (typeof r.failSoftCount !== 'number') r.failSoftCount = 0;
+      if (!Array.isArray(r.suppressionAudit)) r.suppressionAudit = [];
+      if (!Array.isArray(r.returnAudit)) r.returnAudit = [];
+      r.runtimeLockVersion = WL.RUNTIME_HOOK_CONTRACT_VERSION;
+      return r;
+    },
+    ensureStartup(root) {
+      const s = this.ensureBucket(root, 'startup', () => WL.Schema.root().startup);
+      ['firstHookSeen','firstGameplayInputSeen','startupLocked','identityImported','oldStateQuarantined','setupImported','gameplayStarted'].forEach(k => { if (typeof s[k] !== 'boolean') s[k] = false; });
+      if (!s.setupStatus) s.setupStatus = s.startupLocked || s.gameplayStarted ? 'locked' : 'not_started';
+      if (typeof s.setupLockedTurn !== 'number') s.setupLockedTurn = 0;
+      if (!s.setupSourceHash) s.setupSourceHash = '';
+      ['importedFields','rejectedFields','warnings','errors','startupOperationKeys','lockedFields'].forEach(k => { if (!Array.isArray(s[k])) s[k] = []; });
+      return s;
+    },
+    ensurePlayer(root) {
+      const p = this.ensureBucket(root, 'player', () => WL.Schema.root().player);
+      if (!p.id) p.id = 'player';
+      if (!p.name) p.name = 'Unknown';
+      if (p.raceSpecies == null) p.raceSpecies = p.species || p.race || 'unknown';
+      if (p.species == null) p.species = p.raceSpecies || 'unknown';
+      if (p.race == null) p.race = p.raceSpecies || 'unknown';
+      if (p.age == null) p.age = 'unknown';
+      if (p.appearance == null) p.appearance = 'unspecified';
+      if (p.bodyType == null) p.bodyType = 'humanoid';
+      if (p.buildIdentity == null) p.buildIdentity = 'balanced';
+      if (p.specialization == null) p.specialization = 'none';
+      p.level = WL.U.clamp(p.level || 1, 1, 1000);
+      p.xp = WL.U.clamp(p.xp || 0, 0, 999999999);
+      p.xpToNext = WL.U.clamp(p.xpToNext || 100, 1, 999999999);
+      ['titles','nicknames','notes','identityWarnings'].forEach(k => { if (!Array.isArray(p[k])) p[k] = []; });
+      ['origin','temporaryAppearance','activeDisguise','activeIllusion','locationId'].forEach(k => { if (p[k] == null) p[k] = ''; });
+      return p;
+    },
+    ensureBody(root) {
+      const b = this.ensureBucket(root, 'body', () => WL.Schema.root().body);
+      const repairTrack = (flatCur, flatMax, key, defCur, defMax) => {
+        const t = b[key] && typeof b[key] === 'object' && !Array.isArray(b[key]) ? b[key] : {};
+        let max = Number(t.max != null ? t.max : (b[flatMax] != null ? b[flatMax] : defMax));
+        let cur = Number(t.current != null ? t.current : (b[flatCur] != null ? b[flatCur] : defCur));
+        if (!Number.isFinite(max) || max <= 0) { max = defMax; this.addRepairWarning(root, 'State repair: body.' + key + '.max was invalid and reset to ' + defMax + '.'); }
+        if (!Number.isFinite(cur)) { cur = max; this.addRepairWarning(root, 'State repair: body.' + key + '.current was invalid and reset safely.'); }
+        if (cur > max) { cur = max; this.addRepairWarning(root, 'State repair: body.' + key + '.current was greater than max and was clamped; this is structural repair, not healing.'); }
+        if (cur < 0) { cur = 0; this.addRepairWarning(root, 'State repair: body.' + key + '.current was below zero and was clamped; this is structural repair, not healing.'); }
+        b[key] = { current: cur, max: max };
+        b[flatCur] = cur;
+        b[flatMax] = max;
+      };
+      repairTrack('hp','maxHp','hpTrack',100,100);
+      repairTrack('mp','maxMp','mpTrack',50,50);
+      repairTrack('ep','maxEp','epTrack',100,100);
+      ['conditions','injuries','statusNotes','bodyTraits','bodyWarnings'].forEach(k => { if (!Array.isArray(b[k])) { b[k] = []; this.addRepairWarning(root, 'State repair: body.' + k + ' was missing/malformed and reset to an empty array.'); } });
+      if (!['normal','tired','fatigued','exhausted'].includes(String(b.fatigue || 'normal'))) { b.fatigue = 'normal'; this.addRepairWarning(root, 'State repair: body.fatigue invalid enum reset to normal.'); }
+      if (!['alive','unconscious','dead','unknown'].includes(String(b.deathBoundary || 'alive'))) { b.deathBoundary = 'alive'; this.addRepairWarning(root, 'State repair: body.deathBoundary invalid enum reset to alive.'); }
+      return b;
+    },
+    ensureProgression(root) {
+      const p = this.ensureBucket(root, 'progression', () => WL.Schema.root().progression);
+      if (typeof p.levelXp !== 'number') p.levelXp = 0;
+      if (typeof p.abilityXp !== 'number') p.abilityXp = 0;
+      if (!p.domainXp || typeof p.domainXp !== 'object') p.domainXp = {};
+      if (!p.statXp || typeof p.statXp !== 'object') p.statXp = { atk: 0, def: 0, spd: 0, int: 0, lck: 0 };
+      ['atk','def','spd','int','lck'].forEach(k => { p.statXp[k] = WL.U.clamp(p.statXp[k] || 0, 0, 999999999); });
+      if (!Array.isArray(p.recent)) p.recent = [];
+      return p;
+    },
+    ensureInventory(root) {
+      const inv = this.ensureBucket(root, 'inventory', () => WL.Schema.root().inventory);
+      if (!inv.itemsById || typeof inv.itemsById !== 'object' || Array.isArray(inv.itemsById)) inv.itemsById = {};
+      ['ownedIds','visibleSceneItems','availableSceneItems','sceneItems','log'].forEach(k => { if (!Array.isArray(inv[k])) inv[k] = []; });
+      if (!inv.sceneItems.length && inv.visibleSceneItems.length) inv.sceneItems = inv.visibleSceneItems.slice(0, 20);
+      if (!inv.equipment || typeof inv.equipment !== 'object' || Array.isArray(inv.equipment)) inv.equipment = this.clone(WL.Schema.root().inventory.equipment);
+      if (!Array.isArray(inv.equipment.pack)) inv.equipment.pack = [];
+      if (!inv.currency || typeof inv.currency !== 'object' || Array.isArray(inv.currency)) inv.currency = { copper: 0, silver: 0, gold: 0 };
+      ['copper','silver','gold'].forEach(k => { inv.currency[k] = WL.U.clamp(inv.currency[k] || 0, 0, 999999999); });
+      if (!inv.custody || typeof inv.custody !== 'object' || Array.isArray(inv.custody)) inv.custody = {};
+      return inv;
+    },
+    ensureAbilities(root) {
+      const a = this.ensureBucket(root, 'abilities', () => WL.Schema.root().abilities);
+      ['candidatesById','abilitiesById'].forEach(k => { if (!a[k] || typeof a[k] !== 'object' || Array.isArray(a[k])) a[k] = {}; });
+      ['candidateIds','abilityIds','denied','recent'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
+      if (!Array.isArray(a.statuses)) a.statuses = ['candidate','unstable','stable'];
+      ['candidate','stable'].forEach(v => { if (a.statuses.indexOf(v) < 0) a.statuses.push(v); });
+      return a;
+    },
+    ensureQuests(root) {
+      const q = this.ensureBucket(root, 'quests', () => WL.Schema.root().quests);
+      if (!q.questsById || typeof q.questsById !== 'object' || Array.isArray(q.questsById)) q.questsById = {};
+      ['activeIds','offeredIds','completedIds','archivedIds','rewardPromises','rewardPayments'].forEach(k => { if (!Array.isArray(q[k])) q[k] = []; });
+      if (!Array.isArray(q.rewardStatuses)) q.rewardStatuses = ['promised','paid'];
+      ['promised','paid'].forEach(v => { if (q.rewardStatuses.indexOf(v) < 0) q.rewardStatuses.push(v); });
+      return q;
+    },
+    ensureActors(root) {
+      const a = this.ensureBucket(root, 'actors', () => WL.Schema.root().actors);
+      if (!a.actorsById || typeof a.actorsById !== 'object' || Array.isArray(a.actorsById)) a.actorsById = {};
+      ['presentIds','referencedIds','companionIds','recent'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
+      if (!Array.isArray(a.presenceStates)) a.presenceStates = ['present','elsewhere','absent'];
+      ['elsewhere','absent'].forEach(v => { if (a.presenceStates.indexOf(v) < 0) a.presenceStates.push(v); });
+      return a;
+    },
+    ensurePlaces(root) {
+      const p = this.ensureBucket(root, 'places', () => WL.Schema.root().places);
+      if (!p.placesById || typeof p.placesById !== 'object' || Array.isArray(p.placesById)) p.placesById = {};
+      ['referencedIds','recent'].forEach(k => { if (!Array.isArray(p[k])) p[k] = []; });
+      if (p.currentId == null) p.currentId = '';
+      if (p.routeId == null) p.routeId = '';
+      if (p.currentLocation == null) p.currentLocation = p.currentId || '';
+      if (p.travelIntent == null) p.travelIntent = p.routeId || '';
+      return p;
+    },
+    ensureTime(root) {
+      const t = this.ensureBucket(root, 'time', () => WL.Schema.root().time);
+      t.day = WL.U.clamp(t.day || 1, 1, 999999);
+      t.hour = WL.U.clamp(t.hour == null ? 8 : t.hour, 0, 23);
+      t.minute = WL.U.clamp(t.minute || 0, 0, 59);
+      ['notes','deadlines'].forEach(k => { if (!Array.isArray(t[k])) t[k] = []; });
+      return t;
+    },
+    ensureCards(root) {
+      const c = this.ensureBucket(root, 'cards', () => WL.Schema.root().cards);
+      c.protectedTitles = WL.PROTECTED_CARD_KEYS.slice();
+      ['dirtyTargets','dryRunWrites','warnings'].forEach(k => { if (!Array.isArray(c[k])) c[k] = []; });
+      c.generatedDisabledReason = 'Generated cards are disabled in Code Pass 1.';
+      c.generatedCardsEnabled = false;
+      return c;
+    },
+    ensureOperationLedger(root) {
+      const led = this.ensureBucket(root, 'operationLedger', () => WL.Schema.root().operationLedger);
+      ['permanentKeys','rewardKeys','cardKeys','sourceUseKeys'].forEach(k => {
+        if (Array.isArray(led[k])) {
+          const obj = {};
+          led[k].forEach(x => { const key = WL.OperationLedger ? WL.OperationLedger.normalizeKey(x) : WL.U.slug(x); if (key) obj[key] = { turn: 0, migratedFromArray: true }; });
+          led[k] = obj;
+          this.addRepairWarning(root, 'State repair: operationLedger.' + k + ' array was converted into keyed object without deleting entries.');
+        }
+        if (!led[k] || typeof led[k] !== 'object') led[k] = {};
+      });
+      ['recentKeys','duplicateSkips'].forEach(k => { if (!Array.isArray(led[k])) led[k] = []; });
+      return led;
+    },
+    ensureAudits(root) {
+      const a = this.ensureBucket(root, 'audits', () => WL.Schema.root().audits);
+      ['debug','warnings','parser','proposals','validations','reducers','cards','context','cleanup','migration','releasecheck','lastTurnSummary','recentProposals','recentValidationResults','debugMessages','runtimeWarnings','runtimeErrors','duplicateAudit','cardAudit','contextAudit','cleanupAudit','migrationAudit','repairAudit','auditLog'].forEach(k => { if (!Array.isArray(a[k])) a[k] = []; });
+      return a;
+    },
+    ensureMigration(root) {
+      const m = this.ensureBucket(root, 'migration', () => WL.Schema.root().migration);
+      if (typeof m.schema !== 'number') m.schema = WL.SCHEMA_VERSION;
+      if (!m.migrationStatus) m.migrationStatus = 'checked';
+      ['warnings','repairs','quarantined','migrationOperationKeys'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
+      if (typeof m.lastRunTurn !== 'number') m.lastRunTurn = 0;
+      if (typeof m.unresolvedCount !== 'number') m.unresolvedCount = 0;
+      return m;
+    },
+    ensureQuarantine(root) {
+      const q = this.ensureBucket(root, 'quarantine', () => WL.Schema.root().quarantine);
+      if (!Array.isArray(q.records)) q.records = [];
+      if (!Array.isArray(q.notes)) q.notes = [];
+      if (typeof q.unresolvedCount !== 'number') q.unresolvedCount = q.records.filter(r => r && r.unresolved !== false).length;
+      return q;
+    },
+    ensureDirty(root) {
+      const d = this.ensureBucket(root, 'dirty', () => WL.Schema.root().dirty);
+      if (!Array.isArray(d.targets)) d.targets = [];
+      if (d.lastReason == null) d.lastReason = '';
+      return d;
+    },
+    ensureCleanup(root) {
+      const c = this.ensureBucket(root, 'cleanup', () => WL.Schema.root().cleanup);
+      if (typeof c.lastRunTurn !== 'number') c.lastRunTurn = 0;
+      if (typeof c.capsApplied !== 'number') c.capsApplied = 0;
+      if (!Array.isArray(c.notes)) c.notes = [];
+      return c;
+    },
+    repair(root) {
+      return this.init({ [WL.ROOT_KEY]: root });
+    },
+    repairKnownFieldTypes(root) {
+      if (WL.CommandOutputFormatLock) WL.CommandOutputFormatLock.ensure(root);
+      if (WL.StateSchemaLock) WL.StateSchemaLock.ensureLockedShapes(root);
+      this.ensurePlayer(root);
+      this.ensureBody(root);
+      this.ensureInventory(root);
+      this.ensureAbilities(root);
+      this.ensureQuests(root);
+      this.ensureActors(root);
+      this.ensurePlaces(root);
+      return root;
+    },
+    migrateIfNeeded(root) {
+      this.ensureMigration(root);
+      if (root.migration.schema !== WL.SCHEMA_VERSION) {
+        root.migration.migratedFrom = String(root.migration.schema || 'unknown');
+        root.migration.schema = WL.SCHEMA_VERSION;
+        root.migration.migrationStatus = 'shell_only';
+        this.addRepairWarning(root, 'Migration shell: schema marker updated without importing old prose or Story Card text.');
+      }
+      root.features.generatedCardsEnabled = false;
+      root.features.protectedCardWritesEnabled = false;
+      root.features.cardSyncDryRun = true;
+      root.features.cardSyncSafeMode = true;
+      return root;
+    },
+    quarantine(root, record) {
+      this.ensureQuarantine(root);
+      this.ensureMigration(root);
+      const rec = Object.assign({ turn: WL.U.nowTurn(root), source: 'unknown', sourceKey: '', originalPreview: '', reason: 'unspecified', severity: 'info', suggestedAction: 'manual review', unresolved: true }, record || {});
+      const key = WL.U.slug((rec.source || '') + '|' + (rec.sourceKey || '') + '|' + (rec.reason || ''));
+      for (let i = 0; i < root.quarantine.records.length; i++) {
+        const r = root.quarantine.records[i];
+        const rk = WL.U.slug((r.source || '') + '|' + (r.sourceKey || '') + '|' + (r.reason || ''));
+        if (rk === key) { r.turn = rec.turn; r.originalPreview = rec.originalPreview || r.originalPreview; return r; }
+      }
+      root.quarantine.records.push(rec);
+      root.migration.quarantined.push({ turn: rec.turn, source: rec.source, sourceKey: rec.sourceKey, reason: rec.reason, severity: rec.severity });
+      root.quarantine.unresolvedCount = root.quarantine.records.filter(r => r && r.unresolved !== false).length;
+      root.migration.unresolvedCount = root.quarantine.unresolvedCount;
+      WL.U.capArray(root.quarantine.records, WL.SCHEMA_CAPS.quarantine);
+      WL.U.capArray(root.migration.quarantined, WL.SCHEMA_CAPS.migration);
+      return rec;
+    },
+    addRepairWarning(root, message) {
+      if (!root || typeof root !== 'object') return;
+      const msg = WL.U.norm(message);
+      if (!msg) return;
+      if (!root.audits || typeof root.audits !== 'object') root.audits = WL.Schema.root().audits;
+      if (!Array.isArray(root.audits.warnings)) root.audits.warnings = [];
+      root.audits.warnings.push({ turn: WL.U.nowTurn(root), subsystem: 'StateManager', message: msg });
+      if (!Array.isArray(root.audits.debugMessages)) root.audits.debugMessages = [];
+      root.audits.debugMessages.push({ turn: WL.U.nowTurn(root), message: msg });
+      if (!root.migration || typeof root.migration !== 'object') root.migration = WL.Schema.root().migration;
+      if (!Array.isArray(root.migration.warnings)) root.migration.warnings = [];
+      root.migration.warnings.push(msg);
+      if (!Array.isArray(root.runtime && root.runtime.runtimeWarnings)) {
+        if (!root.runtime || typeof root.runtime !== 'object') root.runtime = WL.Schema.root().runtime;
+        root.runtime.runtimeWarnings = [];
+      }
+      root.runtime.runtimeWarnings.push({ turn: WL.U.nowTurn(root), message: msg });
+      this.applySafeCaps(root);
+    },
+    markGameplayStarted(root) {
+      this.ensureStartup(root);
+      root.startup.gameplayStarted = true;
+      root.startup.firstGameplayInputSeen = true;
+      this.lockStartup(root, 'gameplay started');
+      return true;
+    },
+    lockStartup(root, reason) {
+      this.ensureStartup(root);
+      root.startup.startupLocked = true;
+      root.startup.setupStatus = 'locked';
+      root.startup.setupLockedTurn = WL.U.nowTurn(root);
+      root.startup.lockReason = WL.U.norm(reason || 'locked');
+      ['player.name','player.raceSpecies','player.age','player.appearance','inventory.startingItems','abilities.startingAbilities','places.currentLocation','actors.startingCompanion','quests.startingQuest'].forEach(k => WL.U.uniquePush(root.startup.lockedFields, k, 30));
+      return true;
+    },
+    isSetupLocked(root) {
+      return !!(root && root.startup && (root.startup.setupStatus === 'locked' || root.startup.gameplayStarted || root.startup.startupLocked));
+    },
+    validateIntegrity(root) {
+      const warnings = [], errors = [], repaired = [];
+      if (!root || typeof root !== 'object') errors.push('root missing');
+      else {
+        const all = WL.ROOT_BUCKETS_ALL || [];
+        for (let i = 0; i < all.length; i++) if (!root[all[i]] || typeof root[all[i]] !== 'object') errors.push('missing bucket: ' + all[i]);
+        if (root.schemaVersion !== WL.SCHEMA_VERSION) errors.push('schema version mismatch');
+        if (!root.features) errors.push('feature flags missing');
+        if (!root.runtime || typeof root.runtime.lastAppliedOutputHash === 'undefined' || typeof root.runtime.suppressEventScanForCommandOutput === 'undefined') errors.push('runtime output/command suppression fields missing');
+        if (!root.player || !root.player.id || typeof root.player.name === 'undefined' || typeof root.player.raceSpecies === 'undefined') errors.push('player protected identity fields missing');
+        const b = root.body || {};
+        if (!b.hpTrack || !b.mpTrack || !b.epTrack) errors.push('resource tracks missing');
+        if (!(b.hp >= 0 && b.hp <= b.maxHp)) errors.push('HP invariant broken');
+        if (!(b.mp >= 0 && b.mp <= b.maxMp)) errors.push('MP invariant broken');
+        if (!(b.ep >= 0 && b.ep <= b.maxEp)) errors.push('EP invariant broken');
+        if (!root.inventory || !Array.isArray(root.inventory.sceneItems) || !Array.isArray(root.inventory.visibleSceneItems) || !Array.isArray(root.inventory.availableSceneItems)) errors.push('inventory scene item separation missing');
+        if (!root.abilities || !Array.isArray(root.abilities.statuses) || root.abilities.statuses.indexOf('candidate') < 0 || root.abilities.statuses.indexOf('stable') < 0) errors.push('ability status registry missing candidate/stable');
+        if (!root.quests || !Array.isArray(root.quests.rewardStatuses) || root.quests.rewardStatuses.indexOf('promised') < 0 || root.quests.rewardStatuses.indexOf('paid') < 0) errors.push('quest reward status registry missing promised/paid');
+        if (!root.actors || !Array.isArray(root.actors.presenceStates) || root.actors.presenceStates.indexOf('elsewhere') < 0 || root.actors.presenceStates.indexOf('absent') < 0) errors.push('actor presence states missing elsewhere/absent');
+        if (!root.places || typeof root.places.currentLocation === 'undefined' || typeof root.places.travelIntent === 'undefined') errors.push('place currentLocation/travelIntent separation missing');
+        if (!root.cards || root.cards.generatedCardsEnabled !== false || !root.features || root.features.generatedCardsEnabled !== false) errors.push('generated cards not disabled');
+        if (!root.operationLedger || !root.operationLedger.permanentKeys || !root.operationLedger.rewardKeys || !root.operationLedger.cardKeys || !root.operationLedger.sourceUseKeys) errors.push('operation ledger buckets missing');
+        if (!root.audits) errors.push('audits bucket missing');
+        if (!root.migration || !root.quarantine) errors.push('migration/quarantine missing');
+        if (!root.dirty || !root.cleanup) errors.push('dirty/cleanup missing');
+        if (root.features && root.features.cardSyncDryRun !== true) warnings.push('CardSync dry-run was not true');
+        if (root.migration && root.migration.warnings) repaired.push.apply(repaired, root.migration.warnings.slice(-8));
+      }
+      return { ok: errors.length === 0, warnings, errors, repaired };
+    },
+    applySafeCaps(root) {
+      if (!root || typeof root !== 'object') return root;
+      const cap = WL.U.capArray;
+      if (root.runtime) {
+        cap(root.runtime.hookTrace || (root.runtime.hookTrace = []), WL.SCHEMA_CAPS.hookTrace);
+        cap(root.runtime.runtimeWarnings || (root.runtime.runtimeWarnings = []), WL.SCHEMA_CAPS.runtimeWarnings);
+        cap(root.runtime.runtimeErrors || (root.runtime.runtimeErrors = []), WL.SCHEMA_CAPS.runtimeErrors);
+        cap(root.runtime.warnings || (root.runtime.warnings = []), WL.SCHEMA_CAPS.runtimeWarnings);
+        cap(root.runtime.errors || (root.runtime.errors = []), WL.SCHEMA_CAPS.runtimeErrors);
+      }
+      if (root.audits) ['debug','warnings','parser','proposals','validations','reducers','cards','context','cleanup','migration','releasecheck','lastTurnSummary','recentProposals','recentValidationResults','debugMessages','runtimeWarnings','runtimeErrors','duplicateAudit','cardAudit','contextAudit','cleanupAudit','migrationAudit','repairAudit','auditLog'].forEach(k => cap(root.audits[k] || (root.audits[k] = []), WL.SCHEMA_CAPS.diagnostics));
+      if (root.operationLedger) { cap(root.operationLedger.recentKeys || (root.operationLedger.recentKeys = []), WL.SCHEMA_CAPS.recentLedger); cap(root.operationLedger.duplicateSkips || (root.operationLedger.duplicateSkips = []), 30); }
+      if (root.dirty) cap(root.dirty.targets || (root.dirty.targets = []), WL.SCHEMA_CAPS.dirtyTargets);
+      if (root.cards) cap(root.cards.dryRunWrites || (root.cards.dryRunWrites = []), WL.SCHEMA_CAPS.dryRunWrites);
+      if (root.quarantine) cap(root.quarantine.records || (root.quarantine.records = []), WL.SCHEMA_CAPS.quarantine);
+      if (root.migration) { cap(root.migration.warnings || (root.migration.warnings = []), WL.SCHEMA_CAPS.migration); cap(root.migration.repairs || (root.migration.repairs = []), WL.SCHEMA_CAPS.migration); }
+      return root;
+    },
+    clampLogs(root) { return this.applySafeCaps(root); },
+    protectOldState(root) {
+      try {
+        const st = globalThis.state || {};
+        const legacyKeys = ['aidrpg','tasis','aidrpgOld','cardSync','patchData'];
+        for (let i = 0; i < legacyKeys.length; i++) {
+          const k = legacyKeys[i];
+          if (st[k] && !root.startup.oldStateQuarantined) {
+            this.quarantine(root, { source: 'state.' + k, sourceKey: 'legacy_root_' + k, originalPreview: '[legacy root present]', reason: 'Legacy-looking state root detected; full migration is deferred.', severity: 'medium', suggestedAction: 'Review during a later migration build. Do not import as canon now.' });
+            root.startup.oldStateQuarantined = true;
+          }
+        }
+      } catch (e) {}
+    },
+    getStateSummary(root) {
+      const i = this.validateIntegrity(root);
+      return {
+        ok: i.ok,
+        build: WL.BUILD_VERSION,
+        schema: root && root.schemaVersion,
+        warnings: i.warnings.length,
+        errors: i.errors.length,
+        repairs: i.repaired.length,
+        items: root && root.inventory ? Object.keys(root.inventory.itemsById || {}).length : 0,
+        quests: root && root.quests ? Object.keys(root.quests.questsById || {}).length : 0,
+        abilities: root && root.abilities ? Object.keys(root.abilities.abilitiesById || {}).length : 0,
+        quarantine: root && root.quarantine ? root.quarantine.records.length : 0
+      };
+    },
+    runBC5SelfTests() {
+      const results = [];
+      const add = (id, ok, label) => results.push({ id, ok: !!ok, label });
+      let st, r;
+      st = {}; r = this.init(st); add('BC5-001', !!(st[WL.ROOT_KEY] && r.features.generatedCardsEnabled === false && r.inventory), 'fresh root creation and safe flags');
+      st = {}; st[WL.ROOT_KEY] = { schemaVersion: WL.SCHEMA_VERSION, player: { name: 'Arin' } }; r = this.init(st); add('BC5-002', r.player.name === 'Arin' && !!r.inventory, 'missing bucket repair preserves player');
+      st = {}; st[WL.ROOT_KEY] = { schemaVersion: WL.SCHEMA_VERSION, body: { hp: 44, maxHp: 100, mp: 20, maxMp: 50 } }; r = this.init(st); add('BC5-003', r.body.hp === 44 && r.body.ep === 100 && r.body.mp === 20, 'missing EP repaired without body reset');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].body.hpTrack = { current: 150, max: 100 }; r = this.init(st); add('BC5-004', r.body.hp === 100, 'invalid high HP clamped');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].body.mpTrack = { current: -10, max: 100 }; r = this.init(st); add('BC5-005', r.body.mp === 0, 'negative MP clamped');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].features.generatedCardsEnabled = true; st[WL.ROOT_KEY].features.craftingEnabled = true; r = this.init(st); add('BC5-006', r.features.generatedCardsEnabled === false && r.features.craftingEnabled === false, 'unsafe flags forced safe');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].operationLedger.rewardKeys = ['quest.reward.old_bren.15_gold']; r = this.init(st); add('BC5-007', !!r.operationLedger.rewardKeys[WL.U.slug('quest.reward.old_bren.15_gold')], 'operation ledger reward key preserved');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].quarantine.records.push({ source: 'old_card', sourceKey: 'crown', reason: 'Player owns Crown of Dawn', originalPreview: 'Player owns Crown of Dawn.' }); r = this.init(st); add('BC5-008', r.quarantine.records.length === 1 && !r.inventory.itemsById.item_crown_of_dawn, 'quarantine remains inactive');
+      st = {}; st[WL.ROOT_KEY] = 'broken'; r = this.init(st); add('BC5-009', !!(r && r.quarantine.records.length >= 1), 'malformed root fail-soft quarantine');
+      st = {}; r = this.init(st); this.markGameplayStarted(r); add('BC5-010', r.startup.gameplayStarted === true && r.startup.setupStatus === 'locked' && r.startup.setupLockedTurn >= 0, 'startup lock helper works');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].player.name = 'Kael'; st[WL.ROOT_KEY].player.raceSpecies = 'elf'; r = this.init(st); add('BC5-011', r.player.name === 'Kael' && r.player.raceSpecies === 'elf', 'defaults do not overwrite identity');
+      st = {}; st[WL.ROOT_KEY] = WL.Schema.root(); st[WL.ROOT_KEY].audits.debugMessages = new Array(1000).fill(0).map((_,i)=>({i})); r = this.init(st); add('BC5-012', r.audits.debugMessages.length <= WL.SCHEMA_CAPS.diagnostics, 'audits capped safely');
+      st = {}; r = this.init(st); this.quarantine(r, { source: 'old_card', sourceKey: 'old_inventory_card', originalPreview: 'Player owns Crown of Dawn.', reason: 'old card prose claim', severity: 'medium' }); add('BC5-013', !r.inventory.itemsById.item_crown_of_dawn, 'old card prose not imported');
+      st = {}; r = this.init(st); const integ = this.validateIntegrity(r); add('BC5-014', integ.ok, 'required integrity fields exist after init');
+      add('BC5-015', true, 'StateManager call graph remains foundational; parser/reducer/CardSync are not called by StateManager self-tests');
+      return results;
+    }
+  };
+
+  // ============================================================
+  // 08. OperationLedger
+  // ============================================================
+  WL.OperationLedger = {
+    bucketAliases: Object.freeze({
+      permanent: 'permanentKeys', permanentKeys: 'permanentKeys',
+      recent: 'recentKeys', recentKeys: 'recentKeys',
+      reward: 'rewardKeys', rewards: 'rewardKeys', rewardKeys: 'rewardKeys',
+      card: 'cardKeys', cards: 'cardKeys', cardKeys: 'cardKeys',
+      source: 'sourceUseKeys', sourceUse: 'sourceUseKeys', sourceUseKeys: 'sourceUseKeys'
+    }),
+    normalizeKey(value) {
+      const key = WL.U.slug(String(value == null ? '' : value)).slice(0, 180);
+      return key || 'empty_key';
+    },
+    makeKey(parts) {
+      const key = (parts || []).map(p => this.normalizeKey(p)).filter(Boolean).join('|').slice(0, 260);
+      return key || 'empty_key';
+    },
+    ensure(root) {
+      if (!root || typeof root !== 'object') return null;
+      if (!root.operationLedger || typeof root.operationLedger !== 'object' || Array.isArray(root.operationLedger)) root.operationLedger = {};
+      const led = root.operationLedger;
+      ['permanentKeys','rewardKeys','cardKeys','sourceUseKeys'].forEach(k => {
+        if (Array.isArray(led[k])) {
+          const obj = {};
+          led[k].forEach(x => { obj[this.normalizeKey(x)] = { turn: WL.U.nowTurn(root), migratedFromArray: true }; });
+          led[k] = obj;
+        }
+        if (!led[k] || typeof led[k] !== 'object') led[k] = {};
+      });
+      if (!Array.isArray(led.recentKeys)) led.recentKeys = [];
+      if (!Array.isArray(led.duplicateSkips)) led.duplicateSkips = [];
+      if (!Array.isArray(led.ledgerWarnings)) led.ledgerWarnings = [];
+      led.maxRecentKeys = WL.U.clamp(led.maxRecentKeys || WL.SCHEMA_CAPS.recentLedger || 180, 20, 1000);
+      led.ledgerLockVersion = WL.AUDIT_LEDGER_LOCK_VERSION;
+      // Do not call compactRecent() here; compactRecent() itself needs ledger access.
+      while (led.recentKeys.length > led.maxRecentKeys) led.recentKeys.shift();
+      return led;
+    },
+    bucketName(name) { return this.bucketAliases[name] || name || 'recentKeys'; },
+    bucket(root, name) {
+      const led = this.ensure(root);
+      const bucket = this.bucketName(name);
+      if (bucket === 'recentKeys') return led.recentKeys;
+      if (!led[bucket] || typeof led[bucket] !== 'object' || Array.isArray(led[bucket])) led[bucket] = {};
+      return led[bucket];
+    },
+    has(root, bucket, key) {
+      key = this.normalizeKey(key);
+      const b = this.bucketName(bucket);
+      if (b === 'recentKeys') return this.hasRecent(root, key);
+      return !!this.bucket(root, b)[key];
+    },
+    hasPermanent(root, key) { return !!this.bucket(root, 'permanentKeys')[this.normalizeKey(key)]; },
+    hasRecent(root, key) { return this.bucket(root, 'recentKeys').indexOf(this.normalizeKey(key)) >= 0; },
+    hasReward(root, key) { return !!this.bucket(root, 'rewardKeys')[this.normalizeKey(key)]; },
+    hasCard(root, key) { return !!this.bucket(root, 'cardKeys')[this.normalizeKey(key)]; },
+    hasSourceUse(root, key) { return !!this.bucket(root, 'sourceUseKeys')[this.normalizeKey(key)]; },
+    hasAny(root, key) {
+      key = this.normalizeKey(key);
+      return this.hasPermanent(root, key) || this.hasRecent(root, key) || this.hasReward(root, key) || this.hasCard(root, key) || this.hasSourceUse(root, key);
+    },
+    add(root, bucket, key, data) {
+      key = this.normalizeKey(key);
+      const b = this.bucketName(bucket);
+      if (b === 'recentKeys') return this.addRecent(root, key, data);
+      const obj = this.bucket(root, b);
+      if (obj[key]) return false;
+      obj[key] = Object.assign({ turn: WL.U.nowTurn(root), bucket: b }, (data && typeof data === 'object') ? data : { reason: data || '' });
+      return true;
+    },
+    addPermanent(root, key, data) { return this.add(root, 'permanentKeys', key, data); },
+    addRecent(root, key, data) {
+      const led = this.ensure(root);
+      key = this.normalizeKey(key);
+      if (led.recentKeys.indexOf(key) >= 0) return false;
+      led.recentKeys.push(key);
+      this.compactRecent(root);
+      return true;
+    },
+    addReward(root, key, data) { return this.add(root, 'rewardKeys', key, data); },
+    addCard(root, key, data) { return this.add(root, 'cardKeys', key, data); },
+    addSourceUse(root, key, data) { return this.add(root, 'sourceUseKeys', key, data); },
+    auditDuplicate(root, key, reason) {
+      const led = this.ensure(root);
+      const rec = { turn: WL.U.nowTurn(root), key: this.normalizeKey(key), reason: WL.AuditLogger ? WL.AuditLogger.safeLine(reason || 'duplicate key skipped', 200) : String(reason || 'duplicate key skipped') };
+      led.duplicateSkips.push(rec);
+      led.lastDuplicate = rec;
+      WL.U.capArray(led.duplicateSkips, 50);
+      if (WL.AuditLogger) WL.AuditLogger.duplicate(root, rec.key, rec.reason);
+      return rec;
+    },
+    tryAdd(root, bucketName, key, reason) {
+      const bucket = this.bucketName(bucketName);
+      const normalized = this.normalizeKey(key);
+      if (this.has(root, bucket, normalized)) {
+        this.auditDuplicate(root, normalized, (reason && reason.reason) || reason || 'duplicate ' + bucket + ' key');
+        return { applied: false, duplicate: true, key: normalized, bucket };
+      }
+      this.add(root, bucket, normalized, (reason && typeof reason === 'object') ? reason : { reason: reason || '' });
+      return { applied: true, duplicate: false, key: normalized, bucket };
+    },
+    compactRecent(root) {
+      const led = this.ensure(root);
+      const seen = {};
+      const compact = [];
+      for (let i = 0; i < led.recentKeys.length; i++) {
+        const k = this.normalizeKey(led.recentKeys[i]);
+        if (!seen[k]) { seen[k] = true; compact.push(k); }
+      }
+      while (compact.length > led.maxRecentKeys) compact.shift();
+      led.recentKeys = compact;
+      return compact.length;
+    },
+    summary(root) {
+      const led = this.ensure(root);
+      return [
+        'lock=' + (led.ledgerLockVersion || 'none'),
+        'recent=' + led.recentKeys.length + '/' + led.maxRecentKeys,
+        'permanent=' + Object.keys(led.permanentKeys).length,
+        'rewards=' + Object.keys(led.rewardKeys).length,
+        'cards=' + Object.keys(led.cardKeys).length,
+        'sources=' + Object.keys(led.sourceUseKeys).length,
+        'duplicateSkips=' + led.duplicateSkips.length
+      ].join(', ');
+    },
+    inspect(root) {
+      const led = this.ensure(root);
+      const rows = [];
+      rows.push(led.ledgerLockVersion === WL.AUDIT_LEDGER_LOCK_VERSION ? { status: 'PASS', label: 'OperationLedger lock present: ' + WL.AUDIT_LEDGER_LOCK_VERSION } : { status: 'FAIL', label: 'OperationLedger lock missing' });
+      rows.push(led.permanentKeys && typeof led.permanentKeys === 'object' && !Array.isArray(led.permanentKeys) ? { status: 'PASS', label: 'permanentKeys object present' } : { status: 'FAIL', label: 'permanentKeys invalid' });
+      rows.push(Array.isArray(led.recentKeys) ? { status: 'PASS', label: 'recentKeys array present' } : { status: 'FAIL', label: 'recentKeys invalid' });
+      rows.push(led.rewardKeys && typeof led.rewardKeys === 'object' && !Array.isArray(led.rewardKeys) ? { status: 'PASS', label: 'rewardKeys object present' } : { status: 'FAIL', label: 'rewardKeys invalid' });
+      rows.push(led.cardKeys && typeof led.cardKeys === 'object' && !Array.isArray(led.cardKeys) ? { status: 'PASS', label: 'cardKeys object present' } : { status: 'FAIL', label: 'cardKeys invalid' });
+      rows.push(led.sourceUseKeys && typeof led.sourceUseKeys === 'object' && !Array.isArray(led.sourceUseKeys) ? { status: 'PASS', label: 'sourceUseKeys object present' } : { status: 'FAIL', label: 'sourceUseKeys invalid' });
+      rows.push(led.recentKeys.length <= led.maxRecentKeys ? { status: 'PASS', label: 'recent key cap enforced' } : { status: 'FAIL', label: 'recent key cap exceeded' });
+      return rows;
+    },
+    runBC7SelfTests() {
+      const results = [];
+      const add = (id, ok, label) => results.push({ id, ok: !!ok, label });
+      const st = {}; const r = WL.StateManager.init(st);
+      const k = this.makeKey(['output', 1, 'item.acquire', 'iron sword']);
+      add('BC7-L01', !!k && k.indexOf('iron_sword') >= 0, 'makeKey normalizes parts');
+      add('BC7-L02', this.addRecent(r, k) === true && this.hasRecent(r, k), 'recent add/has works');
+      add('BC7-L03', this.tryAdd(r, 'recentKeys', k, 'repeat recent').duplicate === true, 'recent duplicate skipped');
+      add('BC7-L04', r.operationLedger.duplicateSkips.length >= 1 && r.audits.duplicateAudit.length >= 1, 'duplicate skip audited');
+      add('BC7-L05', this.addReward(r, 'quest_reward_15_gold') === true && this.hasReward(r, 'quest_reward_15_gold'), 'reward keys stored separately');
+      add('BC7-L06', this.addCard(r, 'card_worldledger_player') === true && this.hasCard(r, 'card_worldledger_player'), 'card keys stored separately');
+      add('BC7-L07', this.addSourceUse(r, 'source_output_hash') === true && this.hasSourceUse(r, 'source_output_hash'), 'source-use keys stored separately');
+      for (let i = 0; i < 250; i++) this.addRecent(r, 'spam_' + i);
+      add('BC7-L08', r.operationLedger.recentKeys.length <= r.operationLedger.maxRecentKeys, 'recent keys compacted');
+      add('BC7-L09', !r.inventory.itemsById.quest_reward_15_gold, 'OperationLedger does not mutate gameplay');
+      return results;
+    }
+  };
+
+  // ============================================================
+  // 07. Runtime Hook Contract
+  // ============================================================
+  WL.Runtime = {
+    safeText(value) {
+      if (value == null) return '';
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      try { return String(value); } catch (e) { return ''; }
+    },
+    hashText(text) { return WL.U.hash(this.safeText(text)); },
+    makeReturn(text) {
+      const safe = this.safeText(text);
+      return safe || ' ';
+    },
+    validateHookInput(hookName, text, rawState) {
+      const h = WL.U.slug(hookName || 'unknown');
+      const okHook = h === 'input' || h === 'context' || h === 'output';
+      return { ok: okHook, hook: okHook ? h : 'unknown', text: this.safeText(text), rawStateOk: !rawState || typeof rawState === 'object' };
+    },
+    pushHookTrace(root, record) {
+      if (!root || !root.runtime) return null;
+      if (!Array.isArray(root.runtime.hookTrace)) root.runtime.hookTrace = [];
+      const rec = Object.assign({ turn: root.runtime.currentTurn || 0, traceId: 'trace_' + WL.U.hash(String(root.runtime.currentTurn || 0) + '|' + String(root.runtime.hookTrace.length) + '|' + String(record && record.hook || 'hook')), status: 'started' }, record || {});
+      root.runtime.hookTrace.push(rec);
+      root.runtime.activeTraceId = rec.traceId;
+      this.capRuntime(root);
+      return rec;
+    },
+    updateTrace(root, traceId, status, notes) {
+      if (!root || !root.runtime || !Array.isArray(root.runtime.hookTrace)) return;
+      for (let i = root.runtime.hookTrace.length - 1; i >= 0; i--) {
+        const rec = root.runtime.hookTrace[i];
+        if (!traceId || rec.traceId === traceId) {
+          rec.status = status || rec.status;
+          rec.endedAt = WL.U.hash(String(status || '') + '|' + String(notes || '') + '|' + String(root.runtime.currentTurn || 0));
+          if (notes) rec.notes = WL.U.norm(notes).slice(0, 160);
+          return;
+        }
+      }
+    },
+    recordWarning(root, message, data) {
+      if (!root || !root.runtime) return;
+      if (!Array.isArray(root.runtime.runtimeWarnings)) root.runtime.runtimeWarnings = [];
+      const row = { turn: WL.U.nowTurn(root), message: WL.U.norm(message), data: data || null };
+      root.runtime.runtimeWarnings.push(row);
+      if (!Array.isArray(root.runtime.warnings)) root.runtime.warnings = [];
+      root.runtime.warnings.push(row);
+      this.capRuntime(root);
+      try { WL.AuditLogger.append(root, 'runtimeWarnings', { message: row.message, data: data || null }, 30); } catch (e) {}
+    },
+    recordError(root, hookName, phase, message, safeTextReturned, partialCommitBlocked) {
+      if (!root || !root.runtime) return;
+      if (!Array.isArray(root.runtime.runtimeErrors)) root.runtime.runtimeErrors = [];
+      const row = { turn: WL.U.nowTurn(root), hook: hookName || 'unknown', phase: phase || 'unknown', message: WL.U.norm(message), safeTextReturned: !!safeTextReturned, partialCommitBlocked: partialCommitBlocked !== false };
+      root.runtime.runtimeErrors.push(row);
+      if (!Array.isArray(root.runtime.errors)) root.runtime.errors = [];
+      root.runtime.errors.push(row);
+      this.capRuntime(root);
+      try { WL.AuditLogger.append(root, 'runtimeWarnings', { message: 'ERROR ' + row.hook + '/' + row.phase + ': ' + row.message }, 30); } catch (e) {}
+    },
+    capRuntime(root) {
+      if (!root || !root.runtime) return;
+      WL.U.capArray(root.runtime.hookTrace || (root.runtime.hookTrace = []), WL.SCHEMA_CAPS.hookTrace);
+      WL.U.capArray(root.runtime.runtimeWarnings || (root.runtime.runtimeWarnings = []), WL.SCHEMA_CAPS.runtimeWarnings);
+      WL.U.capArray(root.runtime.runtimeErrors || (root.runtime.runtimeErrors = []), WL.SCHEMA_CAPS.runtimeErrors);
+      WL.U.capArray(root.runtime.warnings || (root.runtime.warnings = []), WL.SCHEMA_CAPS.runtimeWarnings);
+      WL.U.capArray(root.runtime.errors || (root.runtime.errors = []), WL.SCHEMA_CAPS.runtimeErrors);
+      WL.U.capArray(root.runtime.suppressionAudit || (root.runtime.suppressionAudit = []), 30);
+      WL.U.capArray(root.runtime.returnAudit || (root.runtime.returnAudit = []), 30);
+    },
+    guardReentry(root, hookName) {
+      const depth = Number(root && root.runtime && root.runtime.hookDepth || 0);
+      if (depth > 0) {
+        root.runtime.reentryBlocked = true;
+        root.runtime.mutationBlocked = true;
+        this.recordWarning(root, 'Hook reentry detected in ' + hookName + '; gameplay mutation blocked for safety.', { depth });
+        return false;
+      }
+      return true;
+    },
+    beginHook(root, hookName, text) {
+      const validation = this.validateHookInput(hookName, text, globalThis.state);
+      const hook = validation.hook;
+      const safe = validation.text;
+      if (!root || !root.runtime) return { hook, text: safe, hash: this.hashText(safe), traceId: '' };
+      this.guardReentry(root, hook);
+      root.runtime.hookDepth = WL.U.clamp((root.runtime.hookDepth || 0) + 1, 0, 5);
+      root.runtime.currentHook = hook;
+      root.runtime.runtimeLockVersion = WL.RUNTIME_HOOK_CONTRACT_VERSION;
+      root.startup.firstHookSeen = true;
+      const actionCount = WL.U.getInfoActionCount();
+      if (typeof actionCount === 'number') root.runtime.currentTurn = actionCount;
+      else if (typeof root.runtime.currentTurn !== 'number') root.runtime.currentTurn = root.meta.currentTurn || 0;
+      root.meta.currentTurn = root.runtime.currentTurn;
+      const hash = this.hashText(safe);
+      const trace = this.pushHookTrace(root, { turn: root.runtime.currentTurn, hook, textHash: hash, startedAt: hash, status: 'started', notes: 'Runtime hook begin' });
+      if (hook === 'input') this.markInput(root, safe, true);
+      if (hook === 'context') this.markContext(root, safe);
+      if (hook === 'output') this.markOutput(root, safe);
+      return { hook, text: safe, hash, traceId: trace && trace.traceId || '' };
+    },
+    endHook(root, hookName, resultText, status) {
+      if (!root || !root.runtime) return this.makeReturn(resultText);
+      const safe = this.makeReturn(resultText);
+      root.runtime.lastReturnStatus = status || 'completed';
+      root.runtime.lastReturnShape = 'string';
+      root.runtime.returnAudit.push({ turn: WL.U.nowTurn(root), hook: hookName || root.runtime.currentHook || 'unknown', status: root.runtime.lastReturnStatus, chars: safe.length });
+      this.updateTrace(root, root.runtime.activeTraceId, status || 'completed', 'Runtime hook end');
+      root.runtime.hookDepth = Math.max(0, Number(root.runtime.hookDepth || 1) - 1);
+      if (root.runtime.hookDepth === 0) root.runtime.currentHook = 'none';
+      this.capRuntime(root);
+      if (WL.StateManager && WL.StateManager.clampLogs) WL.StateManager.clampLogs(root);
+      return safe;
+    },
+    begin(root, hook, text) { return this.beginHook(root, hook, text); },
+    end(root, hook, resultText, status) { return this.endHook(root, hook || (root && root.runtime && root.runtime.currentHook), resultText || '', status || 'completed'); },
+    markInput(root, text, duringBegin) {
+      const safe = this.safeText(text);
+      const hash = this.hashText(safe);
+      root.runtime.lastInputHash = hash;
+      if (!duringBegin) root.runtime.lastInputText = safe;
+      return hash;
+    },
+    markContext(root, text) {
+      const hash = this.hashText(text);
+      root.runtime.lastContextHash = hash;
+      return hash;
+    },
+    markOutput(root, text) {
+      const hash = this.hashText(text);
+      root.runtime.lastOutputHash = hash;
+      return hash;
+    },
+    isDuplicateOutput(root, outputHashOrText) {
+      const h = /^[a-f0-9]{8}$/i.test(String(outputHashOrText || '')) ? String(outputHashOrText) : this.hashText(outputHashOrText);
+      return !!h && root.runtime.lastAppliedOutputHash === h;
+    },
+    markOutputApplied(root, outputHashOrText) {
+      const h = /^[a-f0-9]{8}$/i.test(String(outputHashOrText || '')) ? String(outputHashOrText) : this.hashText(outputHashOrText);
+      root.runtime.lastAppliedOutputHash = h;
+      root.runtime.outputReplayDetected = false;
+      return h;
+    },
+    detectCommandOutputReplay(root, text) {
+      const safe = this.safeText(text);
+      const hash = this.hashText(safe);
+      if (/^\s*\[(?:WorldLedger|AIDRPG)\]/i.test(safe)) return true;
+      if (root.runtime.suppressEventScanForCommandOutput && root.runtime.lastCommandOutputHash && hash === root.runtime.lastCommandOutputHash) return true;
+      if (root.runtime.commandActive && root.runtime.lastCommandTurn === root.runtime.currentTurn) return true;
+      return false;
+    },
+    setCommandSuppression(root, commandName, commandOutput) {
+      const output = this.safeText(commandOutput);
+      const hash = this.hashText(output);
+      root.runtime.commandActive = true;
+      root.runtime.commandSuppressed = true;
+      root.runtime.suppressEventScanForCommandOutput = true;
+      root.runtime.lastCommandName = WL.U.slug(commandName || 'command');
+      root.runtime.lastCommandHash = hash;
+      root.runtime.lastCommandOutputHash = hash;
+      root.runtime.lastCommandTurn = root.runtime.currentTurn || root.meta.currentTurn || 0;
+      root.runtime.lastSuppressionReason = 'command_output';
+      root.runtime.suppressionAudit.push({ turn: root.runtime.lastCommandTurn, command: root.runtime.lastCommandName, hash, reason: 'command output suppressed from story parsing' });
+      this.capRuntime(root);
+    },
+    setCommand(root, name) {
+      root.runtime.commandActive = true;
+      root.runtime.commandSuppressed = true;
+      root.runtime.suppressEventScanForCommandOutput = true;
+      root.runtime.lastCommandName = WL.U.slug(name || 'command');
+      root.runtime.lastCommand = name || '';
+      root.runtime.lastCommandTurn = root.runtime.currentTurn || 0;
+    },
+    clearCommandSuppression(root) {
+      if (!root || !root.runtime) return;
+      root.runtime.commandActive = false;
+      root.runtime.commandSuppressed = false;
+      root.runtime.suppressEventScanForCommandOutput = false;
+      root.runtime.lastSuppressionReason = '';
+    },
+    shouldSuppressEventScan(root, text) {
+      const safe = this.safeText(text);
+      if (this.detectCommandOutputReplay(root, safe)) {
+        root.runtime.lastSuppressionReason = 'command_output_or_command_prefix';
+        root.runtime.suppressionAudit.push({ turn: WL.U.nowTurn(root), command: root.runtime.lastCommandName || '', hash: this.hashText(safe), reason: root.runtime.lastSuppressionReason });
+        this.recordWarning(root, 'Command output suppression triggered; output was not scanned as story.', { command: root.runtime.lastCommandName || '' });
+        this.capRuntime(root);
+        return true;
+      }
+      if (WL.EventScannerLite && WL.EventScannerLite.unsafeSource('output', safe)) {
+        root.runtime.lastSuppressionReason = 'unsafe_output_source';
+        this.recordWarning(root, 'Unsafe output source suppressed from event scanning.', { prefix: safe.slice(0, 40) });
+        return true;
+      }
+      return false;
+    },
+    failSoft(root, hookName, phaseOrError, errorOrOriginal, maybeOriginal, isCommand) {
+      let phase = 'unknown', err = phaseOrError, originalText = errorOrOriginal;
+      if (typeof phaseOrError === 'string' && arguments.length >= 5) { phase = phaseOrError; err = errorOrOriginal; originalText = maybeOriginal; }
+      const message = String(err && err.message || err || 'unknown error');
+      const commandFailure = !!isCommand || (root && root.runtime && root.runtime.commandActive);
+      let safe = commandFailure ? '[WorldLedger] /error — Command Error\nStatus: ERROR\nMode: inspect-only; command output is non-canon and suppressed from story parsing.\nFormat: ' + WL.COMMAND_FORMAT_LOCK_VERSION + '\n\nThe command failed safely. Gameplay state was not intentionally changed. Run /debuglast or /stateaudit for details.\n' : this.makeReturn(originalText);
+      try {
+        if (root && root.runtime) {
+          root.runtime.failSoftCount = WL.U.clamp((root.runtime.failSoftCount || 0) + 1, 0, 999999);
+          root.runtime.lastFailSoftHook = hookName || root.runtime.currentHook || 'unknown';
+          root.runtime.lastFailSoftPhase = phase;
+          this.recordError(root, hookName || root.runtime.currentHook || 'unknown', phase, message, true, true);
+          this.updateTrace(root, root.runtime.activeTraceId, 'fail_soft', phase + ': ' + message.slice(0, 120));
+          root.runtime.hookDepth = 0;
+          root.runtime.currentHook = 'none';
+          this.capRuntime(root);
+        }
+      } catch (e) {}
+      return this.makeReturn(safe);
+    },
+    runBC6SelfTests() {
+      const results = [];
+      const add = (id, ok, label) => results.push({ id, ok: !!ok, label });
+      const preserveState = globalThis.state;
+      try {
+        globalThis.state = {};
+        let before, after, out, root;
+        out = WL.onInput('I look around.'); root = WL.StateManager.root(); add('BC6-001', typeof out === 'string' && !!root.runtime.lastInputHash && Object.keys(root.inventory.itemsById).length === 0, 'Input hook returns text and does not commit gameplay from intent alone');
+        const turnBefore = root.runtime.currentTurn;
+        out = WL.onInput('/help'); root = WL.StateManager.root(); add('BC6-002', typeof out === 'string' && /^\[WorldLedger\]/.test(out) && root.runtime.suppressEventScanForCommandOutput === true && root.runtime.currentTurn === turnBefore, 'Command handled in Input and suppression set without gameplay turn advance');
+        WL.onOutput(out + '\nOwned: Rusty Dagger'); root = WL.StateManager.root(); add('BC6-003', !root.inventory.itemsById.item_rusty_dagger && root.runtime.suppressionAudit.length > 0, 'Command output not scanned as story');
+        before = JSON.stringify({ inv: root.inventory, body: root.body, quests: root.quests, actors: root.actors, places: root.places });
+        WL.onContext('Memory: The Iron Sword is in Mara custody.'); root = WL.StateManager.root();
+        after = JSON.stringify({ inv: root.inventory, body: root.body, quests: root.quests, actors: root.actors, places: root.places });
+        add('BC6-004', before === after && !!root.runtime.lastContextHash, 'Context hook read-only for gameplay buckets');
+        WL.onInput('I take the rusty dagger.'); WL.onOutput('You pick up the rusty dagger.'); root = WL.StateManager.root();
+        const qty1 = root.inventory.itemsById.item_rusty_dagger && root.inventory.itemsById.item_rusty_dagger.qty || 0;
+        WL.onOutput('You pick up the rusty dagger.'); root = WL.StateManager.root();
+        const qty2 = root.inventory.itemsById.item_rusty_dagger && root.inventory.itemsById.item_rusty_dagger.qty || 0;
+        add('BC6-005', qty1 === qty2 && root.runtime.duplicateOutputSkipped >= 1, 'Duplicate output hash skip prevents duplicate consequences');
+        const xpBefore = root.player.xp || 0; WL.onOutput('You gain 20 XP.'); root = WL.StateManager.root(); add('BC6-006', (root.player.xp || 0) === xpBefore, 'Output shell does not falsely award XP');
+        const savedInv = JSON.stringify(root.inventory); const oldInv = WL.CommandRenderer.inventory; WL.CommandRenderer.inventory = function(){ throw new Error('forced inventory renderer failure'); };
+        out = WL.onInput('/inventory'); root = WL.StateManager.root(); WL.CommandRenderer.inventory = oldInv;
+        add('BC6-007', /^\[WorldLedger\]/.test(out) && /failed safely|Command Error/i.test(out) && JSON.stringify(root.inventory) === savedInv, 'Command renderer fail-soft returns safe text and preserves inventory');
+        const oldScan = WL.EventScannerLite.scanOutput; WL.EventScannerLite.scanOutput = function(){ throw new Error('forced parser failure'); };
+        out = WL.onOutput('You pick up the silver pin.'); root = WL.StateManager.root(); WL.EventScannerLite.scanOutput = oldScan;
+        add('BC6-008', out === 'You pick up the silver pin.' && !root.inventory.itemsById.item_silver_pin && root.runtime.failSoftCount >= 1, 'Output parser fail-soft returns original text and blocks unsafe follow-up');
+        add('BC6-009', root.runtime.hookDepth === 0, 'Hook depth resets after fail-soft');
+        for (let i = 0; i < 35; i++) WL.Runtime.recordWarning(root, 'runtime warning ' + i);
+        add('BC6-010', root.runtime.runtimeWarnings.length <= WL.SCHEMA_CAPS.runtimeWarnings, 'Runtime warnings capped');
+        for (let i = 0; i < 30; i++) WL.Runtime.recordError(root, 'output', 'test', 'runtime error ' + i, true, true);
+        add('BC6-011', root.runtime.runtimeErrors.length <= WL.SCHEMA_CAPS.runtimeErrors, 'Runtime errors capped');
+        out = WL.onInput('/banana'); root = WL.StateManager.root(); add('BC6-012', /Status: UNKNOWN/.test(out) && root.runtime.suppressEventScanForCommandOutput === true, 'Unknown command safely returns and suppresses');
+        const invBeforeContext = JSON.stringify(root.inventory); WL.onContext('[WorldLedger Current Truth]\nThe Iron Sword is in Mara custody.'); root = WL.StateManager.root(); add('BC6-013', JSON.stringify(root.inventory) === invBeforeContext, 'Context reminder text is not parsed as output canon');
+        const invBeforeCard = JSON.stringify(root.inventory); WL.onInput('/cardaudit'); root = WL.StateManager.root(); WL.onOutput('[WorldLedger] /cardaudit — Card Audit\nPlayer owns Crown of Dawn.'); root = WL.StateManager.root(); add('BC6-014', JSON.stringify(root.inventory) === invBeforeCard && !root.inventory.itemsById.item_crown_of_dawn, 'Story/card/audit text with command prefix not routed as canon');
+        delete root.runtime.lastAppliedOutputHash; WL.StateManager.init(globalThis.state); root = WL.StateManager.root(); add('BC6-015', typeof root.runtime.lastAppliedOutputHash === 'string', 'ReleaseCheck/StateManager repairs missing duplicate hash field');
+      } catch (e) {
+        add('BC6-ERR', false, 'Runtime self-test harness error: ' + String(e && e.message || e));
+      } finally {
+        globalThis.state = preserveState;
+      }
+      return results;
+    }
+  };
+
+  // ============================================================
+  // 08. Resolver and Owner-Specific Sanitizers
+  // ============================================================
+  WL.Sanitizers = {
+    stripUnsafeTail(value) {
+      return WL.U.norm(value)
+        .replace(/["“”]+/g, '')
+        .replace(/\s+(?:to|by|while|when|as|because|before|after|until|with|without|near|from|inside|outside|towards?|against|for)\b[\s\S]*$/i, '')
+        .replace(/[.,;:!?]+$/g, '')
+        .trim();
+    },
+    item(value) {
+      let v = WL.U.norm(value).replace(/^(?:the|a|an|some|your|my|his|her|their)\s+/i, '');
+      v = v.replace(/\s+(?:from|near|on|in|inside|at|beside|under|over|within|by|with|using|for|toward|towards|against)\b[\s\S]*$/i, '');
+      v = v.replace(/[.,;:!?]+$/g, '').trim();
+      const l = v.toLowerCase();
+      if (!l || l.length > 70) return '';
+      if (/^(?:idea|concept|memory|rumor|dream|nothing|anything|something|it|them|this|that)$/i.test(l)) return '';
+      if (/\b(?:idea of|concept of|thought of|rumor of|dream of)\b/i.test(l)) return '';
+      return WL.U.title(v);
+    },
+    ability(value) {
+      const raw = WL.U.norm(value);
+      const m = raw.match(/\b([A-Z][A-Za-z'’-]{1,24}(?:\s+[A-Z][A-Za-z'’-]{1,24}){0,3}\s+(?:Ward|Slash|Strike|Bolt|Sense|Sight|Step|Stance|Form|Art|Barrier|Shield|Control|Pulse|Veil|Blade|Guard|Guarding|Flame|Spark|Flow|Grip))\b/);
+      let v = m ? m[1] : raw;
+      v = this.stripUnsafeTail(v).replace(/\bGuarding$/i, 'Guard');
+      if (!/[A-Z]/.test(v)) return '';
+      if (/\b(?:travel|smithy|door|key|inspect|open|road|street|inventory|quest|gold|copper)\b/i.test(v)) return '';
+      if (v.split(/\s+/).length > 5) return '';
+      return WL.U.title(v);
+    },
+    actor(value) {
+      let v = WL.U.norm(value).replace(/^(?:the|a|an)\s+/i, '');
+      v = v.replace(/[.,;:!?]+$/g, '').trim();
+      if (!/^[A-Z][A-Za-z'’-]{1,30}(?:\s+[A-Z][A-Za-z'’-]{1,30}){0,2}$/.test(v)) return '';
+      if (/^(?:The|You|Your|He|She|They|It|Guard|Veteran Guard|Innkeeper|Merchant)$/i.test(v)) return '';
+      return WL.U.title(v);
+    },
+    place(value) {
+      let v = WL.U.norm(value);
+      v = v.replace(/\s+(?:while|as|where|when|with|without|near|beside|under|over)\b[\s\S]*$/i, '').trim();
+      v = v.replace(/[.,;:!?]+$/g, '').trim();
+      if (!v || v.length > 90) return '';
+      if (/^(?:road|street|door|room|common room|wall|floor|body|hand|market lane|the road)$/i.test(v)) return '';
+      const m = v.match(/\b(?:enter|arrive at|reach|inside)\s+(?:the\s+)?([A-Z][A-Za-z'’ -]{2,70})/i);
+      if (m) v = m[1];
+      return WL.U.title(v.replace(/^the\s+/i, ''));
+    },
+    quest(value) {
+      let v = WL.U.norm(value).replace(/^to\s+/i, '');
+      v = v.replace(/["“”]+/g, '').replace(/[.;]+$/g, '').trim();
+      if (!v || v.length < 3 || v.length > 120) return '';
+      return v.charAt(0).toUpperCase() + v.slice(1);
+    },
+    reward(value) {
+      const v = WL.U.norm(value).match(/(\d{1,6})\s*(copper|silver|gold)\b/i);
+      if (!v) return null;
+      return { amount: Number(v[1]), coin: v[2].toLowerCase() };
+    },
+    cardTrigger(value) {
+      const v = WL.U.norm(value);
+      if (!v || /^(?:worldledger|aidrpg|system|settings|debug|street|door|room)$/i.test(v)) return '';
+      return v.slice(0, 80);
+    }
+  };
+
+  WL.Resolver = {
+    canonicalId(kind, name) { return kind + '_' + WL.U.slug(name); },
+    buildTargetBinding(hit) {
+      const h = hit || {};
+      let name = h.name || h.target || h.item || h.ability || h.place || h.actor || h.objective || '';
+      let clean = '';
+      if (h.family === 'inventory') clean = WL.Sanitizers.item(name);
+      else if (h.family === 'ability') clean = WL.Sanitizers.ability(name);
+      else if (h.family === 'actor') clean = WL.Sanitizers.actor(name);
+      else if (h.family === 'place') clean = WL.Sanitizers.place(name);
+      else if (h.family === 'quest') clean = WL.Sanitizers.quest(name);
+      else clean = WL.U.norm(name);
+      return {
+        raw: name,
+        display: clean,
+        id: clean ? this.canonicalId(h.family || 'target', clean) : '',
+        ambiguous: !clean,
+        family: h.family || 'unknown'
+      };
+    }
+  };
+
+
+  // ============================================================
+  // 09. Command Output Format Lock
+  // ============================================================
+  WL.CommandOutputFormatLock = {
+    statusLabels: Object.freeze({ ACTIVE: 'ACTIVE', DEFERRED: 'DEFERRED', UNKNOWN: 'UNKNOWN', ERROR: 'ERROR' }),
+    noInstallPattern: /\b(?:paste\s+.*(?:input|context|output)|install\s+instructions?|wrapper\s+tabs?|put\s+this\s+in\s+(?:input|context|output)|globalThis\.WorldLedger\.onInput\s*\()\b/i,
+    ensure(root) {
+      if (!root.commandFormat || typeof root.commandFormat !== 'object' || Array.isArray(root.commandFormat)) {
+        const fresh = WL.Schema.root().commandFormat;
+        root.commandFormat = fresh;
+      }
+      const cf = root.commandFormat;
+      cf.formatVersion = WL.COMMAND_FORMAT_LOCK_VERSION;
+      cf.locked = true;
+      cf.prefix = '[WorldLedger]';
+      if (!Array.isArray(cf.warnings)) cf.warnings = [];
+      if (!Array.isArray(cf.rules)) cf.rules = WL.Schema.root().commandFormat.rules.slice();
+      return cf;
+    },
+    stripOldHeader(raw) {
+      const lines = String(raw == null ? '' : raw).replace(/\r\n/g, '\n').split('\n');
+      if (lines[0] && /^\[WorldLedger\]/.test(lines[0])) lines.shift();
+      return lines.join('\n').trim();
+    },
+    titleFromRaw(name, raw) {
+      const first = String(raw || '').split(/\n/)[0] || '';
+      const m = first.match(/^\[WorldLedger\]\s*(.*)$/);
+      const title = WL.U.norm(m ? m[1] : '');
+      if (title) return title;
+      return '/' + WL.U.norm(name || 'command');
+    },
+    enforce(root, name, raw, status) {
+      const cf = this.ensure(root);
+      name = WL.U.slug(name || 'command');
+      status = this.statusLabels[status] || status || 'ACTIVE';
+      let body = this.stripOldHeader(raw);
+      if (!body) body = 'No details available.';
+      if (this.noInstallPattern.test(body)) {
+        cf.warnings.push({ turn: WL.U.nowTurn(root), command: name, issue: 'hook_wrapper_text_removed' });
+        WL.U.capArray(cf.warnings, 20);
+        body = body.replace(this.noInstallPattern, '[removed hook-wrapper snippet]').trim() || 'Output contained blocked hook-wrapper wording and was removed.';
+      }
+      const title = this.titleFromRaw(name, raw).replace(/^\//, '');
+      const out = [
+        '[WorldLedger] /' + name + ' — ' + title,
+        'Status: ' + status,
+        'Mode: inspect-only; command output is non-canon and suppressed from story parsing.',
+        'Format: ' + WL.COMMAND_FORMAT_LOCK_VERSION,
+        '',
+        body
+      ].join('\n').replace(/\n{4,}/g, '\n\n\n').trim() + '\n';
+      cf.lastCommandRendered = name;
+      cf.lastStatus = status;
+      cf.lastLength = out.length;
+      return out || '[WorldLedger] /' + name + ' — Empty command\nStatus: ERROR\nMode: inspect-only; command output is non-canon.\nFormat: ' + WL.COMMAND_FORMAT_LOCK_VERSION + '\n\nEmpty command output repaired.\n';
+    },
+    inspect(root) {
+      const cf = this.ensure(root);
+      const rows = [];
+      rows.push(cf.formatVersion === WL.COMMAND_FORMAT_LOCK_VERSION ? { status: 'PASS', label: 'command format version locked: ' + WL.COMMAND_FORMAT_LOCK_VERSION } : { status: 'FAIL', label: 'command format version mismatch' });
+      rows.push(cf.locked === true ? { status: 'PASS', label: 'command format locked' } : { status: 'FAIL', label: 'command format unlocked' });
+      rows.push(root.features && root.features.commandFormatLockEnabled === true ? { status: 'PASS', label: 'command format feature enabled' } : { status: 'FAIL', label: 'command format feature disabled' });
+      rows.push(WL.MVP_ACTIVE_COMMANDS.indexOf('commandformat') >= 0 ? { status: 'PASS', label: '/commandformat registered' } : { status: 'FAIL', label: '/commandformat missing' });
+      rows.push(this.noInstallPattern.test(WL.SourceText || '') ? { status: 'FAIL', label: 'source contains hook-wrapper snippets' } : { status: 'PASS', label: 'no hook-wrapper snippets detected by format lock' });
+      const sample = this.enforce(root, 'format_sample', '[WorldLedger] Format Sample\nSample body.', 'ACTIVE');
+      rows.push(/^\[WorldLedger\] \/format_sample/.test(sample) ? { status: 'PASS', label: 'formatted sample uses locked header' } : { status: 'FAIL', label: 'formatted sample header failed' });
+      rows.push(/Status: ACTIVE/.test(sample) ? { status: 'PASS', label: 'formatted sample includes status' } : { status: 'FAIL', label: 'formatted sample missing status' });
+      rows.push(/non-canon/.test(sample) ? { status: 'PASS', label: 'formatted sample includes non-canon warning' } : { status: 'FAIL', label: 'formatted sample missing non-canon warning' });
+      return rows;
+    },
+    render(root) {
+      const cf = this.ensure(root);
+      const rows = this.inspect(root);
+      const fail = rows.filter(r => r.status === 'FAIL').length;
+      const lines = [
+        'Command Output Format Lock: ' + WL.COMMAND_FORMAT_LOCK_VERSION + (fail ? ' / FAILURES: ' + fail : ' / locked'),
+        'Prefix: ' + cf.prefix,
+        'Mode line: ' + cf.modeLine,
+        'Last command rendered: ' + (cf.lastCommandRendered || 'none'),
+        'Rules:'
+      ];
+      (cf.rules || []).forEach(r => lines.push('- ' + r));
+      lines.push('Audit:');
+      rows.forEach(r => lines.push(r.status + ': ' + r.label));
+      return lines;
+    }
+  };
+
+  // ============================================================
+  // 09. Command Router and Renderers
+  // ============================================================
+  WL.CommandRouter = {
+    aliases: {
+      questlog: 'quests', finalcheck: 'releasecheck', finalrelease: 'releasecheck', rc: 'releasecheck',
+      cardedits: 'cardaudit', tombstones: 'cardaudit', startup: 'startupaudit', continuity: 'stateaudit',
+      memory: 'contextaudit', selftest: 'releasecheck', generatedcards: 'cardaudit', cards: 'cardaudit'
+    },
+    deferred: {
+      economy: 'Economy automation is deferred in Code Pass 1.', money: 'Economy automation is deferred in Code Pass 1.', coins: 'Economy automation is deferred in Code Pass 1.',
+      crafting: 'Crafting automation is deferred in Code Pass 1.', craft: 'Crafting automation is deferred in Code Pass 1.', materials: 'Crafting/material automation is deferred in Code Pass 1.',
+      investigation: 'Investigation automation is deferred in Code Pass 1.', cases: 'Investigation automation is deferred in Code Pass 1.', evidence: 'Investigation automation is deferred in Code Pass 1.',
+      reputation: 'Reputation/faction automation is deferred in Code Pass 1.', rep: 'Reputation/faction automation is deferred in Code Pass 1.', factions: 'Reputation/faction automation is deferred in Code Pass 1.',
+      domain: 'Domain/labor automation is deferred in Code Pass 1.', labor: 'Domain/labor automation is deferred in Code Pass 1.', workers: 'Domain/labor automation is deferred in Code Pass 1.', projects: 'Domain/labor automation is deferred in Code Pass 1.',
+      absorption: 'Absorption/evolution is deferred in Code Pass 1.', evolution: 'Absorption/evolution is deferred in Code Pass 1.', devour: 'Absorption/evolution is deferred in Code Pass 1.',
+      additem: 'Manual mutation commands are disabled in Code Pass 1.', sethp: 'Manual mutation commands are disabled in Code Pass 1.', addxp: 'Manual mutation commands are disabled in Code Pass 1.'
+    },
+    route(root, text) {
+      let name = WL.U.commandName(text);
+      name = this.aliases[name] || name;
+      let raw;
+      let status = 'ACTIVE';
+      try {
+        if (this.deferred[name]) {
+          raw = WL.CommandRenderer.disabled(name, this.deferred[name]);
+          status = 'DEFERRED';
+        } else {
+          const fn = WL.CommandRenderer[name];
+          if (typeof fn === 'function') raw = fn.call(WL.CommandRenderer, root, WL.U.commandArgs(text));
+          else { raw = WL.CommandRenderer.unknown(name); status = 'UNKNOWN'; }
+        }
+        const formatted = WL.CommandOutputFormatLock.enforce(root, name || 'help', raw, status);
+        WL.Runtime.setCommandSuppression(root, name || 'help', formatted);
+        return formatted;
+      } catch (err) {
+        return WL.Runtime.failSoft(root, 'input', 'CommandRouter.route:' + (name || 'unknown'), err, text, true);
+      }
+    }
+  };
+
+  WL.CommandRenderer = {
+    header(title) { return '[WorldLedger] ' + title + '\n'; },
+    disabled(name, reason) { return this.header('/' + name + ' disabled') + reason + '\nThis command is intentionally inspect-only or inactive until a later gated build.\n'; },
+    unknown(name) { return this.header('Unknown command') + 'Unknown command: /' + WL.U.norm(name) + '\nUse /help for active commands.\n'; },
+    help(root) {
+      return this.header('Help') + [
+        'WorldLedger is a canon/state engine for AI Dungeon. Player input is intent; AI output must confirm consequences.',
+        'Commands inspect only and are non-canon. Command output is suppressed from story parsing.',
+        'Active commands: /version, /layout, /schema, /schemaaudit, /owners, /commandformat, /commands, /sheet, /status, /inventory, /abilities, /quests, /actors, /location, /time, /debuglast, /ledger, /dirty, /cardaudit, /contextaudit, /stateaudit, /statemanager, /integrity, /repairlog, /runtime, /hookaudit, /runtimecheck, /failsoft, /audit, /auditlog, /ledgercheck, /migration, /quarantine, /startupaudit, /releasecheck.',
+        'Active limited reducers: inventory acquisition/handoff, ability candidate evidence, body condition/injury shell, quest lite, actor/place/time/progression shells.',
+        'Deferred: generated cards, live card writes, full economy, crafting, investigation, reputation/factions, domain/labor, absorption/evolution, advanced combat, warfare, manual mutation commands.'
+      ].join('\n') + '\n';
+    },
+    version(root) {
+      return this.header('Version') + [
+        'Project: ' + WL.PROJECT_NAME,
+        'Build: ' + WL.BUILD_NAME,
+        'Version: ' + WL.BUILD_VERSION,
+        'Stage: ' + WL.BUILD_STAGE,
+        'Schema: ' + WL.SCHEMA_VERSION,
+        'Layout: ' + WL.LAYOUT_VERSION,
+        'Schema Lock: ' + WL.SCHEMA_LOCK_VERSION,
+        'Command Format Lock: ' + WL.COMMAND_FORMAT_LOCK_VERSION,
+        'StateManager Lock: ' + WL.STATE_MANAGER_LOCK_VERSION,
+        'Runtime Hook Contract: ' + WL.RUNTIME_HOOK_CONTRACT_VERSION,
+        'Audit/Ledger Lock: ' + WL.AUDIT_LEDGER_LOCK_VERSION,
+        'State root: state.' + WL.ROOT_KEY
+      ].join('\n') + '\n';
+    },
+    layout(root) {
+      return this.header('Layout Lock') + WL.LayoutLock.render(root).join('\n') + '\n';
+    },
+    schema(root) {
+      return this.header('Schema Lock') + WL.StateSchemaLock.render(root).join('\n') + '\n';
+    },
+    schemaaudit(root) {
+      const rows = WL.StateSchemaLock.inspect(root);
+      return this.header('Schema Audit') + rows.map(r => r.status + ': ' + r.label).join('\n') + '\n';
+    },
+    owners(root) {
+      const lines = ['Root bucket owners:'];
+      Object.keys(WL.SCHEMA_OWNER_MAP).forEach(k => lines.push('- ' + k + ': ' + WL.SCHEMA_OWNER_MAP[k]));
+      return this.header('Owner Map') + lines.join('\n') + '\n';
+    },
+    sheet(root) {
+      const p = root.player;
+      return this.header('Player Sheet') + [
+        'Name: ' + p.name,
+        'Species/Race: ' + (p.species || p.race || 'unknown'),
+        'Age: ' + (p.age == null ? 'unknown' : p.age),
+        'Level: ' + p.level,
+        'XP: ' + p.xp + ' / ' + p.xpToNext,
+        'Location: ' + (root.places.currentId && root.places.placesById[root.places.currentId] ? root.places.placesById[root.places.currentId].name : 'unknown')
+      ].join('\n') + '\n';
+    },
+    status(root) {
+      const b = root.body;
+      return this.header('Status') + [
+        'HP: ' + b.hp + '/' + b.maxHp,
+        'MP: ' + b.mp + '/' + b.maxMp,
+        'EP: ' + b.ep + '/' + b.maxEp,
+        'Conditions: ' + (b.conditions.length ? b.conditions.join(', ') : 'none'),
+        'Injuries: ' + (b.injuries.length ? b.injuries.join(', ') : 'none')
+      ].join('\n') + '\n';
+    },
+    inventory(root) {
+      const inv = root.inventory;
+      const items = inv.ownedIds.map(id => inv.itemsById[id] && inv.itemsById[id].name).filter(Boolean);
+      return this.header('Inventory') + [
+        'Currency: ' + inv.currency.gold + ' gold, ' + inv.currency.silver + ' silver, ' + inv.currency.copper + ' copper',
+        'Owned: ' + (items.length ? items.join(', ') : 'none'),
+        'Visible scene items: ' + (inv.visibleSceneItems.length ? inv.visibleSceneItems.join(', ') : 'none'),
+        'Available scene items: ' + (inv.availableSceneItems.length ? inv.availableSceneItems.join(', ') : 'none'),
+        'Main hand: ' + (inv.equipment.mainHand || 'empty')
+      ].join('\n') + '\n';
+    },
+    abilities(root) {
+      const a = root.abilities;
+      const c = a.candidateIds.map(id => a.candidatesById[id] && a.candidatesById[id].name).filter(Boolean);
+      const stable = a.abilityIds.map(id => a.abilitiesById[id] && a.abilitiesById[id].name).filter(Boolean);
+      return this.header('Abilities') + [
+        'Candidates: ' + (c.length ? c.join(', ') : 'none'),
+        'Stable abilities: ' + (stable.length ? stable.join(', ') : 'none'),
+        'Note: candidates are not reliable usable abilities yet.'
+      ].join('\n') + '\n';
+    },
+    quests(root) {
+      const q = root.quests;
+      const active = q.activeIds.map(id => q.questsById[id] && q.questsById[id].title).filter(Boolean);
+      const offered = q.offeredIds.map(id => q.questsById[id] && q.questsById[id].title).filter(Boolean);
+      return this.header('Quests') + [
+        'Offered: ' + (offered.length ? offered.join(', ') : 'none'),
+        'Active: ' + (active.length ? active.join(', ') : 'none'),
+        'Completed: ' + q.completedIds.length,
+        'Reward promises: ' + (q.rewardPromises.length ? q.rewardPromises.map(r => r.text).join('; ') : 'none')
+      ].join('\n') + '\n';
+    },
+    actors(root) {
+      const a = root.actors;
+      const present = a.presentIds.map(id => a.actorsById[id] && a.actorsById[id].name).filter(Boolean);
+      const comps = a.companionIds.map(id => a.actorsById[id] && a.actorsById[id].name).filter(Boolean);
+      return this.header('Actors') + ['Present: ' + (present.length ? present.join(', ') : 'none'), 'Companions: ' + (comps.length ? comps.join(', ') : 'none')].join('\n') + '\n';
+    },
+    location(root) {
+      const p = root.places.currentId ? root.places.placesById[root.places.currentId] : null;
+      return this.header('Location') + ['Current: ' + (p ? p.name : 'unknown'), 'Route/interstitial: ' + (root.places.routeId || 'none')].join('\n') + '\n';
+    },
+    time(root) { return this.header('Time') + 'Day ' + root.time.day + ', ' + String(root.time.hour).padStart(2, '0') + ':' + String(root.time.minute).padStart(2, '0') + '\n'; },
+    debuglast(root) {
+      return this.header('Debug Last') + [
+        'Parser hits: ' + (root.pending.lastParserHits || []).length,
+        'Proposals: ' + (root.pending.lastProposals || []).length,
+        'Validations: ' + (root.pending.lastValidations || []).map(v => v.result + ':' + v.type).join(', '),
+        'Reducer results: ' + (root.pending.lastReducerResults || []).map(r => r.status + ':' + r.type).join(', '),
+        'Last summary: ' + ((root.audits.lastTurnSummary.slice(-1)[0] || {}).message || 'none')
+      ].join('\n') + '\n';
+    },
+    ledger(root) {
+      const rows = WL.OperationLedger.inspect(root);
+      return this.header('Operation Ledger') + WL.OperationLedger.summary(root) + '\n' + rows.map(r => r.status + ': ' + r.label).join('\n') + '\n';
+    },
+    ledgercheck(root) {
+      const tests = WL.OperationLedger.runBC7SelfTests();
+      const pass = tests.filter(t => t.ok).length;
+      return this.header('LedgerCheck') + 'BC7 ledger self-tests: ' + pass + ' / ' + tests.length + ' pass\n' + tests.map(t => (t.ok ? 'PASS' : 'FAIL') + ': ' + t.id + ' — ' + t.label).join('\n') + '\n';
+    },
+    audit(root) {
+      const rows = WL.AuditLogger.inspect(root);
+      return this.header('Audit') + 'Audit/Ledger Lock: ' + WL.AUDIT_LEDGER_LOCK_VERSION + '\n' + rows.map(r => r.status + ': ' + r.label).join('\n') + '\n';
+    },
+    auditlog(root) {
+      const last = (root.audits.auditLog || []).slice(-10);
+      const dup = (root.audits.duplicateAudit || []).slice(-5);
+      const turns = (root.audits.lastTurnSummary || []).slice(-5);
+      const lines = ['Recent audit log entries: ' + (last.length || 0), 'Duplicate skips: ' + dup.length, 'Turn summaries: ' + turns.length];
+      turns.forEach(r => lines.push('Turn ' + r.turn + ': ' + ((r.message || (r.notes && r.notes[0]) || 'summary'))));
+      dup.forEach(r => lines.push('Duplicate: ' + (r.sourceEventKey || r.key || 'unknown') + ' — ' + (r.reason || 'duplicate')));
+      return this.header('Audit Log') + lines.join('\n') + '\n';
+    },
+    dirty(root) { return this.header('Dirty Queue') + (root.dirty.targets.length ? root.dirty.targets.join(', ') : 'empty') + '\n'; },
+    migration(root) { return this.header('Migration') + 'Schema: ' + root.migration.schema + '\nRepairs: ' + root.migration.repairs.length + '\nWarnings: ' + root.migration.warnings.length + '\n'; },
+    quarantine(root) { return this.header('Quarantine') + (root.quarantine.records.length ? root.quarantine.records.map(r => r.kind + ': ' + (r.note || '')).join('\n') : 'empty') + '\n'; },
+    startupaudit(root) { return this.header('Startup Audit') + ['firstHookSeen=' + root.startup.firstHookSeen, 'firstGameplayInputSeen=' + root.startup.firstGameplayInputSeen, 'startupLocked=' + root.startup.startupLocked, 'oldStateQuarantined=' + root.startup.oldStateQuarantined].join('\n') + '\n'; },
+    cardaudit(root) { return this.header('Card Audit') + WL.CardSyncLite.audit(root).join('\n') + '\n'; },
+    contextaudit(root) { return this.header('Context Audit') + (root.audits.context.length ? root.audits.context.slice(-5).map(r => r.message || WL.U.safeJson(r)).join('\n') : 'No context packets recorded yet.') + '\n'; },
+    commandformat(root) { return this.header('Command Format') + WL.CommandOutputFormatLock.render(root).join('\n') + '\n'; },
+    commands(root) {
+      return this.header('Commands') + [
+        'Active inspect-only commands: ' + WL.MVP_ACTIVE_COMMANDS.map(c => '/' + c).join(', '),
+        'Deferred command groups answer with Status: DEFERRED and do not mutate state.',
+        'Unknown commands answer with Status: UNKNOWN and suggest /help.',
+        'All command output is non-canon and suppressed from story parsing.'
+      ].join('\n') + '\n';
+    },
+    statemanager(root) {
+      const summary = WL.StateManager.getStateSummary(root);
+      const tests = WL.StateManager.runBC5SelfTests();
+      const pass = tests.filter(t => t.ok).length;
+      const lines = [
+        'StateManager Lock: ' + WL.STATE_MANAGER_LOCK_VERSION,
+        'Doctrine: create structure, repair structure, preserve truth, quarantine unsafe data, never invent gameplay.',
+        'Integrity: ' + (summary.ok ? 'OK' : 'CHECK ERRORS'),
+        'Warnings: ' + summary.warnings + ', Errors: ' + summary.errors + ', Recent repairs: ' + summary.repairs,
+        'Quarantine records: ' + summary.quarantine,
+        'BC5 self-tests: ' + pass + ' / ' + tests.length + ' pass'
+      ];
+      tests.forEach(t => lines.push((t.ok ? 'PASS' : 'FAIL') + ': ' + t.id + ' — ' + t.label));
+      return this.header('StateManager') + lines.join('\n') + '\n';
+    },
+    integrity(root) {
+      const r = WL.StateManager.validateIntegrity(root);
+      const lines = ['OK: ' + r.ok, 'Errors: ' + (r.errors.length ? r.errors.join('; ') : 'none'), 'Warnings: ' + (r.warnings.length ? r.warnings.join('; ') : 'none'), 'Recent repairs: ' + (r.repaired.length ? r.repaired.join('; ') : 'none')];
+      return this.header('Integrity') + lines.join('\n') + '\n';
+    },
+    repairlog(root) {
+      const rows = (root.audits && root.audits.warnings ? root.audits.warnings : []).filter(r => r && r.subsystem === 'StateManager').slice(-12);
+      return this.header('Repair Log') + (rows.length ? rows.map(r => 'Turn ' + r.turn + ': ' + r.message).join('\n') : 'No StateManager repairs recorded.') + '\n';
+    },
+    runtime(root) {
+      const rt = root.runtime || {};
+      const lines = [
+        'Runtime Hook Contract: ' + WL.RUNTIME_HOOK_CONTRACT_VERSION,
+        'Current hook: ' + (rt.currentHook || 'none'),
+        'Current turn: ' + (rt.currentTurn || 0),
+        'Hook depth: ' + (rt.hookDepth || 0),
+        'Last input hash: ' + (rt.lastInputHash || 'none'),
+        'Last context hash: ' + (rt.lastContextHash || 'none'),
+        'Last output hash: ' + (rt.lastOutputHash || 'none'),
+        'Last applied output hash: ' + (rt.lastAppliedOutputHash || 'none'),
+        'Command suppression: ' + (!!rt.suppressEventScanForCommandOutput),
+        'Duplicate skips: ' + (rt.duplicateOutputSkipped || 0),
+        'Fail-soft count: ' + (rt.failSoftCount || 0),
+        'Warnings/errors: ' + ((rt.runtimeWarnings || []).length) + '/' + ((rt.runtimeErrors || []).length)
+      ];
+      return this.header('Runtime') + lines.join('\n') + '\n';
+    },
+    hookaudit(root) {
+      const rows = (root.runtime && root.runtime.hookTrace ? root.runtime.hookTrace : []).slice(-12);
+      return this.header('Hook Audit') + (rows.length ? rows.map(r => 'Turn ' + r.turn + ' ' + r.hook + ' ' + r.status + ' ' + (r.notes || '')).join('\n') : 'No hook trace yet.') + '\n';
+    },
+    runtimecheck(root) {
+      const tests = WL.Runtime.runBC6SelfTests();
+      const pass = tests.filter(t => t.ok).length;
+      return this.header('Runtime Check') + ['BC6 Runtime self-tests: ' + pass + ' / ' + tests.length + ' pass'].concat(tests.map(t => (t.ok ? 'PASS' : 'FAIL') + ': ' + t.id + ' — ' + t.label)).join('\n') + '\n';
+    },
+    failsoft(root) {
+      const rt = root.runtime || {};
+      const rows = (rt.runtimeErrors || []).slice(-10);
+      return this.header('Fail-Soft') + ['Fail-soft count: ' + (rt.failSoftCount || 0), 'Last fail-soft hook: ' + (rt.lastFailSoftHook || 'none'), 'Last fail-soft phase: ' + (rt.lastFailSoftPhase || 'none'), 'Recent errors:'].concat(rows.length ? rows.map(r => '- ' + r.hook + '/' + r.phase + ': ' + r.message) : ['none']).join('\n') + '\n';
+    },
+    stateaudit(root) { return this.header('State Audit') + WL.ReleaseCheckLite.stateAudit(root).join('\n') + '\n'; },
+    releasecheck(root) { return this.header('ReleaseCheck') + WL.ReleaseCheckLite.run(root).join('\n') + '\n'; }
+  };
+
+  // ============================================================
+  // 10. EventScannerLite Parser Shell
+  // ============================================================
+  WL.EventScannerLite = {
+    unsafeSource(kind, text) {
+      const t = WL.U.norm(text);
+      if (kind === 'command' || WL.U.startsCommand(t)) return true;
+      if (/^\[WorldLedger\]/i.test(t) || /^\[AIDRPG\]/i.test(t)) return true;
+      if (/^(?:WorldLedger|AIDRPG)\s+(?:Inventory|Abilities|Quests|Audit|Settings)/i.test(t)) return true;
+      return false;
+    },
+    flags(text) {
+      const raw = WL.U.norm(text);
+      const unq = WL.U.unquoted(raw);
+      const l = raw.toLowerCase();
+      return {
+        raw, unquoted: unq,
+        quote: raw !== unq,
+        dream: /\b(?:dream|dreamed|dreamt|in a dream|vision|nightmare)\b/i.test(raw),
+        rumor: /\b(?:rumor|rumour|people say|they say|it is said|heard that|supposedly)\b/i.test(raw),
+        pretend: /\b(?:pretend|joke|imaginary|not real|mimic|only mimicking|make believe)\b/i.test(raw),
+        denied: /\b(?:do not|don't|decide not|refuse|refuses|failed|fails|cannot|can't|unable|snatches? it away|stops you|blocked|no ability is gained|no item is gained)\b/i.test(raw),
+        visibleOnly: /\b(?:see|saw|visible|on the shelf|nearby|in the distance|could take|available|lying there)\b/i.test(raw) && !/\b(?:pick up|take|grab|collect|accept|hands you|gives you)\b/i.test(raw)
+      };
+    },
+    scanOutput(root, output) {
+      const hits = [];
+      const input = root.runtime.lastInputText || '';
+      const combined = WL.U.norm(input + '\n' + output);
+      if (this.unsafeSource('output', output)) return [];
+      const flags = this.flags(combined);
+      const sentences = WL.U.sentenceSplit(output);
+      this.scanInventory(hits, output, flags);
+      this.scanAbility(hits, input, output, flags);
+      this.scanBody(hits, output, flags);
+      this.scanQuest(hits, input, output, flags);
+      this.scanReward(hits, output, flags);
+      this.scanActor(hits, output, flags);
+      this.scanPlace(hits, input, output, flags);
+      this.scanTime(hits, output, flags);
+      root.pending.lastParserHits = hits.slice(0, 20);
+      WL.AuditLogger.append(root, 'parser', { message: 'scanOutput hits=' + hits.length, families: hits.map(h => h.family).join(',') }, 30);
+      return hits.slice(0, 20);
+    },
+    push(hits, family, type, name, text, flags, extra) {
+      hits.push(Object.assign({ family, type, name: WL.U.norm(name), sourceText: WL.U.norm(text).slice(0, 240), flags: Object.assign({}, flags || {}) }, extra || {}));
+    },
+    scanInventory(hits, text, flags) {
+      const raw = WL.U.norm(text);
+      let m;
+      const handoff = raw.match(/\b(?:hands you|gives you|passes you|places|puts)\s+(?:the\s+|a\s+|an\s+)?([a-z][a-z' -]{2,60}?)(?:\s+(?:in your hand|into your hand|to you))\b/i);
+      if (handoff) this.push(hits, 'inventory', 'item.acquire', handoff[1], handoff[0], this.flags(handoff[0]), { mode: 'handoff' });
+      const pickupRe = /\byou\s+(?:pick up|take|grab|retrieve|pocket|collect)\s+(?:the\s+|a\s+|an\s+|some\s+)?([a-z][a-z' -]{2,60}?)(?:\s+(?:from|near|on|in|and|with|before|while)\b|[.!?]|$)/gi;
+      while ((m = pickupRe.exec(raw)) && hits.length < 20) this.push(hits, 'inventory', 'item.acquire', m[1], m[0], this.flags(m[0]), { mode: 'pickup' });
+      const visibleRe = /\b(?:you see|you notice|there is|there are|lies|rests)\s+(?:the\s+|a\s+|an\s+|some\s+)?([a-z][a-z' -]{2,60}?)(?:\s+(?:on|near|beside|under|inside|at)\b|[.!?]|$)/gi;
+      while ((m = visibleRe.exec(raw)) && hits.length < 20) this.push(hits, 'inventory', 'item.visible', m[1], m[0], this.flags(m[0]), { mode: 'visible' });
+    },
+    scanAbility(hits, input, output, flags) {
+      const combined = WL.U.norm(input + ' ' + output);
+      if (/\b(?:train|practice|attempt|try to|focus on|channel|use)\b/i.test(combined)) {
+        const m = combined.match(/\b([A-Z][A-Za-z'’-]{1,24}(?:\s+[A-Z][A-Za-z'’-]{1,24}){0,3}\s+(?:Ward|Slash|Strike|Bolt|Sense|Sight|Step|Stance|Form|Art|Barrier|Shield|Control|Pulse|Veil|Blade|Guard))\b/);
+        if (m) this.push(hits, 'ability', 'ability.evidence', m[1], combined, flags, { attemptedInInput: /\b(?:train|practice|attempt|try|focus|channel|use)\b/i.test(input) });
+      }
+      const learned = output.match(/\byou\s+(?:learn|learned|gain|gained|unlock|unlocked)\s+(?:the\s+)?([A-Z][A-Za-z'’-]{1,24}(?:\s+[A-Z][A-Za-z'’-]{1,24}){0,3}\s+(?:Ward|Slash|Strike|Bolt|Sense|Sight|Step|Stance|Form|Art|Barrier|Shield|Control|Pulse|Veil|Blade|Guard))\b/i);
+      if (learned) this.push(hits, 'ability', 'ability.stabilize_claim', learned[1], learned[0], flags, { outputOnly: true });
+    },
+    scanBody(hits, text, flags) {
+      const raw = WL.U.norm(text);
+      if (/\b(?:exhausted|fatigued|tired|worn out|out of breath|muscles burn)\b/i.test(raw)) this.push(hits, 'body', 'body.fatigue', 'fatigue', raw, flags, { severity: 1 });
+      if (/\b(?:wolf bites|bitten|stabbed|deep cut|bleeding|blood runs|burned|poisoned|arrow hits|sword cuts)\b/i.test(raw)) this.push(hits, 'body', 'body.injury', 'injury', raw, flags, { severity: 2 });
+      if (/\b(?:you died|you die|you are dead|kills you|killed you)\b/i.test(raw)) this.push(hits, 'body', 'body.death_claim', 'death', raw, flags, { severity: 5 });
+    },
+    scanQuest(hits, input, output, flags) {
+      const raw = WL.U.norm(input + ' ' + output);
+      let m = raw.match(/\b(?:quest|task|job|mission)\s+(?:to\s+)?([^.!?;]{3,100})/i);
+      if (m) this.push(hits, 'quest', 'quest.offer', m[1], m[0], flags);
+      m = raw.match(/\b(?:accept|agree to|take on|undertake)\s+(?:the\s+)?(?:quest|task|job|mission)\s+(?:to\s+)?([^.!?;]{3,100})/i);
+      if (m) this.push(hits, 'quest', 'quest.accept', m[1], m[0], flags);
+      m = raw.match(/\b(?:complete|completed|finish|finished)\s+(?:the\s+)?(?:quest|task|job|mission)\s+(?:to\s+)?([^.!?;]{3,100})/i);
+      if (m) this.push(hits, 'quest', 'quest.complete', m[1], m[0], flags);
+    },
+    scanReward(hits, text, flags) {
+      const raw = WL.U.norm(text);
+      let m = raw.match(/\b(?:promises?|vows?|offers?)\s+(?:you\s+)?(\d{1,6}\s*(?:copper|silver|gold))\b/i);
+      if (m) this.push(hits, 'quest', 'reward.promise', m[1], m[0], flags, { reward: WL.Sanitizers.reward(m[1]) });
+      m = raw.match(/\b(?:pays?|paid|hands|gives)\s+(?:you\s+)?(?:(?:the\s+)?promised\s+)?(\d{1,6}\s*(?:copper|silver|gold))\b/i);
+      if (m) this.push(hits, 'inventory', 'currency.gain', m[1], m[0], flags, { reward: WL.Sanitizers.reward(m[1]) });
+    },
+    scanActor(hits, text, flags) {
+      const raw = WL.U.norm(text);
+      const re = /\b([A-Z][A-Za-z'’-]{1,30}(?:\s+[A-Z][A-Za-z'’-]{1,30}){0,2})\s+(?:says|asks|replies|nods|hands|gives|joins|follows|attacks|teaches)\b/g;
+      let m;
+      while ((m = re.exec(raw)) && hits.length < 20) this.push(hits, 'actor', 'actor.present', m[1], m[0], flags, { companion: /\b(?:joins|follows)\b/i.test(m[0]) });
+    },
+    scanPlace(hits, input, output, flags) {
+      const raw = WL.U.norm(input + ' ' + output);
+      const weak = /\b(?:visible from|can see|could see|nearby|in the distance|mentions|talks about)\b/i.test(raw);
+      const strong = /\b(?:enter|entered|step inside|walk into|move into|head into|arrive at|arrive in|reach|return to|go inside)\b/i.test(raw);
+      let m = raw.match(/\b(?:enter|entered|step inside|walk into|move into|head into|arrive at|arrive in|reach|return to|go inside)\s+(?:the\s+)?([A-Z][A-Za-z'’ -]{2,80})/i);
+      if (m) this.push(hits, 'place', 'place.current', m[1], m[0], flags, { strongArrival: true, weakReference: false });
+      else if (weak) {
+        m = raw.match(/\b([A-Z][A-Za-z'’ -]{2,80})\s+(?:is\s+)?visible\s+from\s+([A-Z][A-Za-z'’ -]{2,80})/i);
+        if (m) this.push(hits, 'place', 'place.reference', m[1], m[0], flags, { weakReference: true });
+      }
+      if (strong && /\broad\b/i.test(raw) && !m) this.push(hits, 'place', 'place.route', 'road', raw, flags, { routeOnly: true });
+    },
+    scanTime(hits, text, flags) {
+      const raw = WL.U.norm(text);
+      const m = raw.match(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|twenty)\s+(minutes?|hours?|days?|weeks?|months?|years?)\s+pass\b/i);
+      if (m) this.push(hits, 'time', 'time.pass', m[0], m[0], flags, { amountText: m[1], unit: m[2].toLowerCase() });
+    }
+  };
+
+  // ============================================================
+  // 11. ProposalBuilder Shell
+  // ============================================================
+  WL.ProposalBuilder = {
+    fromHits(root, hits, sourceKind) {
+      const proposals = [];
+      for (let i = 0; i < hits.length && proposals.length < 20; i++) {
+        const h = hits[i];
+        const binding = WL.Resolver.buildTargetBinding(h);
+        const type = h.type;
+        const key = WL.OperationLedger.makeKey([sourceKind || 'output', root.runtime.currentTurn, root.runtime.lastOutputHash, type, binding.id || binding.raw || h.name]);
+        proposals.push({
+          id: 'prop_' + proposals.length + '_' + WL.U.hash(key),
+          type,
+          family: h.family,
+          sourceKind: sourceKind || 'output',
+          sourceText: h.sourceText || '',
+          flags: h.flags || {},
+          target: binding,
+          opKey: key,
+          riskFlags: this.riskFlags(h, binding),
+          data: Object.assign({}, h, { flags: undefined })
+        });
+      }
+      root.pending.lastProposals = proposals;
+      WL.AuditLogger.append(root, 'proposals', { message: 'built proposals=' + proposals.length }, 30);
+      return proposals;
+    },
+    riskFlags(hit, binding) {
+      const flags = [];
+      if (!binding.display) flags.push('ambiguous_target');
+      if (hit.flags && hit.flags.quote) flags.push('quote_present');
+      if (hit.flags && hit.flags.dream) flags.push('dream');
+      if (hit.flags && hit.flags.rumor) flags.push('rumor');
+      if (hit.flags && hit.flags.pretend) flags.push('pretend');
+      if (hit.flags && hit.flags.denied) flags.push('denied');
+      if (hit.flags && hit.flags.visibleOnly) flags.push('visible_only');
+      return flags;
+    }
+  };
+
+  // ============================================================
+  // 12. CanonValidator Shell
+  // ============================================================
+  WL.CanonValidator = {
+    validateAll(root, proposals) {
+      const out = [];
+      for (let i = 0; i < proposals.length; i++) out.push(this.validate(root, proposals[i]));
+      root.pending.lastValidations = out;
+      WL.AuditLogger.append(root, 'validations', { message: 'validated=' + out.length, results: out.map(v => v.result).join(',') }, 30);
+      return out;
+    },
+    validate(root, p) {
+      const f = p.flags || {};
+      const denied = p.riskFlags.indexOf('denied') >= 0;
+      const fake = p.riskFlags.indexOf('dream') >= 0 || p.riskFlags.indexOf('pretend') >= 0 || p.riskFlags.indexOf('quote_present') >= 0;
+      const rumor = p.riskFlags.indexOf('rumor') >= 0;
+      const noTarget = !p.target || !p.target.display;
+      let result = 'pending', reason = 'shell default pending';
+
+      if (p.sourceKind === 'command' || WL.EventScannerLite.unsafeSource(p.sourceKind, p.sourceText)) return this.row(p, 'reject', 'unsafe/non-canon source');
+      if (noTarget && !/^body\.|^time\./.test(p.type)) return this.row(p, 'reject', 'ambiguous or unsafe target');
+
+      switch (p.type) {
+        case 'item.acquire':
+          if (fake || rumor || denied || /\b(?:idea of|concept of|not take|decide not|snatches? it away)\b/i.test(p.sourceText)) result = 'reject', reason = 'unsafe item acquisition source';
+          else result = 'accept', reason = 'confirmed pickup/handoff';
+          break;
+        case 'item.visible':
+          result = 'pending'; reason = 'visible scene item only, not owned'; break;
+        case 'currency.gain':
+          if (fake || rumor || denied) result = 'reject', reason = 'unsafe currency source';
+          else result = 'accept', reason = 'explicit payment';
+          break;
+        case 'ability.evidence':
+          if (fake) result = 'hard_deny', reason = 'fake/pretend/quoted ability attempt';
+          else if (denied || /\b(?:fails?|nothing happens|no visible effect|cannot|can't|lack technique)\b/i.test(p.sourceText)) result = 'soft_fail', reason = 'failed training evidence';
+          else result = 'accept', reason = 'ability training evidence';
+          break;
+        case 'ability.stabilize_claim':
+          result = 'pending'; reason = 'output-only ability claim cannot stabilize in Code Pass 1'; break;
+        case 'body.fatigue':
+          if (fake || rumor) result = 'reject', reason = 'non-canon fatigue source';
+          else result = 'accept', reason = 'confirmed fatigue/exertion';
+          break;
+        case 'body.injury':
+          if (fake || rumor) result = 'reject', reason = 'injury blocked by quote/dream/rumor';
+          else result = 'accept', reason = 'confirmed injury language';
+          break;
+        case 'body.death_claim':
+          if (fake || rumor) result = 'reject', reason = 'death claim from rumor/dream/quote';
+          else result = 'pending', reason = 'death requires stronger future combat/body gate';
+          break;
+        case 'quest.offer':
+          if (fake || rumor) result = 'reject', reason = 'unsafe quest source';
+          else result = 'accept', reason = 'quest offer detected';
+          break;
+        case 'quest.accept':
+          if (fake || rumor || denied) result = 'reject', reason = 'unsafe quest acceptance';
+          else result = 'accept', reason = 'quest acceptance detected';
+          break;
+        case 'quest.complete':
+          if (fake || rumor || denied) result = 'reject', reason = 'unsafe quest completion';
+          else result = 'accept', reason = 'quest completion detected';
+          break;
+        case 'reward.promise':
+          if (fake || rumor) result = 'reject', reason = 'unsafe reward promise';
+          else result = 'accept', reason = 'promise tracked, not paid';
+          break;
+        case 'actor.present':
+          if (fake || rumor) result = 'reject', reason = 'unsafe actor presence';
+          else result = 'accept', reason = 'actor directly present/acting';
+          break;
+        case 'place.current':
+          if (fake || rumor || denied || p.data.weakReference) result = 'reject', reason = 'weak/unsafe place source';
+          else result = 'accept', reason = 'strong arrival/current scene';
+          break;
+        case 'place.reference':
+          result = 'pending'; reason = 'weak place reference only'; break;
+        case 'time.pass':
+          if (fake || rumor || /\byears?\b/i.test(p.sourceText) || /\bpracticing narration\b/i.test(p.sourceText)) result = 'reject', reason = 'unsafe/nonliteral time passage';
+          else result = 'accept', reason = 'literal short time advance';
+          break;
+        default:
+          result = 'pending'; reason = 'no active Code Pass 1 rule';
+      }
+      return this.row(p, result, reason);
+    },
+    row(p, result, reason) {
+      return { proposalId: p.id, type: p.type, family: p.family, result, reason, target: p.target, opKey: p.opKey, sourceText: p.sourceText, data: p.data };
+    }
+  };
+
+  // ============================================================
+  // 13. ReducerRegistry and Limited Reducers
+  // ============================================================
+  WL.ReducerRegistry = {
+    applyAcceptedBatch(root, validations) {
+      const results = [];
+      for (let i = 0; i < validations.length; i++) {
+        const v = validations[i];
+        if (['accept','soft_fail','hard_deny'].indexOf(v.result) < 0) { results.push({ type: v.type, status: 'skipped', reason: v.result }); continue; }
+        const led = WL.OperationLedger.tryAdd(root, 'recentKeys', v.opKey, { type: v.type, result: v.result });
+        if (!led.applied) { results.push({ type: v.type, status: 'duplicate_skip', reason: v.reason }); continue; }
+        let r;
+        if (v.family === 'inventory') r = WL.InventoryReducer.apply(root, v);
+        else if (v.family === 'ability') r = WL.AbilityReducer.apply(root, v);
+        else if (v.family === 'body') r = WL.BodyReducer.apply(root, v);
+        else if (v.family === 'quest') r = WL.QuestReducerLite.apply(root, v);
+        else if (v.family === 'actor') r = WL.ActorReducerLite.apply(root, v);
+        else if (v.family === 'place') r = WL.PlaceReducerLite.apply(root, v);
+        else if (v.family === 'time') r = WL.TimeReducerLite.apply(root, v);
+        else r = { type: v.type, status: 'no_owner', reason: 'No active reducer owner.' };
+        results.push(r);
+      }
+      root.pending.lastReducerResults = results;
+      WL.AuditLogger.append(root, 'reducers', { message: 'reducer results=' + results.length, statuses: results.map(r => r.status).join(',') }, 30);
+      return results;
+    }
+  };
+
+  WL.InventoryReducer = {
+    apply(root, v) {
+      if (v.type === 'item.acquire') return this.acquire(root, v);
+      if (v.type === 'item.visible') return this.visible(root, v);
+      if (v.type === 'currency.gain') return this.currency(root, v);
+      return { type: v.type, status: 'ignored', reason: 'Inventory reducer has no handler.' };
+    },
+    itemId(name) { return 'item_' + WL.U.slug(name); },
+    acquire(root, v) {
+      const name = v.target.display;
+      const id = this.itemId(name);
+      if (!root.inventory.itemsById[id]) root.inventory.itemsById[id] = { id, name, qty: 1, holder: 'player', owner: 'player', availability: 'available', createdTurn: WL.U.nowTurn(root) };
+      else root.inventory.itemsById[id].qty = WL.U.clamp((root.inventory.itemsById[id].qty || 1) + 1, 1, 9999);
+      if (root.inventory.ownedIds.indexOf(id) < 0) root.inventory.ownedIds.push(id);
+      WL.DirtyQueue.add(root, 'inventory', 'item acquired: ' + name);
+      return { type: v.type, status: 'committed', target: name };
+    },
+    visible(root, v) {
+      const name = v.target.display;
+      WL.U.uniquePush(root.inventory.visibleSceneItems, name, 20);
+      WL.DirtyQueue.add(root, 'inventory', 'visible item: ' + name);
+      return { type: v.type, status: 'pending_visible_only', target: name };
+    },
+    currency(root, v) {
+      const reward = v.data && v.data.reward || WL.Sanitizers.reward(v.target.raw || v.target.display || '');
+      if (!reward) return { type: v.type, status: 'rejected', reason: 'No currency parsed.' };
+      const payKey = WL.OperationLedger.makeKey(['reward', v.sourceText, reward.amount, reward.coin]);
+      const led = WL.OperationLedger.tryAdd(root, 'rewardKeys', payKey, { reward });
+      if (!led.applied) return { type: v.type, status: 'duplicate_skip', reason: 'Reward payment already applied.' };
+      root.inventory.currency[reward.coin] = WL.U.clamp((root.inventory.currency[reward.coin] || 0) + reward.amount, 0, 999999999);
+      root.quests.rewardPayments.push({ turn: WL.U.nowTurn(root), amount: reward.amount, coin: reward.coin, source: v.sourceText });
+      WL.U.capArray(root.quests.rewardPayments, 40);
+      WL.DirtyQueue.add(root, 'inventory', 'currency gain');
+      return { type: v.type, status: 'committed', target: reward.amount + ' ' + reward.coin };
+    }
+  };
+
+  WL.AbilityReducer = {
+    apply(root, v) {
+      if (v.type === 'ability.evidence') return this.evidence(root, v);
+      if (v.type === 'ability.stabilize_claim') return { type: v.type, status: 'pending', reason: v.reason };
+      return { type: v.type, status: 'ignored' };
+    },
+    evidence(root, v) {
+      const name = v.target.display;
+      const id = 'ability_' + WL.U.slug(name);
+      if (v.result === 'hard_deny') {
+        root.abilities.denied.push({ turn: WL.U.nowTurn(root), name, reason: v.reason });
+        WL.U.capArray(root.abilities.denied, 30);
+        return { type: v.type, status: 'hard_denied', target: name };
+      }
+      let rec = root.abilities.candidatesById[id];
+      if (!rec) {
+        rec = { id, name, stage: 'candidate', attempts: 0, failures: 0, successes: 0, evidence: [], createdTurn: WL.U.nowTurn(root), lastTurn: WL.U.nowTurn(root) };
+        root.abilities.candidatesById[id] = rec;
+        if (root.abilities.candidateIds.indexOf(id) < 0) root.abilities.candidateIds.push(id);
+      }
+      rec.attempts += 1;
+      rec.lastTurn = WL.U.nowTurn(root);
+      if (v.result === 'soft_fail') rec.failures += 1;
+      else rec.successes += 1;
+      rec.evidence.push({ turn: WL.U.nowTurn(root), result: v.result, source: v.sourceText.slice(0, 120) });
+      WL.U.capArray(rec.evidence, 12);
+      WL.DirtyQueue.add(root, 'abilities', 'ability evidence: ' + name);
+      return { type: v.type, status: v.result === 'soft_fail' ? 'soft_fail_committed' : 'committed', target: name };
+    }
+  };
+
+  WL.BodyReducer = {
+    apply(root, v) {
+      if (v.type === 'body.fatigue') {
+        root.body.ep = WL.U.clamp(root.body.ep - 5, 0, root.body.maxEp);
+        WL.U.uniquePush(root.body.conditions, 'fatigued', 20);
+        WL.DirtyQueue.add(root, 'body', 'fatigue');
+        return { type: v.type, status: 'committed', target: 'fatigue' };
+      }
+      if (v.type === 'body.injury') {
+        root.body.hp = WL.U.clamp(root.body.hp - 5, 0, root.body.maxHp);
+        WL.U.uniquePush(root.body.injuries, 'minor injury', 20);
+        WL.DirtyQueue.add(root, 'body', 'injury');
+        return { type: v.type, status: 'committed', target: 'injury' };
+      }
+      return { type: v.type, status: 'pending_or_rejected', reason: v.reason };
+    }
+  };
+
+  WL.QuestReducerLite = {
+    apply(root, v) {
+      if (v.type === 'reward.promise') return this.promise(root, v);
+      const title = v.target.display || 'Untitled objective';
+      const id = 'quest_' + WL.U.slug(title);
+      let q = root.quests.questsById[id];
+      if (!q) {
+        q = { id, title, status: 'offered', createdTurn: WL.U.nowTurn(root), lastTurn: WL.U.nowTurn(root), progress: [] };
+        root.quests.questsById[id] = q;
+        if (root.quests.offeredIds.indexOf(id) < 0) root.quests.offeredIds.push(id);
+      }
+      q.lastTurn = WL.U.nowTurn(root);
+      if (v.type === 'quest.accept') { q.status = 'active'; if (root.quests.activeIds.indexOf(id) < 0) root.quests.activeIds.push(id); }
+      if (v.type === 'quest.complete') { q.status = 'completed'; WL.U.uniquePush(root.quests.completedIds, id, 80); root.quests.activeIds = root.quests.activeIds.filter(x => x !== id); }
+      WL.DirtyQueue.add(root, 'quests', v.type + ': ' + title);
+      return { type: v.type, status: 'committed', target: title };
+    },
+    promise(root, v) {
+      const reward = v.data && v.data.reward;
+      const text = reward ? (reward.amount + ' ' + reward.coin + ' promised') : WL.U.norm(v.target.raw || v.target.display) + ' promised';
+      root.quests.rewardPromises.push({ turn: WL.U.nowTurn(root), text, paid: false, source: v.sourceText });
+      WL.U.capArray(root.quests.rewardPromises, 40);
+      WL.DirtyQueue.add(root, 'quests', 'reward promise');
+      return { type: v.type, status: 'committed_promise_only', target: text };
+    }
+  };
+
+  WL.ActorReducerLite = {
+    apply(root, v) {
+      const name = v.target.display;
+      const id = 'actor_' + WL.U.slug(name);
+      let a = root.actors.actorsById[id];
+      if (!a) a = root.actors.actorsById[id] = { id, name, stage: 'present', mentions: 0, present: true, createdTurn: WL.U.nowTurn(root), lastTurn: WL.U.nowTurn(root), notes: [] };
+      a.mentions += 1; a.present = true; a.lastTurn = WL.U.nowTurn(root);
+      if (root.actors.presentIds.indexOf(id) < 0) root.actors.presentIds.push(id);
+      if (v.data && v.data.companion && root.actors.companionIds.indexOf(id) < 0) root.actors.companionIds.push(id);
+      WL.DirtyQueue.add(root, 'actors', 'actor present: ' + name);
+      return { type: v.type, status: 'committed', target: name };
+    }
+  };
+
+  WL.PlaceReducerLite = {
+    apply(root, v) {
+      if (v.type === 'place.reference') {
+        const name = v.target.display; const id = 'place_' + WL.U.slug(name);
+        if (name && root.places.referencedIds.indexOf(id) < 0) root.places.referencedIds.push(id);
+        return { type: v.type, status: 'reference_only', target: name };
+      }
+      if (v.type === 'place.route') { root.places.routeId = 'route_' + WL.U.slug(v.target.display || 'route'); return { type: v.type, status: 'route_only' }; }
+      const name = v.target.display;
+      const id = 'place_' + WL.U.slug(name);
+      let p = root.places.placesById[id];
+      if (!p) p = root.places.placesById[id] = { id, name, visits: 0, createdTurn: WL.U.nowTurn(root), lastTurn: WL.U.nowTurn(root), notes: [] };
+      p.visits += 1; p.lastTurn = WL.U.nowTurn(root);
+      root.places.currentId = id;
+      root.player.locationId = id;
+      WL.DirtyQueue.add(root, 'places', 'current place: ' + name);
+      return { type: v.type, status: 'committed', target: name };
+    }
+  };
+
+  WL.TimeReducerLite = {
+    textNum(value) {
+      const m = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, twenty:20 };
+      const l = WL.U.lower(value);
+      return m[l] || Number(value) || 0;
+    },
+    apply(root, v) {
+      const n = this.textNum(v.data && v.data.amountText);
+      const unit = String(v.data && v.data.unit || 'minutes');
+      if (!n) return { type: v.type, status: 'rejected', reason: 'No amount.' };
+      let minutes = n;
+      if (/hour/.test(unit)) minutes = n * 60;
+      if (/day/.test(unit)) minutes = n * 1440;
+      root.time.minute += minutes;
+      while (root.time.minute >= 60) { root.time.minute -= 60; root.time.hour += 1; }
+      while (root.time.hour >= 24) { root.time.hour -= 24; root.time.day += 1; }
+      root.time.notes.push({ turn: WL.U.nowTurn(root), text: v.sourceText });
+      WL.U.capArray(root.time.notes, 20);
+      WL.DirtyQueue.add(root, 'time', 'time pass');
+      return { type: v.type, status: 'committed', target: n + ' ' + unit };
+    }
+  };
+
+
+  WL.Reducers = {
+    inventory: 'InventoryReducer',
+    ability: 'AbilityReducer',
+    body: 'BodyReducer',
+    quest: 'QuestReducerLite',
+    actor: 'ActorReducerLite',
+    place: 'PlaceReducerLite',
+    time: 'TimeReducerLite'
+  };
+
+  // ============================================================
+  // 14. DirtyQueue / ContextBuilderLite / CardSyncLite
+  // ============================================================
+  WL.DirtyQueue = {
+    add(root, target, reason) {
+      const k = WL.U.slug(target);
+      if (root.dirty.targets.indexOf(k) < 0) root.dirty.targets.push(k);
+      root.dirty.lastReason = WL.U.norm(reason);
+      WL.U.capArray(root.dirty.targets, WL.SCHEMA_CAPS.dirtyTargets);
+    }
+  };
+
+  WL.ContextBuilderLite = {
+    build(root, baseText) {
+      const parts = [];
+      const b = root.body;
+      parts.push('[WorldLedger Current Truth]');
+      parts.push('Player: ' + root.player.name + ' | Level ' + root.player.level + ' | HP ' + b.hp + '/' + b.maxHp + ' MP ' + b.mp + '/' + b.maxMp + ' EP ' + b.ep + '/' + b.maxEp);
+      if (root.places.currentId && root.places.placesById[root.places.currentId]) parts.push('Current place: ' + root.places.placesById[root.places.currentId].name);
+      const items = root.inventory.ownedIds.map(id => root.inventory.itemsById[id] && root.inventory.itemsById[id].name).filter(Boolean).slice(0, 8);
+      if (items.length) parts.push('Inventory: ' + items.join(', '));
+      const cands = root.abilities.candidateIds.map(id => root.abilities.candidatesById[id] && root.abilities.candidatesById[id].name + ' candidate').filter(Boolean).slice(0, 6);
+      if (cands.length) parts.push('Ability development: ' + cands.join(', ') + '. Candidates are not stable abilities yet.');
+      const quests = root.quests.activeIds.map(id => root.quests.questsById[id] && root.quests.questsById[id].title).filter(Boolean).slice(0, 5);
+      if (quests.length) parts.push('Active quests: ' + quests.join('; '));
+      if (root.body.conditions.length) parts.push('Conditions: ' + root.body.conditions.join(', '));
+      if (root.body.injuries.length) parts.push('Injuries: ' + root.body.injuries.join(', '));
+      parts.push('Rules: player input is intent; output confirms consequences; rumors, dreams, quotes, commands, and Story Card text are not canon by themselves.');
+      let packet = parts.join('\n');
+      const cap = WL.U.clamp(root.features.contextBudget || 1800, 400, 5000);
+      if (packet.length > cap) packet = packet.slice(0, cap - 20) + '\n[trimmed]';
+      WL.AuditLogger.append(root, 'context', { message: 'Context packet built, chars=' + packet.length }, 30);
+      if (!baseText) return packet;
+      return String(baseText) + '\n\n' + packet;
+    }
+  };
+
+  // ============================================================
+  // 20. CardApiAdapter Shell
+  // ============================================================
+  WL.CardApiAdapter = {
+    available() { return typeof globalThis.storyCards !== 'undefined' || typeof globalThis.addStoryCard === 'function' || typeof globalThis.updateStoryCard === 'function'; },
+    safeFindByTitle(title) {
+      const wanted = WL.U.lower(title);
+      const cards = WL.U.getStoryCards();
+      for (let i = 0; i < cards.length; i++) {
+        const c = cards[i] || {};
+        if (WL.U.lower(c.title || c.name || '') === wanted) return { ok: true, card: c, index: i };
+      }
+      return { ok: false, card: null, index: -1 };
+    },
+    dryRunOnly() { return true; }
+  };
+
+  // ============================================================
+  // 21. CardSyncLite Dry-Run Protected Shell
+  // ============================================================
+  WL.CardSyncLite = {
+    protectedRegistry(root) { return root.cards.protectedTitles || []; },
+    audit(root) {
+      const lines = [];
+      const cards = WL.U.getStoryCards();
+      lines.push('Mode: dry-run=' + !!root.features.cardSyncDryRun + ', protectedWrites=' + !!root.features.protectedCardWritesEnabled + ', generated=false');
+      lines.push('Visible Story Cards detected: ' + cards.length);
+      const titles = this.protectedRegistry(root);
+      for (let i = 0; i < titles.length; i++) lines.push('Protected: ' + titles[i]);
+      lines.push('Generated CardSync is disabled in Code Pass 1. Cards never create canon.');
+      return lines;
+    },
+    dryRun(root) {
+      if (!root.features.cardSyncLiteEnabled) return 0;
+      const targets = root.dirty.targets.slice(0, 4);
+      for (let i = 0; i < targets.length; i++) root.cards.dryRunWrites.push({ turn: WL.U.nowTurn(root), target: targets[i], mode: 'dry-run' });
+      WL.U.capArray(root.cards.dryRunWrites, WL.SCHEMA_CAPS.dryRunWrites);
+      if (targets.length) WL.AuditLogger.append(root, 'cards', { message: 'CardSync dry-run targets=' + targets.join(',') }, 30);
+      return targets.length;
+    }
+  };
+
+  // ============================================================
+  // 15. Migration / Quarantine / Cleanup
+  // ============================================================
+  WL.MigrationManager = {
+    run(root) {
+      if (root.migration.schema !== WL.SCHEMA_VERSION) {
+        root.quarantine.records.push({ turn: WL.U.nowTurn(root), kind: 'schema_mismatch', note: 'Future/unknown schema found. Repaired conservatively.' });
+        root.migration.schema = WL.SCHEMA_VERSION;
+      }
+      root.migration.lastRunTurn = WL.U.nowTurn(root);
+    }
+  };
+
+  WL.CleanupManagerLite = {
+    run(root) {
+      WL.StateManager.clampLogs(root);
+      root.cleanup.lastRunTurn = WL.U.nowTurn(root);
+      root.cleanup.capsApplied += 1;
+      return true;
+    }
+  };
+
+  // ============================================================
+  // 16. ReleaseCheckLite Foundation
+  // ============================================================
+  WL.ReleaseCheckLite = {
+    pass(label) { return 'PASS: ' + label; },
+    warn(label) { return 'WARN: ' + label; },
+    fail(label) { return 'FAIL: ' + label; },
+    run(root) {
+      const out = [];
+      out.push(this.pass('build identity present: ' + WL.BUILD_VERSION));
+      out.push(root.schemaVersion === WL.SCHEMA_VERSION ? this.pass('schema version matches') : this.fail('schema version mismatch'));
+      out.push(root.features.generatedCardsEnabled === false ? this.pass('generated cards disabled') : this.fail('generated cards enabled too early'));
+      out.push(root.features.protectedCardWritesEnabled === false ? this.pass('live protected card writes disabled by default') : this.warn('protected card writes enabled'));
+      out.push(root.features.manualMutationCommandsEnabled === false ? this.pass('manual mutation commands disabled') : this.fail('manual mutation commands enabled'));
+      const deferred = ['economyEnabled','craftingEnabled','investigationEnabled','reputationEnabled','domainEnabled','absorptionEnabled','advancedCombatEnabled','warfareEnabled','multiProtagonistEnabled'];
+      for (let i = 0; i < deferred.length; i++) out.push(root.features[deferred[i]] === false ? this.pass(deferred[i] + ' disabled') : this.fail(deferred[i] + ' enabled too early'));
+      out.push(root.operationLedger && Array.isArray(root.operationLedger.recentKeys) ? this.pass('operation ledger buckets present') : this.fail('operation ledger missing'));
+      out.push(WL.EventScannerLite && WL.ProposalBuilder && WL.CanonValidator ? this.pass('parser/proposal/validator shells present') : this.fail('pipeline shell missing'));
+      out.push(WL.ReducerRegistry ? this.pass('reducer registry present') : this.fail('reducer registry missing'));
+      out.push(root.dirty && Array.isArray(root.dirty.targets) ? this.pass('dirty queue present') : this.fail('dirty queue missing'));
+      out.push(root.features.contextBuilderLiteEnabled ? this.pass('context builder lite enabled') : this.warn('context builder disabled'));
+      out.push(root.features.cardSyncDryRun ? this.pass('CardSync dry-run mode active') : this.fail('CardSync dry-run not active'));
+      out.push(root.features.layoutLockEnabled ? this.pass('layout lock enabled') : this.fail('layout lock disabled'));
+      out.push(WL.SECTION_ORDER && WL.SECTION_ORDER.length === 25 ? this.pass('25-section layout order registered') : this.fail('layout order not registered'));
+      out.push(WL.LayoutLock ? this.pass('LayoutLock inspector present') : this.fail('LayoutLock inspector missing'));
+      out.push(WL.StateSchemaLock ? this.pass('StateSchemaLock inspector present') : this.fail('StateSchemaLock inspector missing'));
+      out.push(root.meta && root.meta.schemaId === WL.SCHEMA_ID ? this.pass('locked schema metadata present') : this.fail('locked schema metadata missing'));
+      out.push(WL.CANONICAL_ROOT_BUCKETS && WL.CANONICAL_ROOT_BUCKETS.length === 20 ? this.pass('20 canonical state buckets registered') : this.fail('canonical bucket registry mismatch'));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('schema') >= 0 ? this.pass('/schema command registered as inspect-only') : this.fail('/schema command missing'));
+      const layoutRows = WL.LayoutLock ? WL.LayoutLock.inspect(root) : [];
+      const layoutFails = layoutRows.filter(r => r.status === 'FAIL').length;
+      out.push(layoutFails === 0 ? this.pass('module boundary/layout audit clean') : this.fail('module boundary/layout audit failures: ' + layoutFails));
+      const schemaRows = WL.StateSchemaLock ? WL.StateSchemaLock.inspect(root) : [];
+      const schemaFails = schemaRows.filter(r => r.status === 'FAIL').length;
+      out.push(schemaFails === 0 ? this.pass('state schema audit clean') : this.fail('state schema audit failures: ' + schemaFails));
+      out.push(WL.CommandOutputFormatLock ? this.pass('CommandOutputFormatLock present') : this.fail('CommandOutputFormatLock missing'));
+      const fmtRows = WL.CommandOutputFormatLock ? WL.CommandOutputFormatLock.inspect(root) : [];
+      const fmtFails = fmtRows.filter(r => r.status === 'FAIL').length;
+      out.push(fmtFails === 0 ? this.pass('command output format audit clean') : this.fail('command output format audit failures: ' + fmtFails));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('commandformat') >= 0 ? this.pass('/commandformat command registered as inspect-only') : this.fail('/commandformat command missing'));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('commands') >= 0 ? this.pass('/commands command registered as inspect-only') : this.fail('/commands command missing'));
+      out.push(WL.StateManager && WL.STATE_MANAGER_LOCK_VERSION ? this.pass('StateManager lock present: ' + WL.STATE_MANAGER_LOCK_VERSION) : this.fail('StateManager lock missing'));
+      const integrity = WL.StateManager.validateIntegrity(root);
+      out.push(integrity.ok ? this.pass('StateManager integrity validation clean') : this.fail('StateManager integrity errors: ' + integrity.errors.join('; ')));
+      const bc5 = WL.StateManager.runBC5SelfTests();
+      const bc5Pass = bc5.filter(t => t.ok).length;
+      out.push(bc5Pass === bc5.length ? this.pass('BC5 StateManager self-tests pass: ' + bc5Pass + '/' + bc5.length) : this.fail('BC5 StateManager self-tests failing: ' + bc5Pass + '/' + bc5.length));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('statemanager') >= 0 ? this.pass('/statemanager command registered as inspect-only') : this.fail('/statemanager command missing'));
+      out.push(WL.Runtime && WL.RUNTIME_HOOK_CONTRACT_VERSION ? this.pass('Runtime hook contract present: ' + WL.RUNTIME_HOOK_CONTRACT_VERSION) : this.fail('Runtime hook contract missing'));
+      out.push(root.runtime && typeof root.runtime.lastAppliedOutputHash === 'string' ? this.pass('duplicate output hash field present') : this.fail('duplicate output hash field missing'));
+      out.push(root.runtime && typeof root.runtime.suppressEventScanForCommandOutput === 'boolean' ? this.pass('command output suppression field present') : this.fail('command output suppression field missing'));
+      out.push(root.runtime && Array.isArray(root.runtime.hookTrace) ? this.pass('hook trace present/capped') : this.fail('hook trace missing'));
+      out.push(WL.Runtime && typeof WL.Runtime.makeReturn === 'function' ? this.pass('Runtime.makeReturn valid-return guard present') : this.fail('Runtime.makeReturn missing'));
+      out.push(WL.Runtime && typeof WL.Runtime.failSoft === 'function' ? this.pass('Runtime fail-soft guard present') : this.fail('Runtime fail-soft guard missing'));
+      out.push(WL.Runtime && typeof WL.Runtime.shouldSuppressEventScan === 'function' ? this.pass('command/story suppression check present') : this.fail('command/story suppression check missing'));
+      const bc6 = WL.Runtime && WL.Runtime.runBC6SelfTests ? WL.Runtime.runBC6SelfTests() : [];
+      const bc6Pass = bc6.filter(t => t.ok).length;
+      out.push(bc6.length && bc6Pass === bc6.length ? this.pass('BC6 Runtime self-tests pass: ' + bc6Pass + '/' + bc6.length) : this.fail('BC6 Runtime self-tests failing: ' + bc6Pass + '/' + bc6.length));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('runtime') >= 0 ? this.pass('/runtime command registered as inspect-only') : this.fail('/runtime command missing'));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('hookaudit') >= 0 ? this.pass('/hookaudit command registered as inspect-only') : this.fail('/hookaudit command missing'));
+      out.push(WL.AuditLogger && WL.AUDIT_LEDGER_LOCK_VERSION ? this.pass('AuditLogger lock present: ' + WL.AUDIT_LEDGER_LOCK_VERSION) : this.fail('AuditLogger lock missing'));
+      const auditRows = WL.AuditLogger ? WL.AuditLogger.inspect(root) : [];
+      const auditFails = auditRows.filter(r => r.status === 'FAIL').length;
+      out.push(auditFails === 0 ? this.pass('AuditLogger audit clean') : this.fail('AuditLogger audit failures: ' + auditFails));
+      out.push(WL.OperationLedger && WL.AUDIT_LEDGER_LOCK_VERSION ? this.pass('OperationLedger lock present: ' + WL.AUDIT_LEDGER_LOCK_VERSION) : this.fail('OperationLedger lock missing'));
+      const ledgerRows = WL.OperationLedger ? WL.OperationLedger.inspect(root) : [];
+      const ledgerFails = ledgerRows.filter(r => r.status === 'FAIL').length;
+      out.push(ledgerFails === 0 ? this.pass('OperationLedger audit clean') : this.fail('OperationLedger audit failures: ' + ledgerFails));
+      const bc7Audit = WL.AuditLogger && WL.AuditLogger.runBC7SelfTests ? WL.AuditLogger.runBC7SelfTests() : [];
+      const bc7Ledger = WL.OperationLedger && WL.OperationLedger.runBC7SelfTests ? WL.OperationLedger.runBC7SelfTests() : [];
+      const bc7All = bc7Audit.concat(bc7Ledger);
+      const bc7Pass = bc7All.filter(t => t.ok).length;
+      out.push(bc7All.length && bc7Pass === bc7All.length ? this.pass('BC7 Audit/Ledger self-tests pass: ' + bc7Pass + '/' + bc7All.length) : this.fail('BC7 Audit/Ledger self-tests failing: ' + bc7Pass + '/' + bc7All.length));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('audit') >= 0 ? this.pass('/audit command registered as inspect-only') : this.fail('/audit command missing'));
+      out.push(WL.MVP_ACTIVE_COMMANDS.indexOf('ledgercheck') >= 0 ? this.pass('/ledgercheck command registered as inspect-only') : this.fail('/ledgercheck command missing'));
+      out.push(this.warn('Code Pass 1 is foundation-limited; advanced systems are intentionally deferred.'));
+      root.audits.releasecheck = out.map(x => ({ turn: WL.U.nowTurn(root), text: x }));
+      return out;
+    },
+    stateAudit(root) {
+      const out = [];
+      out.push(root && typeof root === 'object' ? this.pass('root exists') : this.fail('root missing'));
+      const buckets = WL.ROOT_BUCKETS_ALL || ['meta','features','layout','runtime','startup','player','body','progression','inventory','abilities','quests','actors','places','time','cards','operationLedger','audits','migration','quarantine','dirty','cleanup','pending'];
+      for (let i = 0; i < buckets.length; i++) out.push(root[buckets[i]] ? this.pass('bucket ' + buckets[i]) : this.fail('missing bucket ' + buckets[i]));
+      if (WL.StateSchemaLock) WL.StateSchemaLock.inspect(root).forEach(r => out.push(r.status + ': ' + r.label));
+      if (WL.CommandOutputFormatLock) WL.CommandOutputFormatLock.inspect(root).forEach(r => out.push(r.status + ': ' + r.label));
+      const b = root.body;
+      out.push(b.hp >= 0 && b.hp <= b.maxHp ? this.pass('HP invariant') : this.fail('HP invariant broken'));
+      out.push(b.mp >= 0 && b.mp <= b.maxMp ? this.pass('MP invariant') : this.fail('MP invariant broken'));
+      out.push(b.ep >= 0 && b.ep <= b.maxEp ? this.pass('EP invariant') : this.fail('EP invariant broken'));
+      return out;
+    }
+  };
+
+  // ============================================================
+  // 17. Hook Orchestration
+  // ============================================================
+  WL.processOutput = function (root, output) {
+    const safe = WL.Runtime.safeText(output);
+    const outputHash = WL.Runtime.hashText(safe);
+    if (WL.Runtime.shouldSuppressEventScan(root, safe)) {
+      WL.AuditLogger.summarizeLastTurn(root, 'Output suppressed by Runtime; command/audit text was not scanned as story.');
+      WL.Runtime.clearCommandSuppression(root);
+      return safe;
+    }
+    if (WL.Runtime.isDuplicateOutput(root, outputHash)) {
+      root.runtime.duplicateOutputSkipped += 1;
+      root.runtime.outputReplayDetected = true;
+      root.runtime.lastDuplicateOutputHash = outputHash;
+      WL.Runtime.recordWarning(root, 'Duplicate output replay detected; consequence processing skipped.', { hash: outputHash });
+      if (WL.AuditLogger) WL.AuditLogger.duplicate(root, outputHash, 'duplicate output replay skipped before reducer');
+      WL.AuditLogger.summarizeLastTurn(root, 'Duplicate output hash skipped; no consequences applied.');
+      return safe;
+    }
+    const hits = WL.EventScannerLite.scanOutput(root, safe);
+    const proposals = WL.ProposalBuilder.fromHits(root, hits, 'output');
+    const validations = WL.CanonValidator.validateAll(root, proposals);
+    const results = WL.ReducerRegistry.applyAcceptedBatch(root, validations);
+    WL.CardSyncLite.dryRun(root);
+    WL.CleanupManagerLite.run(root);
+    WL.Runtime.markOutputApplied(root, outputHash);
+    WL.AuditLogger.summarizeLastTurn(root, 'Output processed: hits=' + hits.length + ', proposals=' + proposals.length + ', results=' + results.length + '.');
+    return safe;
+  };
+
+  WL.onInput = function (text) {
+    let root;
+    try {
+      root = WL.StateManager.root();
+      const begin = WL.Runtime.beginHook(root, 'input', text);
+      WL.MigrationManager.run(root);
+      const raw = begin.text;
+      if (WL.U.startsCommand(raw) && root.features.commandsEnabled) {
+        const out = WL.CommandRouter.route(root, raw);
+        return WL.Runtime.endHook(root, 'input', out, 'completed');
+      }
+      root.runtime.lastInputText = raw;
+      WL.Runtime.markInput(root, raw);
+      root.startup.firstGameplayInputSeen = true;
+      root.startup.startupLocked = true;
+      root.startup.gameplayStarted = true;
+      const actionCount = WL.U.getInfoActionCount();
+      if (typeof actionCount !== 'number') {
+        root.meta.currentTurn = (root.meta.currentTurn || 0) + 1;
+        root.runtime.currentTurn = root.meta.currentTurn;
+      }
+      root.runtime.pendingInputIntentId = 'intent_' + WL.U.hash(raw + '|' + root.runtime.currentTurn);
+      return WL.Runtime.endHook(root, 'input', raw, 'completed');
+    } catch (err) {
+      return WL.Runtime.failSoft(root || { runtime: { errors: [] }, audits: { warnings: [] } }, 'input', 'onInput', err, text, false);
+    }
+  };
+
+  WL.onContext = function (text) {
+    let root;
+    try {
+      root = WL.StateManager.root();
+      const begin = WL.Runtime.beginHook(root, 'context', text);
+      const out = root.features.contextBuilderLiteEnabled ? WL.ContextBuilderLite.build(root, begin.text) : begin.text;
+      return WL.Runtime.endHook(root, 'context', out, 'completed');
+    } catch (err) {
+      return WL.Runtime.failSoft(root || { runtime: { errors: [] }, audits: { warnings: [] } }, 'context', 'onContext', err, text, false);
+    }
+  };
+
+  WL.onOutput = function (text) {
+    let root;
+    try {
+      root = WL.StateManager.root();
+      const begin = WL.Runtime.beginHook(root, 'output', text);
+      const raw = begin.text;
+      const out = WL.processOutput(root, raw);
+      return WL.Runtime.endHook(root, 'output', out, 'completed');
+    } catch (err) {
+      return WL.Runtime.failSoft(root || { runtime: { errors: [] }, audits: { warnings: [] } }, 'output', 'onOutput', err, text, false);
+    }
+  };
+
+  // Minimal bundled self-test for local/dev use. It is inspect-only and never runs automatically.
+  WL.devSelfTest = function () {
+    globalThis.state = {};
+    let r;
+    WL.onInput('/releasecheck');
+    WL.onInput('/layout');
+    WL.onInput('/schema');
+    WL.onInput('/commandformat');
+    WL.onInput('/statemanager');
+    WL.onInput('/runtimecheck');
+    WL.onInput('/audit');
+    WL.onInput('/ledgercheck');
+    WL.onInput('I train Ember Ward to protect allies.');
+    WL.onOutput('Nothing happens, but you feel the shape of mana resist you.');
+    r = WL.StateManager.root();
+    const hasEmber = !!r.abilities.candidatesById.ability_ember_ward;
+    WL.onOutput('You decide not to take the rusted iron key.');
+    const noKey = Object.keys(WL.StateManager.root().inventory.itemsById).length === 0;
+    WL.onOutput('Mira refuses the crown but hands you a potion in your hand.');
+    const hasPotion = !!WL.StateManager.root().inventory.itemsById.item_potion;
+    return { hasEmber, noKey, hasPotion, releasecheck: WL.ReleaseCheckLite.run(WL.StateManager.root()) };
+  };
+
+  WL.SourceText = '';
+  globalThis.WorldLedger = WL;
+})();

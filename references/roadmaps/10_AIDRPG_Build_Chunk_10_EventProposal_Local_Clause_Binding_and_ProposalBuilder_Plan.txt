@@ -1,0 +1,1638 @@
+AIDRPG Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 10 — EventProposal, Local Clause Binding, and ProposalBuilder Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact EventProposal schema, local clause binding rules, target binding rules, operation key suggestions, and ProposalBuilder behavior before CanonValidator and reducers are planned.
+Status: Practical build document.
+Follows: AIDRPG Final Build Control Map v1 and Build Chunk 9 — EventScannerLite Parser Shell Plan.
+This document does not contain final script code.
+
+This chunk exists because old versions repeatedly failed when raw parser detections were treated too close to truth.
+
+The parser can notice a phrase.
+
+The proposal layer must preserve what was noticed, where it was noticed, what local clause it came from, what safety flags were present, what target it appears to affect, and which owner system should judge it next.
+
+A proposal is not canon.
+
+A proposal is not a reducer commit.
+
+A proposal is structured evidence waiting for CanonValidator.
+
+⸻
+
+1. Chunk 10 doctrine
+
+The doctrine is:
+
+ParserHits are observations.
+EventProposals are structured claims.
+CanonValidator decides eligibility.
+Reducers commit truth.
+
+The ProposalBuilder must never mutate gameplay state.
+
+It must never decide final canon.
+
+It must never bypass CanonValidator.
+
+Its job is to make the dangerous middle layer exact enough that validators and reducers do not guess.
+
+⸻
+
+2. Why this chunk matters
+
+Old versions had failures where positive words were enough to create state:
+
+You decide not to take the key.
+You try to grab the key, but the goblin snatches it away.
+You pick up the idea of a brass key.
+Mara says, "Take the key."
+In a dream, you receive the Crown of Dawn.
+You learned Moonblade.
+The scroll title says "You learned Crimson Lotus Fang," but you learn nothing.
+The road to the chapel is visible from the market lane.
+"Twenty years pass," you say while practicing narration.
+
+The parser may detect item, ability, place, or time language in those examples.
+
+The proposal layer must preserve enough local evidence so CanonValidator can reject the false outcome.
+
+Without local clause binding and target binding, the validator is forced to guess.
+
+⸻
+
+3. Placement in final script
+
+ProposalBuilder belongs in:
+
+Section 13 — Proposal Builder Shell
+
+It follows:
+
+EventScannerLite
+
+It comes before:
+
+CanonValidator
+ReducerRegistry
+OwnerReducers
+
+It may depend on:
+
+Constants
+Utils
+AuditLogger
+OperationLedger key normalization helper only if read-only/suggestion based
+Resolver/Sanitizer helpers for target keys only if safe
+
+It must not depend on:
+
+InventoryReducer
+AbilityReducer
+QuestReducer
+BodyReducer
+PlaceReducer
+TimeReducer
+ActorReducer
+CardSync live writes
+ContextBuilder mutation
+
+⸻
+
+4. ProposalBuilder responsibilities
+
+ProposalBuilder owns:
+
+* converting ParserHits into EventProposals
+* preserving source hook
+* preserving local clause text
+* preserving safety flags
+* identifying proposed event family
+* identifying proposed event type
+* creating target-binding candidates
+* assigning owner module hint
+* assigning preliminary truth status
+* assigning preliminary confidence
+* suggesting operation keys
+* assigning proposal risk flags
+* capping proposals
+* auditing proposal summaries
+
+ProposalBuilder does not own:
+
+* canon approval
+* gameplay mutation
+* inventory ownership
+* ability stability
+* quest activation
+* reward payment
+* actor promotion
+* location update
+* time advance
+* card writing
+* context mutation
+
+⸻
+
+5. Required ProposalBuilder public functions
+
+The final script should provide these functions or equivalents.
+
+ProposalBuilder.fromHits(hits, root)
+ProposalBuilder.fromHit(hit, root)
+ProposalBuilder.buildBaseProposal(hit, root)
+ProposalBuilder.bindLocalClause(hit, root)
+ProposalBuilder.bindTarget(hit, family, root)
+ProposalBuilder.classifyProposalFamily(hit, root)
+ProposalBuilder.classifyProposalType(hit, family, root)
+ProposalBuilder.assignOwner(family, eventType)
+ProposalBuilder.copySafetyFlags(hit)
+ProposalBuilder.suggestOperationKey(proposal, root)
+ProposalBuilder.computeRiskFlags(proposal, root)
+ProposalBuilder.capProposals(proposals, max)
+ProposalBuilder.rejectMalformedHit(hit, reason)
+ProposalBuilder.auditProposals(root, proposals, rejectedHits)
+
+Names may change in code, but these responsibilities must exist.
+
+⸻
+
+6. EventProposal core schema
+
+Every EventProposal must use a consistent schema.
+
+EventProposal {
+  proposalId: string,
+  source: ProposalSource,
+  family: string,
+  eventType: string,
+  ownerModule: string,
+  localClause: LocalClauseBinding,
+  target: TargetBinding,
+  secondaryTargets: TargetBinding[],
+  safety: SafetyFlagSet,
+  evidence: ProposalEvidence,
+  proposedChange: ProposedChangeSummary,
+  operation: OperationSuggestion,
+  confidence: number,
+  truthStatus: string,
+  riskFlags: string[],
+  validatorRequired: boolean,
+  reducerRequired: boolean,
+  status: 'proposed' | 'malformed' | 'blocked_prevalidation' | 'deferred',
+  proposalNotes: string[]
+}
+
+No proposal should be reduced directly.
+
+All proposals require CanonValidator unless explicitly marked malformed and discarded.
+
+⸻
+
+7. ProposalSource schema
+
+ProposalSource {
+  sourceHook: 'input' | 'output' | 'manual' | 'migration' | 'setup',
+  parserHitId: string,
+  inputHash: string,
+  outputHash: string,
+  textHash: string,
+  turn: number,
+  commandSuppressed: boolean,
+  duplicateOutput: boolean,
+  nonCanonSource: boolean,
+  sourceLabel: string
+}
+
+7.1 Required source rule
+
+If source is command, context, story card, debug, audit, help, releasecheck, or unknown non-canon source, ProposalBuilder must not create a gameplay proposal.
+
+The parser should already reject those sources, but ProposalBuilder must treat this as a second safety layer.
+
+7.2 Input source rule
+
+Input proposals are intent/attempt proposals only unless they come from an explicit startup/setup/manual-confirmed path.
+
+Normal player input does not create completed success.
+
+7.3 Output source rule
+
+Output proposals may describe possible completed consequences, but they are still not canon.
+
+⸻
+
+8. LocalClauseBinding schema
+
+Local clause binding is required for every proposal.
+
+LocalClauseBinding {
+  fullWindowPreview: string,
+  localClauseText: string,
+  localClauseHash: string,
+  clauseIndex: number,
+  sentenceIndex: number,
+  beforeTextPreview: string,
+  afterTextPreview: string,
+  matchedText: string,
+  matchedTextHash: string,
+  clauseRole: 'main' | 'subordinate' | 'quoted' | 'conditional' | 'unknown',
+  denialScope: string,
+  revocationScope: string,
+  targetScope: string,
+  notes: string[]
+}
+
+8.1 Why local clause binding exists
+
+Local clause binding prevents broad false decisions.
+
+Example:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+The proposal layer must create separate local target proposals:
+
+crown -> local clause has refusal/denial
+red healing potion -> local clause has handoff confirmation
+
+If it produces one broad proposal for the whole sentence, the validator cannot safely decide.
+
+⸻
+
+9. TargetBinding schema
+
+Every proposal must bind a target or explicitly state that target is unknown.
+
+TargetBinding {
+  targetFamily: 'item' | 'ability' | 'quest' | 'reward' | 'actor' | 'place' | 'time' | 'body' | 'status' | 'progression' | 'card' | 'unknown',
+  rawTargetText: string,
+  cleanedTargetText: string,
+  canonicalKey: string,
+  displayName: string,
+  targetId: string,
+  targetStatus: 'known' | 'candidate' | 'new_candidate' | 'ambiguous' | 'generic' | 'reference_only' | 'unknown',
+  targetConfidence: number,
+  sanitizerUsed: string,
+  resolverNotes: string[]
+}
+
+9.1 Owner-specific sanitizer rule
+
+TargetBinding must use the correct sanitizer family.
+
+Examples:
+
+AbilityNameSanitizer for ability targets
+ItemNameSanitizer for item targets
+PlaceNameSanitizer for place targets
+ActorNameSanitizer for actor targets
+QuestObjectiveSanitizer for quest/objective targets
+CardNameSanitizer for card targets
+
+Shared cleaners may normalize spacing and punctuation only.
+
+They must not perform destructive family-specific stripping.
+
+⸻
+
+10. SafetyFlagSet schema
+
+Every proposal must carry all parser safety flags forward.
+
+SafetyFlagSet {
+  negated: boolean,
+  hypothetical: boolean,
+  quotedSpeech: boolean,
+  dreamOrVision: boolean,
+  rumorOrClaim: boolean,
+  failedOrRevoked: boolean,
+  conditional: boolean,
+  futureIntent: boolean,
+  attemptOnly: boolean,
+  commandOutput: boolean,
+  contextText: boolean,
+  storyCardText: boolean,
+  debugOrAuditText: boolean,
+  abstractOrMetaphorical: boolean,
+  visibleOnly: boolean,
+  availableOnly: boolean,
+  deniedByLocalClause: boolean,
+  revokedByLocalClause: boolean,
+  nonliteral: boolean,
+  sourceUnsafe: boolean,
+  confidencePenaltyReasons: string[]
+}
+
+10.1 Safety flags are sticky
+
+ProposalBuilder may add safety flags.
+
+It must not erase parser safety flags.
+
+If a hit was dream/vision, quoted, negated, failed, or hypothetical, the proposal must carry that forward.
+
+⸻
+
+11. ProposalEvidence schema
+
+ProposalEvidence {
+  rawTextPreview: string,
+  normalizedTextPreview: string,
+  matchedTextPreview: string,
+  evidenceType: 'input_intent' | 'output_consequence' | 'setup_structured' | 'migration_structural' | 'manual_future' | 'parser_shell',
+  sourceConfidence: number,
+  parserConfidence: number,
+  proposalConfidence: number,
+  supportPhrases: string[],
+  blockingPhrases: string[],
+  ambiguityPhrases: string[],
+  notes: string[]
+}
+
+Evidence is not canon.
+
+It is only the explanation package for CanonValidator.
+
+⸻
+
+12. ProposedChangeSummary schema
+
+The proposed change summary should describe what would happen if CanonValidator and owner reducer accepted it.
+
+ProposedChangeSummary {
+  action: string,
+  targetFamily: string,
+  targetKey: string,
+  targetDisplayName: string,
+  quantity: number,
+  direction: 'gain' | 'loss' | 'update' | 'resolve' | 'observe' | 'none' | 'unknown',
+  currentStateHint: string,
+  proposedStateHint: string,
+  reversible: boolean,
+  repeatSensitive: boolean,
+  dirtyFamiliesIfAccepted: string[],
+  notes: string[]
+}
+
+ProposalBuilder does not apply this change.
+
+It only describes it.
+
+⸻
+
+13. OperationSuggestion schema
+
+Operation suggestions help later validators/reducers/ledger create stable dedupe keys.
+
+OperationSuggestion {
+  suggestedKey: string,
+  keyFamily: 'recent' | 'permanent' | 'reward' | 'card' | 'sourceUse' | 'none',
+  repeatSensitive: boolean,
+  durable: boolean,
+  reason: string,
+  requiredBeforeCommit: boolean,
+  notes: string[]
+}
+
+13.1 Key suggestion rule
+
+ProposalBuilder may suggest a key.
+
+OperationLedger commits keys only after validation/reducer flow approves or skips according to owner policy.
+
+ProposalBuilder must not add ledger keys for gameplay effects by itself.
+
+⸻
+
+14. Proposal family map
+
+Initial supported proposal families:
+
+inventory
+ability
+body_status
+body_injury
+quest
+reward
+actor
+place_scene
+time
+progression
+card_mirror
+migration
+unknown
+
+Each family has a required owner module.
+
+inventory -> InventoryReducer
+ability -> AbilityReducer
+body_status/body_injury -> BodyReducer
+quest -> QuestReducerLite
+reward -> QuestReducerLite / RewardValidator
+actor -> ActorReducerLite
+place_scene -> PlaceReducerLite
+time -> TimeReducerLite
+progression -> ProgressionReducerLite
+card_mirror -> CardSyncLite, not gameplay canon
+migration -> MigrationManager, not gameplay canon unless structurally safe
+unknown -> no reducer, audit only
+
+⸻
+
+15. Inventory proposal rules
+
+Inventory proposals must never be built as direct grants from broad phrases.
+
+15.1 Inventory proposal event types
+
+inventory.visible_candidate
+inventory.available_loot_candidate
+inventory.acquire_attempt
+inventory.acquire_candidate
+inventory.handoff_candidate
+inventory.transfer_candidate
+inventory.drop_candidate
+inventory.lose_candidate
+inventory.consume_candidate
+inventory.destroy_candidate
+inventory.denied_candidate
+inventory.revoked_candidate
+inventory.abstract_reference
+
+15.2 Inventory target binding
+
+Inventory proposals must bind:
+
+item target
+local clause
+source actor if present
+target custody hint if present
+acquisition classification
+
+15.3 Required blocked inventory proposal cases
+
+ProposalBuilder must mark these as blocked/risky before validation:
+
+never take X
+decide not to take X
+fail to take X
+try to grab X but someone snatches it
+idea/concept/title of X
+pretend to take X
+in a dream/vision receive X
+quoted "take X"
+dissolves as illusion
+wake empty-handed
+have nothing
+refuses to give X
+
+15.4 Required allowed inventory proposal cases
+
+ProposalBuilder may create acquire/handoff candidates for:
+
+Mira hands you the red healing potion.
+She places the key in your hand and you accept it.
+You recover the black gate key after searching again.
+You pick up the rusty dagger.
+You receive the rusted iron key.
+
+Still requires CanonValidator.
+
+15.5 Inventory operation key suggestions
+
+Suggested patterns:
+
+item.acquire.<itemKey>.<sourceOrScene>.<localClauseHash>
+item.handoff.<itemKey>.<fromActor>.<toActor>.<localClauseHash>
+item.consume.<itemKey>.<localClauseHash>
+item.drop.<itemKey>.<localClauseHash>
+
+⸻
+
+16. Ability proposal rules
+
+Ability proposals must distinguish training, attempt, manifestation, failure, stability, and mention.
+
+16.1 Ability proposal event types
+
+ability.train_intent
+ability.train_candidate
+ability.use_attempt
+ability.use_success_candidate
+ability.use_failure_candidate
+ability.learn_candidate
+ability.stabilize_candidate
+ability.evidence_candidate
+ability.quoted_reference
+ability.pretend_reference
+ability.failed_reference
+ability.output_only_learning_claim
+
+16.2 Ability name binding
+
+Ability proposals must use AbilityNameSanitizer.
+
+Examples:
+
+I train Ember Ward to protect allies from heat -> Ember Ward
+I practice Frost Step by moving across slick stones -> Frost Step
+I drill Stoneguard until my stance holds under impact -> Stoneguard
+I train Moonblade by practicing careful crescent cuts -> Moonblade
+
+16.3 Explicit training priority
+
+If the local clause begins with:
+
+train/practice/drill/work on/refine/meditate on/spar with + named phrase
+
+then the proposal family is ability training even if purpose words include:
+
+protect/shield/defend/against/for/from
+
+16.4 Output-only ability learning safety
+
+Output-only learning claims must be proposed as risky, not canon-ready.
+
+Examples:
+
+You learned Moonblade.
+You unlocked Star Chain.
+New skill: Mirror Guard.
+
+Proposal type:
+
+ability.output_only_learning_claim
+
+CanonValidator will normally reject or downgrade unless supported by training/source context.
+
+16.5 Blocked ability proposal cases
+
+quoted "Use Hollow Star Palm"
+pretend to use Azure Dragon Step
+attempt Void Lantern Veil, but it collapses
+scroll title says "you learned X" but learn nothing
+do not know X
+no usable technique remains
+X fizzles
+X cannot manifest
+
+16.6 Ability operation key suggestions
+
+ability.train.<abilityKey>.<inputHashOrClauseHash>
+ability.use.<abilityKey>.<eventKind>.<outputHashOrClauseHash>
+ability.evidence.<abilityKey>.<evidenceKind>.<clauseHash>
+ability.stabilize.<abilityKey>.<sourceKey>
+
+⸻
+
+17. Body/status proposal rules
+
+Body proposals must distinguish status gain, status loss, injury, recovery, death boundary, and resource state.
+
+17.1 Body event types
+
+body.status_gain_candidate
+body.status_loss_candidate
+body.injury_candidate
+body.resource_state_candidate
+body.resource_change_candidate
+body.recovery_candidate
+body.death_boundary_candidate
+body.death_rumor_or_quote
+
+17.2 Status proposal examples
+
+Your legs shake and you are exhausted by the climb -> exhausted status gain, EP low/empty candidate
+You are fatigued and worn out -> fatigued status gain, not exhausted
+Your palm is burned and blistered -> burned status/injury candidate
+The bleeding stops -> bleeding status loss candidate
+
+17.3 Death boundary safety
+
+ProposalBuilder must mark these as non-canon/risky:
+
+People say you died.
+Mara says, "you are dead."
+In a dream, you die.
+You feel dead tired.
+
+It may create a death-boundary candidate only for direct confirmed severe outcome wording.
+
+⸻
+
+18. Quest and reward proposal rules
+
+Quest and reward proposals must be separate.
+
+18.1 Quest event types
+
+quest.rumor_candidate
+quest.offer_candidate
+quest.accept_intent
+quest.accept_candidate
+quest.objective_progress_candidate
+quest.objective_complete_candidate
+quest.ready_to_turn_in_candidate
+quest.failed_candidate
+quest.abandoned_candidate
+
+18.2 Reward event types
+
+reward.promise_candidate
+reward.ready_candidate
+reward.payment_candidate
+reward.denied_candidate
+reward.disputed_candidate
+reward.output_only_claim
+
+18.3 Objective verb breadth
+
+ProposalBuilder should preserve objective text for common verbs:
+
+recover
+find
+repair
+escort
+clear
+deliver
+investigate
+protect
+bring
+retrieve
+rescue
+defeat
+survey
+
+18.4 Promise/payment separation
+
+Old Bren promises to pay you 15 gold -> reward.promise_candidate
+Old Bren pays you 15 gold -> reward.payment_candidate
+
+Promise never becomes payment at proposal stage.
+
+18.5 Reward operation key suggestions
+
+quest.accept.<questKey>.<giverKey>
+quest.objective.<questKey>.<objectiveKey>.<completionHash>
+quest.reward.<questKey>.<payerKey>.<rewardKey>
+xp.quest.<questKey>.<sourceKey>
+
+⸻
+
+19. Place/scene proposal rules
+
+Place proposals must separate current scene confirmation, strong arrival, weak mention, future intent, visible/nearby reference, and route/interstitial.
+
+19.1 Place event types
+
+place.current_scene_confirm_candidate
+place.arrival_candidate
+place.travel_intent_candidate
+place.visible_reference
+place.nearby_reference
+place.future_reference
+place.route_reference
+place.weak_mention
+
+19.2 Current scene confirmation examples
+
+The market lane remains busy.
+You remain in the market lane.
+The market square buzzes with merchants.
+You stand in the market lane.
+
+19.3 Weak mention examples
+
+chapel visible from here
+down the street
+nearby
+beyond the road
+only consider going
+someone mentions the chapel
+
+These proposals must not suggest current scene overwrite.
+
+19.4 Strong arrival examples
+
+You enter the chapel.
+You walk inside the smithy.
+You descend into the cellar.
+After the road, you enter The Drunken Huntsman.
+
+Strong arrival proposals bind the named destination, not the route/interstitial word.
+
+19.5 Place operation key suggestions
+
+place.scene.confirm.<placeKey>.<clauseHash>
+place.arrive.<placeKey>.<clauseHash>
+place.intent.<placeKey>.<inputHash>
+
+⸻
+
+20. Time and aging proposal rules
+
+Time proposals must separate literal time passage from quoted, dreamed, pretend, nonliteral, or narrative-practice references.
+
+20.1 Time event types
+
+time.advance_candidate
+time.age_candidate
+time.deadline_candidate
+time.nonliteral_reference
+time.quoted_reference
+time.dream_reference
+time.no_time_passes_reference
+
+20.2 Blocked time cases
+
+"Twenty years pass," you say.
+In a dream, twenty years pass.
+You practice narration: twenty years pass.
+No time actually passes.
+You wake as the same age.
+
+20.3 Allowed time cases
+
+Twenty years pass in exile.
+After two years, the city rebuilds.
+A week passes during the journey.
+
+Still requires CanonValidator and owner reducer.
+
+20.4 Time operation key suggestions
+
+time.advance.<amountKey>.<clauseHash>
+time.age.<amountKey>.<clauseHash>
+time.deadline.<deadlineKey>.<sourceKey>
+
+⸻
+
+21. Actor proposal rules
+
+Actor proposals must separate present actors, scene-only actors, absent/reference-only actors, rumored actors, and relationship/claim mentions.
+
+21.1 Actor event types
+
+actor.present_candidate
+actor.scene_only_candidate
+actor.reference_only_candidate
+actor.absent_candidate
+actor.memory_candidate
+actor.relationship_claim_candidate
+actor.status_candidate
+actor.death_candidate
+
+21.2 Compound actor suppression handoff
+
+ProposalBuilder should preserve resolver notes if compound-shorter suppression occurred.
+
+Example:
+
+A veteran guard stands nearby.
+
+Expected target binding:
+
+Veteran Guard
+not separate Guard
+
+21.3 Absent/reference-only safety
+
+the goblin is definitely not here -> actor.absent_candidate/reference_only, no present actor
+training dummy named after Mira -> reference target, not actor Mira harm
+Mara elsewhere -> no current-scene action
+
+⸻
+
+22. Progression proposal rules
+
+Progression proposals are conservative in MVP.
+
+22.1 Progression event types
+
+progression.xp_gain_candidate
+progression.level_up_candidate
+progression.stat_gain_candidate
+progression.training_progress_candidate
+progression.output_only_claim
+
+22.2 Explicit XP only
+
+Output:
+
+You gain 20 XP.
+
+may produce XP proposal.
+
+Output:
+
+This was a learning experience.
+
+must not produce XP proposal.
+
+22.3 Operation key suggestions
+
+xp.gain.<amount>.<sourceKey>.<clauseHash>
+stat.gain.<statKey>.<amount>.<sourceKey>
+level.up.<fromTo>.<sourceKey>
+
+⸻
+
+23. Card and migration proposal rules
+
+Card and migration proposals are not gameplay canon proposals.
+
+23.1 Card proposal types
+
+card.protected_update_candidate
+card.generated_create_blocked
+card.duplicate_detected
+card.tombstone_candidate
+card.manual_edit_detected
+
+These route to CardSyncLite, not gameplay reducers.
+
+23.2 Migration proposal types
+
+migration.structural_import_candidate
+migration.quarantine_candidate
+migration.repair_candidate
+migration.ignore_candidate
+
+Migration proposals must never import old card prose as gameplay truth.
+
+⸻
+
+24. Proposal risk flags
+
+ProposalBuilder should compute risk flags for validators and debug output.
+
+Required risk flags:
+
+SOURCE_NON_CANON
+INPUT_ATTEMPT_ONLY
+OUTPUT_ONLY_UNSUPPORTED
+NEGATED_LOCAL_CLAUSE
+REVOKED_LOCAL_CLAUSE
+FAILED_ACTION
+ABSTRACT_REFERENCE
+QUOTED_SPEECH
+DREAM_OR_VISION
+RUMOR_OR_CLAIM
+HYPOTHETICAL_OR_CONDITIONAL
+FUTURE_INTENT_ONLY
+VISIBLE_NOT_OWNED
+AVAILABLE_NOT_OWNED
+PROMISED_NOT_PAID
+WEAK_SCENE_REFERENCE
+ROUTE_INTERSTITIAL_RISK
+ABSENT_ACTOR_RISK
+REFERENCE_ONLY_ACTOR_RISK
+NONLITERAL_TIME_RISK
+DUPLICATE_SENSITIVE
+TARGET_AMBIGUOUS
+SANITIZER_LOW_CONFIDENCE
+UNKNOWN_OWNER
+
+Risk flags do not automatically reject.
+
+They inform CanonValidator.
+
+Some flags should usually force reject for specific families.
+
+⸻
+
+25. Proposal status meanings
+
+proposed
+
+Means the proposal is structurally valid and needs CanonValidator.
+
+malformed
+
+Means the parser hit lacked necessary structure and should be audited/skipped.
+
+blocked_prevalidation
+
+Means source was non-canon or proposal is obviously impossible before validation.
+
+deferred
+
+Means event belongs to a disabled system such as economy, crafting, investigation, domain, generated cards, or advanced combat.
+
+⸻
+
+26. Malformed hit handling
+
+ProposalBuilder must not crash on malformed ParserHits.
+
+If a hit is missing required fields:
+
+* create no gameplay proposal
+* record rejected/malformed summary
+* audit if useful
+* continue processing other hits
+
+Examples of malformed hits:
+
+missing sourceHook
+missing eventFamily
+no local clause or matched text
+unsafe source
+no target for target-required family
+
+⸻
+
+27. Proposal caps
+
+Recommended caps:
+
+maxProposalsPerOutput = 20
+maxProposalsPerInput = 10
+maxMalformedHitAuditsPerTurn = 5
+maxProposalAuditLinesPerTurn = 10
+maxSecondaryTargetsPerProposal = 5
+maxLocalClausePreviewLength = 180
+
+If proposals exceed caps:
+
+* keep current-stage mandatory families first
+* prefer high-confidence, direct-output consequences
+* preserve rejection/audit for skipped high-risk items if possible
+* do not crash
+* do not scan history to compensate
+
+⸻
+
+28. Proposal audit format
+
+Proposal audit should be concise.
+
+Example:
+
+Proposal: inventory.acquire_candidate target=red_healing_potion source=output risk=DUPLICATE_SENSITIVE confidence=0.74.
+
+Example:
+
+Proposal blocked prevalidation: inventory.acquire_candidate target=jeweled_crown reason=local clause refusal.
+
+Example:
+
+Proposal: ability.train_candidate target=ember_ward source=input risk=INPUT_ATTEMPT_ONLY confidence=0.62.
+
+Do not dump full raw text.
+
+⸻
+
+29. ProposalBuilder and CanonValidator handoff
+
+Every structurally valid proposal must go to CanonValidator.
+
+Handoff object:
+
+{
+  proposals: EventProposal[],
+  malformedHits: RejectedHitSummary[],
+  skippedBySource: number,
+  skippedByCap: number,
+  auditSummary: string[]
+}
+
+CanonValidator must receive all safety flags, local clause binding, target binding, proposed change summary, and operation suggestion.
+
+⸻
+
+30. ProposalBuilder and OperationLedger relationship
+
+ProposalBuilder may suggest keys.
+
+It must not commit keys for gameplay effects.
+
+Exceptions:
+
+* source-use audit keys may be handled by Runtime or OperationLedger outside ProposalBuilder
+* ProposalBuilder should not add permanent/reward/card keys
+
+Reducers or commit controller later add keys after validation according to owner policy.
+
+⸻
+
+31. ProposalBuilder and commands/context/cards
+
+ProposalBuilder must not build proposals from:
+
+[AIDRPG] command output
+context packets
+Story Card text
+protected card text
+generated card text
+debug output
+audit output
+help output
+releasecheck output
+old logs
+
+If such text reaches ProposalBuilder, it should mark source unsafe and return blocked/prevalidation skip.
+
+⸻
+
+32. ProposalBuilder and disabled systems
+
+If a ParserHit points to a disabled/deferred system, ProposalBuilder may create a deferred diagnostic proposal but not a gameplay proposal.
+
+Deferred systems in MVP:
+
+economy
+crafting
+investigation
+reputation automation
+domain/labor
+absorption/evolution
+advanced combat
+party/summons advanced controls
+multi-protagonist
+warfare/group combat
+generated cards
+manual mutation commands
+
+Deferred proposal status:
+
+deferred
+
+ReducerRequired:
+
+false
+
+ValidatorRequired:
+
+true or diagnostic-only depending releasecheck needs
+
+⸻
+
+33. Required proposal tests
+
+BC10-001 — ParserHit does not mutate state
+
+Given ParserHit for:
+
+You pick up the rusty dagger.
+
+Expected:
+
+* EventProposal may be created
+* inventory unchanged
+
+Fail if ProposalBuilder adds item.
+
+⸻
+
+BC10-002 — Proposal carries source hook
+
+Given output ParserHit.
+
+Expected:
+
+proposal.source.sourceHook = output
+
+Fail if source missing.
+
+⸻
+
+BC10-003 — Input proposal is attempt-only
+
+Input:
+
+I take the jeweled crown.
+
+Expected:
+
+* inventory acquire attempt proposal
+* attemptOnly true
+* completed outcome not assumed
+
+Fail if input proposal marked confirmed acquisition.
+
+⸻
+
+BC10-004 — Command output blocked
+
+Text:
+
+[AIDRPG] Inventory
+- Rusty Dagger
+
+Expected:
+
+* no gameplay EventProposal
+* source unsafe or blocked prevalidation
+
+Fail if item proposal created.
+
+⸻
+
+BC10-005 — Context text blocked
+
+Source:
+
+context
+
+Text:
+
+The Iron Sword is in Mara's custody.
+
+Expected:
+
+* no gameplay EventProposal
+
+Fail if custody/inventory proposal created.
+
+⸻
+
+BC10-006 — Story Card text blocked
+
+Source:
+
+story_card
+
+Text:
+
+Player owns Crown of Dawn.
+
+Expected:
+
+* no gameplay EventProposal
+
+Fail if inventory proposal created.
+
+⸻
+
+BC10-007 — Inventory denial local clause
+
+Output:
+
+You decide not to take the rusted iron key.
+
+Expected:
+
+* proposal target rusted iron key
+* safety deniedByLocalClause true or eventType denied_candidate
+* proposed change does not say gain inventory
+
+Fail if acquire_candidate without denial risk.
+
+⸻
+
+BC10-008 — Inventory failed grab local clause
+
+Output:
+
+You try to grab the rusted iron key, but the goblin snatches it away first.
+
+Expected:
+
+* rusted iron key proposal marked failed/revoked
+* no acquire-ready proposal
+* item name does not include but the goblin
+
+Fail if target becomes rusted iron key but the goblin or acquire-ready.
+
+⸻
+
+BC10-009 — Mixed clause inventory binding
+
+Output:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+Expected:
+
+* crown proposal blocked/denied
+* red healing potion handoff candidate allowed for validation
+* separate local clauses/targets
+
+Fail if crown and potion collapse into one proposal.
+
+⸻
+
+BC10-010 — Abstract item blocked
+
+Output:
+
+You pick up the idea of a brass key.
+
+Expected:
+
+* abstractOrMetaphorical true
+* no acquire-ready proposal
+
+Fail if brass key proposal looks confirmed.
+
+⸻
+
+BC10-011 — Dream item blocked
+
+Output:
+
+In a dream, you receive the Crown of Dawn, then wake empty-handed.
+
+Expected:
+
+* dreamOrVision true
+* revoked/empty-handed risk true
+* no acquire-ready proposal
+
+Fail if Crown proposal lacks dream/revoked risk.
+
+⸻
+
+BC10-012 — Ability training priority
+
+Input:
+
+I train Ember Ward to protect allies from heat.
+
+Expected:
+
+* ability.train_intent or train_candidate
+* target Ember Ward
+* not defend-only
+
+Fail if no ability proposal.
+
+⸻
+
+BC10-013 — Ability name cleanup owner-specific
+
+Input:
+
+I practice Frost Step by moving across slick stones.
+
+Expected:
+
+* target display Frost Step
+* sanitizerUsed AbilityNameSanitizer
+
+Fail if target is Frost Step by moving across slick stones.
+
+⸻
+
+BC10-014 — Output-only learned ability risky
+
+Output:
+
+You learned Moonblade.
+
+Expected:
+
+* ability.output_only_learning_claim
+* risk OUTPUT_ONLY_UNSUPPORTED
+* not stable canon
+
+Fail if proposal type is stable/confirmed without risk.
+
+⸻
+
+BC10-015 — Failed ability blocked
+
+Output:
+
+You attempt Void Lantern Veil, but the veil collapses and no usable technique remains.
+
+Expected:
+
+* ability failure proposal
+* failedOrRevoked true
+* no stabilize proposal
+
+Fail if stabilize/learn proposal created.
+
+⸻
+
+BC10-016 — Quoted ability blocked
+
+Output:
+
+Mira says, "Use Hollow Star Palm now," but you do not know that technique.
+
+Expected:
+
+* quotedSpeech true
+* failed/unknown technique risk
+* no stable ability proposal
+
+Fail if ability learned/use-success proposal created.
+
+⸻
+
+BC10-017 — Exhausted proposal
+
+Output:
+
+Your legs shake and you are exhausted by the climb.
+
+Expected:
+
+* body.status_gain_candidate exhausted
+* possible resource_state_candidate EP low/empty
+* severity hint severe
+
+Fail if no body/status proposal.
+
+⸻
+
+BC10-018 — Fatigue not exhaustion
+
+Output:
+
+You are fatigued and worn out from the long march.
+
+Expected:
+
+* fatigued candidate
+* not exhausted unless explicit exhausted-level wording
+
+Fail if exhausted proposal created from mild fatigue only.
+
+⸻
+
+BC10-019 — Weak scene mention
+
+Output:
+
+The road to the chapel is visible from the market lane, but you only consider heading there.
+
+Expected:
+
+* chapel proposal type weak/visible/future reference
+* no arrival/current-scene proposal for chapel
+
+Fail if chapel arrival/current-scene proposal created.
+
+⸻
+
+BC10-020 — Scene remains confirmation
+
+Output:
+
+The market lane remains busy with merchants and passing townsfolk.
+
+Expected:
+
+* current_scene_confirm_candidate market lane
+
+Fail if only weak hint with no scene confirmation proposal.
+
+⸻
+
+BC10-021 — Strong named arrival beats road
+
+Output:
+
+After the road, you enter The Drunken Huntsman.
+
+Expected:
+
+* arrival proposal target The Drunken Huntsman
+* route/interstitial risk for road, but not target
+
+Fail if scene target road.
+
+⸻
+
+BC10-022 — Nonliteral time quote blocked
+
+Output:
+
+You say, "Twenty years pass," while practicing narration. No time passes.
+
+Expected:
+
+* time.nonliteral_reference or quoted/no-time-passes risk
+* no age_candidate ready for validation as literal
+
+Fail if literal age proposal created.
+
+⸻
+
+BC10-023 — Literal time pass proposal
+
+Output:
+
+Twenty years pass in exile.
+
+Expected:
+
+* time.advance_candidate and possible time.age_candidate
+* literal, but still requires validation
+
+Fail if no proposal in active parser mode.
+
+⸻
+
+BC10-024 — Reward promise not payment
+
+Output:
+
+Old Bren promises to pay you 15 gold if you clear the wolves.
+
+Expected:
+
+* reward.promise_candidate
+* conditional/futureIntent true
+* no payment_candidate
+
+Fail if payment proposal created.
+
+⸻
+
+BC10-025 — Reward payment candidate
+
+Output:
+
+Old Bren pays you the promised 15 gold.
+
+Expected:
+
+* reward.payment_candidate
+* repeatSensitive true
+* suggested reward key
+
+Fail if proposal lacks repeat-sensitive operation suggestion.
+
+⸻
+
+BC10-026 — Actor compound suppression carried
+
+Output:
+
+A veteran guard stands near the gate.
+
+Expected:
+
+* actor target Veteran Guard
+* no separate Guard proposal for same span
+
+Fail if duplicate actor proposals created.
+
+⸻
+
+BC10-027 — Absent actor reference-only
+
+Output:
+
+The goblin is definitely not here.
+
+Expected:
+
+* actor absent/reference-only proposal or no present actor proposal
+* no actor.present_candidate
+
+Fail if present goblin proposal created.
+
+⸻
+
+BC10-028 — Body/death rumor blocked
+
+Output:
+
+People say you died in the ruins.
+
+Expected:
+
+* death rumor/claim risk
+* no direct death boundary candidate
+
+Fail if death candidate created without rumor risk.
+
+⸻
+
+BC10-029 — Proposal cap enforced
+
+Output contains many repeated candidate events.
+
+Expected:
+
+* proposals capped
+* skipped count/audit exists
+* no crash
+
+Fail if unbounded proposals.
+
+⸻
+
+BC10-030 — Proposal audit compact
+
+After proposal building.
+
+Expected:
+
+* audit summaries compact
+* no full giant raw text dump
+
+Fail if full output copied repeatedly into audits.
+
+⸻
+
+34. ReleaseCheck requirements for Build Chunk 10
+
+ReleaseCheck must eventually verify:
+
+EventProposal schema exists
+local clause binding exists
+target binding exists
+source hook preservation exists
+safety flags carry over from ParserHit
+owner module assignment exists
+operation key suggestion exists for repeat-sensitive families
+non-canon sources blocked before proposal
+input proposals attempt-only
+inventory/ability/time/place/reward proposal risk flags exist
+proposal caps exist
+proposal audit exists
+
+ReleaseCheck must fail if:
+
+ParserHit can become reducer action without EventProposal
+EventProposal lacks local clause binding
+EventProposal lacks safety flags
+ProposalBuilder creates gameplay state
+ProposalBuilder builds proposals from command/context/card/audit/help text
+input proposal marks completed success from player intent alone
+inventory proposal cannot represent denied/revoked/abstract/dream/quote cases
+ability proposal cannot represent output-only unsupported learning or failed/quoted ability cases
+place proposal cannot separate weak mention from strong arrival
+time proposal cannot represent nonliteral/quoted/dream references
+reward proposal cannot separate promise from payment
+
+⸻
+
+35. Relationship to Final Build Control Map v1
+
+This chunk directly implements Control Map requirements:
+
+F001 owner-specific sanitizers
+F002 explicit training intent priority
+F003 output-only ability learning safety
+F004 body/status proposal visibility
+F005 weak scene mention versus confirmed scene
+F006 inventory false-grant prevention
+F007 quest objective breadth handoff
+F008 named arrival priority over interstitial road
+F009 nonliteral time skip guard
+F010 repeated ability use key suggestions
+F012 compound actor duplicate suppression handoff
+F013 actor presence/reference-only safety
+F015 body/death rumor/quote boundary
+F023 promised versus paid reward separation
+N001 clause-level canon classifier
+N002 owner-specific sanitizer family
+N003 local target binding
+
+⸻
+
+36. What Build Chunk 11 should do next
+
+Next build document:
+
+Build Chunk 11 — CanonValidator and Clause-Level Canon Rules Plan
+
+Build Chunk 11 must define:
+
+* family-specific canon decisions
+* accept/reject/pending/defer outputs
+* local clause classifier final rules
+* inventory canon rules
+* ability canon rules
+* body/death canon rules
+* scene/place canon rules
+* time/aging canon rules
+* quest/reward canon rules
+* actor presence canon rules
+* duplicate-sensitive validation checks
+* validator audit format
+* validator tests from Control Map and Build Chunk 10
+
+Build Chunk 11 should not implement reducers yet.
+
+⸻
+
+37. Final Build Chunk 10 doctrine
+
+The proposal layer is where raw text becomes structured evidence.
+
+It must preserve danger instead of smoothing it away.
+
+Final rule:
+
+Bind the source.
+Bind the local clause.
+Bind the target.
+Carry every safety flag.
+Suggest, do not commit.
+Route to the owner, do not mutate.
+Make CanonValidator powerful enough to reject false canon.
+
+With EventProposal and ProposalBuilder planned, the next safe step is CanonValidator.

@@ -1,0 +1,1307 @@
+# AIDRPG Production Chunk 16 — Context Builder Budget, Memory Priority, and Card Sync Safety
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 16 — Context Builder Budget, Memory Priority, and Card Sync Safety  
+**Production sequence:** 16 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.15 world-bible/lore-boundaries accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Deepen context packet construction, token/character budgeting, memory priority, source blocking, stale-context prevention, safe summaries, dry-run Card Sync, protected card boundaries, and context/card non-canon safety without losing gameplay-critical state or re-importing generated summaries as truth.  
+**Status:** Core infrastructure production chunk.  
+**Follows:** Production Chunk 15 — World Bible Import, Lore Authority, and Knowledge Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 16 exists because AI Dungeon scripting succeeds or fails on context. A perfect ledger still fails if the prompt sends stale facts, hidden lore, false ownership, unpaid rewards as paid rewards, candidates as confirmed powers, or card mirror text as canon. This chunk makes context and card handling safe, prioritized, compact, source-aware, and useful for real gameplay.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Context is guidance, not evidence.
+Command output is guidance, not evidence.
+Card mirror output is guidance, not evidence.
+Generated summaries are guidance, not evidence.
+Stale context must never beat current ledger truth.
+Hidden lore must not leak into normal context.
+Candidate state must not be worded as confirmed state.
+Dry-run Card Sync is not live Card Sync.
+Card writes must be protected, gated, audited, and reversible before activation.
+```
+
+Context should help the model remember the right things. It must not become another source of false canon.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 15 separated world fact, player knowledge, hidden lore, Story Card lore, and context non-canon behavior. Context and Card Sync safety come next because every previous system needs a reliable way to talk to AI Dungeon:
+
+```text
+player identity and body
+inventory/equipment
+abilities
+quests/rewards
+actors/social memory
+place/time/deadlines
+progression/stats
+combat state
+form/race constraints
+threat/encounter danger
+world lore/player knowledge
+```
+
+If context is not budgeted and prioritized now, later systems will add too much information and break coherence.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 16 may change:
+
+```text
+ContextBuilderLite / ContextBuilder
+ContextPacket helpers
+MemoryPriority helpers
+ContextBudgetManager
+ContextSourceBlocker
+ContextStalenessChecker
+ContextCompression/Summary helper
+CardSyncLite dry-run behavior
+CardAudit renderer
+CommandRenderers /context, /memory, /cardaudit, /stateaudit
+DirtyQueue target handling
+OperationLedger context/card keys
+IntegrityChecker context/card checks
+ReleaseCheck context/card gates
+Regression/player-breaker context tests
+```
+
+Production Chunk 16 may add:
+
+```text
+ContextPacketRecord schema
+ContextSectionRecord schema
+MemoryPriorityRecord schema
+ContextBudgetRecord schema
+ContextSourceRecord schema
+ContextBlockRecord schema
+ContextStalenessRecord schema
+ContextSummaryRecord schema
+CardMirrorRecord schema
+CardSyncPlanRecord schema
+ProtectedCardRecord schema
+CardWriteProposalRecord schema
+CardSyncAuditRecord schema
+ContextNonCanonPolicyRecord schema
+```
+
+Production Chunk 16 may not add:
+
+```text
+live card writes by default
+unprotected Story Card rewrites
+automatic card creation from gameplay output
+card text as gameplay truth
+context text as gameplay truth
+hidden lore injection into normal context
+large raw-state dumps every turn
+manual /writecard live mutation command
+```
+
+Live Card Sync, if ever enabled, must be separately feature-flagged, ReleaseCheck-gated, and protected. Default in this chunk is dry-run / mirror / audit only.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+ContextBuilderLite
+ContextBudgetManager
+MemoryPriorityManager
+ContextSourceBlocker
+ContextStalenessChecker
+ContextCompression helper
+DirtyQueue
+CardSyncLite dry-run/mirror path
+CardAudit renderer
+CommandRenderers: /context, /memory, /cardaudit, /stateaudit
+OperationLedger context/card keys
+AuditLogger context/card lines
+InvariantChecker context/card checks
+ReleaseCheckLite PC16 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to owner reducers. ContextBuilder reads owner state; it must not mutate owner state.
+
+---
+
+# 5. Context state model
+
+Recommended shape:
+
+```text
+contextSystem: {
+  packets: {},
+  sections: {},
+  priorities: {},
+  budgets: {},
+  summaries: {},
+  sourceBlocks: {},
+  staleness: {},
+  cardMirrors: {},
+  cardSyncPlans: {},
+  protectedCards: {},
+  cardWriteProposals: {},
+  cardSyncAudits: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Context state is support state. It is not gameplay canon.
+
+---
+
+# 6. ContextPacketRecord schema
+
+```text
+ContextPacketRecord {
+  id,
+  key,
+  packetType,
+  sections,
+  totalBudget,
+  usedBudget,
+  overflowPolicy,
+  sourceOperationKey,
+  generatedTurn,
+  stale,
+  warnings,
+  notes
+}
+```
+
+Packet types:
+
+```text
+main_context
+memory_context
+author_note_context
+story_card_mirror_context
+debug_context
+unknown
+```
+
+Rules:
+
+```text
+main_context should be compact and current
+memory_context should be stable and high-priority
+debug_context must be blocked as mutation source
+story_card_mirror_context must be dry-run/non-canon unless live writes separately enabled
+```
+
+---
+
+# 7. ContextSectionRecord schema
+
+```text
+ContextSectionRecord {
+  id,
+  key,
+  sectionType,
+  title,
+  text,
+  priority,
+  budgetCost,
+  sourceFamily,
+  sourceKeys,
+  freshnessTurn,
+  confidence,
+  playerKnownOnly,
+  hiddenLoreFiltered,
+  stale,
+  included,
+  omittedReason,
+  warnings,
+  notes
+}
+```
+
+Section types:
+
+```text
+player_identity
+body_status
+current_form
+inventory_equipment
+abilities
+quests
+actors_social
+location_time
+combat
+threat_encounter
+progression_stats
+world_lore
+player_knowledge
+rules_boundaries
+warnings
+unknown
+```
+
+Critical sections should survive budget pressure. Blocked/debug sections must not enter normal context. Hidden lore must be filtered before text is built.
+
+---
+
+# 8. MemoryPriorityRecord schema
+
+```text
+MemoryPriorityRecord {
+  id,
+  key,
+  targetFamily,
+  targetKey,
+  priority,
+  reason,
+  decayPolicy,
+  lastRelevantTurn,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Target families:
+
+```text
+player
+body
+form
+inventory
+ability
+quest
+actor
+place
+time
+combat
+threat
+lore
+knowledge
+system_warning
+unknown
+```
+
+Critical identity/body/current scene facts should not decay away. Old low-relevance facts can be summarized or omitted.
+
+---
+
+# 9. ContextBudgetRecord schema
+
+```text
+ContextBudgetRecord {
+  id,
+  key,
+  budgetType,
+  maxChars,
+  maxTokensApprox,
+  reservedCriticalBudget,
+  usedChars,
+  overflowPolicy,
+  createdTurn,
+  notes
+}
+```
+
+Overflow policies:
+
+```text
+omit_low_priority
+summarize_low_priority
+compress_sections
+warn_and_truncate
+block_debug
+unknown
+```
+
+Budget manager should never drop critical warnings silently. Low-priority lore and resolved history are omitted before current identity, body, form, location, combat, active quest, or deadline facts.
+
+---
+
+# 10. ContextSourceRecord schema
+
+```text
+ContextSourceRecord {
+  id,
+  key,
+  sourceFamily,
+  sourceKey,
+  ownerSystem,
+  canonStatus,
+  safeForContext,
+  safeForMutation,
+  createdTurn,
+  notes
+}
+```
+
+Canon statuses:
+
+```text
+owner_canon
+reference_only
+candidate
+rumor
+hidden
+blocked
+summary_generated
+command_output
+debug_output
+unknown
+```
+
+Owner canon may be summarized into context. Generated summaries, command output, debug output, and card mirror output are not safe for mutation.
+
+---
+
+# 11. ContextBlockRecord schema
+
+```text
+ContextBlockRecord {
+  id,
+  key,
+  blockReason,
+  sourceFamily,
+  sourceKey,
+  textPreview,
+  targetPacketType,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Block reasons:
+
+```text
+hidden_lore
+unsafe_source
+debug_only
+stale_superseded
+candidate_would_look_confirmed
+too_low_priority
+over_budget
+card_mutation_risk
+context_reimport_risk
+unknown
+```
+
+Blocked content may appear in /stateaudit or /debug, not normal context, and must not be parsed as gameplay event.
+
+---
+
+# 12. ContextStalenessRecord schema
+
+```text
+ContextStalenessRecord {
+  id,
+  key,
+  staleFamily,
+  staleKey,
+  staleTextPreview,
+  currentSourceKey,
+  detectedTurn,
+  action,
+  sourceOperationKey,
+  notes
+}
+```
+
+Actions:
+
+```text
+omit_stale
+replace_with_current
+mark_warning
+archive_summary
+block_release_if_critical
+unknown
+```
+
+Examples:
+
+```text
+old currentLocation says Chapel while PlaceReducer says Market Lane
+old inventory summary says Crown owned while InventoryReducer says Mira custody
+old ability summary says Moonblade stable while AbilityReducer says hint only
+```
+
+Current owner reducer state beats old context summary.
+
+---
+
+# 13. ContextSummaryRecord schema
+
+```text
+ContextSummaryRecord {
+  id,
+  key,
+  summaryFamily,
+  text,
+  sourceKeys,
+  generatedBy,
+  safeForContext,
+  safeForMutation,
+  freshnessTurn,
+  stale,
+  createdTurn,
+  notes
+}
+```
+
+GeneratedBy:
+
+```text
+deterministic_renderer
+safe_compressor
+manual_deferred
+model_generated_blocked
+unknown
+```
+
+Summaries must preserve uncertainty labels. They must not promote candidate, rumor, visible, offered, unpaid, pending, or deferred states into confirmed truth.
+
+---
+
+# 14. ContextNonCanonPolicyRecord schema
+
+```text
+ContextNonCanonPolicyRecord {
+  id,
+  key,
+  policyName,
+  active,
+  blockedSourceFamilies,
+  allowedUse,
+  mutationAllowed,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Required blocked source families:
+
+```text
+context_output
+command_output
+debug_output
+releasecheck_output
+stateaudit_output
+cardaudit_output
+card_mirror_output
+model_summary_output
+```
+
+Required:
+
+```text
+allowedUse = guidance_display_only
+mutationAllowed = false
+```
+
+ReleaseCheck must fail if this policy is missing or inactive.
+
+---
+
+# 15. CardMirrorRecord schema
+
+```text
+CardMirrorRecord {
+  id,
+  key,
+  mirrorType,
+  targetCardKey,
+  title,
+  text,
+  sourceKeys,
+  protected,
+  dryRunOnly,
+  safeForMutation,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Required defaults:
+
+```text
+dryRunOnly = true
+safeForMutation = false
+protected = true unless explicitly safe unprotected draft
+```
+
+Card mirrors can be shown in /cardaudit. They are not written by default and cannot be parsed back into gameplay state.
+
+---
+
+# 16. CardSyncPlanRecord schema
+
+```text
+CardSyncPlanRecord {
+  id,
+  key,
+  planType,
+  targetCardKey,
+  action,
+  sourceKeys,
+  beforePreview,
+  afterPreview,
+  riskLevel,
+  requiresConfirmation,
+  liveWriteAllowed,
+  sourceOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Required default:
+
+```text
+liveWriteAllowed = false
+requiresConfirmation = true
+```
+
+Planning is allowed. Live writing is disabled unless future gated policy enables it.
+
+---
+
+# 17. ProtectedCardRecord schema
+
+```text
+ProtectedCardRecord {
+  id,
+  key,
+  cardKey,
+  title,
+  protectionLevel,
+  ownerFamily,
+  allowedWriteModes,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Protection levels:
+
+```text
+locked
+protected
+manual_review_required
+dry_run_only
+unprotected_draft
+unknown
+```
+
+Existing user-authored cards should default protected/manual_review_required. Generated mirrors default dry_run_only.
+
+---
+
+# 18. CardWriteProposalRecord schema
+
+```text
+CardWriteProposalRecord {
+  id,
+  key,
+  targetCardKey,
+  proposalType,
+  proposedText,
+  sourceKeys,
+  riskFlags,
+  status,
+  createdTurn,
+  notes
+}
+```
+
+Statuses:
+
+```text
+dry_run
+blocked
+manual_review_required
+approved_later_disabled
+written_later_disabled
+rejected
+unknown
+```
+
+Proposal status is dry_run or blocked in PC16. No actual write in this chunk.
+
+---
+
+# 19. CardSyncAuditRecord schema
+
+```text
+CardSyncAuditRecord {
+  id,
+  key,
+  auditType,
+  targetCardKey,
+  actionTaken,
+  liveWriteOccurred,
+  sourceOperationKey,
+  createdTurn,
+  summary,
+  warnings,
+  notes
+}
+```
+
+Required default:
+
+```text
+liveWriteOccurred = false
+```
+
+---
+
+# 20. Context priority order
+
+Recommended critical order:
+
+```text
+1. system safety boundaries / source-blocking warnings when needed
+2. player identity and true/current form/body constraints
+3. current location/current scene/time/deadlines
+4. active combat/damage/death-boundary critical status
+5. active encounter/threat warning
+6. active quest objective and unpaid/paid reward truth
+7. active injuries/conditions/resources
+8. immediately present actors/witnesses
+9. owned/equipped critical inventory and visible/custody distinctions
+10. stable abilities and important candidates/failures
+11. relevant player-known lore
+12. recent important history
+13. low-priority background lore
+14. debug/audit omitted from normal context
+```
+
+Identity/form/current scene should not be pushed out by background lore.
+
+---
+
+# 21. Section wording safety rules
+
+Required wording examples:
+
+```text
+Candidate ability: Ember Ward is being trained, not stable.
+Visible item: A silver ring is visible nearby, not owned.
+Custody: Mira holds the Crown of Dawn; it is not yours.
+Reward: Old Bren promised 15 gold; it has not been paid.
+Quest: Clear the Mill Wolves is active; objective incomplete.
+Form: You are physically in wolf form; true race remains Human.
+Lore: Local rumor says wolves fear silver bells; unconfirmed.
+Hidden lore: omitted.
+```
+
+Forbidden unless truly confirmed:
+
+```text
+You know Ember Ward.
+You have the silver ring.
+You own the Crown.
+Old Bren paid 15 gold.
+The wolves fear silver bells.
+You are a wolf species now.
+The hidden bell controls the wolves.
+```
+
+---
+
+# 22. ContextBuilder behavior
+
+ContextBuilder should:
+
+```text
+read owner state only
+request section renderers
+filter by source/knowledge boundaries
+score priority
+fit sections to budget
+compress low-priority safe sections
+label uncertainty
+omit hidden/blocked/debug content
+emit ContextPacketRecord
+mark output as non-canon source
+```
+
+ContextBuilder should not mutate owner state, infer missing owner state, promote candidate facts, reveal hidden lore, write cards live, or create memories as gameplay events.
+
+---
+
+# 23. ContextBudgetManager behavior
+
+Budget manager should:
+
+```text
+reserve critical budget
+calculate approximate char/token cost
+include critical sections first
+summarize or omit low-priority sections
+record omitted reasons
+warn when critical sections are too large
+never fill budget with hidden/unsafe content
+```
+
+Fallback order:
+
+```text
+omit debug
+omit stale low-priority summaries
+omit irrelevant lore
+compress old history
+compress actors/inventory to current scene essentials
+preserve current identity/body/location/quest/combat warnings
+```
+
+---
+
+# 24. MemoryPriorityManager behavior
+
+MemoryPriorityManager should promote active/current/critical facts and lower old/resolved/background facts. It must keep protected identity, form, active quest, deadline, danger, and severe body facts visible when relevant.
+
+It must not prioritize background lore over current state, keep resolved wounds as active injuries, keep old locations after movement, or hide active deadlines because lore is long.
+
+---
+
+# 25. ContextSourceBlocker behavior
+
+Blocked sources:
+
+```text
+/context output
+/sheet output
+/status output
+/inventory output
+/abilities output
+/quests output
+/actors output
+/location output
+/time output
+/progression output
+/stats output
+/combat output
+/threat output
+/encounter output
+/world output
+/lore output
+/knowledge output
+/stateaudit output
+/releasecheck output
+/cardaudit output
+card mirror output
+debug output
+model-generated summaries
+```
+
+These outputs can be shown to the user and can guide the model, but they must be tagged source-blocked if they return through Output hook.
+
+---
+
+# 26. ContextStalenessChecker behavior
+
+Staleness checks:
+
+```text
+old current location vs PlaceReducer current location
+old form vs Body/Form current form
+old inventory ownership vs InventoryReducer access state
+old ability stable/candidate state vs AbilityReducer
+old quest reward payment vs QuestReducer/InventoryReducer
+old actor presence vs ActorReducer
+old combat damage vs BodyReducer
+old lore visibility vs KnowledgeBoundaryManager
+```
+
+Actions include replace, omit, warn, archive, or block ReleaseCheck if stale critical context can emit.
+
+---
+
+# 27. CardSyncLite behavior
+
+CardSyncLite in PC16 is dry-run only.
+
+Allowed:
+
+```text
+build card mirror records
+build card sync plans
+show /cardaudit output
+mark protected cards
+mark unsafe claims
+suggest manual review text
+```
+
+Forbidden:
+
+```text
+live create card
+live update card
+live delete card
+overwrite user-authored card
+unprotect card automatically
+parse card mirror as gameplay event
+```
+
+Default user-facing wording:
+
+```text
+[AIDRPG] Card Sync is dry-run only. No Story Cards were written.
+```
+
+---
+
+# 28. Card safety risk flags
+
+Risk flags:
+
+```text
+owner_state_claim
+hidden_lore_leak
+candidate_promoted
+current_location_claim
+inventory_ownership_claim
+quest_completion_claim
+reward_payment_claim
+ability_mastery_claim
+race_form_claim
+combat_damage_claim
+xp_level_claim
+actor_relationship_claim
+reputation_claim
+source_uncertain
+protected_card
+unknown
+```
+
+Any owner_state_claim blocks live write in PC16. Hidden lore leak blocks normal context and card mirror unless reveal-safe.
+
+---
+
+# 29. Operation keys
+
+Required context operation keys:
+
+```text
+context.packet.<packetType>.<turnBucket>.<sourceHash>
+context.section.<sectionType>.<sourceHash>
+context.summary.<summaryFamily>.<sourceHash>
+context.block.<blockReason>.<sourceHash>
+context.stale.<staleFamily>.<staleKey>.<sourceHash>
+context.priority.<targetFamily>.<targetKey>.<reason>
+context.noncanon.policy.<policyVersion>
+```
+
+Required Card Sync operation keys:
+
+```text
+card.mirror.<mirrorType>.<targetCardKey>.<sourceHash>
+card.sync.plan.<action>.<targetCardKey>.<sourceHash>
+card.protected.<cardKey>.<protectionLevel>
+card.writeProposal.<targetCardKey>.<proposalHash>
+card.sync.audit.<auditType>.<targetCardKey>.<sourceHash>
+```
+
+Non-canon policy keys and protected card keys are durable.
+
+---
+
+# 30. Dirty targets
+
+Context/card updates should mark:
+
+```text
+context
+memory
+card_registry_dry_run
+stateaudit
+releasecheck if policies change
+```
+
+Owner dirty targets may trigger context rebuilds, but context rebuilds must not trigger owner state mutation.
+
+---
+
+# 31. Command updates
+
+## `/context`
+
+Shows context packet preview, included sections, omitted sections with reasons, budget used, hidden lore filtering, and non-canon warning.
+
+## `/memory`
+
+Shows priority facts, active/current memories, summarized old facts, blocked/stale memory warnings.
+
+## `/cardaudit`
+
+Shows Card Sync mode dry-run, protected cards, proposed mirrors, blocked write risks, and confirmation that no live writes occurred.
+
+## `/stateaudit`
+
+Shows context/source-blocking policy status, stale context checks, memory priority warnings, and card sync safety status.
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 32. Good and bad context examples
+
+Good:
+
+```text
+Player: True race Human; currently physically in wolf form. No human hands, quadruped movement, altered speech.
+Location: Market Lane, crowded street near the old fountain.
+Quest: Clear the Mill Wolves is active; Old Bren promised 15 gold, not paid.
+Inventory: You carry a red healing potion. Mira holds the Crown of Dawn; it is not yours.
+Ability: Ember Ward is a candidate under training, not stable.
+Lore: Local rumor says wolves fear silver bells; unconfirmed. Hidden wolf-bell truth is not known.
+```
+
+Bad:
+
+```text
+You are a wolf species. You own the Crown. Old Bren paid you 15 gold. You know Ember Ward. Wolves fear silver bells. You are in the Chapel.
+```
+
+Bad because it promotes or overwrites current form into species, custody into ownership, promise into payment, candidate into stable, rumor/hidden lore into fact, and wrong location into current state.
+
+---
+
+# 33. ReleaseCheck gates for this chunk
+
+Add or verify PC16-specific gates:
+
+```text
+PC16-G01 ContextPacketRecord schema exists or equivalent packet structure exists
+PC16-G02 ContextSectionRecord schema exists or equivalent section structure exists
+PC16-G03 MemoryPriorityRecord and ContextBudgetRecord exist or equivalents exist
+PC16-G04 ContextSourceRecord, ContextBlockRecord, and ContextStalenessRecord exist or equivalents exist
+PC16-G05 ContextSummaryRecord preserves uncertainty and is not safe for mutation
+PC16-G06 ContextNonCanonPolicyRecord exists and blocks command/context/debug/card mirror output from mutation
+PC16-G07 ContextBuilder filters hidden lore and player-unknown lore correctly
+PC16-G08 ContextBuilder does not promote candidate/rumor/visible/offered/unpaid/pending state
+PC16-G09 ContextBudgetManager preserves critical current state under budget pressure
+PC16-G10 ContextStalenessChecker prevents stale context from beating owner state
+PC16-G11 CardMirrorRecord and CardSyncPlanRecord exist or equivalents exist
+PC16-G12 CardSyncLite is dry-run only by default
+PC16-G13 ProtectedCardRecord and CardWriteProposalRecord exist or equivalents exist
+PC16-G14 Card write proposals with owner-state/hidden-lore risks are blocked/manual-review only
+PC16-G15 /context /memory /cardaudit /stateaudit display safety status honestly
+PC16-G16 command/context/card mirror output cannot become owner canon
+PC16-G17 cleanup preserves context non-canon policy, protected card records, and critical source-block rules
+PC16-G18 live Card Sync remains disabled unless future gated spec enables it
+PC16-G19 player-breaker context/card tests registered
+```
+
+ReleaseCheck must fail if context text can be parsed back into state, hidden lore leaks into normal context, stale context overwrites owner state, or Card Sync writes live cards by default.
+
+---
+
+# 34. Required tests
+
+```text
+PC16-001 /context output non-canon: feed command output through Output hook; no mutation.
+PC16-002 /sheet and /status output non-canon: no player/body/form/stat mutation.
+PC16-003 Inventory context wording honest: owned potion vs visible ring vs Mira custody Crown.
+PC16-004 Quest reward wording honest: promised 15 gold, not paid; no currency mutation.
+PC16-005 Ability wording honest: stable Iron Palm, candidate Ember Ward, Moonblade hint.
+PC16-006 Form wording honest: true Human, current wolf form; not wolf species.
+PC16-007 Hidden lore filtered from normal context.
+PC16-008 Rumor labeled as rumor, not fact.
+PC16-009 Stale location summary blocked by PlaceReducer current location.
+PC16-010 Stale inventory summary blocked by InventoryReducer custody/ownership state.
+PC16-011 Limited budget preserves critical identity/body/location/quest/combat/form facts.
+PC16-012 Debug/stateaudit text omitted from normal context.
+PC16-013 Summary preserves uncertainty labels.
+PC16-014 Model-generated summary blocked from mutation.
+PC16-015 /cardaudit confirms dry-run only and no live writes.
+PC16-016 Card mirror output is non-canon if re-fed through Output hook.
+PC16-017 Protected card is not overwritten; plan becomes manual_review_required or blocked.
+PC16-018 Hidden lore card proposal blocked from normal context and live write.
+PC16-019 Owner-state card risk blocked: level/inventory/form/combat claims cannot be written live.
+PC16-020 Context rebuild from dirty target does not mutate owner state.
+PC16-021 Duplicate Card Sync plan skipped/compacted.
+PC16-022 ContextNonCanonPolicyRecord exists and blocks generated sources.
+PC16-023 Cleanup preserves non-canon policy, protected card records, source blocks, staleness records.
+PC16-024 /writecard, /synccards live, /overwritecards disabled or safe unknown.
+PC16-025 /context /memory /cardaudit /stateaudit display budget/source-block/dry-run safety honestly.
+```
+
+Minimum expectation:
+
+```text
+25 PC16 tests registered
+0 critical PC16 failures
+```
+
+---
+
+# 35. Regression placement
+
+Add PC16 tests to regression tiers:
+
+```text
+T1 State/Runtime/Command Foundation Tests
+T2 Parser/Proposal/Validator Safety Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+---
+
+# 36. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+contextSystem.packets
+contextSystem.sections
+contextSystem.priorities
+contextSystem.budgets
+contextSystem.summaries
+contextSystem.sourceBlocks
+contextSystem.staleness
+contextSystem.cardMirrors
+contextSystem.cardSyncPlans
+contextSystem.protectedCards
+contextSystem.cardWriteProposals
+contextSystem.cardSyncAudits
+ContextPacketRecord shape
+ContextSectionRecord shape
+MemoryPriorityRecord shape
+ContextBudgetRecord shape
+ContextSourceRecord shape
+ContextBlockRecord shape
+ContextStalenessRecord shape
+ContextSummaryRecord shape
+ContextNonCanonPolicyRecord shape
+CardMirrorRecord shape
+CardSyncPlanRecord shape
+ProtectedCardRecord shape
+CardWriteProposalRecord shape
+CardSyncAuditRecord shape
+```
+
+---
+
+# 37. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+context source classification
+non-canon source blocking
+stale context detection
+safe summary generation
+card mirror risk detection
+card sync plan generation
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+owner-state mutation from context
+live card writes
+card text gameplay import
+hidden lore context injection
+manual live card sync parser
+```
+
+---
+
+# 38. Reducer/checker changes
+
+Allowed:
+
+```text
+ContextBuilder packet generation
+ContextBudgetManager include/omit decisions
+MemoryPriorityManager ranking
+ContextStalenessChecker warnings
+CardSyncLite dry-run plan/mirror/audit records
+context/card integrity checks
+```
+
+Forbidden:
+
+```text
+ContextBuilder mutating gameplay state
+CardSync writing live cards
+cleanup deleting source-block policies
+summary text overwriting owner state
+```
+
+---
+
+# 39. Command/context/card changes
+
+Allowed:
+
+```text
+/context preview
+/memory priority display
+/cardaudit dry-run display
+/stateaudit context/card safety display
+/releasecheck PC16 gates
+/playerbreakercheck context/card cases
+```
+
+Forbidden:
+
+```text
+/writecard active
+/synccards live
+/importcardstate
+/overwritecards
+live card writes that create gameplay truth
+```
+
+---
+
+# 40. Beginner implementation order
+
+```text
+1. Copy WorldLedgerV0.17.15_WORLD_BIBLE_LORE_BOUNDARIES_ACCEPTED.txt.
+2. Create WorldLedgerV0.17.16_CONTEXT_CARD_SAFETY_WORKING.txt.
+3. Add context helpers: ensureContextSystemShape, makeContextPacketRecord, makeContextSectionRecord, makeMemoryPriorityRecord, makeContextBudgetRecord, makeContextSourceRecord, makeContextBlockRecord, makeContextStalenessRecord, makeContextSummaryRecord, makeContextNonCanonPolicyRecord.
+4. Add card helpers: makeCardMirrorRecord, makeCardSyncPlanRecord, makeProtectedCardRecord, makeCardWriteProposalRecord, makeCardSyncAuditRecord.
+5. Add default non-canon source policy blocking command/context/debug/releasecheck/stateaudit/cardaudit/card mirror/model summary output from mutation.
+6. Update ContextBuilder section renderers for player/body/form, inventory, abilities, quests, actors, location/time, combat/threat, progression/stats, lore/knowledge, and warnings.
+7. Add ContextBudgetManager with critical budget reservation and omitted-section reasons.
+8. Add ContextStalenessChecker comparing old summaries to owner reducer state.
+9. Add CardSyncLite dry-run records only; no live writes.
+10. Update /context, /memory, /cardaudit, and /stateaudit displays.
+11. Update IntegrityChecker for source-block, hidden lore, stale sections, and protected cards.
+12. Add PC16-G01 through PC16-G19 ReleaseCheck gates.
+13. Add PC16-001 through PC16-025 tests.
+14. Run /foundationcheck, /releasecheck, /integrity, /playerbreakercheck, /regressioncheck, /context, /memory, /cardaudit, /stateaudit.
+15. Save WorldLedgerV0.17.16_CONTEXT_CARD_SAFETY_ACCEPTED.txt.
+```
+
+---
+
+# 41. What this chunk produces
+
+Production Chunk 16 should produce:
+
+```text
+WorldLedger V0.17.16 context/card-safety accepted script if code changes are made
+ContextPacket/Section/Priority/Budget schemas
+ContextSourceBlock/Staleness/Summary schemas
+ContextNonCanonPolicyRecord
+CardMirror/CardSyncPlan/ProtectedCard/CardWriteProposal/CardSyncAudit schemas
+ContextBuilder budget/priority improvements
+ContextStalenessChecker
+CardSyncLite dry-run safety
+/context /memory /cardaudit /stateaudit display improvements
+context/card integrity checks
+PC16 ReleaseCheck gates
+PC16 regression/player-breaker tests
+context/card acceptance report
+updated planning zip with Production Chunk 16 added
+```
+
+It should not produce live Card Sync writes, unprotected Story Card rewrites, context-to-state mutation, hidden lore leakage, owner-state claims from card mirrors, or manual live card sync commands.
+
+---
+
+# 42. Pass / warn / fail criteria
+
+## PASS
+
+```text
+context packets/sections have source, priority, budget, and staleness metadata
+context builder filters hidden lore and player-unknown lore
+context preserves candidate/rumor/visible/offered/unpaid/pending wording
+critical current state survives budget pressure
+stale context cannot beat owner state
+command/context/debug/card mirror output is blocked from mutation
+CardSyncLite is dry-run only
+protected cards cannot be overwritten automatically
+card write proposals with owner-state or hidden-lore risks are blocked/manual-review only
+/context /memory /cardaudit /stateaudit display honestly
+cleanup preserves non-canon/source-block/protected-card policies
+PC16 tests pass
+ReleaseCheck has no PC16 FAIL/BLOCKED gates
+```
+
+## WARN
+
+```text
+live Card Sync remains disabled
+some commands are folded into /stateaudit instead of separate commands
+budget estimates are character-based instead of true token counts
+card plans require manual review and are not applied
+some low-priority lore is omitted under tight budgets
+```
+
+## FAIL
+
+```text
+context output can mutate gameplay state
+command output can mutate gameplay state
+card mirror output can mutate gameplay state
+hidden lore leaks into normal context
+candidate ability shown as stable
+visible/custody item shown as owned
+unpaid reward shown as paid
+old stale location/inventory/form beats current owner state
+budget drops critical identity/body/location/quest/combat warnings while keeping low-priority lore
+CardSync writes live cards by default
+a protected card is overwritten automatically
+cleanup deletes non-canon/source-block/protected-card safety records
+```
+
+---
+
+# 43. Handoff to Production Chunk 17
+
+When this chunk passes, Production Chunk 17 begins:
+
+```text
+Production Chunk 17 — Creature Ecology, Species Rules, and Bestiary Boundaries
+```
+
+Production Chunk 17 may use context/lore/card safety to surface creature facts and species rules without spawning encounters or granting powers from lore.
+
+---
+
+# 44. Final doctrine
+
+Production Chunk 16 is where memory becomes safe to use.
+
+Final rule:
+
+```text
+The ledger is canon.
+Context is a carefully filtered window into canon.
+Cards are protected references.
+Summaries are non-canon.
+Hidden lore stays hidden.
+Budget pressure must remove the least important safe text, not the most important truth.
+```
+
+Once this passes, the project can safely deepen creature ecology, species rules, and bestiary boundaries in Production Chunk 17.

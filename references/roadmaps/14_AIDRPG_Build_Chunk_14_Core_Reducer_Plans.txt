@@ -1,0 +1,1342 @@
+AIDRPG Build Chunk 14 — Core Reducer Plans
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 14 — Core Reducer Plans: Inventory, Ability, Body, Quest/Reward, Actor, Place/Scene, Time, Progression
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define exact behavior for the current-stage owner reducers before context, cards, cleanup, releasecheck, and code-pass planning.
+Status: Practical build document.
+Follows: Build Chunk 13 — ReducerRegistry and Owner Reducer Contract Plan.
+This document does not contain final script code.
+
+This chunk exists because Build Chunk 13 locked reducer ownership, but each reducer still needs exact behavior.
+
+A reducer is where accepted canon becomes state.
+
+That means this layer must be precise.
+
+Reducers are not allowed to guess.
+
+Reducers do not parse raw story text.
+
+Reducers do not validate canon from scratch.
+
+Reducers only apply accepted validation results from CanonValidator.
+
+⸻
+
+1. Core reducer doctrine
+
+Accepted validation result in.
+Owned state mutation only.
+Operation key checked.
+Dirty targets marked.
+Audit written.
+No extra guessing.
+
+Every reducer must obey:
+
+No accepted validation, no mutation.
+No ownership, no mutation.
+No duplicate-safe key for repeat-sensitive event, no repeat-safe commit.
+No dirty target, no mirror/context update.
+No audit, no trust.
+
+⸻
+
+2. Reducers covered in this chunk
+
+Current-stage core reducers:
+
+InventoryReducer
+AbilityReducer
+BodyReducer
+QuestReducerLite / RewardReducerLite behavior
+ActorReducerLite
+PlaceReducerLite
+TimeReducerLite
+ProgressionReducerLite shell
+
+Non-gameplay owners mentioned but not fully detailed here:
+
+CardSyncLite
+MigrationManager
+QuarantineManager
+DirtyQueue
+CleanupManagerLite
+ContextBuilderLite
+
+Those are expanded in Build Chunk 15.
+
+⸻
+
+3. Universal reducer input contract
+
+Every reducer receives a ValidationResult from CanonValidator.
+
+Required input:
+
+status = accepted
+canonAllowed = true
+reducerAllowed = true
+requiredReducer matches reducer
+source
+localClause
+safety flags
+targetKey
+targetDisplayName
+operationKey or operation suggestion when repeat-sensitive
+dirtyFamiliesIfAccepted
+reasons
+
+If any required field is missing:
+
+return failed_softly or rejected_wrong_owner
+mutate nothing
+audit warning
+
+⸻
+
+4. Universal reducer output contract
+
+Every reducer returns a ReducerResult.
+
+ReducerResult {
+  validationId,
+  proposalId,
+  family,
+  eventType,
+  ownerReducer,
+  status,
+  operationKey,
+  operationKeyAdded,
+  mutatedBuckets,
+  dirtyTargets,
+  auditLine,
+  warnings,
+  errors,
+  notes
+}
+
+No reducer may return raw undefined/null.
+
+⸻
+
+5. Universal duplicate policy
+
+Repeat-sensitive reducer events must check OperationLedger before mutation.
+
+5.1 Standard repeat-sensitive flow
+
+1. Build/read operation key.
+2. Check duplicate.
+3. If duplicate: no mutation, return skipped_duplicate.
+4. If not duplicate: mutate owned bucket.
+5. Add operation key.
+6. Mark dirty targets.
+7. Audit.
+
+5.2 Repeat-sensitive event families
+
+item acquisition
+item transfer
+item consumption
+item destruction
+currency payment
+reward payment
+XP gain
+stat gain
+level up
+time advance
+age update
+ability stabilization
+durable ability evidence
+quest objective completion
+quest completion
+actor death/status change
+location arrival
+startup import
+migration import/quarantine
+card create/update
+
+⸻
+
+6. Universal dirty target policy
+
+Reducers do not write context or Story Cards directly.
+
+Reducers mark dirty targets.
+
+Common dirty mappings:
+
+inventory -> inventory_equipment, current_location, context
+abilities -> abilities, context
+body -> body_status, context
+quests -> quest_log, context
+actors -> social_memory, current_location, context
+places -> current_location, context
+time -> current_location, quest_log, context
+progression -> player_sheet, context
+
+Dirty targets are not gameplay truth.
+
+⸻
+
+7. Universal reducer forbidden actions
+
+Reducers must not:
+
+parse raw story text
+scan command output
+scan context text
+scan Story Card text
+call EventScannerLite
+call ProposalBuilder
+call CanonValidator for new truth
+write Story Cards directly
+create generated cards
+enable deferred systems
+import old card prose
+resolve quarantine automatically
+mutate buckets outside ownership without explicit contract
+erase whole buckets during normal gameplay
+
+⸻
+
+8. InventoryReducer detailed plan
+
+8.1 Owned buckets
+
+InventoryReducer owns:
+
+inventory.items
+inventory.equipped
+inventory.currency only through explicit accepted currency/reward contract
+inventory.sceneItems
+inventory item access/custody state
+inventory.inventoryWarnings
+
+8.2 Accepted event types
+
+InventoryReducer may handle:
+
+inventory.acquire_candidate
+inventory.handoff_candidate
+inventory.transfer_candidate
+inventory.drop_candidate
+inventory.lose_candidate
+inventory.consume_candidate
+inventory.destroy_candidate
+inventory.visible_candidate as scene item only
+inventory.available_loot_candidate as scene item only
+inventory.equip_candidate later if accepted
+inventory.unequip_candidate later if accepted
+currency.gain_candidate only through explicit reward/currency validation
+currency.spend_candidate deferred until economy spec
+
+8.3 Inventory acquisition behavior
+
+For accepted acquisition/handoff:
+
+1. Confirm accepted validation result.
+2. Confirm item target key/display name.
+3. Confirm not visible-only/available-only/denied/revoked/dream/quote/abstract.
+4. Check item acquisition operation key.
+5. If duplicate, skip.
+6. Add item or increase quantity according to unique/stack policy.
+7. Set accessState = held unless equipped/stored explicitly validated.
+8. Set owner = player and custody = player.
+9. Add sourceEventKey/createdTurn.
+10. Mark inventory_equipment and context dirty.
+11. Audit.
+
+8.4 Scene item behavior
+
+Visible and available-loot are not owned inventory.
+
+Accepted visible/available scene events go to:
+
+inventory.sceneItems
+
+not:
+
+inventory.items
+
+Scene item access states:
+
+visible
+available_loot
+inaccessible
+
+8.5 Custody behavior
+
+If item is in NPC/place custody:
+
+accessState = npc_custody or inaccessible
+custody = actor/place/unknown
+custodyId = resolved target if known
+
+InventoryReducer must not transfer custody unless validation result is an accepted transfer/handoff.
+
+8.6 Drop/loss/consume/destroy behavior
+
+Accepted events update accessState rather than deleting records when possible.
+
+dropped -> scene item or accessState lost/stored depending context
+lost -> accessState lost
+consumed -> accessState consumed and quantity decreases
+destroyed -> accessState destroyed
+sold -> deferred until economy spec unless manually validated later
+
+Do not erase unique item history unless cleanup policy later allows archival.
+
+8.7 Currency behavior
+
+Currency may change only from accepted currency/reward payment event.
+
+Reward promise does not change currency.
+
+Economy buy/sell/spend is deferred.
+
+8.8 Inventory operation keys
+
+Suggested keys:
+
+item.acquire.<itemKey>.<sourceOrScene>.<clauseHash>
+item.handoff.<itemKey>.<fromActor>.<toPlayer>.<clauseHash>
+item.transfer.<itemKey>.<from>.<to>.<clauseHash>
+item.consume.<itemKey>.<clauseHash>
+item.destroy.<itemKey>.<clauseHash>
+item.drop.<itemKey>.<clauseHash>
+currency.gain.<amount>.<sourceKey>.<clauseHash>
+
+8.9 Inventory old-failure protections
+
+InventoryReducer must never acquire items from:
+
+denied acquisition
+failed grab
+revoked handoff
+abstract item idea/concept/title
+quoted instruction
+NPC says take it without actual transfer
+dream/vision handoff
+visible-only item
+available loot before acquisition
+command output
+context text
+Story Card text
+
+CanonValidator should already reject those, but InventoryReducer must reject if such flags slip through.
+
+8.10 Inventory tests
+
+Accepted red healing potion handoff -> item held by player
+Duplicate red healing potion handoff -> one item or one quantity change only
+Visible silver ring -> sceneItems only, not inventory.items
+Goblin drops rusty dagger -> available_loot scene item, not owned
+Reward promise 15 gold -> no currency
+Accepted reward payment 15 gold -> currency +15 once
+Denied key result accidentally routed -> reducer rejects / no key
+Command output item accidentally routed -> reducer rejects / no item
+
+⸻
+
+9. AbilityReducer detailed plan
+
+9.1 Owned buckets
+
+AbilityReducer owns:
+
+abilities.records
+ability status
+ability evidence
+ability cost labels
+ability reliability labels
+ability sealed/unavailable markers
+ability warnings
+
+9.2 Accepted event types
+
+AbilityReducer may handle:
+
+ability.train_intent
+ability.train_candidate
+ability.use_attempt
+ability.use_success_candidate
+ability.use_failure_candidate
+ability.evidence_candidate
+ability.learn_candidate only if validated source exists
+ability.stabilize_candidate only if strongly validated
+ability.seal_candidate
+ability.unavailable_candidate
+
+9.3 Ability status model
+
+Ability statuses:
+
+unknown
+hint
+candidate
+unstable
+stable
+sealed
+unavailable
+
+Rules:
+
+candidate is not stable
+hint is not usable
+failed evidence does not stabilize
+output-only claim does not stabilize by default
+training evidence may create/update candidate
+stable requires validator-approved source or repeated/tracked mastery condition
+
+9.4 Training behavior
+
+Accepted training:
+
+1. Resolve ability key.
+2. Check duplicate durable training key if needed.
+3. If ability exists, append/update evidence.
+4. If ability missing, create candidate record.
+5. Set status candidate or unstable, not stable, unless validation says stabilize.
+6. Record evidence type training.
+7. Mark abilities and context dirty.
+8. Audit.
+
+9.5 Use success behavior
+
+Accepted use success may:
+
+append success evidence
+update reliability
+update lastUsedTurn
+apply cooldown/cost only if validated and resource system active
+
+It must not create stable mastery automatically unless validator event type is stabilize and conditions are met.
+
+9.6 Use failure behavior
+
+Accepted failure may:
+
+append failure evidence
+lower reliability
+keep as candidate/unstable
+record no effect/fizzle/collapse notes
+
+It must not create stable ability.
+
+9.7 Stability behavior
+
+Stable ability creation requires explicit accepted stabilize event.
+
+Allowed sources may include:
+
+startup structured ability before lock
+teacher/training culmination
+successful controlled demonstration
+validated transformation/grant
+future absorption/evolution spec when enabled
+
+9.8 Ability operation keys
+
+ability.train.<abilityKey>.<clauseHash>
+ability.evidence.<abilityKey>.<evidenceKind>.<clauseHash>
+ability.use.<abilityKey>.<eventKind>.<outputHash>
+ability.stabilize.<abilityKey>.<sourceKey>
+ability.seal.<abilityKey>.<sourceKey>
+
+9.9 Ability old-failure protections
+
+AbilityReducer must reject if routed with flags:
+
+quoted instruction only
+pretend use
+failed/no usable technique as stable
+output-only learned claim as stable
+non-ability object/travel/inspect target
+wrong sanitizer used
+
+9.10 Ability tests
+
+I train Ember Ward to protect allies -> candidate/evidence Ember Ward
+I practice Frost Step by moving -> candidate/evidence Frost Step
+You learned Moonblade -> no stable ability unless validator approved stabilize
+Void Lantern Veil collapses -> failure evidence, no stable
+Mira says "Use Hollow Star Palm" -> no stable ability
+Repeated Ember Ward use -> deduped evidence, no spam
+
+⸻
+
+10. BodyReducer detailed plan
+
+10.1 Owned buckets
+
+BodyReducer owns:
+
+body.hp
+body.mp
+body.ep
+body.injuries
+body.conditions
+body.fatigue
+body.deathBoundary
+body.bodyTraits when validated as body trait
+body.bodyWarnings
+
+10.2 Accepted event types
+
+BodyReducer may handle:
+
+body.status_gain_candidate
+body.status_loss_candidate
+body.injury_candidate
+body.resource_change_candidate
+body.resource_state_candidate
+body.recovery_candidate
+body.death_boundary_candidate
+body.trait_gain_candidate only if validated
+body.trait_loss_candidate only if validated
+
+10.3 Status behavior
+
+Accepted status gain:
+
+1. Resolve condition/status key.
+2. Check duplicate if durable/repeat-sensitive.
+3. Add or update condition record.
+4. Set severity from validation.
+5. Set status active.
+6. Mark body_status and context dirty.
+7. Audit.
+
+Accepted status loss/recovery:
+
+update condition status to resolved/healing/fading
+or remove/compact only through cleanup later
+
+10.4 Fatigue/exhaustion behavior
+
+Rules:
+
+fatigued/worn out -> fatigue tired or condition fatigued
+exhausted/collapsed/drained completely -> fatigue exhausted/collapsed if validated
+mild fatigue does not auto-upgrade to exhausted
+
+10.5 Injury behavior
+
+Accepted injury creates or updates InjuryRecord.
+
+Fields:
+
+injuryId
+name
+location
+severity
+status
+sourceEventKey
+createdTurn
+notes
+
+10.6 Resource behavior
+
+Accepted resource change may update HP/MP/EP.
+
+Rules:
+
+clamp current between 0 and max
+do not alter max unless max-change validated
+state repair clamping is not healing
+resource state candidate like exhausted may set EP current low/0 only if validator approved numeric/state rule
+
+10.7 Death boundary behavior
+
+DeathBoundary changes are high-risk.
+
+Allowed values:
+
+alive
+unconscious
+dying
+dead
+captured
+unknown
+
+Rules:
+
+rumor death rejected before reducer
+quote death rejected before reducer
+dream death rejected before reducer
+metaphor dead tired rejected before reducer
+nonfatal hostile act cannot set dead
+
+If death candidate reaches reducer with unsafe flags, reject/fail softly.
+
+10.8 Body operation keys
+
+body.status.add.<statusKey>.<clauseHash>
+body.status.resolve.<statusKey>.<clauseHash>
+body.injury.<injuryKey>.<clauseHash>
+body.resource.<resource>.<deltaOrState>.<clauseHash>
+body.deathboundary.<status>.<clauseHash>
+
+10.9 Body tests
+
+exhausted by climb -> fatigue exhausted/condition exhausted visible
+fatigued and worn out -> fatigue tired/fatigued, not exhausted
+bleeding stops -> bleeding resolved
+Mara says "you are dead" -> reducer not called or rejects
+People say you died -> no deathBoundary change
+wolf bite arm -> injury active
+
+⸻
+
+11. QuestReducerLite and Reward behavior detailed plan
+
+11.1 Owned buckets
+
+QuestReducerLite owns:
+
+quests.records
+quest objectives
+quest statuses
+quest reward status
+quest warnings
+
+Reward currency/item mutation requires explicit contract with InventoryReducer or split event.
+
+11.2 Accepted quest event types
+
+quest.offer_candidate
+quest.accept_candidate
+quest.objective_progress_candidate
+quest.objective_complete_candidate
+quest.ready_to_turn_in_candidate
+quest.completed_candidate
+quest.failed_candidate
+quest.abandoned_candidate
+quest.archived_candidate later
+
+11.3 Accepted reward event types
+
+reward.promise_candidate
+reward.ready_candidate
+reward.payment_candidate
+reward.denied_candidate
+reward.disputed_candidate
+
+11.4 Quest creation/offer behavior
+
+Accepted offer:
+
+create or update quest with status offered/rumored
+store giverActorId if resolved
+store objective text
+store promised reward if present
+mark quest_log and context dirty
+audit
+
+Accepted acceptance:
+
+create or update quest status active
+initialize objectives
+preserve promised reward as promised
+operation key quest.accept...
+
+11.5 Objective behavior
+
+Accepted objective progress:
+
+update objective progressCurrent/status
+never complete unrelated objectives
+
+Accepted objective complete:
+
+set objective status complete
+if all required objectives complete, quest may become ready_to_turn_in or completed depending validation
+
+Completion does not automatically pay reward.
+
+11.6 Reward promise behavior
+
+Accepted reward promise:
+
+set reward.status = promised
+store description/currency/items/xp if clear
+no inventory currency change
+no XP change
+
+11.7 Reward payment behavior
+
+Accepted reward payment:
+
+MVP has two possible safe designs.
+
+Preferred design:
+
+RewardReducer marks reward paid and emits/uses explicit Inventory currency contract.
+
+Alternative safer shell:
+
+QuestReducer marks reward ready/paid status only; separate accepted inventory currency result must add currency.
+
+The final code pass must choose one policy and test it.
+
+In either case:
+
+reward key must prevent duplicate payment
+promise does not pay
+objective completion does not pay
+command /quests display does not pay
+
+11.8 Quest/reward operation keys
+
+quest.offer.<questKey>.<giverKey>.<clauseHash>
+quest.accept.<questKey>.<giverKey>
+quest.objective.progress.<questKey>.<objectiveKey>.<clauseHash>
+quest.objective.complete.<questKey>.<objectiveKey>
+quest.complete.<questKey>.<sourceKey>
+quest.reward.promise.<questKey>.<rewardKey>
+quest.reward.pay.<questKey>.<payerKey>.<rewardKey>
+
+11.9 Quest/reward tests
+
+Old Bren promises 15 gold -> reward promised, currency unchanged
+Old Bren pays promised 15 gold -> reward paid and currency changes once only under chosen contract
+same payment output replay -> duplicate skipped
+quest offered but not accepted -> status offered, not active
+I accept quest to repair north wall -> active repair quest
+complete objective -> objective complete, reward not paid automatically
+
+⸻
+
+12. ActorReducerLite detailed plan
+
+12.1 Owned buckets
+
+ActorReducerLite owns:
+
+actors.records
+actors.sceneActors
+actor presence
+actor memories
+actor relationship notes
+actor aliases
+actor custody references only as references
+actor warnings
+
+12.2 Accepted event types
+
+actor.present_candidate
+actor.scene_only_candidate
+actor.absent_candidate
+actor.reference_only_candidate
+actor.memory_candidate
+actor.relationship_claim_candidate
+actor.status_candidate
+actor.death_candidate only if validated direct actor death
+
+12.3 Present actor behavior
+
+Accepted present actor:
+
+if named/important/known -> update actor record presence present and currentPlaceId
+if generic -> create sceneActor only unless promoted by rules
+mark social_memory/current_location/context dirty
+audit
+
+12.4 Scene-only actor behavior
+
+Generic actors usually become sceneActors:
+
+a guard
+a merchant
+a stranger
+a wolf if scene enemy but not persistent yet
+
+SceneActors may expire on scene change.
+
+They are not durable major actors unless promoted.
+
+12.5 Absent/reference-only behavior
+
+Accepted absent/reference-only:
+
+may record note or presence elsewhere/absent if actor known
+must not create present actor
+must not apply harm/action to actor
+
+Examples:
+
+goblin definitely not here -> absent/reference-only, no present goblin
+training dummy named after Mira -> reference-only Mira, no harm to Mira
+
+12.6 Memory behavior
+
+Accepted memory/witness event:
+
+only actors present or directly informed receive memory
+absent actors receive no scene memory
+private reports stay private/pending
+public reputation deferred
+
+12.7 Actor operation keys
+
+actor.present.<actorKey>.<placeKey>.<clauseHash>
+actor.scene.<actorKey>.<sceneId>.<clauseHash>
+actor.memory.<actorKey>.<memoryHash>
+actor.status.<actorKey>.<statusKey>.<clauseHash>
+actor.absent.<actorKey>.<clauseHash>
+
+12.8 Actor tests
+
+Veteran Guard present -> one actor/scene actor, no duplicate Guard
+High Priestess present -> one target
+Generic guard -> sceneActor, not permanent major actor by default
+goblin not here -> no present goblin
+training dummy named after Mira -> Mira not harmed/present
+Gate guard witnesses theft -> guard memory only
+Mira absent -> no Mira memory
+
+⸻
+
+13. PlaceReducerLite detailed plan
+
+13.1 Owned buckets
+
+PlaceReducerLite owns:
+
+places.currentLocation
+places.currentScene
+places.records
+places.travelIntent
+place warnings
+
+13.2 Accepted event types
+
+place.current_scene_confirm_candidate
+place.arrival_candidate
+place.travel_intent_candidate
+place.visible_reference
+place.nearby_reference
+place.route_reference
+
+13.3 Current scene confirmation behavior
+
+Accepted current scene confirmation:
+
+update currentScene summary/updatedTurn if needed
+confirm currentLocation if target matches current place or stronger name
+mark current_location and context dirty
+audit
+
+13.4 Arrival behavior
+
+Accepted arrival:
+
+set currentLocation to destination
+create/update PlaceRecord
+reset or update currentScene
+clear or mark travelIntent arrived if target matches
+expire sceneActors/sceneItems according to cleanup policy later
+mark current_location and context dirty
+
+13.5 Travel intent behavior
+
+Accepted travel intent from input:
+
+set places.travelIntent
+status intended or in_progress
+currentLocation unchanged
+
+13.6 Weak reference behavior
+
+Accepted weak reference may:
+
+store known/nearby place reference if useful
+not overwrite current location
+not clear current scene
+
+13.7 Route/interstitial behavior
+
+Route/interstitial place records may be scene/transit-only.
+
+They must not outrank named strong destination.
+
+13.8 Place operation keys
+
+place.scene.confirm.<placeKey>.<clauseHash>
+place.arrive.<placeKey>.<clauseHash>
+place.intent.<placeKey>.<inputHash>
+place.reference.<placeKey>.<clauseHash>
+
+13.9 Place tests
+
+market lane remains busy -> confirms market lane
+chapel visible from market lane -> no scene overwrite
+I head toward chapel -> travelIntent chapel, current location unchanged
+You enter chapel -> current location chapel
+After the road, you enter The Drunken Huntsman -> location Drunken Huntsman, not road
+
+⸻
+
+14. TimeReducerLite detailed plan
+
+14.1 Owned buckets
+
+TimeReducerLite owns:
+
+time.text
+time.turn if gameplay turn policy requires
+time.lastAdvance
+time.deadlines
+time warnings
+
+Player age is protected player identity and requires explicit age policy. TimeReducer cannot casually mutate player.age unless accepted age event and age policy allow it.
+
+14.2 Accepted event types
+
+time.advance_candidate
+time.age_candidate with age policy
+time.deadline_candidate
+time.deadline_complete_candidate
+time.deadline_missed_candidate
+
+14.3 Time advance behavior
+
+Accepted time advance:
+
+check operation key
+update time.text if structured enough
+set lastAdvance
+update deadlines if deadline logic active
+mark current_location, quest_log, context dirty
+audit
+
+14.4 Age behavior
+
+Age update is high-risk.
+
+Rules:
+
+requires literal long time passage
+requires player age known/numeric or age policy for species
+requires no quote/dream/nonliteral flags
+requires duplicate key
+if uncertain, pending/defer rather than mutate
+
+MVP may record long time passage without changing exact player.age if policy is incomplete.
+
+14.5 Nonliteral rejection fallback
+
+If a rejected nonliteral time event accidentally routes to TimeReducer, reducer must reject/no-op.
+
+14.6 Time operation keys
+
+time.advance.<amountKey>.<clauseHash>
+time.age.<amountKey>.<clauseHash>
+time.deadline.<deadlineKey>.<sourceKey>
+
+14.7 Time tests
+
+"Twenty years pass" said aloud -> reducer not called/no-op
+Dream twenty years pass -> no-op
+Twenty years pass in exile -> time advance accepted/pending; age only with policy
+same time output replay -> duplicate skipped
+I plan to rest -> no time advance
+You sleep through the night -> time advance if validated
+
+⸻
+
+15. ProgressionReducerLite shell plan
+
+15.1 Owned buckets
+
+ProgressionReducerLite owns:
+
+progression.level
+progression.currentXP
+progression.totalXP
+progression.xpToNext
+progression.stats
+progression.statXP
+progression.levelHistory
+progression.xpHistory
+progression warnings
+
+15.2 MVP activation level
+
+ProgressionReducerLite may be shell/limited in Core MVP v0.1.
+
+Allowed early behavior:
+
+accept explicit XP if feature flag/reducerCommitsEnabled allows
+record XP history with operation key
+calculate level only if formula support is locked
+otherwise mark pending/deferred and audit
+
+15.3 Accepted event types
+
+progression.xp_gain_candidate
+progression.level_up_candidate
+progression.stat_gain_candidate
+progression.training_progress_candidate
+
+15.4 XP behavior
+
+Accepted XP gain:
+
+requires explicit numeric XP
+requires source key
+requires operation key
+no vague experience wording
+no duplicate output
+
+15.5 Level/stat behavior
+
+Level/stat automation requires formula matrix and role/stat policy.
+
+If not active:
+
+return deferred or pending
+no stat mutation
+
+15.6 World scaling boundary
+
+ProgressionReducerLite does not scale world actors.
+
+ThreatProfileSystem/StatBenchmarkSystem later handles actor/world relative levels.
+
+Player level does not rubber-band all enemies.
+
+15.7 Progression operation keys
+
+xp.gain.<amount>.<sourceKey>.<clauseHash>
+level.up.<fromLevel>.<toLevel>.<sourceKey>
+stat.gain.<statKey>.<amount>.<sourceKey>
+
+15.8 Progression tests
+
+You gain 20 XP -> XP proposal may commit if active and key unique
+This was a learning experience -> no XP
+same XP output replay -> duplicate skipped
+Level 1000 player does not scale village guard or dragon
+formula automation disabled -> stat/level changes deferred honestly
+
+⸻
+
+16. Cross-reducer contracts for MVP
+
+The final code must choose exact cross-reducer policy before implementing reward/payment and quest/XP.
+
+16.1 Reward payment policy options
+
+Option A — Split result policy
+
+CanonValidator emits two accepted results:
+
+reward.payment_candidate -> QuestReducer updates reward paid
+currency.gain_candidate -> InventoryReducer adds currency
+
+Both share a related reward key and must not duplicate.
+
+Option B — Reward contract helper policy
+
+QuestReducer handles reward payment and calls a narrow InventoryCurrencyHelper.
+
+This is more complex and can blur ownership.
+
+16.2 Recommended MVP choice
+
+Use Option A where possible:
+
+one accepted result per owner bucket
+
+This preserves one-owner-per-truth-family.
+
+16.3 Quest XP policy
+
+Quest completion should not directly award XP unless separate ProgressionReducer result exists.
+
+16.4 Place actor cleanup policy
+
+PlaceReducer should not delete or promote actors.
+
+Scene actor expiration belongs to CleanupManagerLite or ActorReducer with explicit scene-change event.
+
+⸻
+
+17. Required core reducer tests
+
+BC14-001 — Inventory denied routed accidentally
+
+Given denied item validation accidentally marked accepted with unsafe flag.
+
+Expected:
+
+InventoryReducer rejects/no-op due unsafe flags
+
+BC14-002 — Inventory acquisition commits once
+
+Accepted potion handoff.
+
+Expected:
+
+one potion acquired
+operation key added
+inventory/context dirty
+
+BC14-003 — Scene item not owned
+
+Accepted visible ring.
+
+Expected:
+
+sceneItems updated
+items unchanged
+
+BC14-004 — Ability training candidate
+
+Accepted Ember Ward training.
+
+Expected:
+
+candidate/evidence added
+not stable
+
+BC14-005 — Ability output-only stable blocked
+
+Unsupported output-only learning routed accidentally.
+
+Expected:
+
+AbilityReducer rejects/no-op for stable creation
+
+BC14-006 — Body exhausted visible
+
+Accepted exhausted status.
+
+Expected:
+
+body condition/fatigue updated
+/status can display it
+
+BC14-007 — Death rumor no-op
+
+Unsafe death rumor routed accidentally.
+
+Expected:
+
+BodyReducer no-op/reject
+
+BC14-008 — Quest promise no currency
+
+Accepted reward promise.
+
+Expected:
+
+quest reward promised
+inventory currency unchanged
+
+BC14-009 — Reward payment split owner policy
+
+Accepted reward payment under chosen split policy.
+
+Expected:
+
+QuestReducer marks paid
+InventoryReducer currency event adds gold once
+
+BC14-010 — Actor absent no present
+
+Accepted absent/reference-only actor.
+
+Expected:
+
+no present scene actor
+
+BC14-011 — Place travel intent not arrival
+
+Input travel intent.
+
+Expected:
+
+travelIntent set
+currentLocation unchanged
+
+BC14-012 — Place arrival update
+
+Output strong arrival.
+
+Expected:
+
+currentLocation/currentScene update
+
+BC14-013 — Time nonliteral no-op
+
+Unsafe nonliteral time routed accidentally.
+
+Expected:
+
+TimeReducer rejects/no-op
+
+BC14-014 — Progression vague XP no-op
+
+Vague learning experience routed accidentally.
+
+Expected:
+
+ProgressionReducer rejects/no-op
+
+BC14-015 — Cross-bucket forbidden mutation
+
+AbilityReducer tries to award XP in test.
+
+Expected:
+
+ReleaseCheck/test fails
+
+BC14-016 — Dirty target generation
+
+Any committed reducer update.
+
+Expected:
+
+correct dirty targets created
+
+BC14-017 — Reducer audit compact
+
+Any committed reducer update.
+
+Expected:
+
+compact audit line
+no full raw text dump
+
+BC14-018 — Duplicate key skip
+
+Repeat same accepted event.
+
+Expected:
+
+second reducer result skipped_duplicate
+state unchanged on second pass
+
+BC14-019 — Reducer fail-soft
+
+Simulated reducer exception.
+
+Expected:
+
+failed_softly
+no unrelated bucket reset
+error audit
+
+BC14-020 — Deferred progression formula honest
+
+Stat gain proposal while formula automation inactive.
+
+Expected:
+
+deferred/pending
+no stat mutation
+
+⸻
+
+18. ReleaseCheck requirements for Build Chunk 14
+
+ReleaseCheck must eventually verify:
+
+InventoryReducer owns inventory only
+AbilityReducer owns abilities only
+BodyReducer owns body only
+QuestReducer owns quests/reward status only
+ActorReducer owns actors only
+PlaceReducer owns places only
+TimeReducer owns time only
+ProgressionReducer owns progression only
+repeat-sensitive reducers check OperationLedger
+reducers create dirty targets
+reducers audit commits/skips/failures
+reducers reject unsafe flags if accidentally routed
+reward payment ownership policy is explicit
+progression/stat formula automation is honest if inactive
+scene item vs owned item split exists
+candidate ability vs stable ability split exists
+promise vs payment split exists
+travel intent vs arrival split exists
+
+ReleaseCheck must fail if:
+
+InventoryReducer accepts denied/dream/quote/abstract item
+AbilityReducer creates stable ability from unsupported output-only claim
+BodyReducer sets death from rumor/quote/dream
+QuestReducer pays promised reward as currency without payment validation
+ActorReducer makes absent/reference-only actor present
+PlaceReducer turns weak mention into arrival
+TimeReducer ages from nonliteral quote/dream
+ProgressionReducer awards XP from vague experience wording
+Any reducer mutates non-owned bucket without explicit contract
+Any reducer parses raw story text
+Any repeat-sensitive reducer lacks duplicate key policy
+
+⸻
+
+19. Relationship to Final Build Control Map v1
+
+This chunk directly implements core commit behavior for:
+
+F003 output-only ability learning safety
+F004 exhausted/fatigued/status visibility
+F005 weak scene mention safety
+F006 inventory false-grant prevention
+F007 quest objective/reward separation
+F008 named arrival priority
+F009 nonliteral time skip safety
+F010 repeated ability use dedupe
+F013 actor presence/reference-only safety
+F015 death/body boundary safety
+F017 progression/world scaling boundary
+F023 promised/paid reward separation
+F024 command/manual mutation safety through reducer-only commit path
+
+⸻
+
+20. What Build Chunk 15 should do next
+
+Next build document:
+
+Build Chunk 15 — ContextBuilder, CardSyncLite, Migration, DirtyQueue, and Cleanup Integration Plan
+
+Build Chunk 15 must define:
+
+* read-only ContextBuilderLite
+* context packet selection and budget
+* protected CardSyncLite mirror behavior
+* generated CardSync disabled policy
+* card singleton/tombstone/duplicate handling
+* migration/quarantine conservative behavior
+* DirtyQueue processing boundaries
+* CleanupManagerLite caps and non-destructive cleanup
+* integration with dirty targets from reducers
+* tests for context/card/migration/cleanup safety
+
+⸻
+
+21. Final Build Chunk 14 doctrine
+
+Reducers are the only gameplay writers.
+
+But even reducers are not free to improvise.
+
+Final rule:
+
+Each reducer owns one truth family.
+Each reducer applies only accepted validation results.
+Each reducer checks duplicate keys for repeat-sensitive effects.
+Each reducer marks dirty targets instead of writing mirrors directly.
+Each reducer audits what it did.
+Each reducer rejects unsafe routed data instead of trusting upstream blindly.
+
+With core reducer behavior planned, the next safe step is context, cards, migration, dirty queue, and cleanup integration.

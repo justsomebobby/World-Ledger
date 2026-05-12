@@ -1,0 +1,1266 @@
+AIDRPG Build Chunk 6 — Runtime Hook Contract Implementation Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 6 — Runtime Hook Contract Implementation Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact runtime hook behavior, hook flow, valid return handling, command suppression, duplicate output protection, and fail-soft rules before runtime code is generated.
+Status: Practical build document.
+Follows: Build Chunk 5 — StateManager Plan.
+This document does not contain final script code.
+
+This chunk is useful because the runtime hooks are where AI Dungeon actually touches the script.
+
+If the hooks are unsafe, every later system becomes unsafe.
+
+If Input commits success, the player gets items or quest progress too early.
+
+If Context mutates state, reminders become hidden gameplay writers.
+
+If Output replays are not blocked, rewards, XP, items, time, cards, and damage duplicate.
+
+If command output is scanned as story, commands become corrupting narration.
+
+If fail-soft behavior is missing, a single error can crash the whole script or partially mutate state.
+
+Build Chunk 6 turns the runtime plan into exact implementation rules.
+
+⸻
+
+1. Runtime doctrine
+
+The runtime doctrine is:
+
+Input may intend.
+Context may remind.
+Output may propose.
+Commands may inspect.
+Runtime may protect.
+Runtime may not decide gameplay truth.
+
+Runtime owns the safety of the hook surfaces.
+
+Runtime does not own gameplay consequences.
+
+⸻
+
+2. Runtime responsibilities
+
+Runtime owns:
+
+* hook entry safety
+* hook metadata
+* current hook name
+* current turn number
+* hook depth / recursion guard
+* input hash tracking
+* context hash tracking
+* output hash tracking
+* last applied output hash
+* command suppression flags
+* command hash tracking
+* duplicate output replay detection
+* valid return shapes
+* fail-soft behavior
+* runtime warning/error records
+* hook trace records
+
+Runtime does not own:
+
+* item acquisition
+* reward payment
+* XP gain
+* ability creation
+* quest activation/completion
+* actor promotion
+* location arrival
+* Story Card canon
+* Context packet truth
+* parser validation decisions
+
+⸻
+
+3. Runtime placement in final script
+
+Runtime belongs in:
+
+Section 06 — Runtime Hook Contract
+
+Runtime depends on:
+
+Constants
+Utility Helpers
+StateManager
+AuditLogger
+OperationLedger read/write only for duplicate support later, if needed
+
+Runtime must not depend on:
+
+EventScannerLite directly for decisions
+ReducerRegistry directly for gameplay commits
+CardSync live writes
+ContextBuilder mutation
+Cleanup destructive behavior
+
+Hook entry points orchestrate modules later, but Runtime itself stays focused on hook safety.
+
+⸻
+
+4. Required runtime public functions
+
+The final script should provide these Runtime functions or equivalent section-scoped functions.
+
+Runtime.validateHookInput(hookName, text, rawState)
+Runtime.beginHook(root, hookName, text)
+Runtime.endHook(root, hookName, resultText, status)
+Runtime.failSoft(root, hookName, phase, error, originalText, isCommand)
+Runtime.makeReturn(text)
+Runtime.safeText(value)
+Runtime.hashText(text)
+Runtime.markInput(root, text)
+Runtime.markContext(root, text)
+Runtime.markOutput(root, text)
+Runtime.isDuplicateOutput(root, outputHash)
+Runtime.markOutputApplied(root, outputHash)
+Runtime.detectCommandOutputReplay(root, text)
+Runtime.setCommandSuppression(root, commandName, commandOutput)
+Runtime.clearCommandSuppression(root)
+Runtime.shouldSuppressEventScan(root, text)
+Runtime.recordWarning(root, message)
+Runtime.recordError(root, hookName, phase, message, safeTextReturned, partialCommitBlocked)
+Runtime.pushHookTrace(root, record)
+Runtime.capRuntime(root)
+Runtime.guardReentry(root, hookName)
+
+The exact names can change during coding, but these responsibilities must exist.
+
+⸻
+
+5. Valid hook surfaces
+
+The implementation must support three conceptual hook surfaces.
+
+Input hook
+Context hook
+Output hook
+
+Actual platform names may be different.
+
+Possible AI Dungeon-style wrappers may be:
+
+inputModifier(text)
+contextModifier(text)
+outputModifier(text)
+
+or equivalent.
+
+The internal contract remains the same even if the platform wrapper names differ.
+
+⸻
+
+6. Universal hook wrapper flow
+
+Every hook should follow the same safety shell.
+
+1. Capture original text.
+2. Convert text to safe string.
+3. Call StateManager.init.
+4. Call Runtime.beginHook.
+5. Run hook-specific logic inside try/catch.
+6. Prevent forbidden mutation based on hook role.
+7. Call Runtime.endHook.
+8. Return valid text shape.
+9. If error occurs, call Runtime.failSoft and return valid text shape.
+
+No hook may return undefined.
+
+No hook may leave runtime.hookDepth stuck above zero after success or fail-soft.
+
+⸻
+
+7. Valid return shape
+
+7.1 Preferred internal return
+
+All hook logic should internally normalize to:
+
+{ text: string }
+
+7.2 Platform adaptation
+
+If AI Dungeon requires a plain string or another shape, the platform-facing entry point may adapt at the final boundary.
+
+Internal logic must still use the safe return contract.
+
+7.3 Forbidden returns
+
+Runtime must avoid:
+
+undefined
+null
+false
+true
+number
+object without text
+uncaught thrown error
+
+7.4 Return text rule
+
+If the script does not need to alter text, return the original safe text.
+
+For story hooks, fail-soft should usually return original text.
+
+For command failures, fail-soft should return a safe command error message.
+
+⸻
+
+8. Runtime state fields used
+
+Runtime implementation uses the fields locked in Build Chunk 3.
+
+runtime.currentHook
+runtime.currentTurn
+runtime.hookDepth
+runtime.hookTrace
+runtime.lastInputHash
+runtime.lastContextHash
+runtime.lastOutputHash
+runtime.lastAppliedOutputHash
+runtime.lastCommandHash
+runtime.commandActive
+runtime.suppressEventScanForCommandOutput
+runtime.lastCommandTurn
+runtime.lastCommandName
+runtime.pendingInputIntentId
+runtime.outputReplayDetected
+runtime.runtimeWarnings
+runtime.runtimeErrors
+runtime.failSoftCount
+
+StateManager must ensure these fields exist before Runtime uses them.
+
+⸻
+
+9. Hook trace behavior
+
+Every hook should create a trace record.
+
+9.1 Start trace
+
+At hook start:
+
+turn
+hook
+textHash
+startedAt
+status = 'started'
+notes
+
+9.2 End trace
+
+At hook end:
+
+endedAt
+status = 'completed' | 'failed' | 'fail_soft'
+notes
+
+9.3 Trace cap
+
+Keep most recent 30 trace records.
+
+Do not let hookTrace grow forever.
+
+9.4 Trace safety
+
+Trace is diagnostic only.
+
+Trace does not create gameplay truth.
+
+⸻
+
+10. Hook depth and recursion guard
+
+10.1 Hook depth rule
+
+At beginHook:
+
+runtime.hookDepth += 1
+
+At endHook or failSoft:
+
+runtime.hookDepth = max(0, runtime.hookDepth - 1)
+
+10.2 Reentry rule
+
+If hookDepth is already greater than zero before entering a new hook:
+
+* record runtime warning
+* allow safe diagnostic continuation if necessary
+* block gameplay mutation
+* return safe text if recursion is unsafe
+
+10.3 Why this matters
+
+Nested hook behavior can happen through platform quirks, commands, cards, context generation, or failed tool-like behavior.
+
+The script must not recursively parse its own output.
+
+⸻
+
+11. Turn counting policy
+
+11.1 Gameplay turn increment
+
+A new gameplay turn begins on non-command Input hook.
+
+Recommended:
+
+Input hook receives non-command text -> runtime.currentTurn += 1
+
+11.2 Commands do not advance gameplay turn
+
+Commands should not advance gameplay time or turn consequences.
+
+They may record command metadata.
+
+11.3 Context and Output turn use
+
+Context and Output use the current turn created by Input.
+
+If Output arrives without prior Input, Runtime should still fail softly and use existing currentTurn.
+
+Do not invent gameplay consequences due to unusual hook order.
+
+⸻
+
+12. Input hook implementation plan
+
+12.1 Input hook responsibilities
+
+Input hook owns:
+
+* state initialization
+* runtime begin/end
+* command detection
+* command routing
+* command suppression
+* non-command input hash
+* pending intent shell only, if included
+
+Input hook must not own:
+
+* completed item pickup
+* combat victory
+* quest completion
+* reward payment
+* XP gain
+* stable ability creation
+* confirmed travel arrival
+* Story Card updates
+
+12.2 Input hook flow
+
+1. originalText = safeText(text)
+2. root = StateManager.init(state)
+3. Runtime.beginHook(root, 'input', originalText)
+4. If CommandRouter.isCommand(originalText):
+   a. commandOutput = CommandRouter.route(root, originalText)
+   b. Runtime.setCommandSuppression(root, commandName, commandOutput)
+   c. Runtime.endHook(root, 'input', commandOutput, 'completed')
+   d. return Runtime.makeReturn(commandOutput)
+5. Else:
+   a. Runtime.markInput(root, originalText)
+   b. increment currentTurn if appropriate
+   c. optionally create pending input intent shell only
+   d. StateManager.markGameplayStarted(root) if first gameplay input
+   e. Runtime.endHook(root, 'input', originalText, 'completed')
+   f. return Runtime.makeReturn(originalText)
+6. Catch errors through failSoft.
+
+12.3 Input intent shell
+
+Input may create a pending intent shell later, but in early v0.1 this can be inert.
+
+If it exists, it must not become success.
+
+Example:
+
+Player input:
+
+I take the crown.
+
+Input may record:
+
+pending intent: attempt_take_crown
+
+Input must not add Crown to inventory.
+
+12.4 Input command suppression
+
+When a command is handled, Runtime must set:
+
+commandActive = true
+suppressEventScanForCommandOutput = true
+lastCommandName = commandName
+lastCommandHash = hash(commandOutput)
+lastCommandTurn = currentTurn
+
+This prevents command output from becoming story.
+
+⸻
+
+13. Context hook implementation plan
+
+13.1 Context hook responsibilities
+
+Context hook owns:
+
+* state initialization
+* runtime begin/end
+* context hash
+* read-only ContextBuilderLite call
+* context audit
+* valid context return
+
+Context hook must not own:
+
+* gameplay mutation
+* proposal creation
+* reducer commits
+* Story Card updates
+* cleanup mutation
+* command routing
+
+13.2 Context hook flow
+
+1. originalText = safeText(text)
+2. root = StateManager.init(state)
+3. Runtime.beginHook(root, 'context', originalText)
+4. Runtime.markContext(root, originalText)
+5. packets = ContextBuilderLite.buildPackets(root) if active, read-only
+6. contextText = ContextBuilderLite.serialize(packets, root) or originalText/minimal safe context
+7. ContextBuilderLite.audit(root, packets, skipped)
+8. Runtime.endHook(root, 'context', contextText, 'completed')
+9. return Runtime.makeReturn(contextText)
+10. Catch errors through failSoft.
+
+13.3 Context no-write guard
+
+Runtime cannot perfectly prevent every code path from mutating state, but the design must enforce:
+
+* ContextBuilderLite does not call reducers
+* ContextBuilderLite does not call CardSync writes
+* ContextBuilderLite does not import card text
+* ContextBuilderLite only writes context audit metadata if needed
+
+ReleaseCheck must fail if ContextBuilderLite is capable of gameplay mutation.
+
+13.4 Early v0.1 context behavior
+
+If full context packets are not active yet, Context hook may return original text or minimal safe context.
+
+It must honestly report through /contextaudit:
+
+Context packet system shell present; gameplay mutation disabled.
+
+⸻
+
+14. Output hook implementation plan
+
+14.1 Output hook responsibilities
+
+Output hook owns:
+
+* state initialization
+* runtime begin/end
+* output hash
+* command output suppression check
+* duplicate output replay check
+* parser/proposal/validator/reducer orchestration later
+* dirty targets later
+* card sync dry-run/shell later
+* cleanup safe shell later
+
+Output hook must not directly own:
+
+* parser direct mutation
+* command output consequences
+* Context text consequences
+* Story Card text consequences
+* generated card creation in MVP
+
+14.2 Output hook flow
+
+1. originalText = safeText(text)
+2. root = StateManager.init(state)
+3. Runtime.beginHook(root, 'output', originalText)
+4. outputHash = Runtime.markOutput(root, originalText)
+5. If Runtime.shouldSuppressEventScan(root, originalText):
+   a. audit suppression
+   b. Runtime.clearCommandSuppression(root) if safe
+   c. Runtime.endHook(root, 'output', originalText, 'completed')
+   d. return Runtime.makeReturn(originalText)
+6. If Runtime.isDuplicateOutput(root, outputHash):
+   a. runtime.outputReplayDetected = true
+   b. audit duplicate output skip
+   c. Runtime.endHook(root, 'output', originalText, 'completed')
+   d. return Runtime.makeReturn(originalText)
+7. If parser pipeline active:
+   a. hits = EventScannerLite.scanOutput(originalText, root)
+   b. proposals = ProposalBuilder.fromHits(hits, root)
+   c. validationResults = CanonValidator.validateAll(proposals, root)
+   d. ReducerRegistry.applyAccepted(validationResults, root)
+8. If parser pipeline inactive:
+   a. audit shell state if needed
+9. Runtime.markOutputApplied(root, outputHash) only after safe processing decision.
+10. CardSyncLite dry-run/safe shell if enabled.
+11. CleanupManagerLite lightweight safe caps if enabled.
+12. Runtime.endHook(root, 'output', originalText, 'completed')
+13. return Runtime.makeReturn(originalText)
+14. Catch errors through failSoft.
+
+14.3 Early v0.1 output behavior
+
+Early v0.1 may not have full parsing active.
+
+In that case Output hook should:
+
+* track output hash
+* suppress command output
+* block duplicate output reprocessing
+* not create gameplay consequences
+* honestly report parser shell status in /debuglast and /releasecheck
+
+This is useful because it proves runtime safety before automation.
+
+⸻
+
+15. Command output suppression implementation
+
+15.1 Suppression markers
+
+Command output should be identifiable by:
+
+* runtime.suppressEventScanForCommandOutput = true
+* runtime.lastCommandHash
+* command prefix [AIDRPG]
+* last command name
+* last command turn
+
+15.2 Suppression check
+
+Output hook should suppress scanning if:
+
+runtime.suppressEventScanForCommandOutput = true
+
+and any of the following are true:
+
+hash(outputText) === runtime.lastCommandHash
+outputText begins with [AIDRPG]
+runtime.commandActive is true and output appears immediately after command
+
+15.3 Suppression result
+
+If suppressed:
+
+* do not scan as story
+* do not create proposals
+* do not run reducers
+* do not update gameplay state
+* record suppression audit
+* clear command suppression if safe
+* return original output
+
+15.4 Suppression must protect command content
+
+Examples:
+
+/inventory output showing:
+
+Rusty Dagger
+
+must not add another dagger.
+
+/quests output showing:
+
+Reward: 15 gold promised
+
+must not pay gold.
+
+/abilities output showing:
+
+Shadow Step — candidate
+
+must not stabilize Shadow Step.
+
+⸻
+
+16. Duplicate output replay implementation
+
+16.1 Hash-level replay
+
+Output hook must compare:
+
+outputHash
+runtime.lastAppliedOutputHash
+
+If equal:
+
+* skip consequence processing
+* audit replay skip
+* return safe text
+
+16.2 lastOutputHash versus lastAppliedOutputHash
+
+lastOutputHash records the most recent output observed.
+
+lastAppliedOutputHash records the most recent output that was allowed through consequence processing.
+
+These are different for safety.
+
+16.3 When to mark output applied
+
+Mark output as applied only after:
+
+* command suppression check passes or skips appropriately
+* duplicate check passes
+* parser/proposal/validator/reducer stage completes safely or intentionally shell-skips
+
+Do not mark output applied before a crash-prone step unless fail-soft policy accounts for it.
+
+16.4 OperationLedger remains second layer
+
+Hash replay only catches exact repeats.
+
+OperationLedger later catches semantic duplicates.
+
+Example:
+
+Old Bren pays you 15 gold.
+Old Bren hands you the promised fifteen gold.
+
+These may have different hashes, but same reward key.
+
+⸻
+
+17. Fail-soft implementation
+
+17.1 Fail-soft purpose
+
+Fail-soft prevents one bug from crashing the script or corrupting state.
+
+17.2 Fail-soft flow
+
+1. Catch error.
+2. Convert error to safe message.
+3. Record runtime error.
+4. Increment failSoftCount.
+5. Mark hook trace fail_soft.
+6. Reset hookDepth safely.
+7. Preserve original text for story hooks.
+8. Return command failure text for command hooks.
+9. Do not continue optional mutation after error.
+
+17.3 Story hook fail-soft return
+
+For Input/Context/Output story text:
+
+return original text
+
+or safe context fallback for Context if required.
+
+17.4 Command fail-soft return
+
+For commands:
+
+[AIDRPG] Command Error
+Status: Failed Safely
+The command failed safely. Gameplay state was not intentionally changed.
+Run /debuglast or /stateaudit for details.
+
+17.5 Fail-soft must not
+
+* erase state
+* reset player
+* clear inventory
+* enable generated cards
+* retry Story Card writes endlessly
+* continue reducer commits after critical error
+* return undefined
+
+⸻
+
+18. Partial commit protection boundary
+
+Runtime itself should not perform gameplay commits.
+
+But it must define when processing stops after an error.
+
+18.1 Early v0.1
+
+Since reducers may be inactive or shell-only, partial gameplay commits should not happen yet.
+
+18.2 Later reducer era
+
+Once reducers commit proposals, the safe unit is:
+
+validated proposal -> owner reducer apply -> operation key -> dirty target -> audit
+
+If an error happens mid-processing:
+
+* Runtime fail-soft stops further optional processing
+* AuditLogger records partial commit risk
+* ReleaseCheck may warn/fail if partial commit protection is incomplete
+
+18.3 Runtime must not pretend rollback exists
+
+If rollback is not implemented, do not claim rollback.
+
+Say:
+
+Partial commit protection is limited to proposal-level commit ordering and fail-soft interruption.
+
+⸻
+
+19. Runtime warnings and errors
+
+19.1 Runtime warning examples
+
+Runtime warning: Context hook received non-string text and converted it safely.
+Runtime warning: Duplicate output replay detected; consequence scanning skipped.
+Runtime warning: Command output suppression triggered.
+Runtime warning: Hook reentry detected; gameplay mutation blocked.
+
+19.2 Runtime error examples
+
+Runtime error: output hook failed during EventScannerLite.scanOutput.
+Runtime error: command route failed while rendering /inventory.
+Runtime error: StateManager.init failed; returned safe text.
+
+19.3 Caps
+
+Use Build Chunk 3 caps:
+
+runtimeWarnings max 25
+runtimeErrors max 20
+hookTrace max 30
+
+⸻
+
+20. Runtime and AuditLogger relationship
+
+Runtime may write to:
+
+runtime.runtimeWarnings
+runtime.runtimeErrors
+runtime.hookTrace
+audits.runtimeWarnings
+audits.debugMessages
+
+Runtime should not duplicate every message into every bucket.
+
+Recommended:
+
+* runtime-specific warnings/errors in runtime
+* user-visible summaries in audits
+* /debuglast reads both
+
+⸻
+
+21. Runtime and CommandRouter relationship
+
+Input hook uses CommandRouter for slash commands.
+
+CommandRouter returns command output text.
+
+Runtime then marks suppression.
+
+Recommended order:
+
+CommandRouter.route -> commandOutput
+Runtime.setCommandSuppression(commandName, commandOutput)
+return commandOutput
+
+Do not scan command output as player intent.
+
+Do not route commands from Output hook.
+
+⸻
+
+22. Runtime and StateManager relationship
+
+Every hook starts with:
+
+root = StateManager.init(state)
+
+If StateManager repairs state, Runtime proceeds.
+
+If StateManager fails, Runtime fail-soft returns safe text.
+
+Runtime assumes StateManager has ensured required runtime fields exist.
+
+⸻
+
+23. Runtime and ReleaseCheck relationship
+
+ReleaseCheck must verify:
+
+* runtime bucket exists
+* hook depth field exists
+* duplicate hash fields exist
+* command suppression fields exist
+* fail-soft count exists
+* hook trace exists and capped
+* runtime error arrays capped
+* command output suppression rule active
+* duplicate output protection active
+* Context read-only guard declared
+
+ReleaseCheck must fail if:
+
+* command output can be scanned as story
+* duplicate output can apply consequences twice
+* hooks can return undefined
+* generated cards can activate during runtime in MVP
+
+⸻
+
+24. Runtime and parser shells
+
+Runtime may call EventScannerLite only from Output hook and only after:
+
+* command suppression check
+* duplicate output hash check
+* feature/parser flag check
+
+Runtime must not call EventScannerLite for:
+
+* command output
+* context packets
+* Story Card text
+* debug/audit/help text
+
+In early v0.1, EventScannerLite may be inactive.
+
+Runtime must be honest about that.
+
+⸻
+
+25. Runtime and ContextBuilderLite
+
+Context hook may call ContextBuilderLite.
+
+Runtime must enforce the design expectation:
+
+ContextBuilderLite is read-only.
+
+Early implementation may not fully enforce with snapshots, but ReleaseCheck and code boundaries must identify it.
+
+If a future test detects Context mutated gameplay state, releasecheck fails.
+
+⸻
+
+26. Runtime and CardSyncLite
+
+Runtime may orchestrate CardSyncLite from Output hook only, and only in safe/dry-run mode for early v0.1.
+
+Runtime must not run CardSyncLite from Context hook.
+
+Runtime must not let CardSyncLite parse cards into gameplay state.
+
+Generated cards remain disabled.
+
+⸻
+
+27. Runtime and CleanupManagerLite
+
+Runtime may call CleanupManagerLite after safe Output processing.
+
+Early v0.1 cleanup should be limited to:
+
+* cap audits
+* cap runtime arrays
+* cap dirty queue
+
+Runtime must not call destructive cleanup that can remove important truth.
+
+If cleanup fails, fail-soft should not crash story output.
+
+⸻
+
+28. Hook-specific mutation permissions
+
+28.1 Input hook may mutate
+
+* runtime metadata
+* command suppression metadata
+* startup gameplayStarted/lock flags
+* audit warnings
+* pending input intent shell if implemented
+
+Input hook may not mutate gameplay outcomes.
+
+28.2 Context hook may mutate
+
+* runtime metadata
+* context audit metadata
+* context hash
+
+Context hook may not mutate gameplay outcomes.
+
+28.3 Output hook may mutate
+
+Early v0.1:
+
+* runtime metadata
+* output hash
+* duplicate replay audit
+* command suppression clearing
+* audit shell entries
+* card/cleanup dry-run metadata if safe
+
+Later:
+
+* validated reducer commits through owner reducers only
+
+Output hook may not directly mutate gameplay outside validated reducer path.
+
+⸻
+
+29. Runtime test plan
+
+BC6-001 — Input hook returns valid shape
+
+Input:
+
+I look around.
+
+Expected:
+
+* StateManager initializes state
+* Runtime begins/ends input hook
+* valid return shape
+* non-command input does not create item/XP/quest
+
+Fail if:
+
+* undefined return
+* gameplay consequence committed from input alone
+
+⸻
+
+BC6-002 — Command handled in Input hook
+
+Input:
+
+/help
+
+Expected:
+
+* CommandRouter routes command
+* command output begins with [AIDRPG]
+* suppression flag set
+* gameplay turn does not advance as story consequence
+* valid return shape
+
+Fail if:
+
+* command output not suppressed
+* command mutates gameplay
+
+⸻
+
+BC6-003 — Command output not scanned in Output hook
+
+Given command output from /inventory showing Rusty Dagger.
+
+Expected:
+
+* Output hook suppresses event scan
+* no duplicate Rusty Dagger
+* suppression audit recorded
+
+Fail if:
+
+* command output creates item
+
+⸻
+
+BC6-004 — Context hook read-only
+
+Run Context hook.
+
+Expected:
+
+* context hash/audit may update
+* no inventory/body/quest/actor/place changes
+* valid return shape
+
+Fail if:
+
+* Context mutates gameplay state
+
+⸻
+
+BC6-005 — Output duplicate hash skip
+
+Output:
+
+You pick up the rusty dagger.
+
+Run Output hook twice with same text.
+
+Expected:
+
+* second pass detects duplicate output
+* consequence processing skipped
+* one or zero dagger depending parser activation, never duplicate
+
+Fail if:
+
+* duplicate consequence applies
+
+⸻
+
+BC6-006 — Output shell does not falsely automate
+
+Early v0.1 with parser disabled.
+
+Output:
+
+You gain 20 XP.
+
+Expected:
+
+* no XP gain unless parser/reducer build explicitly active
+* debug/releasecheck says parser shell inactive
+
+Fail if:
+
+* shell unexpectedly awards XP
+
+⸻
+
+BC6-007 — Fail-soft on command renderer error
+
+Simulate command renderer error for /inventory.
+
+Expected:
+
+* safe command error output
+* runtime error logged
+* no inventory erased
+* valid return shape
+
+Fail if:
+
+* crash or state reset
+
+⸻
+
+BC6-008 — Fail-soft on output parser error
+
+Simulate EventScannerLite error.
+
+Expected:
+
+* original output returned
+* runtime error logged
+* no partial gameplay mutation after error
+
+Fail if:
+
+* undefined return or partial unsafe mutation
+
+⸻
+
+BC6-009 — Hook depth resets after error
+
+Simulate hook error.
+
+Expected:
+
+* hookDepth returns to 0
+* hook trace records fail_soft
+
+Fail if:
+
+* hookDepth remains stuck > 0
+
+⸻
+
+BC6-010 — Runtime warning caps
+
+Add more than 25 runtime warnings.
+
+Expected:
+
+* warnings capped
+* recent warnings preserved
+
+Fail if:
+
+* unbounded growth
+
+⸻
+
+BC6-011 — Runtime error caps
+
+Add more than 20 runtime errors.
+
+Expected:
+
+* errors capped
+* recent critical errors preserved
+
+Fail if:
+
+* unbounded growth
+
+⸻
+
+BC6-012 — Command unknown safely returns
+
+Input:
+
+/banana
+
+Expected:
+
+* unknown command output
+* suppression flag set
+* no gameplay mutation
+
+Fail if:
+
+* crash or parser treats /banana as story
+
+⸻
+
+BC6-013 — Context text not scanned by output parser
+
+If context output includes:
+
+The Iron Sword is in Mara's custody.
+
+Expected:
+
+* not scanned as item transfer or inventory event
+* no custody mutation from context text itself
+
+Fail if:
+
+* context reminder changes state
+
+⸻
+
+BC6-014 — Story Card text not routed through Runtime as canon
+
+If card audit/card text includes:
+
+Player owns Crown of Dawn.
+
+Expected:
+
+* Runtime does not scan it as output story
+* no Crown added
+
+Fail if:
+
+* card text becomes canon
+
+⸻
+
+BC6-015 — ReleaseCheck catches missing runtime fields
+
+Remove runtime.lastAppliedOutputHash in test state.
+
+Expected:
+
+* StateManager repairs it or ReleaseCheck warns/fails
+* no crash
+
+Fail if:
+
+* missing field ignored and duplicate output protection impossible
+
+⸻
+
+30. Runtime acceptance checklist
+
+Runtime Hook Contract Plan is complete when implementation will clearly support:
+
+* Input hook flow
+* Context hook flow
+* Output hook flow
+* valid return shapes
+* StateManager-first hook order
+* command detection and routing
+* command output suppression
+* output hash tracking
+* duplicate output replay skip
+* hook trace
+* hook depth guard
+* fail-soft behavior
+* runtime warnings/errors with caps
+* context read-only boundary
+* parser shell honesty
+* generated card suppression
+* ReleaseCheck runtime checks
+* tests BC6-001 through BC6-015
+
+⸻
+
+31. Relationship to previous build chunks
+
+Build Chunk 6 depends on:
+
+* Build Chunk 1 for allowed/forbidden v0.1 scope
+* Build Chunk 2 for runtime section placement and call graph
+* Build Chunk 3 for runtime state fields
+* Build Chunk 4 for command output and suppression format
+* Build Chunk 5 for StateManager-first behavior
+* Gap Chunk B for full runtime doctrine
+* Gap Chunk E for command honesty
+* Gap Chunk F for fail-soft/cap/performance behavior
+
+⸻
+
+32. What Build Chunk 7 should do next
+
+Next build document:
+
+Build Chunk 7 — AuditLogger and OperationLedger Implementation Plan
+
+Build Chunk 7 should plan:
+
+* audit append functions
+* audit caps
+* last-turn summary format
+* runtime warning/error display
+* OperationLedger key functions
+* permanent/recent/reward/card/source key handling
+* duplicate skip audit
+* first dedupe tests
+
+After Build Chunk 7, the project will have the foundation needed to begin writing the first code skeleton soon.
+
+⸻
+
+33. Final Build Chunk 6 doctrine
+
+The runtime hooks are the script’s front door.
+
+They must be boring, strict, and safe.
+
+Final rule:
+
+StateManager first.
+Commands suppressed.
+Context read-only.
+Output deduped.
+Errors fail softly.
+Hooks return valid text.
+Runtime protects the pipeline but does not decide canon.
+
+With Runtime planned, the next safe step is to plan AuditLogger and OperationLedger.

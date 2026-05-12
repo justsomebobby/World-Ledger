@@ -1,0 +1,1342 @@
+AIDRPG Build Chunk 12 — Resolver and Owner-Specific Sanitizer Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 12 — Resolver and Owner-Specific Sanitizer Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact resolver, target-binding, name-cleanup, head-noun classification, compound suppression, card trigger hygiene, and owner-specific sanitizer rules before ReducerRegistry and owner reducers are planned.
+Status: Practical build document.
+Follows: Final Build Control Map v1, Build Chunk 10, and Build Chunk 11.
+This document does not contain final script code.
+
+This chunk exists because previous versions repeatedly used broad cleanup patches that fixed one system and damaged another.
+
+The final build must not use one aggressive shared cleaner for every kind of target.
+
+Ability names, item names, place names, actor names, quest objectives, card titles, and card triggers have different rules.
+
+The correct solution is:
+
+shared cleanup stays conservative
+owner-specific sanitizers do the aggressive work
+resolvers bind cleaned names to canonical targets
+audits explain what was changed or rejected
+validators decide canon after resolver output
+
+⸻
+
+1. Resolver doctrine
+
+The doctrine is:
+
+Clean locally.
+Resolve conservatively.
+Never let a sanitizer create canon.
+Never let one family's cleanup damage another family.
+Prefer explicit owner-specific rules over broad text surgery.
+
+Resolvers and sanitizers prepare target identity.
+
+They do not commit gameplay state.
+
+They do not decide canon.
+
+They do not bypass CanonValidator.
+
+⸻
+
+2. Why this chunk matters
+
+Old versions already proved the danger.
+
+A fix for ability names stripped phrases like:
+
+Ember Ward to protect allies
+Frost Step by moving across slick stones
+Stoneguard until my stance holds under impact
+
+That cleanup was useful for abilities.
+
+But if the same aggressive cleanup lives in a shared helper, it risks damaging:
+
+I travel to the smithy
+I inspect the old wooden door
+I use the iron key on the cellar door
+After the road, you enter The Drunken Huntsman
+Mara refuses the crown but hands you the potion
+
+So the final build must have separate sanitizer ownership.
+
+⸻
+
+3. Placement in final script
+
+Resolver and sanitizer logic belongs after utilities and before/facing ProposalBuilder and CanonValidator.
+
+Recommended section placement:
+
+Section 12.5 — Resolver and Owner-Specific Sanitizers
+
+or within the planned parser/proposal area as:
+
+ResolverAndSanitizer
+
+It is used by:
+
+EventScannerLite
+ProposalBuilder
+CanonValidator read checks
+Command renderers for display helpers only
+CardSyncLite for card title/trigger hygiene
+ReleaseCheck for resolver gate tests
+
+It must not call:
+
+InventoryReducer
+AbilityReducer
+QuestReducer
+BodyReducer
+PlaceReducer
+TimeReducer
+ActorReducer
+CardSync live writes
+ContextBuilder mutation
+
+⸻
+
+4. Resolver responsibilities
+
+Resolver layer owns:
+
+* conservative shared text normalization
+* owner-specific name sanitization
+* canonical key generation
+* display name generation
+* target family identification
+* compound actor suppression
+* route/interstitial place handling
+* head-noun classification
+* card title and trigger hygiene
+* confidence scoring for target binding
+* resolver notes for audits
+* ambiguity marking
+* known-target matching when state contains existing records
+
+Resolver layer does not own:
+
+* canon approval
+* gameplay mutation
+* item ownership
+* ability stability
+* reward payment
+* quest activation
+* actor persistence
+* place movement
+* time advancement
+* Story Card writes
+
+⸻
+
+5. Required resolver public functions
+
+The final script should provide these functions or equivalents.
+
+Resolver.normalizeShared(text)
+Resolver.makeCanonicalKey(family, displayName)
+Resolver.makeDisplayName(cleanedText)
+Resolver.resolveTarget(family, rawText, context, root)
+Resolver.resolveItem(rawText, context, root)
+Resolver.resolveAbility(rawText, context, root)
+Resolver.resolveActor(rawText, context, root)
+Resolver.resolvePlace(rawText, context, root)
+Resolver.resolveQuest(rawText, context, root)
+Resolver.resolveReward(rawText, context, root)
+Resolver.resolveCard(rawText, context, root)
+Resolver.classifyHeadNoun(rawText, family)
+Resolver.detectAmbiguity(rawText, family, context)
+Resolver.scoreTarget(rawText, cleanedText, family, context)
+Resolver.buildTargetBinding(family, rawText, context, root)
+Resolver.auditResolution(root, result)
+
+Names may change in code, but these responsibilities must exist.
+
+⸻
+
+6. Required sanitizer public functions
+
+The final script should provide owner-specific sanitizer functions or equivalents.
+
+SharedHintCleaner.clean(text)
+AbilityNameSanitizer.clean(rawText, context)
+ItemNameSanitizer.clean(rawText, context)
+PlaceNameSanitizer.clean(rawText, context)
+ActorNameSanitizer.clean(rawText, context)
+QuestObjectiveSanitizer.clean(rawText, context)
+RewardNameSanitizer.clean(rawText, context)
+CardNameSanitizer.cleanTitle(rawText, context)
+CardTriggerSanitizer.cleanTriggers(rawTriggers, context)
+
+The exact function names can differ, but the ownership separation must exist.
+
+⸻
+
+7. SharedHintCleaner rules
+
+SharedHintCleaner must stay conservative.
+
+Allowed shared cleanup:
+
+safe string conversion
+trim whitespace
+collapse repeated whitespace
+normalize curly quotes for matching
+remove obvious leading/trailing punctuation
+strip control characters
+limit length
+
+Forbidden shared cleanup:
+
+strip after to/by/from/for/until/across globally
+remove prepositional phrases globally
+remove actor titles globally
+remove route words globally
+remove item custody phrases globally
+remove card trigger phrases globally
+assume ability syntax globally
+
+7.1 Reason
+
+A phrase like:
+
+Frost Step by moving across slick stones
+
+should become an ability name Frost Step only in AbilityNameSanitizer.
+
+But:
+
+I travel across the bridge
+
+must not become I travel because a shared cleaner stripped across the bridge.
+
+⸻
+
+8. Canonical key rules
+
+Canonical keys must be stable and family-scoped.
+
+Recommended format:
+
+<family>:<normalized_name>
+
+Examples:
+
+ability:ember_ward
+item:red_healing_potion
+actor:veteran_guard
+place:the_drunken_huntsman
+quest:repair_north_wall
+card:protected_player_sheet
+
+8.1 Key normalization
+
+Normalize by:
+
+lowercase
+trim
+collapse whitespace to underscores
+remove unsafe punctuation
+preserve meaningful alphanumeric words
+limit length
+hash only overflow/detail when needed
+
+8.2 Key safety
+
+Keys must not contain:
+
+full raw output paragraphs
+quotes/dream text
+entire command output
+unstable timestamps only
+internal object dumps
+
+⸻
+
+9. TargetBinding output standard
+
+Resolver output must support the TargetBinding schema from Build Chunk 10.
+
+TargetBinding {
+  targetFamily,
+  rawTargetText,
+  cleanedTargetText,
+  canonicalKey,
+  displayName,
+  targetId,
+  targetStatus,
+  targetConfidence,
+  sanitizerUsed,
+  resolverNotes
+}
+
+If target cannot be safely resolved, use:
+
+targetStatus = 'ambiguous' | 'generic' | 'reference_only' | 'unknown'
+
+Do not invent durable identity when target is unsafe.
+
+⸻
+
+10. AbilityNameSanitizer rules
+
+Ability names need the most aggressive phrase cleanup, but only inside ability context.
+
+10.1 Ability context examples
+
+Ability context exists when local clause includes:
+
+train/practice/drill/refine/work on/meditate on/spar with
+use/cast/channel/activate/manifest
+spell/skill/technique/power/ability/talent/passive
+learn/unlock/master/stabilize
+
+10.2 Ability cleanup may strip purpose/training suffixes
+
+Strip suffixes after the ability name when they are clearly purpose or method phrases:
+
+to protect allies
+from heat
+by moving across slick stones
+until my stance holds
+under impact
+against shield-cracking blows
+for defense
+with careful crescent cuts
+through repeated practice
+
+10.3 Ability cleanup must preserve real ability names
+
+Do not destroy names that naturally include common words.
+
+Examples:
+
+Shield Against Dawn
+Step Across Stars
+Song for the Dead
+Blade of the North
+Ward from Below
+
+If unsure, lower confidence and keep more text rather than over-strip.
+
+10.4 Ability name examples
+
+I train Ember Ward to protect allies from heat -> Ember Ward
+I practice Frost Step by moving across slick stones -> Frost Step
+I drill Stoneguard until my stance holds under impact -> Stoneguard
+I train Moonblade by practicing careful crescent cuts -> Moonblade
+I refine Crimson Lotus Fang through repeated strikes -> Crimson Lotus Fang
+
+10.5 Non-ability input must not create ability names
+
+I travel to the smithy -> no smithy ability
+I inspect the old wooden door -> no door ability
+I use the iron key on the cellar door -> no key/door ability
+I ask Mara about Moonblade -> possible ability mention/hint only, not stable/training unless training context exists
+
+⸻
+
+11. ItemNameSanitizer rules
+
+Item names must preserve concrete object identity while removing action/custody/failure fragments.
+
+11.1 Item cleanup may strip
+
+leading articles: a, an, the
+quantity text when separately stored
+trailing failure clauses
+custody/action fragments
+source actor phrases when separately stored
+location phrases when separately stored
+
+Examples:
+
+the rusted iron key, but the goblin snatches it away -> rusted iron key
+red healing potion from Mira -> red healing potion
+three silver arrows on the table -> silver arrows, quantity 3
+jeweled crown that Mira refuses to give you -> jeweled crown
+
+11.2 Item cleanup must not strip meaningful item modifiers
+
+Preserve:
+
+rusted
+iron
+black gate
+red healing
+jeweled
+silver
+old wooden
+cellar
+masterwork
+cracked
+
+11.3 Abstract item detection
+
+Flag abstract/metaphorical item phrases:
+
+idea of a brass key
+memory of a sword
+title of Crown of Dawn
+concept of a lockpick
+promise of gold
+symbol of a blade
+
+These may produce references but not acquired items.
+
+11.4 Item ownership is not resolver’s job
+
+ItemNameSanitizer can clean rusted iron key.
+
+It cannot decide the player owns it.
+
+CanonValidator and InventoryReducer decide acquisition.
+
+⸻
+
+12. PlaceNameSanitizer rules
+
+Place names must distinguish current location, named destination, route/interstitial, visible/nearby references, and generic places.
+
+12.1 Strong named places
+
+Preserve named place titles:
+
+The Drunken Huntsman
+The Silver Hart
+Ash Shrine
+North Wall
+Old Mill
+Market Lane
+
+12.2 Route/interstitial words
+
+Route/interstitial words should not outrank strong named arrivals.
+
+Examples:
+
+road
+path
+route
+street
+hallway
+corridor
+trail
+bridge
+lane as route segment
+
+In:
+
+After the road, you enter The Drunken Huntsman.
+
+resolve target place as:
+
+The Drunken Huntsman
+
+not:
+
+road
+
+12.3 Weak reference markers
+
+Flag weak references:
+
+visible from
+nearby
+down the street
+beyond
+in the distance
+road to
+path toward
+consider going
+might head to
+
+These should not resolve as current-scene arrival.
+
+12.4 Current scene confirmation markers
+
+Recognize current scene confirmation:
+
+remains
+still in
+around you
+you stand in
+the market lane remains busy
+the square buzzes around you
+
+12.5 Generic place caution
+
+Generic rooms/doors/roads should not become durable major places by default.
+
+Examples:
+
+a room
+the street
+a road
+a door
+the hallway
+
+Mark as generic/scene-only unless named or important.
+
+⸻
+
+13. ActorNameSanitizer rules
+
+Actor names must preserve meaningful titles and compound roles while suppressing duplicate generic heads.
+
+13.1 Actor title preservation
+
+Preserve titles and role modifiers:
+
+Veteran Guard
+High Priestess
+Orc Warrior
+City Captain
+Old Bren
+Captain Mora
+Lord Veyr
+Blacksmith Tomas
+
+13.2 Compound-shorter suppression
+
+If one window contains:
+
+Veteran Guard
+
+then do not also produce:
+
+Guard
+
+for the same span.
+
+Same for:
+
+High Priestess -> not Priestess separately
+Orc Warrior -> not Warrior separately
+City Captain -> not Captain separately if same span
+
+13.3 Generic actor heads
+
+Recognize common actor heads but mark generic actors appropriately:
+
+guard
+blacksmith
+farmer
+merchant
+skeleton
+zombie
+troll
+ogre
+captain
+general
+acolyte
+priestess
+high priestess
+wolf
+goblin
+orc warrior
+golem
+
+Generic actors become scene-only candidates unless named, repeated, important, or validated.
+
+13.4 Reference-only actor markers
+
+Flag reference-only or absent actors:
+
+not here
+definitely not here
+elsewhere
+absent
+mentioned
+named after
+training dummy named after Mira
+rumor of
+portrait of
+statue of
+
+Reference-only actors must not become present actors.
+
+⸻
+
+14. QuestObjectiveSanitizer rules
+
+Quest objectives need broad action support without over-confirming completion.
+
+14.1 Objective verbs
+
+Recognize and preserve objective verbs:
+
+recover
+find
+repair
+escort
+clear
+deliver
+investigate
+protect
+bring
+retrieve
+rescue
+defeat
+survey
+track
+report to
+speak with
+
+14.2 Quest title cleanup
+
+Quest titles should be readable and stable.
+
+Examples:
+
+repair the north wall -> Repair the North Wall
+escort Bram to the chapel -> Escort Bram to the Chapel
+investigate the burned tavern -> Investigate the Burned Tavern
+clear the mill wolves -> Clear the Mill Wolves
+
+14.3 Quest acceptance not implied by mention
+
+Sanitizer can clean an objective.
+
+It cannot activate the quest.
+
+CanonValidator decides offer/acceptance/active status.
+
+⸻
+
+15. RewardNameSanitizer rules
+
+Reward names must separate amount, currency, item reward, promise, and payment.
+
+15.1 Currency parsing
+
+Recognize:
+
+15 gold
+fifteen gold
+3 silver
+one hundred copper
+
+But do not pay it.
+
+15.2 Promise/payment markers
+
+Flag promise markers:
+
+promises to pay
+will pay
+offers if
+reward will be
+
+Flag payment markers:
+
+pays you
+hands you the promised coins
+gives you 15 gold
+places the reward in your hand
+
+15.3 Reward sanitizer output
+
+The sanitizer should output:
+
+reward description
+amount if clear
+currency type if clear
+reward item if clear
+promise/payment marker
+
+CanonValidator decides payment.
+
+⸻
+
+16. CardNameSanitizer rules
+
+Card names and triggers are dangerous because broad triggers and dirty card names can activate constantly.
+
+16.1 Protected card titles
+
+Protected card titles should be stable:
+
+AIDRPG: Player Sheet
+AIDRPG: Body Status
+AIDRPG: Abilities
+AIDRPG: Inventory & Equipment
+AIDRPG: Quest Log
+AIDRPG: Social Memory
+AIDRPG: Current Location
+
+Internal keys:
+
+protected:player_sheet
+protected:body_status
+protected:abilities
+protected:inventory_equipment
+protected:quest_log
+protected:social_memory
+protected:current_location
+
+16.2 Generated card names
+
+Generated cards are disabled in MVP.
+
+If later enabled, generated card titles must be family-scoped:
+
+AIDRPG Actor: Mara
+AIDRPG Place: Old Mill
+AIDRPG Item: Crown of Dawn
+AIDRPG Quest: Clear the Mill Wolves
+
+16.3 Trigger hygiene
+
+Reject broad/common triggers such as:
+
+street
+road
+town
+village
+forest
+market
+shop
+sword
+key
+guard
+man
+woman
+he
+she
+they
+
+unless protected card context requires controlled trigger behavior.
+
+Prefer specific triggers:
+
+mara thorn
+old bren
+crown of dawn
+ash shrine
+clear the mill wolves
+
+16.4 Connector pollution
+
+Strip connector pollution from card/actor targets:
+
+AND_MIRA -> MIRA
+ACTOR:AND_MIRA -> ACTOR:MIRA
+
+But do not over-strip legitimate names containing and.
+
+⸻
+
+17. Head noun classification
+
+Head noun classification is required for places, actors, items, and world structure later.
+
+17.1 Place/world examples
+
+village well -> object/facility, not settlement
+town gate -> gate/facility, not settlement
+city wall -> wall/structure, not settlement
+north wall -> wall/structure/project target, not settlement
+Old Mill -> place/building
+Ash Shrine -> place/shrine
+
+17.2 Actor examples
+
+veteran guard -> actor role guard with modifier veteran
+blacksmith -> actor role/profession
+skeleton -> undead actor/creature
+ogre -> creature/enemy actor
+high priestess -> religious actor/title
+
+17.3 Item examples
+
+iron key -> item key
+healing potion -> consumable
+jeweled crown -> item/treasure
+old wooden door -> object/environment, not inventory unless detached/acquired
+
+⸻
+
+18. Ambiguity rules
+
+Resolver must mark ambiguous targets instead of guessing.
+
+Ambiguity cases:
+
+multiple known actors named Mara
+key without identifying which key when several exist
+the guard when multiple guards present
+the chapel when several chapels known
+it / him / her / that without stable referent
+
+Ambiguous proposals should go to CanonValidator as pending or rejected unless family allows weak reference.
+
+Do not create durable new canon from ambiguous targets.
+
+⸻
+
+19. Existing state matching
+
+Resolvers may read existing state to match known targets.
+
+Examples:
+
+Moonblade already exists as candidate ability -> bind to existing ability:moonblade
+Mara exists as actor -> bind to actor:mara if local text clearly refers to Mara
+Old Mill current location -> bind place:old_mill
+
+Read-only matching is allowed.
+
+Mutation is forbidden.
+
+If match confidence is low, mark ambiguous.
+
+⸻
+
+20. Resolver confidence scoring
+
+Recommended confidence bands:
+
+0.90+ exact known target match with clear family
+0.75 direct named target with clean family context
+0.60 plausible new candidate with clear local clause
+0.40 generic or weakly referenced target
+0.20 quoted/dream/rumor/reference-only target
+0.00 unsafe non-canon source
+
+Confidence does not override safety flags.
+
+A dream target with a clean name is still dream/non-canon for gameplay acquisition.
+
+⸻
+
+21. Resolver audit format
+
+Resolver audit should be compact.
+
+Examples:
+
+Resolved ability target: raw="Ember Ward to protect allies from heat" clean="Ember Ward" sanitizer=AbilityNameSanitizer confidence=0.82.
+Suppressed actor duplicate: kept "Veteran Guard", suppressed contained "Guard" in same window.
+Place resolver: "road" marked route/interstitial; arrival target "The Drunken Huntsman" selected.
+Card trigger rejected: "street" is too broad for generated card trigger.
+
+Do not dump full raw output.
+
+⸻
+
+22. Resolver and ProposalBuilder relationship
+
+ProposalBuilder uses Resolver to build TargetBinding.
+
+The flow is:
+
+ParserHit
+-> ProposalBuilder identifies family/event type
+-> Resolver.buildTargetBinding(family, raw target, local context, root)
+-> EventProposal carries TargetBinding
+-> CanonValidator validates target and safety
+
+Resolver output is evidence, not canon.
+
+⸻
+
+23. Resolver and CanonValidator relationship
+
+CanonValidator reads resolver output to decide if target is safe enough.
+
+CanonValidator may reject/pending if:
+
+targetStatus ambiguous
+targetStatus generic when durable identity required
+targetStatus reference_only when presence required
+sanitizerUsed wrong family
+targetConfidence too low
+resolverNotes contain blocked marker
+
+Resolver does not make the final canon decision.
+
+⸻
+
+24. Resolver and CardSync relationship
+
+CardSyncLite uses CardNameSanitizer and CardTriggerSanitizer.
+
+Rules:
+
+protected cards have stable titles/keys
+generated cards disabled in MVP
+broad triggers rejected
+manual card title edits do not become canon
+card text never goes through gameplay resolver as source truth
+
+CardSync may use resolver for display/trigger hygiene only, not gameplay import.
+
+⸻
+
+25. Resolver and ReleaseCheck relationship
+
+ReleaseCheck must verify:
+
+shared cleaner is conservative
+owner-specific sanitizers exist or are honestly shell-only
+ability cleanup is not global
+item cleanup does not create acquisition
+place resolver separates weak references and strong arrivals
+actor resolver suppresses compound duplicates
+card trigger sanitizer rejects broad triggers
+target binding includes sanitizerUsed and confidence
+ambiguous targets are represented, not guessed
+
+⸻
+
+26. Required resolver tests
+
+BC12-001 — Shared cleaner conservative
+
+Input:
+
+I travel to the smithy.
+
+Expected:
+
+SharedHintCleaner does not strip to "I travel"
+no ability target created
+
+⸻
+
+BC12-002 — Ability cleanup Ember Ward
+
+Input:
+
+I train Ember Ward to protect allies from heat.
+
+Expected:
+
+clean ability name = Ember Ward
+sanitizerUsed = AbilityNameSanitizer
+
+⸻
+
+BC12-003 — Ability cleanup Frost Step
+
+Input:
+
+I practice Frost Step by moving across slick stones.
+
+Expected:
+
+clean ability name = Frost Step
+
+⸻
+
+BC12-004 — Ability cleanup Stoneguard
+
+Input:
+
+I drill Stoneguard until my stance holds under impact.
+
+Expected:
+
+clean ability name = Stoneguard
+
+⸻
+
+BC12-005 — Ability names preserve meaningful phrases
+
+Input:
+
+I train Shield Against Dawn.
+
+Expected:
+
+clean ability name = Shield Against Dawn
+not Shield
+
+⸻
+
+BC12-006 — Inspect door not ability
+
+Input:
+
+I inspect the old wooden door.
+
+Expected:
+
+no ability target
+item/object target old wooden door if relevant
+
+⸻
+
+BC12-007 — Use key on door not ability
+
+Input:
+
+I use the iron key on the cellar door.
+
+Expected:
+
+item target iron key
+place/object target cellar door if relevant
+no ability iron key/cellar door
+
+⸻
+
+BC12-008 — Failed item cleanup
+
+Output:
+
+You try to grab the rusted iron key, but the goblin snatches it away first.
+
+Expected:
+
+item target rusted iron key
+blocking phrase noted
+not target "rusted iron key but the goblin"
+
+⸻
+
+BC12-009 — Mixed item target binding
+
+Output:
+
+Mira refuses to give you the jeweled crown, but she hands you the red healing potion.
+
+Expected:
+
+separate item targets jeweled crown and red healing potion
+
+⸻
+
+BC12-010 — Abstract item detected
+
+Output:
+
+You pick up the idea of a brass key.
+
+Expected:
+
+item target brass key with abstract/metaphorical note
+
+⸻
+
+BC12-011 — Named arrival beats road
+
+Output:
+
+After the road, you enter The Drunken Huntsman.
+
+Expected:
+
+place target The Drunken Huntsman
+road marked route/interstitial
+
+⸻
+
+BC12-012 — Weak place reference
+
+Output:
+
+The chapel is visible from the market lane.
+
+Expected:
+
+chapel marked weak/visible reference
+market lane may be context/current scene reference
+no arrival target for chapel
+
+⸻
+
+BC12-013 — Scene remains confirmation
+
+Output:
+
+The market lane remains busy with merchants.
+
+Expected:
+
+market lane target with current-scene confirmation marker
+
+⸻
+
+BC12-014 — Compound actor suppression
+
+Output:
+
+A veteran guard stands near the gate.
+
+Expected:
+
+one actor target Veteran Guard
+no separate Guard target for same span
+
+⸻
+
+BC12-015 — High Priestess preserved
+
+Output:
+
+The high priestess enters the shrine.
+
+Expected:
+
+actor target High Priestess
+not Priestess separately if same span
+
+⸻
+
+BC12-016 — Generic actor scene-only
+
+Output:
+
+A guard watches the gate.
+
+Expected:
+
+guard targetStatus generic or scene-only candidate
+not persistent named actor by default
+
+⸻
+
+BC12-017 — Reference-only actor
+
+Output:
+
+The training dummy is named after Mira.
+
+Expected:
+
+Mira target reference_only
+no actor harm/presence target
+
+⸻
+
+BC12-018 — Absent actor marker
+
+Output:
+
+The goblin is definitely not here.
+
+Expected:
+
+goblin marked absent/reference_only
+no present actor target
+
+⸻
+
+BC12-019 — Quest objective cleanup repair
+
+Input:
+
+I accept Elder Mira's quest to repair the north wall.
+
+Expected:
+
+quest objective Repair the North Wall
+verb repair recognized
+
+⸻
+
+BC12-020 — Escort quest objective
+
+Input:
+
+I accept the job to escort Bram to the chapel.
+
+Expected:
+
+quest objective Escort Bram to the Chapel
+verb escort recognized
+
+⸻
+
+BC12-021 — Reward amount parsed, not paid
+
+Output:
+
+Old Bren promises to pay you 15 gold.
+
+Expected:
+
+reward target 15 gold
+promise marker true
+payment marker false
+
+⸻
+
+BC12-022 — Card broad trigger rejected
+
+Trigger candidate:
+
+street
+
+Expected:
+
+rejected too broad
+
+⸻
+
+BC12-023 — Card connector cleanup
+
+Raw card target:
+
+ACTOR:AND_MIRA
+
+Expected:
+
+ACTOR:MIRA
+
+with connector cleanup note.
+
+⸻
+
+BC12-024 — Village well not settlement
+
+Output:
+
+The village well sits beside the square.
+
+Expected:
+
+village well classified facility/object, not settlement
+
+⸻
+
+BC12-025 — City wall not settlement
+
+Output:
+
+The city wall is cracked.
+
+Expected:
+
+city wall classified wall/structure, not city settlement
+
+⸻
+
+BC12-026 — Ambiguous key target
+
+State has multiple known keys.
+
+Output:
+
+You pick up the key.
+
+Expected:
+
+targetStatus ambiguous unless local context resolves which key
+
+⸻
+
+BC12-027 — Existing ability match
+
+State has ability candidate Moonblade.
+
+Input:
+
+I train Moonblade by practicing crescent cuts.
+
+Expected:
+
+bind target to existing ability:moonblade
+not new duplicate ability
+
+⸻
+
+27. ReleaseCheck requirements for Build Chunk 12
+
+ReleaseCheck must eventually verify:
+
+SharedHintCleaner exists and is conservative
+AbilityNameSanitizer exists
+ItemNameSanitizer exists
+PlaceNameSanitizer exists
+ActorNameSanitizer exists
+QuestObjectiveSanitizer exists
+CardNameSanitizer / CardTriggerSanitizer exists or generated cards disabled
+TargetBinding includes sanitizerUsed
+TargetBinding includes confidence
+compound actor suppression exists
+route/interstitial place handling exists
+weak place reference handling exists
+ability suffix cleanup is owner-specific
+broad card trigger rejection exists
+ambiguous targets do not become durable canon by default
+
+ReleaseCheck must fail if:
+
+aggressive ability cleanup lives in shared cleaner
+travel/inspect/use-object text can create junk abilities
+compound actor shorter duplicate can persist as separate actor for same span
+weak place reference can overwrite current scene
+broad generated card triggers can be accepted while generated cards are enabled
+ambiguous target can become durable truth without validation
+
+⸻
+
+28. Relationship to Final Build Control Map v1
+
+This chunk directly implements Control Map requirements:
+
+F001 broad helper patch broke unrelated systems
+F002 explicit training intent lost to defensive words
+F006 inventory false-grant prevention through local target cleanup
+F008 named location arrival priority over road/interstitial
+F012 compound actor duplicate suppression
+F013 actor presence/reference-only safety support
+F018 WorldStructure head-noun failures as deferred tests
+F019 CardSync pollution, duplicate cards, broad triggers
+N002 owner-specific sanitizer family
+N003 local target binding
+
+⸻
+
+29. What Build Chunk 13 should do next
+
+Next build document:
+
+Build Chunk 13 — ReducerRegistry and Owner Reducer Contract Plan
+
+Build Chunk 13 must define:
+
+* reducer routing
+* accepted validation result handoff
+* owner reducer boundaries
+* one owner per truth family
+* no reducer for rejected/pending/deferred proposals
+* operation key commit ordering
+* dirty target creation
+* reducer audit requirements
+* reducer non-overlap rules
+* tests proving parser/proposal/validator cannot mutate without reducers
+
+⸻
+
+30. Final Build Chunk 12 doctrine
+
+The final build must never again rely on vague cleanup phrases like “clean names” or “sanitize cards.”
+
+Every cleanup must belong to a specific owner.
+
+Final rule:
+
+Shared cleanup is conservative.
+Ability cleanup belongs to abilities.
+Item cleanup belongs to items.
+Place cleanup belongs to places.
+Actor cleanup belongs to actors.
+Quest cleanup belongs to quests.
+Card cleanup belongs to cards.
+Resolvers bind targets but do not create truth.
+Validators decide canon.
+Reducers commit state.
+
+With Resolver and owner-specific sanitizers planned, the next safe step is the ReducerRegistry and owner reducer contract.

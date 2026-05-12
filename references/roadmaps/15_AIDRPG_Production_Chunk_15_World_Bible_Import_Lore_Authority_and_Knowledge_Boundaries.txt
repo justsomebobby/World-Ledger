@@ -1,0 +1,1687 @@
+# AIDRPG Production Chunk 15 — World Bible Import, Lore Authority, and Knowledge Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 15 — World Bible Import, Lore Authority, and Knowledge Boundaries  
+**Production sequence:** 15 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.14 threat/encounter-boundaries accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add world bible/lore import boundaries, source authority tiers, static-world-fact records, player-knowledge records, lore conflict handling, Story Card reference safety, context-lore safety, and discovery rules without letting lore text directly mutate gameplay state.  
+**Status:** Core systems production chunk.  
+**Follows:** Production Chunk 14 — Threat Benchmark, Encounter Logic, and World Scaling Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 15 exists because AI Dungeon worlds need lore, but lore is dangerous if the script treats every card, memory, or context line as live state.
+
+This chunk is where the system learns the difference between:
+
+```text
+world fact
+story card reference
+current scene truth
+player-known truth
+rumor
+myth
+quest hook
+creature ecology reference
+region danger note
+historical lore
+hidden lore
+active gameplay event
+```
+
+Old and rough builds risked:
+
+```text
+Story Card says player owns item -> item appears in inventory
+Story Card says player is in city -> location changes
+World lore mentions dragon -> encounter spawns
+World lore says vampires are immortal -> player death logic changes
+Context says quest completed -> quest completes
+Lore says empire hates player -> reputation changes
+Card says player is level 10 -> progression changes
+Hidden lore appears in context before discovery
+Conflicting lore silently overwrites accepted facts
+```
+
+This chunk prevents those failures.
+
+World Bible and Story Card material can guide context and classification.
+
+It cannot directly create active player state, items, quests, actors, combat, XP, rewards, forms, or encounters unless a dedicated owner system validates an event through normal gameplay flow.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Lore is not live state.
+World fact is not player knowledge.
+Hidden lore is not known lore.
+Story Card text is not gameplay mutation.
+Context text is not gameplay mutation.
+Rumor is not fact.
+Myth is not proof.
+History is not current scene.
+Region danger is not an encounter.
+Creature lore is not combat.
+Lore authority guides validation; it does not bypass validation.
+```
+
+World lore should make the game richer, not corrupt the ledger.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 14 locked threat benchmarks and encounter boundaries.
+
+World Bible import comes next because later chunks depend on reliable lore authority:
+
+```text
+region structure
+faction facts
+creature ecology
+species/race lore
+divine/cosmic rules
+settlement names
+historical facts
+quest context
+world-specific threat labels
+knowledge gates
+card/context budgeting
+long-run memory stability
+```
+
+If lore authority is not safe before region/faction/creature chunks, those chunks will keep asking:
+
+```text
+Can this card be trusted?
+Is this lore known to the player?
+Did this lore spawn a live event?
+Which source wins when lore conflicts?
+```
+
+Chunk 15 answers those questions.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 15 may change:
+
+```text
+WorldBible schema helpers
+LoreAuthority helper
+LoreImportManager
+LoreClaim parser shell
+KnowledgeBoundary helper
+PlayerKnowledge helper
+CanonValidator lore/import rules
+ProposalBuilder lore event types
+EventScannerLite lore hints
+CommandRenderers /world, /lore, /knowledge if supported
+ContextBuilder world/lore packet
+CardSyncLite dry-run/world-card read boundary
+OperationLedger lore/import/knowledge keys
+DirtyQueue world/lore/context targets
+IntegrityChecker lore checks
+ReleaseCheck lore gates
+Regression/player-breaker lore tests
+```
+
+Production Chunk 15 may add:
+
+```text
+WorldBibleRecord schema
+LoreSourceRecord schema
+LoreClaimRecord schema
+LoreAuthorityRecord schema
+LoreConflictRecord schema
+LoreImportSessionRecord schema
+PlayerKnowledgeRecord schema
+KnowledgeBoundaryRecord schema
+DiscoveryRecord schema
+HiddenLoreRecord schema
+WorldRegionLoreRecord shell
+FactionLoreRecord shell
+CreatureLoreRecord shell
+SpeciesLoreRecord shell
+HistoryLoreRecord shell
+LoreContextPacket rules
+StoryCardLoreReference boundary
+```
+
+Production Chunk 15 may not add:
+
+```text
+full region simulation
+full faction/reputation system
+full creature ecology engine
+full divine/cosmic system
+full random event generator
+active quest generation from lore
+active encounter spawning from lore
+manual /importascanon mutation commands
+live card writes that create gameplay truth
+old card prose gameplay import
+```
+
+---
+
+# 4. Canonical state path
+
+World/lore data must live under the canonical WorldLedger root.
+
+Recommended path:
+
+```text
+state.worldledger.worldBible
+```
+
+Recommended shape:
+
+```text
+worldBible: {
+  records: {},
+  sources: {},
+  claims: {},
+  authorities: {},
+  conflicts: {},
+  imports: {},
+  playerKnowledge: {},
+  hiddenLore: {},
+  discoveryRecords: {},
+  regionLore: {},
+  factionLore: {},
+  creatureLore: {},
+  speciesLore: {},
+  historyLore: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Do not create competing roots such as:
+
+```text
+state.worldBible
+state.loreTruth
+state.storyCardsCanon
+state.worldStateFromCards
+```
+
+---
+
+# 5. Required schemas
+
+## 5.1 WorldBibleRecord
+
+```text
+WorldBibleRecord {
+  id,
+  key,
+  title,
+  category,
+  status,
+  authorityKey,
+  sourceKeys,
+  claimKeys,
+  visibility,
+  playerKnowledgeStatus,
+  currentUsePolicy,
+  relatedRegionKeys,
+  relatedFactionKeys,
+  relatedCreatureKeys,
+  relatedSpeciesKeys,
+  relatedPlaceKeys,
+  relatedActorKeys,
+  relatedQuestKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Categories:
+
+```text
+region, place, faction, species, creature, history, religion, divine_deferred,
+cosmic_deferred, law, culture, magic_rule, economy_deferred, quest_lore,
+character_lore, unknown
+```
+
+Statuses:
+
+```text
+confirmed_lore, probable_lore, rumored_lore, mythic_lore, hidden_lore,
+contradicted, rejected, blocked_source, unknown
+```
+
+## 5.2 LoreSourceRecord
+
+```text
+LoreSourceRecord {
+  id,
+  key,
+  sourceType,
+  sourceName,
+  sourcePointer,
+  authorityTier,
+  trustedForCategories,
+  importMode,
+  safeForGameplayMutation,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Source types:
+
+```text
+structured_startup, scenario_setup, world_bible_file, story_card,
+memory_context, model_output, player_input, quest_log, command_output,
+debug_output, unknown
+```
+
+Authority tiers:
+
+```text
+authoritative_setup, trusted_world_bible, supporting_story_card,
+runtime_observation, player_claim, npc_claim, rumor, blocked_command,
+blocked_context, blocked_card_runtime, unknown
+```
+
+Default safety rule:
+
+```text
+Story Cards, memory/context, command output, and debug output have safeForGameplayMutation = false.
+```
+
+## 5.3 LoreClaimRecord
+
+```text
+LoreClaimRecord {
+  id,
+  key,
+  sourceKey,
+  claimTextPreview,
+  normalizedClaim,
+  category,
+  confidence,
+  authorityTier,
+  visibility,
+  playerKnown,
+  activeGameplayMutationAllowed,
+  relatedKeys,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+## 5.4 LoreAuthorityRecord
+
+```text
+LoreAuthorityRecord {
+  id,
+  key,
+  category,
+  authorityOrder,
+  conflictPolicy,
+  defaultVisibility,
+  defaultMutationPolicy,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Recommended authority order:
+
+```text
+1. structured startup / scenario setup
+2. trusted world bible file
+3. accepted runtime story events
+4. quest/actor/place records from owner reducers
+5. supporting story cards as reference-only lore
+6. NPC claims / rumors
+7. player speculation
+8. command/context/debug text blocked
+```
+
+## 5.5 LoreConflictRecord
+
+```text
+LoreConflictRecord {
+  id,
+  key,
+  category,
+  claimAKey,
+  claimBKey,
+  conflictType,
+  resolutionStatus,
+  chosenClaimKey,
+  reason,
+  sourceOperationKey,
+  createdTurn,
+  resolvedTurn,
+  warnings,
+  notes
+}
+```
+
+Conflicts must never silently overwrite current state.
+
+## 5.6 LoreImportSessionRecord
+
+```text
+LoreImportSessionRecord {
+  id,
+  key,
+  sourceKeys,
+  importMode,
+  claimsCreated,
+  recordsCreated,
+  recordsUpdated,
+  conflictsCreated,
+  blockedClaims,
+  startedTurn,
+  completedTurn,
+  status,
+  warnings,
+  notes
+}
+```
+
+Imports must be idempotent and duplicate-safe.
+
+## 5.7 PlayerKnowledgeRecord
+
+```text
+PlayerKnowledgeRecord {
+  id,
+  key,
+  loreRecordKey,
+  knowledgeStatus,
+  confidence,
+  learnedFromSourceKey,
+  learnedTurn,
+  discoveryKey,
+  publicness,
+  notes
+}
+```
+
+Knowledge statuses:
+
+```text
+unknown_to_player, suspected, rumored, known, confirmed_by_experience,
+misinformed, forgotten_deferred, unknown
+```
+
+## 5.8 KnowledgeBoundaryRecord
+
+```text
+KnowledgeBoundaryRecord {
+  id,
+  key,
+  boundaryType,
+  rule,
+  active,
+  affectedCategories,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Required boundaries:
+
+```text
+hidden_lore_not_in_context
+world_fact_not_player_knowledge
+rumor_not_fact
+myth_not_fact
+card_lore_not_gameplay_state
+context_not_gameplay_state
+owner_state_beats_lore_for_current_state
+```
+
+## 5.9 DiscoveryRecord
+
+```text
+DiscoveryRecord {
+  id,
+  key,
+  loreRecordKey,
+  discoveryType,
+  sourceOperationKey,
+  sourceEventId,
+  actorKey,
+  placeKey,
+  itemKey,
+  questKey,
+  confidence,
+  createdTurn,
+  notes
+}
+```
+
+Discovery types:
+
+```text
+saw_directly, heard_from_npc, read_document, found_item, completed_quest_step,
+entered_place, witnessed_event, research_deferred, magic_revelation_deferred, unknown
+```
+
+## 5.10 HiddenLoreRecord
+
+```text
+HiddenLoreRecord {
+  id,
+  key,
+  loreRecordKey,
+  revealConditionText,
+  revealStatus,
+  allowedContextUse,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Reveal statuses:
+
+```text
+hidden, partially_revealed, revealed, blocked, unknown
+```
+
+Allowed context use:
+
+```text
+none, foreshadowing_only, validator_only, full_after_reveal, unknown
+```
+
+---
+
+# 6. Region/Faction/Creature/Species/History lore shells
+
+Chunk 15 creates reference shells only.
+
+```text
+WorldRegionLoreRecord {
+  id, key, displayName, parentRegionKey, threatTierReference, knownSettlements,
+  climateTags, cultureTags, sourceAuthority, playerKnowledgeStatus, notes
+}
+
+FactionLoreRecord {
+  id, key, displayName, publicDescription, hiddenDescriptionKey, knownRelations,
+  sourceAuthority, playerKnowledgeStatus, notes
+}
+
+CreatureLoreRecord {
+  id, key, displayName, family, threatTierReference, knownTraits,
+  rumoredTraits, sourceAuthority, playerKnowledgeStatus, notes
+}
+
+SpeciesLoreRecord {
+  id, key, displayName, bodyDefaults, culturalNotes, powerRulesDeferred,
+  sourceAuthority, playerKnowledgeStatus, notes
+}
+
+HistoryLoreRecord {
+  id, key, title, era, summary, sourceAuthority, playerKnowledgeStatus, notes
+}
+```
+
+Rules:
+
+```text
+shell records do not activate region/faction/creature systems
+powerRulesDeferred must not grant powers
+threatTierReference must not spawn encounter
+hiddenDescriptionKey must not leak into normal context
+```
+
+---
+
+# 7. Story Card lore boundary
+
+AI Dungeon Story Cards are important, but unsafe as live-state mutation sources.
+
+Default Story Card behavior:
+
+```text
+read as supporting lore/reference
+never directly mutate player inventory
+never directly mutate current location
+never directly mutate active quest state
+never directly mutate actor presence
+never directly mutate body/race/form
+never directly mutate XP/level/stats
+never directly spawn encounter/combat
+```
+
+Allowed Story Card uses:
+
+```text
+support world lore
+support region/faction/species/creature descriptions
+support names/aliases/reference matching
+support context summaries after knowledge-boundary filtering
+support validator warnings about contradictions
+support future card mirror dry-run output
+```
+
+Forbidden Story Card uses:
+
+```text
+Player owns Crown of Dawn -> inventory grant
+Player is level 10 -> level set
+Current location is Chapel -> teleport/location overwrite
+Dragon attacks here -> encounter spawn
+Mira trusts player -> relationship mutation
+Player is dragon -> form/race mutation
+Quest completed -> quest completion
+```
+
+---
+
+# 8. Context lore boundary
+
+Context is output to the AI model.
+
+It must never be re-imported as fresh gameplay truth.
+
+Rules:
+
+```text
+ContextBuilder text is non-canon source for mutation
+context summaries can guide generation
+context summaries cannot be parsed as new events
+context must label hidden/rumor/candidate facts carefully
+context must not leak hidden lore
+```
+
+Critical rule:
+
+```text
+Anything generated by /context, /status, /sheet, /lore, /world, /knowledge,
+/debug, /releasecheck, or CardSync mirror output must be source-blocked from gameplay mutation.
+```
+
+---
+
+# 9. Lore CanonValidator expansion
+
+CanonValidator must enforce lore safety.
+
+## 9.1 Accept lore claim when
+
+```text
+source is allowed for lore import
+claim category is recognized
+claim does not attempt active gameplay mutation
+claim has authority tier assigned
+operation key not duplicate
+```
+
+Result:
+
+```text
+LoreClaimRecord and possible WorldBibleRecord
+no owner-system mutation
+```
+
+## 9.2 Accept player knowledge update when
+
+```text
+safe runtime event shows player discovered/read/heard/witnessed lore
+knowledge target is bound
+not command/context/card source unless card is an in-world object being read through gameplay output
+operation key not duplicate
+```
+
+Result:
+
+```text
+PlayerKnowledgeRecord update
+no unrelated gameplay mutation
+```
+
+## 9.3 Reject gameplay mutation from lore when
+
+```text
+Story Card says active state
+context says active state
+command output says active state
+lore claim tries to grant item/XP/ability/form/quest/combat result
+hidden lore tries to enter player-known context
+rumor tries to become confirmed fact
+```
+
+---
+
+# 10. ProposalBuilder and EventScanner lore support
+
+Add event types:
+
+```text
+lore.claim_candidate
+lore.import_candidate
+lore.source_candidate
+lore.authority_candidate
+lore.conflict_candidate
+lore.player_knowledge_candidate
+lore.discovery_candidate
+lore.hidden_candidate
+lore.reference_link_candidate
+lore.blocked_gameplay_mutation_candidate
+world.region_lore_candidate
+world.faction_lore_candidate
+world.creature_lore_candidate
+world.species_lore_candidate
+world.history_lore_candidate
+```
+
+EventScannerLite may detect lore hints, but detection is not canon.
+
+Must flag:
+
+```text
+storyCardSource
+contextSource
+commandSource
+debugSource
+hiddenLore
+rumorOrMyth
+playerKnownClaim
+activeMutationAttempt
+ownerSystemClaim
+conflictRisk
+spoilerRisk
+duplicateRisk
+```
+
+Parser cannot mutate owner gameplay systems from lore scan.
+
+---
+
+# 11. Manager behavior
+
+## 11.1 LoreImportManager
+
+Should:
+
+```text
+create import session
+normalize source records
+extract lore claims conservatively
+assign authority tier
+assign visibility/player knowledge status
+create WorldBibleRecords only for accepted lore claims
+create conflict records when needed
+block active gameplay mutation attempts
+record operation keys
+mark lore/context dirty
+```
+
+Must not:
+
+```text
+add items
+complete quests
+spawn actors
+move current location
+change player identity/form
+award XP/levels/stats
+start combat/encounters
+change reputation/faction standing
+```
+
+## 11.2 LoreAuthorityManager
+
+Should:
+
+```text
+rank sources by authority
+resolve conflicts or mark unresolved
+preserve runtime current state against lower-authority lore
+separate world fact from player knowledge
+separate public lore from hidden lore
+expose warnings to /lore and /integrity
+```
+
+## 11.3 KnowledgeBoundaryManager
+
+Should:
+
+```text
+filter lore before context insertion
+exclude hidden lore unless revealed
+label rumor/myth/candidate lore
+prevent player-unknown facts from being written as player-known
+prevent context summaries from becoming mutation sources
+```
+
+---
+
+# 12. CardSyncLite integration boundary
+
+This chunk does not activate generated card writes.
+
+Allowed:
+
+```text
+read existing cards as possible lore references if source mode allows
+record card source as supporting_story_card
+quarantine/block active gameplay claims from cards
+produce dry-run card audit/mirror notes
+```
+
+Forbidden:
+
+```text
+write new generated lore cards
+rewrite protected cards from lore import
+treat card prose as owner-state truth
+sync card edits into gameplay state automatically
+```
+
+CardSync remains safe/dry-run unless later package activates protected writes with tests.
+
+---
+
+# 13. Operation keys
+
+Required lore operation keys:
+
+```text
+lore.source.<sourceKey>.<sourceHash>
+lore.import.<importMode>.<sourceSetHash>
+lore.claim.<category>.<claimHash>
+lore.record.<recordKey>.<claimHash>
+lore.authority.<category>.<policyVersion>
+lore.conflict.<claimAKey>.<claimBKey>.<conflictHash>
+lore.knowledge.<loreRecordKey>.<discoveryHash>
+lore.discovery.<discoveryType>.<sourceHash>
+lore.hidden.<loreRecordKey>.<sourceHash>
+lore.blockedMutation.<ownerSystem>.<claimHash>
+```
+
+Rules:
+
+```text
+import/claim keys prevent duplicate lore spam
+blocked mutation keys prevent repeated warning spam
+authority keys are durable
+knowledge/discovery keys are durable enough for continuity
+cleanup must preserve conflicts and hidden lore controls
+```
+
+---
+
+# 14. Dirty targets
+
+Lore updates should mark:
+
+```text
+world_lore
+context
+stateaudit
+releasecheck if authority/conflict changed
+current_location only as display/reference dirty, not current state mutation
+quest_log only as lore reference dirty, not quest mutation
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 15. Commands and context
+
+If command budget permits, add:
+
+```text
+/world
+/lore
+/knowledge
+```
+
+If not, fold summaries into:
+
+```text
+/stateaudit
+/integrity
+/location
+/actors
+```
+
+## /world
+
+Shows broad known world facts:
+
+```text
+known regions
+known factions
+known species/creature lore
+known history
+hidden lore count without spoilers
+conflicts/warnings summary
+```
+
+## /lore
+
+Shows lore with authority:
+
+```text
+confirmed lore
+rumored/mythic lore
+hidden/restricted lore count
+conflicts
+blocked gameplay mutation claims
+```
+
+## /knowledge
+
+Shows what the player knows:
+
+```text
+known to player
+suspected/rumored by player
+confirmed by experience
+misinformation if tracked
+unknown/hidden not revealed
+```
+
+All output starts with `[AIDRPG]` and remains non-canon.
+
+## ContextBuilder lore packet
+
+Include:
+
+```text
+player-known relevant lore
+confirmed world facts needed for current scene
+rumored lore clearly labeled as rumor
+creature/region/faction lore relevant to current encounter/place/quest
+```
+
+Do not include:
+
+```text
+hidden lore before discovery
+blocked card/context gameplay claims
+full world bible dump
+lore unrelated to current scene
+rumor as confirmed fact
+card lore as current state
+player-unknown secrets as player-known
+```
+
+---
+
+# 16. IntegrityChecker lore checks
+
+Add checks:
+
+```text
+worldBible bucket exists under canonical root
+lore sources have authority tiers
+Story Card/context/command sources cannot mutate owner state
+hidden lore not present in normal context packet
+player knowledge records separate from world facts
+conflicts are recorded, not silently overwritten
+lore claims have operation keys
+blocked mutation attempts recorded/quarantined
+owner current state beats lower-authority lore for active state
+```
+
+IntegrityChecker may warn/quarantine bad lore records.
+
+It may not import lore into gameplay owner state.
+
+---
+
+# 17. Cleanup lore protections
+
+Cleanup may compact:
+
+```text
+old duplicate blocked mutation warnings
+old rejected lore scan spam
+old low-value rumor duplicates
+old import debug traces after summary
+```
+
+Cleanup must not delete:
+
+```text
+confirmed lore records
+authority records
+unresolved conflicts
+hidden lore controls
+player knowledge/discovery records
+blocked mutation records needed for audit
+source records used by active lore
+```
+
+Cleanup must not reveal hidden lore, confirm rumors, or turn lore into active gameplay state.
+
+---
+
+# 18. ReleaseCheck gates for this chunk
+
+Add or verify PC15-specific gates:
+
+```text
+PC15-G01 WorldBibleRecord schema exists or equivalent lore record structure exists
+PC15-G02 LoreSourceRecord schema exists with authority tiers
+PC15-G03 LoreClaimRecord schema exists or equivalent claim structure exists
+PC15-G04 LoreAuthorityRecord exists and defines source precedence
+PC15-G05 LoreConflictRecord exists or equivalent conflict handling exists
+PC15-G06 PlayerKnowledgeRecord and KnowledgeBoundaryRecord exist or equivalents exist
+PC15-G07 DiscoveryRecord and HiddenLoreRecord exist or equivalents exist
+PC15-G08 Story Card lore boundary prevents active gameplay mutation
+PC15-G09 Context lore boundary prevents re-import as gameplay truth
+PC15-G10 LoreImportManager is idempotent and duplicate-safe
+PC15-G11 LoreAuthorityManager preserves owner current state against lower-authority lore
+PC15-G12 hidden lore does not enter normal context before reveal
+PC15-G13 rumor/myth lore remains labeled and does not become confirmed fact
+PC15-G14 lore cannot spawn encounters, grant items, complete quests, set XP/stats, or change forms
+PC15-G15 /world /lore /knowledge or equivalent displays authority/knowledge honestly
+PC15-G16 command/context/card lore text cannot become owner canon
+PC15-G17 cleanup preserves authority/conflict/hidden/knowledge records
+PC15-G18 region/faction/creature/divine advanced systems remain deferred
+PC15-G19 player-breaker lore/import tests registered
+```
+
+ReleaseCheck must fail if Story Card/context lore can mutate owner state, hidden lore leaks into normal context, or lore conflicts silently overwrite current gameplay truth.
+
+---
+
+# 19. Required tests
+
+## PC15-001 — Story Card item claim blocked
+
+Story Card text:
+
+```text
+Player owns the Crown of Dawn.
+```
+
+Expected:
+
+```text
+lore/blocked mutation record if scanned
+no inventory item
+```
+
+## PC15-002 — Story Card location claim blocked
+
+Story Card text:
+
+```text
+The player is currently in the Chapel of Ash.
+```
+
+Expected:
+
+```text
+no currentLocation mutation
+blocked owner-state claim recorded if scanned
+```
+
+## PC15-003 — Story Card form claim blocked
+
+Story Card text:
+
+```text
+The player is a dragon with fire breath.
+```
+
+Expected:
+
+```text
+no race/form/ability mutation
+possible lore/reference claim only if categorized safely
+```
+
+## PC15-004 — Story Card quest claim blocked
+
+Story Card text:
+
+```text
+Quest Clear the Mill Wolves is complete and paid.
+```
+
+Expected:
+
+```text
+no quest/reward mutation
+blocked mutation audit
+```
+
+## PC15-005 — Story Card encounter claim blocked
+
+Story Card text:
+
+```text
+A dragon attacks the player in the valley.
+```
+
+Expected:
+
+```text
+no encounter/combat activation
+possible region/creature lore reference only
+```
+
+## PC15-006 — Context XP claim blocked
+
+Context text:
+
+```text
+The player gained 20 XP last turn.
+```
+
+Expected:
+
+```text
+no XP mutation
+context source blocked
+```
+
+## PC15-007 — Command output blocked
+
+Run:
+
+```text
+/lore
+/world
+/knowledge
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no lore/knowledge/gameplay mutation from command output
+```
+
+## PC15-008 — Trusted setup lore accepted as lore
+
+Structured setup:
+
+```text
+The northern empire is called Veyrholt.
+```
+
+Expected:
+
+```text
+WorldBibleRecord for Veyrholt
+source authority authoritative_setup/trusted_world_bible
+no active gameplay mutation beyond lore record
+```
+
+## PC15-009 — Player does not automatically know hidden lore
+
+World lore:
+
+```text
+The Old Mill wolves are controlled by a hidden bell beneath the floorboards.
+```
+
+Marked hidden.
+
+Expected:
+
+```text
+world fact/hidden lore record exists
+PlayerKnowledgeRecord unknown_to_player
+normal context does not reveal it
+```
+
+## PC15-010 — Discovery updates player knowledge
+
+Output:
+
+```text
+Under the floorboards, you find the hidden silver bell controlling the wolves.
+```
+
+Expected:
+
+```text
+DiscoveryRecord created
+PlayerKnowledgeRecord becomes known/confirmed_by_experience
+owner systems still handle item/quest separately if relevant
+```
+
+## PC15-011 — Rumor remains rumor
+
+Output:
+
+```text
+Villagers say the Old Mill wolves fear silver bells.
+```
+
+Expected:
+
+```text
+rumored lore/player suspected knowledge
+not confirmed world fact unless authority supports it
+```
+
+## PC15-012 — Myth remains myth
+
+Lore:
+
+```text
+Legends say the moon was once a dragon's eye.
+```
+
+Expected:
+
+```text
+mythic_lore record
+not confirmed cosmology unless authority says so
+```
+
+## PC15-013 — Owner current location beats card lore
+
+Setup:
+
+```text
+PlaceReducer currentLocation = Market Lane
+Story Card says player is in Chapel of Ash
+```
+
+Expected:
+
+```text
+currentLocation remains Market Lane
+conflict/block record created
+```
+
+## PC15-014 — Runtime accepted fact can update current state, lore cannot
+
+Output:
+
+```text
+You enter the Chapel of Ash.
+```
+
+Expected:
+
+```text
+PlaceReducer updates currentLocation through normal path
+lore system may reference Chapel lore, but does not perform the move itself
+```
+
+## PC15-015 — Lore conflict recorded
+
+Sources:
+
+```text
+trusted setup says Veyrholt is ruled by Queen Mara
+story card says Veyrholt is ruled by King Arlen
+```
+
+Expected:
+
+```text
+LoreConflictRecord created
+higher authority selected or conflict unresolved
+no silent overwrite
+```
+
+## PC15-016 — Creature lore does not spawn creature
+
+World lore:
+
+```text
+Wolves live near the Old Mill.
+```
+
+Expected:
+
+```text
+Creature/region lore record possible
+no active wolf encounter
+```
+
+## PC15-017 — Species lore does not grant player power
+
+World lore:
+
+```text
+Dragonborn can breathe fire.
+```
+
+Expected:
+
+```text
+species lore record possible
+player gains no breath ability unless Ability/Form owner path validates it
+```
+
+## PC15-018 — Faction lore does not change reputation
+
+World lore:
+
+```text
+The Ash Guard distrusts outsiders.
+```
+
+Expected:
+
+```text
+faction lore record possible
+no player reputation/faction standing mutation
+```
+
+## PC15-019 — Hidden lore omitted from context
+
+Setup:
+
+```text
+hidden lore exists
+not discovered
+```
+
+Run ContextBuilder.
+
+Expected:
+
+```text
+hidden lore not included in normal context packet
+```
+
+## PC15-020 — Known lore included with label
+
+Setup:
+
+```text
+player knows Old Mill wolves rumor
+```
+
+Expected context:
+
+```text
+rumor included only if relevant and labeled as rumor
+```
+
+## PC15-021 — Duplicate lore import skipped
+
+Import same lore source twice.
+
+Expected:
+
+```text
+no duplicate WorldBibleRecords/claims
+operation key skip/update audit
+```
+
+## PC15-022 — Blocked mutation duplicate compacted
+
+Same bad Story Card claim scanned twice.
+
+Expected:
+
+```text
+blocked mutation record not spammed endlessly
+operation key skip/compact audit
+```
+
+## PC15-023 — Lore display honest
+
+State:
+
+```text
+confirmed region lore
+rumored creature lore
+hidden secret lore
+one conflict
+blocked card mutation
+```
+
+Run:
+
+```text
+/lore
+/world
+/knowledge
+```
+
+Expected:
+
+```text
+confirmed/rumored/hidden/conflict/blocked categories separated
+hidden content not spoiled if unrevealed
+```
+
+## PC15-024 — Cleanup preserves lore authority
+
+Setup:
+
+```text
+authority records
+conflict records
+hidden lore
+player discovery record
+blocked mutation record
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+important records preserved
+only low-risk duplicate scans compacted
+```
+
+## PC15-025 — Manual import-as-canon commands disabled
+
+Run:
+
+```text
+/importcardascanon
+/setworldfact dragons attack now
+/revealsecret all
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no lore/gameplay mutation
+```
+
+---
+
+# 20. Regression placement
+
+Add PC15 tests to regression tiers:
+
+```text
+T1 State/Runtime/Command Foundation Tests
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+25 PC15 tests registered
+0 critical PC15 failures
+```
+
+---
+
+# 21. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted threat/encounter build
+
+Start from:
+
+```text
+WorldLedgerV0.17.14_THREAT_ENCOUNTER_BOUNDARIES_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.15_WORLD_BIBLE_LORE_BOUNDARIES_WORKING.txt
+```
+
+## Step 2 — Add/verify world bible helper functions
+
+Create helpers for:
+
+```text
+ensureWorldBibleShape
+makeWorldBibleRecord
+makeLoreSourceRecord
+makeLoreClaimRecord
+makeLoreAuthorityRecord
+makeLoreConflictRecord
+makeLoreImportSessionRecord
+makePlayerKnowledgeRecord
+makeKnowledgeBoundaryRecord
+makeDiscoveryRecord
+makeHiddenLoreRecord
+isGameplayMutationClaim
+isHiddenLoreAllowedInContext
+isLoreSourceBlockedForMutation
+```
+
+## Step 3 — Add default authority and knowledge boundaries
+
+Create policies for:
+
+```text
+source precedence
+Story Card reference-only behavior
+context non-canon behavior
+hidden lore filtering
+rumor/myth labeling
+owner-state beats lore for current state
+```
+
+## Step 4 — Add LoreImportManager
+
+Start conservative:
+
+```text
+import claims
+assign authority
+record blocked mutation attempts
+create conflicts
+no owner-state mutation
+```
+
+## Step 5 — Add LoreAuthorityManager
+
+Implement:
+
+```text
+higher authority selection
+runtime current-state preservation
+conflict records
+manual review/deferred behavior
+```
+
+## Step 6 — Add KnowledgeBoundaryManager
+
+Implement:
+
+```text
+player knowledge filtering
+hidden lore omission
+rumor/myth labels
+context-safe lore packets
+```
+
+## Step 7 — Update lore CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+lore claims
+player knowledge discovery
+hidden lore
+story card blocked mutation
+context blocked mutation
+conflict handling
+```
+
+## Step 8 — Update ProposalBuilder lore support
+
+Ensure proposals carry:
+
+```text
+source key
+authority tier
+claim category
+visibility
+player-known status
+mutation-risk flags
+operation key suggestion
+```
+
+## Step 9 — Update commands and context
+
+Update or add:
+
+```text
+/world
+/lore
+/knowledge
+ContextBuilder lore packet
+CardAudit lore boundary display
+```
+
+## Step 10 — Update IntegrityChecker lore checks
+
+Add authority, conflict, hidden lore, player knowledge, and blocked mutation checks.
+
+## Step 11 — Add PC15 ReleaseCheck gates
+
+Add PC15-G01 through PC15-G19.
+
+## Step 12 — Add PC15 tests
+
+Add PC15-001 through PC15-025.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/lore if available
+/world if available
+/knowledge if available
+/cardaudit
+```
+
+## Step 14 — Save accepted world bible/lore build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.15_WORLD_BIBLE_LORE_BOUNDARIES_ACCEPTED.txt
+```
+
+---
+
+# 22. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 15 passes if:
+
+```text
+world bible/lore state structure exists
+source authority tiers exist
+Story Card and context lore cannot mutate owner state
+world facts and player knowledge are separated
+hidden lore is filtered from normal context
+rumors/myths remain labeled
+conflicts are recorded instead of silent overwrites
+lore import is idempotent
+owner current state beats lower-authority lore for active state
+/lore /world /knowledge or equivalents display honestly
+cleanup preserves authority/conflict/hidden/knowledge records
+PC15 tests pass
+ReleaseCheck has no PC15 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+region/faction/creature lore shells are not yet full systems
+manual file review is still conservative
+some lore claims remain unresolved conflicts
+hidden lore reveal conditions are simple
+commands are folded into /stateaudit instead of separate /lore commands
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+Story Card grants item/XP/ability/form/location/quest/combat state
+context text mutates gameplay state
+hidden lore appears in normal context before discovery
+rumor becomes confirmed fact without authority
+lore conflict silently overwrites current state
+owner reducer current state loses to lower-authority card lore
+lore import duplicates records uncontrollably
+cleanup deletes authority/conflict/hidden knowledge controls
+manual import-as-canon command mutates state
+LoreImportManager trusts unsafe routed data
+```
+
+---
+
+# 23. Handoff to Production Chunk 16
+
+When this chunk passes, Production Chunk 16 begins:
+
+```text
+Production Chunk 16 — Context Builder Budget, Memory Priority, and Card Sync Safety
+```
+
+Production Chunk 16 may use lore authority and player-knowledge boundaries to make context packets smarter and safer.
+
+Production Chunk 15 must leave lore state reliable enough that PC16 can ask:
+
+```text
+Which lore is confirmed?
+Which lore is only rumored or mythic?
+Which lore is hidden from the player?
+Which lore is relevant to current scene?
+Which card/context claims are blocked from mutation?
+Which source wins if claims conflict?
+Can this lore be shown to the model without spoiling or corrupting gameplay?
+```
+
+---
+
+# 24. Final doctrine
+
+Production Chunk 15 is where world lore becomes useful without becoming dangerous.
+
+Final rule:
+
+```text
+World lore can guide the game, but it cannot bypass the game.
+Story Cards are references, not reducers.
+Context is memory, not evidence.
+The player only knows what they have discovered, heard, read, or been told through valid gameplay.
+Hidden truth stays hidden until revealed.
+```
+
+Once this passes, the project can safely deepen Context Builder budgeting, memory priority, and Card Sync safety in Production Chunk 16.

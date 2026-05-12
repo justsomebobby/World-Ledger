@@ -1,0 +1,2670 @@
+# AIDRPG Production Chunk 19 — Crafting, Materials, Repair, Enchanting Boundaries, and Recipe Safety
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 19 — Crafting, Materials, Repair, Enchanting Boundaries, and Recipe Safety  
+**Production sequence:** 19 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.18 economy/trade accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add safe crafting, material, recipe, repair, upgrade, and enchanting boundaries without false item creation, false material consumption, unsafe enchantment powers, duplicate crafted items, or Story Card/context recipe mutation.  
+**Status:** Core gameplay production chunk.  
+**Follows:** Production Chunk 18 — Economy, Shops, Trade, Debt, and Service Contracts.  
+**This document does not contain final script code.**
+
+Production Chunk 19 exists because crafting is one of the fastest ways to corrupt an RPG ledger.
+
+Old and rough builds can fail by treating every crafting phrase as a completed item, every material mention as owned, every recipe as known, every repair attempt as success, every enchantment word as a real magic power, and every repeated output as another crafted item.
+
+This chunk makes crafting useful for AI Dungeon gameplay while keeping it strict enough to avoid false inventory changes.
+
+The system should support:
+
+```text
+known recipes
+unknown recipes
+recipe hints
+owned materials
+visible materials
+shop stock materials
+custody materials
+workstations
+tools
+crafting attempts
+partial progress
+failures
+successes
+material consumption
+repair quotes
+repair attempts
+repair completion
+upgrade boundaries
+enchanting proposals
+enchanting failures
+enchanting success only when explicitly validated
+duplicate-safe craft outputs
+```
+
+But the system must not allow:
+
+```text
+"I craft a sword" -> sword appears automatically
+"I need iron" -> iron appears automatically
+"The recipe says dragonfire blade" -> weapon created
+"The blacksmith can repair it" -> item repaired
+"The sword glows" -> permanent enchantment granted
+Story Card recipe text -> live recipe/state mutation
+context summary -> material/item/enchantment mutation
+command output -> crafting result mutation
+```
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Recipe known is not item crafted.
+Recipe hint is not recipe known.
+Material mentioned is not material owned.
+Visible material is not owned material.
+Shop stock is not owned material.
+Crafting intent is not crafting success.
+Crafting attempt is not crafted output.
+Repair quote is not repair completion.
+Upgrade plan is not upgrade result.
+Enchanting description is not magic power.
+Failure can consume materials only when validated.
+Success creates items only through InventoryReducer.
+Every material consumed and item created must be duplicate-safe.
+```
+
+Crafting must be a transaction/effect pipeline, not a string-matching shortcut.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 18 locked economy, shops, trade, debt, deposits, services, and transaction safety.
+
+Crafting comes next because it depends on:
+
+```text
+owned inventory and custody from PC05
+ability status and training evidence from PC06
+quest objectives and rewards from PC07
+actors/trainers/blacksmiths from PC08
+place/workstation/location state from PC09
+progression/stat boundaries from PC10/PC11
+combat/equipment consequences from PC12
+form/equipment constraints from PC13
+world lore and recipe authority from PC15
+context/card non-canon safety from PC16
+economy/service contracts from PC18
+```
+
+If crafting is added before these owner boundaries are respected, it will duplicate items and consume the wrong materials.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 19 may change:
+
+```text
+Crafting schema helpers
+Recipe schema helpers
+Material helpers
+CraftingReducerLite
+RecipeBook helper
+CraftingValidator / CanonValidator crafting rules
+ProposalBuilder crafting event types
+EventScannerLite crafting hints
+InventoryReducer split owner contracts for material consume/output item create
+Economy/service contract references for paid repair/crafting services
+CommandRenderers /craft, /recipes, /inventory, /stateaudit
+ContextBuilder crafting packet
+OperationLedger craft/material/repair/enchant keys
+DirtyQueue crafting/inventory/context targets
+IntegrityChecker crafting checks
+ReleaseCheck crafting gates
+Regression/player-breaker crafting tests
+```
+
+Production Chunk 19 may add:
+
+```text
+MaterialRecord schema
+RecipeRecord schema
+RecipeKnowledgeRecord schema
+IngredientRequirementRecord schema
+CraftingAttemptRecord schema
+CraftingProgressRecord schema
+CraftingResultRecord schema
+MaterialConsumptionRecord schema
+CraftOutputRecord schema
+WorkstationRecord schema
+ToolRequirementRecord schema
+RepairRecord schema
+UpgradeRecord schema
+EnchantingRecord schema
+CraftingFailureRecord schema
+CraftingDisputeRecord schema
+CraftingAuditRecord schema
+```
+
+Production Chunk 19 may not add:
+
+```text
+full item stat generation engine
+full enchantment power system
+full equipment modifier activation
+full alchemy/magic research tree
+full crafting XP economy
+manual /craftitem mutation commands that bypass validation
+manual /enchant mutation commands
+live CardSync recipe writes
+Story Card recipe import as active state
+context recipe import as active state
+```
+
+Equipment stat mechanics, enchantment powers, alchemy depth, and advanced item generation remain later/gated systems unless explicitly validated by owner rules.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+CraftingState helpers
+RecipeBook helper
+CraftingReducerLite
+CraftingDisputeResolver
+MaterialResolver
+RecipeValidator
+CanonValidator crafting rules
+ProposalBuilder crafting proposals
+EventScannerLite crafting hints
+InventoryReducer material/output owner boundary
+EconomyReducer service/payment references
+QuestReducer crafting objective references
+ContextBuilderLite crafting packet
+CommandRenderers: /craft, /recipes, /inventory, /stateaudit
+OperationLedger crafting keys
+DirtyQueue crafting/inventory dirty targets
+AuditLogger crafting lines
+InvariantChecker crafting checks
+ReleaseCheckLite PC19 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+full InventoryReducer rewrite
+full equipment formula system
+full AbilityReducer enchantment/power grants
+full ProgressionReducer crafting XP
+CombatReducer damage formulas from crafted/enhanced weapons
+WorldBible import beyond recipe lore references
+CardSync live writes
+manual mutation commands
+```
+
+---
+
+# 5. Crafting state model
+
+Add or verify a crafting state bucket.
+
+Recommended shape:
+
+```text
+crafting: {
+  materials: {},
+  recipes: {},
+  recipeKnowledge: {},
+  attempts: {},
+  progress: {},
+  results: {},
+  consumptions: {},
+  outputs: {},
+  workstations: {},
+  repairs: {},
+  upgrades: {},
+  enchantments: {},
+  failures: {},
+  disputes: {},
+  warnings: [],
+  notes: []
+}
+```
+
+If crafting records are stored inside inventory/equipment, do not create competing active roots.
+
+Recommended canonical owner path:
+
+```text
+state.worldledger.crafting
+```
+
+Inventory remains the owner of actual items and currency.
+
+Crafting owns recipes, attempts, progress, crafting result records, and safe handoff proposals.
+
+---
+
+# 6. MaterialRecord schema
+
+Materials are items or item-like resources usable by crafting.
+
+Required shape:
+
+```text
+MaterialRecord {
+  id,
+  key,
+  displayName,
+  materialFamily,
+  linkedItemKey,
+  quantityKnown,
+  quantity,
+  qualityLabel,
+  state,
+  ownershipStatus,
+  accessState,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Material families:
+
+```text
+metal
+wood
+cloth
+leather
+stone
+gem
+herb
+bone
+monster_part
+essence_deferred
+reagent
+food
+fuel
+tool_part
+scrap
+unknown
+```
+
+Ownership statuses:
+
+```text
+owned
+carried
+stored
+visible
+shop_stock
+offered
+custody
+promised
+consumed
+destroyed
+unknown
+```
+
+Rules:
+
+```text
+only owned/carried/stored accessible materials may be consumed by default
+visible/shop_stock/offered/custody/promised materials are not consumable unless acquisition/access validates
+material record can link to inventory item but does not replace InventoryReducer ownership truth
+```
+
+---
+
+# 7. RecipeRecord schema
+
+RecipeRecord describes a craftable pattern, not a crafted item.
+
+Required shape:
+
+```text
+RecipeRecord {
+  id,
+  key,
+  displayName,
+  outputFamily,
+  outputDisplayName,
+  ingredientRequirements,
+  toolRequirements,
+  workstationRequirements,
+  skillRequirements,
+  timeRequirementText,
+  difficultyLabel,
+  knownStatus,
+  authoritySourceKey,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Output families:
+
+```text
+weapon
+armor
+potion
+food
+tool
+repair_part
+crafting_component
+decoration
+scroll_deferred
+enchantment_deferred
+quest_item_deferred
+unknown
+```
+
+Known statuses:
+
+```text
+known
+hinted
+partial
+rumored
+hidden
+unknown
+blocked
+```
+
+Rules:
+
+```text
+known recipe allows attempt validation if requirements can be checked
+hinted/partial/rumored recipe does not guarantee valid craft
+hidden recipe does not enter normal context before discovery
+recipe does not create output item
+```
+
+---
+
+# 8. RecipeKnowledgeRecord schema
+
+Player recipe knowledge is separate from world recipe existence.
+
+Required shape:
+
+```text
+RecipeKnowledgeRecord {
+  id,
+  recipeKey,
+  knowledgeStatus,
+  confidence,
+  learnedFromSourceKey,
+  discoveryKey,
+  learnedTurn,
+  notes
+}
+```
+
+Knowledge statuses:
+
+```text
+unknown_to_player
+hinted
+partial
+known
+confirmed_by_success
+misremembered
+blocked
+unknown
+```
+
+Rules:
+
+```text
+world recipe can exist while player does not know it
+reading a recipe can make it known if gameplay validates reading/discovery
+Story Card recipe text does not automatically become player-known recipe
+```
+
+---
+
+# 9. IngredientRequirementRecord schema
+
+Ingredient requirements must be explicit.
+
+Required shape:
+
+```text
+IngredientRequirementRecord {
+  id,
+  recipeKey,
+  materialKey,
+  displayName,
+  quantityRequired,
+  qualityRequirement,
+  consumedOnSuccess,
+  consumedOnFailurePolicy,
+  substituteAllowed,
+  sourceOperationKey,
+  notes
+}
+```
+
+Failure policies:
+
+```text
+never
+partial_if_validated
+full_if_validated
+unknown_defer
+```
+
+Rules:
+
+```text
+failure does not consume materials unless output validates consumption/waste
+substitution requires validation
+quality requirements cannot be ignored silently
+```
+
+---
+
+# 10. ToolRequirementRecord schema
+
+Tools and stations are requirements, not consumed ingredients by default.
+
+Required shape:
+
+```text
+ToolRequirementRecord {
+  id,
+  recipeKey,
+  toolKey,
+  displayName,
+  requiredAccessState,
+  consumed,
+  sourceOperationKey,
+  notes
+}
+```
+
+Rules:
+
+```text
+tool must be owned/carried/available through station/service to count
+tool is not consumed unless explicit validated result says so
+shop tool visible on shelf is not usable unless access validates
+```
+
+---
+
+# 11. WorkstationRecord schema
+
+Workstations tie crafting to place and services.
+
+Required shape:
+
+```text
+WorkstationRecord {
+  id,
+  key,
+  displayName,
+  stationFamily,
+  placeKey,
+  ownerActorKey,
+  accessState,
+  serviceContractKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Station families:
+
+```text
+forge
+anvil
+alchemy_table
+kitchen
+loom
+tannery
+enchanting_circle_deferred
+workbench
+campfire
+repair_bench
+unknown
+```
+
+Access states:
+
+```text
+available
+owned
+rented
+service_only
+visible
+locked
+forbidden
+unknown
+```
+
+Rules:
+
+```text
+visible workstation is not necessarily usable
+service-only workstation means an NPC/shop service may be needed
+place context can mention station without granting access
+```
+
+---
+
+# 12. CraftingAttemptRecord schema
+
+Crafting attempts are intent/progress, not success.
+
+Required shape:
+
+```text
+CraftingAttemptRecord {
+  id,
+  key,
+  recipeKey,
+  intendedOutputName,
+  actorKey,
+  playerIsCrafter,
+  materialsProposed,
+  toolsProposed,
+  workstationKey,
+  attemptStatus,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Attempt statuses:
+
+```text
+intent_only
+validated_requirements
+in_progress
+interrupted
+failed
+partial_success
+success
+cancelled
+rejected
+unknown
+```
+
+Rules:
+
+```text
+input crafting action creates attempt/intent only unless output confirms progress/success
+attempt does not consume materials by default
+attempt does not create output item by default
+```
+
+---
+
+# 13. CraftingProgressRecord schema
+
+Progress allows long crafting without instant completion.
+
+Required shape:
+
+```text
+CraftingProgressRecord {
+  id,
+  attemptKey,
+  recipeKey,
+  progressStatus,
+  progressText,
+  progressCurrent,
+  progressRequired,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Progress statuses:
+
+```text
+started
+in_progress
+paused
+nearly_complete
+complete_pending_result
+failed
+unknown
+```
+
+Rules:
+
+```text
+progress is not output item
+complete_pending_result still needs validated result/handoff to InventoryReducer
+```
+
+---
+
+# 14. CraftingResultRecord schema
+
+Crafting result describes outcome, not inventory mutation by itself.
+
+Required shape:
+
+```text
+CraftingResultRecord {
+  id,
+  key,
+  attemptKey,
+  recipeKey,
+  resultType,
+  outputDisplayName,
+  outputItemKey,
+  qualityLabel,
+  materialConsumptionKeys,
+  outputRecordKey,
+  ownerHandoffStatus,
+  sourceOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Result types:
+
+```text
+success
+partial_success
+failure_no_consumption
+failure_consumed_some
+failure_consumed_all
+interrupted
+cancelled
+unknown
+```
+
+Owner handoff statuses:
+
+```text
+not_needed
+pending_inventory_handoff
+inventory_handoff_applied
+inventory_handoff_failed
+deferred
+unknown
+```
+
+Rules:
+
+```text
+success must pair with InventoryReducer item creation/acquisition if player receives output
+partial_success may create damaged/incomplete output only if validated
+failure consumption requires explicit material consumption validation
+```
+
+---
+
+# 15. MaterialConsumptionRecord schema
+
+Material consumption must be owner-routed and duplicate-safe.
+
+Required shape:
+
+```text
+MaterialConsumptionRecord {
+  id,
+  key,
+  materialKey,
+  linkedItemKey,
+  quantityConsumed,
+  consumptionReason,
+  sourceAttemptKey,
+  sourceOperationKey,
+  inventoryOperationKey,
+  applied,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Consumption reasons:
+
+```text
+craft_success
+craft_failure_validated
+repair_success
+upgrade_success
+enchant_attempt_validated
+waste_validated
+unknown
+```
+
+Rules:
+
+```text
+CraftingReducer proposes consumption
+InventoryReducer owns actual item/material removal
+same consumption cannot apply twice
+```
+
+---
+
+# 16. CraftOutputRecord schema
+
+Outputs must be clear and duplicate-safe.
+
+Required shape:
+
+```text
+CraftOutputRecord {
+  id,
+  key,
+  outputItemKey,
+  displayName,
+  outputFamily,
+  qualityLabel,
+  status,
+  sourceAttemptKey,
+  sourceOperationKey,
+  inventoryOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+proposed
+created_pending_inventory
+created_owned
+created_scene_item
+failed
+rejected
+deferred
+unknown
+```
+
+Rules:
+
+```text
+output is not owned until InventoryReducer confirms item creation/acquisition
+crafted scene item can exist without ownership if story places it nearby
+duplicate output keys prevent repeated crafted items
+```
+
+---
+
+# 17. RepairRecord schema
+
+Repair is separate from crafting new items.
+
+Required shape:
+
+```text
+RepairRecord {
+  id,
+  key,
+  targetItemKey,
+  targetDisplayName,
+  repairStatus,
+  damageStateBefore,
+  damageStateAfter,
+  materialConsumptionKeys,
+  serviceContractKey,
+  costPaymentKey,
+  sourceOperationKey,
+  createdTurn,
+  completedTurn,
+  warnings,
+  notes
+}
+```
+
+Repair statuses:
+
+```text
+quote
+offered
+accepted
+in_progress
+completed
+failed
+partial
+cancelled
+rejected
+unknown
+```
+
+Rules:
+
+```text
+repair quote is not repair completion
+repair service payment is not repair completion
+repair completion can update item condition only through InventoryReducer/equipment owner contract
+failed repair can consume materials only if validated
+```
+
+---
+
+# 18. UpgradeRecord schema
+
+Upgrades change an existing item and must be stricter than crafting.
+
+Required shape:
+
+```text
+UpgradeRecord {
+  id,
+  key,
+  targetItemKey,
+  upgradeName,
+  upgradeStatus,
+  oldItemStatePreview,
+  newItemStatePreview,
+  materialConsumptionKeys,
+  sourceOperationKey,
+  inventoryOperationKey,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Upgrade statuses:
+
+```text
+planned
+attempted
+in_progress
+completed
+failed
+partial
+rejected
+deferred
+unknown
+```
+
+Rules:
+
+```text
+upgrade plan is not completed upgrade
+completed upgrade must route through item/equipment owner
+stat/equipment bonuses remain deferred unless formula owner active
+```
+
+---
+
+# 19. EnchantingRecord schema
+
+Enchanting is high-risk because it can create powers.
+
+Required shape:
+
+```text
+EnchantingRecord {
+  id,
+  key,
+  targetItemKey,
+  enchantmentName,
+  enchantmentFamily,
+  enchantmentStatus,
+  effectDescription,
+  mechanicalEffectStatus,
+  materialConsumptionKeys,
+  sourceOperationKey,
+  ownerHandoffStatus,
+  createdTurn,
+  warnings,
+  notes
+}
+```
+
+Enchantment families:
+
+```text
+flame_deferred
+frost_deferred
+light_deferred
+warding_deferred
+sharpness_deferred
+binding_deferred
+utility_deferred
+cosmetic_glow
+unknown
+```
+
+Enchantment statuses:
+
+```text
+planned
+attempted
+in_progress
+cosmetic_success
+lore_success
+mechanical_success_deferred
+failed
+unstable
+rejected
+unknown
+```
+
+Mechanical effect statuses:
+
+```text
+none
+cosmetic_only
+descriptive_only
+deferred_until_equipment_rules
+pending_ability_rules
+active_later_disabled
+rejected
+unknown
+```
+
+Rules:
+
+```text
+item glow is not combat damage
+flame name is not fire damage formula
+warding name is not armor bonus
+successful enchantment may be descriptive/lore-only until owner rules activate mechanics
+enchantment powers cannot be granted from recipe/card/context text
+```
+
+---
+
+# 20. CraftingDisputeRecord schema
+
+Crafting disputes happen when text conflicts.
+
+Required shape:
+
+```text
+CraftingDisputeRecord {
+  id,
+  key,
+  disputeType,
+  attemptKey,
+  inputClaim,
+  outputClaim,
+  resolvedResult,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Dispute types:
+
+```text
+input_success_output_failure
+missing_materials_but_success_claimed
+visible_material_consumed
+shop_stock_consumed
+recipe_unknown_but_crafted
+repair_paid_but_not_completed
+enchant_name_claims_power
+ambiguous_output_item
+duplicate_result
+unknown
+```
+
+Resolution rules:
+
+```text
+safe output beats input prediction
+missing requirements cause pending/rejected unless output provides valid source
+ambiguous item target blocks mutation
+duplicate result skips repeated output
+```
+
+---
+
+# 21. Crafting source and owner boundaries
+
+Crafting must respect owner systems.
+
+Owner boundaries:
+
+```text
+InventoryReducer owns item/material ownership, consumption, creation, condition, equipment state.
+CraftingReducer owns attempts, recipes, progress, and result proposals.
+EconomyReducer owns paid crafting/repair service contracts and currency payments.
+QuestReducer owns crafting quest objectives.
+AbilityReducer owns ability evidence from crafting-related training only.
+ProgressionReducer owns XP and must not award crafting XP by default.
+ContextBuilder/CardSync cannot create recipes/items/results.
+```
+
+Default split result for successful craft:
+
+```text
+craft.result.success -> CraftingReducer records success
+inventory.consume_materials -> InventoryReducer removes materials if validated
+inventory.create_item -> InventoryReducer adds output if validated
+```
+
+All shared operations must carry linked keys.
+
+---
+
+# 22. Recipe authority and lore boundary
+
+Recipe data may come from gameplay or lore, but it must not bypass knowledge and ownership.
+
+Allowed recipe sources:
+
+```text
+structured setup recipe before lock
+gameplay output where player reads/learns recipe
+teacher/NPC instruction if validated
+world bible lore as hidden/reference recipe only
+quest-given recipe if QuestReducer/Knowledge validates it
+```
+
+Rejected or blocked recipe sources:
+
+```text
+Story Card recipe text as active known recipe
+context recipe summary
+command output recipe list
+rumor as known recipe
+hidden recipe before discovery
+```
+
+Rules:
+
+```text
+Recipe existence is not player knowledge.
+Player-known recipe is not material ownership.
+Material ownership is not crafting success.
+```
+
+---
+
+# 23. Crafting CanonValidator expansion
+
+CanonValidator must enforce crafting safety.
+
+## 23.1 Accept crafting intent when
+
+```text
+safe input says player tries/starts/plans to craft/repair/upgrade/enchant
+recipe/output target can be bound enough
+source is not command/context/card/audit/debug
+```
+
+Result:
+
+```text
+CraftingAttemptRecord intent_only or in_progress
+no materials consumed
+no output created
+```
+
+## 23.2 Accept crafting success when
+
+All are true:
+
+```text
+safe output directly confirms successful creation/completion
+output item target is bound
+required material/tool/workstation checks pass or output provides validated override/source
+not dream/quote/metaphor/planning only
+not command/context/card source
+operation key not duplicate
+```
+
+Result:
+
+```text
+CraftingResultRecord success
+material consumption and output item handoff routed to InventoryReducer
+```
+
+## 23.3 Accept crafting failure when
+
+```text
+safe output directly confirms failure/interruption/waste/breakage
+attempt target can be bound
+```
+
+Result:
+
+```text
+failure record
+no material consumption unless output validates materials were wasted/consumed
+```
+
+## 23.4 Accept recipe learned when
+
+```text
+safe output says player reads/learns recipe through valid in-world action
+source is player-known, not hidden/card/context/command
+operation key not duplicate
+```
+
+Result:
+
+```text
+RecipeKnowledgeRecord known/partial/hinted according to source
+no item output
+```
+
+---
+
+# 24. Repair CanonValidator expansion
+
+Accept repair quote when:
+
+```text
+NPC/shop says repair would cost X or can repair item
+```
+
+Result:
+
+```text
+RepairRecord quote/offered
+no item condition change
+no currency change unless EconomyReducer payment event separately validates
+```
+
+Accept repair completion when:
+
+```text
+safe output directly says item has been repaired/fixed/restored
+item target bound
+not just payment/offer/quote
+operation key not duplicate
+```
+
+Result:
+
+```text
+RepairRecord completed
+InventoryReducer/equipment owner updates item condition if validated
+```
+
+Reject repair completion when:
+
+```text
+payment only
+quote only
+promise only
+NPC says can repair later
+command/context/card text
+```
+
+---
+
+# 25. Enchanting CanonValidator expansion
+
+Enchanting must be extra conservative.
+
+Accept enchanting attempt when:
+
+```text
+safe source says player begins/attempts enchantment
+item target bound
+```
+
+Result:
+
+```text
+EnchantingRecord attempted/in_progress
+no mechanical power
+```
+
+Accept cosmetic/descriptive enchant success when:
+
+```text
+safe output confirms glow/rune/aura without mechanical effect
+```
+
+Result:
+
+```text
+cosmetic_success or lore_success
+Inventory item description may update only through owner contract
+no combat/stat/ability mechanics
+```
+
+Accept mechanical enchant success only when:
+
+```text
+future owner rules for equipment/ability/stat effects are active
+specific effect is validated
+gates/tests pass
+```
+
+Default PC19 result:
+
+```text
+mechanical_success_deferred or descriptive_only
+```
+
+Reject powers when:
+
+```text
+recipe/card/context says fire sword
+item name implies power
+NPC rumor claims power
+command output lists enchantment
+```
+
+---
+
+# 26. ProposalBuilder crafting event types
+
+Add or verify event types:
+
+```text
+craft.recipe_hint_candidate
+craft.recipe_learned_candidate
+craft.intent_candidate
+craft.requirement_check_candidate
+craft.progress_candidate
+craft.success_candidate
+craft.failure_candidate
+craft.partial_success_candidate
+craft.material_consume_candidate
+craft.output_item_candidate
+craft.dispute_candidate
+repair.quote_candidate
+repair.offer_candidate
+repair.accept_candidate
+repair.progress_candidate
+repair.complete_candidate
+repair.failure_candidate
+upgrade.plan_candidate
+upgrade.complete_candidate
+enchant.intent_candidate
+enchant.cosmetic_success_candidate
+enchant.mechanical_success_deferred_candidate
+enchant.failure_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+recipe hints/knowledge records
+crafting attempts/progress/results
+repair quote/progress/completion records
+upgrade/enchant attempts and descriptive success/deferred mechanics
+material consumption/output proposals routed to InventoryReducer
+```
+
+---
+
+# 27. EventScannerLite crafting hints
+
+EventScannerLite may detect crafting hints, but detection is not canon.
+
+Hint families:
+
+```text
+craft/make/build/forge/smith/sew/cook/brew/mix/carve
+repair/fix/mend/restore
+upgrade/improve/reinforce/sharpen
+imbue/enchant/inscribe/rune/bless
+recipe/pattern/blueprint/formula
+material/ingredient/reagent/scrap/ore/herb/gem
+workstation/anvil/forge/alchemy table/workbench/campfire
+success/failure/wasted/broken/ruined/completed
+```
+
+Must flag:
+
+```text
+intentOnly
+successConfirmed
+failureConfirmed
+materialsConsumedConfirmed
+outputItemConfirmed
+recipeKnownClaim
+recipeHintOnly
+materialVisibleOnly
+materialShopStockOnly
+repairQuoteOnly
+paymentOnly
+enchantPowerRisk
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+ambiguousOutput
+ambiguousMaterials
+```
+
+Parser cannot mutate crafting/inventory state.
+
+---
+
+# 28. CraftingReducerLite behavior
+
+CraftingReducerLite owns:
+
+```text
+crafting.recipes
+crafting.recipeKnowledge
+crafting.attempts
+crafting.progress
+crafting.results
+crafting.repairs
+crafting.upgrades
+crafting.enchantments
+crafting.disputes
+crafting.warnings
+```
+
+## 28.1 Intent commit
+
+Accepted crafting intent should:
+
+```text
+create CraftingAttemptRecord
+status intent_only/in_progress
+not consume materials
+not create output
+mark crafting/context dirty
+```
+
+## 28.2 Progress commit
+
+Accepted progress should:
+
+```text
+create/update CraftingProgressRecord
+not create output unless result validates
+```
+
+## 28.3 Success commit
+
+Accepted success should:
+
+```text
+create CraftingResultRecord
+create material consumption proposals if needed
+create output item proposal if player receives item
+route actual consume/create to InventoryReducer
+record handoff status
+mark crafting/inventory/context dirty
+```
+
+## 28.4 Failure commit
+
+Accepted failure should:
+
+```text
+create CraftingFailureRecord or result failure
+only create consumption proposals if waste/consumption validated
+not create output item unless partial_success validates it
+```
+
+## 28.5 Repair/upgrade/enchant commit
+
+Accepted repair/upgrade/enchant should:
+
+```text
+record appropriate attempt/result
+defer mechanics unless owner rules active
+route item condition/description changes through InventoryReducer/equipment owner
+```
+
+---
+
+# 29. Crafting defensive guards
+
+CraftingReducer must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+intent-only as success
+recipe hint as known recipe
+visible material as owned material
+shop stock material as owned material
+custody material as owned material
+repair quote as completed repair
+payment as completed repair
+enchantment name as mechanical power
+ambiguous output item
+ambiguous material source
+duplicate result
+wrong owner reducer
+```
+
+Reducer must not blindly trust upstream.
+
+---
+
+# 30. Operation keys
+
+Required crafting operation keys:
+
+```text
+recipe.hint.<recipeKey>.<sourceHash>
+recipe.learn.<recipeKey>.<sourceHash>
+craft.intent.<attemptKey>.<sourceHash>
+craft.progress.<attemptKey>.<progressHash>
+craft.success.<attemptKey>.<outputKey>.<sourceHash>
+craft.failure.<attemptKey>.<failureHash>
+craft.consume.<attemptKey>.<materialKey>.<quantity>.<sourceHash>
+craft.output.<attemptKey>.<outputItemKey>.<sourceHash>
+craft.dispute.<disputeType>.<sourceHash>
+repair.quote.<targetItemKey>.<sourceHash>
+repair.complete.<targetItemKey>.<sourceHash>
+upgrade.complete.<targetItemKey>.<upgradeKey>.<sourceHash>
+enchant.attempt.<targetItemKey>.<enchantKey>.<sourceHash>
+enchant.success.<targetItemKey>.<enchantKey>.<sourceHash>
+```
+
+Inventory linked keys:
+
+```text
+inventory.consume.material.<materialKey>.<craftConsumptionKey>
+inventory.create.crafted.<outputItemKey>.<craftOutputKey>
+inventory.update.repair.<targetItemKey>.<repairKey>
+inventory.update.enchant_desc.<targetItemKey>.<enchantKey>
+```
+
+Rules:
+
+```text
+craft success/output/consumption keys are durable
+repair completion keys are durable
+enchantment keys are durable
+duplicate output cannot create duplicate item
+```
+
+---
+
+# 31. Dirty targets
+
+Crafting updates should mark:
+
+```text
+crafting
+inventory_equipment
+context
+quest_log if crafting objective involved
+economy if service/payment contract involved
+player_sheet only if future stat/equipment mechanics active
+```
+
+Mapping:
+
+```text
+recipe learned -> crafting, context
+craft intent/progress -> crafting, context
+craft success/failure -> crafting, inventory_equipment, context
+repair/upgrade/enchant -> crafting, inventory_equipment, context
+paid service craft/repair -> crafting, economy, inventory_equipment, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 32. `/craft`, `/recipes`, `/inventory`, and context updates
+
+## 32.1 `/craft`
+
+Should show:
+
+```text
+active crafting attempts
+progress
+success/failure results
+pending InventoryReducer handoffs
+repair/upgrade/enchant records
+warnings/deferred mechanics
+```
+
+## 32.2 `/recipes`
+
+Should show:
+
+```text
+known recipes
+partial/hinted recipes
+hidden/unknown count without spoilers
+requirements if known
+missing materials if safely checkable
+```
+
+## 32.3 `/inventory`
+
+Should show crafting-related distinctions:
+
+```text
+owned materials
+visible materials
+shop stock materials
+custody materials
+consumed materials
+crafted outputs pending/owned/scene item
+```
+
+## 32.4 Context packet
+
+Context should include only relevant crafting facts.
+
+Example:
+
+```text
+Crafting: You know the basic Healing Salve recipe but lack owned moonleaf. Moonleaf is visible in Mira's basket, not yours. Your iron dagger repair has been quoted but not completed.
+```
+
+Do not include:
+
+```text
+hidden recipes before discovery
+candidate enchantment as active power
+visible materials as owned
+craft intent as success
+```
+
+---
+
+# 33. IntegrityChecker crafting checks
+
+Add checks:
+
+```text
+crafting bucket exists
+recipe knowledge separate from recipe existence
+craft attempts do not create outputs without result
+material consumption has InventoryReducer handoff or safe defer
+craft output has InventoryReducer handoff or safe defer
+visible/shop/custody materials not consumed as owned
+repair quote not marked completed
+paid service not marked completed unless service completion validates
+enchanting mechanical effects deferred unless owner rules active
+duplicate craft output/consumption keys not repeated
+command/card/context source not active crafting truth
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not craft items, consume materials, repair items, or enchant items.
+
+---
+
+# 34. Cleanup crafting protections
+
+Cleanup may compact:
+
+```text
+old rejected recipe hints
+old failed attempts after summary
+old duplicate crafting warnings
+old completed attempt logs after durable output/consumption keys preserved
+```
+
+Cleanup must not delete:
+
+```text
+known recipes
+active attempts/progress
+pending InventoryReducer handoffs
+material consumption records needed for audit
+crafted output records needed for audit
+repair completion history
+active enchantment/deferred mechanical warnings
+durable crafting operation keys
+```
+
+Cleanup must not restore consumed materials, create missing outputs, complete repairs, or activate enchantment powers.
+
+---
+
+# 35. ReleaseCheck gates for this chunk
+
+Add or verify PC19-specific gates:
+
+```text
+PC19-G01 MaterialRecord schema exists or equivalent material structure exists
+PC19-G02 RecipeRecord and RecipeKnowledgeRecord exist or equivalents exist
+PC19-G03 IngredientRequirement, ToolRequirement, and Workstation structures exist or equivalents exist
+PC19-G04 CraftingAttempt, Progress, Result, Consumption, and Output records exist or equivalents exist
+PC19-G05 RepairRecord, UpgradeRecord, and EnchantingRecord exist or equivalents exist
+PC19-G06 CanonValidator separates intent/progress/success/failure/consumption/output
+PC19-G07 CraftingReducer rejects unsafe routed crafting events
+PC19-G08 visible/shop/custody/promised materials cannot be consumed as owned
+PC19-G09 recipe hint/rumor/card/context does not become known recipe
+PC19-G10 successful craft routes item creation and material consumption through InventoryReducer
+PC19-G11 repair quote/payment does not mark item repaired
+PC19-G12 enchantment name/glow does not activate mechanical power by default
+PC19-G13 duplicate craft output/material consumption/repair/enchant keys exist
+PC19-G14 /craft /recipes /inventory or equivalents display crafting state honestly
+PC19-G15 command/context/card crafting text cannot become canon
+PC19-G16 cleanup preserves active attempts, recipe knowledge, pending handoffs, and durable keys
+PC19-G17 crafting XP/equipment stat/enchantment power systems remain deferred unless owner rules active
+PC19-G18 player-breaker crafting tests registered
+```
+
+ReleaseCheck must fail if crafting intent creates items, visible materials are consumed, repair quotes fix items, enchantment names grant powers, or repeated output duplicates crafted results.
+
+---
+
+# 36. Required tests
+
+## PC19-001 — Crafting intent creates no item
+
+Input:
+
+```text
+I craft an iron dagger.
+```
+
+Expected:
+
+```text
+CraftingAttemptRecord intent_only
+no iron dagger added
+no materials consumed
+```
+
+---
+
+## PC19-002 — Crafting success creates output through InventoryReducer
+
+Output:
+
+```text
+After careful work, you finish crafting the iron dagger.
+```
+
+Expected:
+
+```text
+CraftingResult success
+InventoryReducer output handoff required
+no duplicate item without inventory create key
+```
+
+---
+
+## PC19-003 — Duplicate craft output skipped
+
+Repeat same success output.
+
+Expected:
+
+```text
+no second iron dagger
+craft output key skip/audit
+```
+
+---
+
+## PC19-004 — Visible material not consumed
+
+Output:
+
+```text
+Moonleaf grows beside the path as you prepare a salve.
+```
+
+Expected:
+
+```text
+moonleaf visible material/reference only
+not consumed
+not owned
+```
+
+---
+
+## PC19-005 — Shop stock material not consumed
+
+Output:
+
+```text
+The shop has iron ingots on the shelf.
+```
+
+Expected:
+
+```text
+iron ingots shop stock
+not owned
+not consumable until purchase/access validates
+```
+
+---
+
+## PC19-006 — Custody material not consumed
+
+Output:
+
+```text
+Mira holds the vial of moon oil while you discuss the recipe.
+```
+
+Expected:
+
+```text
+moon oil custody/reference
+not consumed by player crafting
+```
+
+---
+
+## PC19-007 — Owned materials consumed on confirmed success
+
+Setup:
+
+```text
+player owns 2 iron ingots
+recipe requires 2 iron ingots
+```
+
+Output:
+
+```text
+You use the two iron ingots and finish the dagger.
+```
+
+Expected:
+
+```text
+material consumption proposal for 2 ingots
+InventoryReducer applies consume once
+crafted dagger output handoff applies once
+```
+
+---
+
+## PC19-008 — Failure does not consume materials by default
+
+Output:
+
+```text
+The attempt fails before you begin using the iron.
+```
+
+Expected:
+
+```text
+failure record
+materials unchanged
+```
+
+---
+
+## PC19-009 — Failure consumes materials only when validated
+
+Output:
+
+```text
+The mixture burns away the moonleaf, ruining the salve.
+```
+
+Expected:
+
+```text
+failure record
+moonleaf consumption only if owned/access-valid and InventoryReducer applies consume
+no salve output
+```
+
+---
+
+## PC19-010 — Recipe hint not known recipe
+
+Output:
+
+```text
+A rumor says old alchemists used moonleaf in healing salves.
+```
+
+Expected:
+
+```text
+recipe hint/rumor only
+not known recipe
+```
+
+---
+
+## PC19-011 — Reading recipe can teach recipe
+
+Output:
+
+```text
+You read the salve recipe and learn the exact steps.
+```
+
+Expected:
+
+```text
+RecipeKnowledge known if source validates reading
+no item crafted
+```
+
+---
+
+## PC19-012 — Story Card recipe non-canon
+
+Story Card text:
+
+```text
+The player knows how to craft Dragonfire Blades.
+```
+
+Expected:
+
+```text
+no known recipe from card text
+blocked/reference-only lore if scanned
+```
+
+---
+
+## PC19-013 — Context recipe non-canon
+
+Context text:
+
+```text
+Known recipe: Dragonfire Blade.
+```
+
+Expected:
+
+```text
+no recipe knowledge mutation
+```
+
+---
+
+## PC19-014 — Repair quote no repair
+
+Output:
+
+```text
+The blacksmith says repairing your dagger will cost 5 gold.
+```
+
+Expected:
+
+```text
+RepairRecord quote/offered
+item condition unchanged
+currency unchanged unless payment validates separately
+```
+
+---
+
+## PC19-015 — Repair payment not completion
+
+Output:
+
+```text
+You pay the blacksmith 5 gold to start repairing the dagger.
+```
+
+Expected:
+
+```text
+Economy payment may apply if validated
+repair in_progress/accepted
+item not repaired until completion output
+```
+
+---
+
+## PC19-016 — Repair completion updates item through owner
+
+Output:
+
+```text
+The blacksmith hands back your dagger, fully repaired.
+```
+
+Expected:
+
+```text
+RepairRecord completed
+InventoryReducer/equipment owner updates item condition once
+```
+
+---
+
+## PC19-017 — Duplicate repair completion skipped
+
+Repeat completion output.
+
+Expected:
+
+```text
+item not repeatedly repaired/duplicated
+repair key skip/audit
+```
+
+---
+
+## PC19-018 — Upgrade plan no upgrade
+
+Input:
+
+```text
+I plan to reinforce my shield with iron bands.
+```
+
+Expected:
+
+```text
+UpgradeRecord planned/attempted
+shield unchanged
+materials unchanged
+```
+
+---
+
+## PC19-019 — Upgrade completion owner-routed
+
+Output:
+
+```text
+You finish reinforcing the shield with iron bands.
+```
+
+Expected:
+
+```text
+UpgradeRecord completed
+Inventory/equipment owner update required
+no stat bonus unless equipment rules active
+```
+
+---
+
+## PC19-020 — Enchanting attempt no power
+
+Input:
+
+```text
+I try to enchant the sword with flame.
+```
+
+Expected:
+
+```text
+EnchantingRecord attempted
+no fire damage power
+no item stat change
+```
+
+---
+
+## PC19-021 — Glowing rune cosmetic only
+
+Output:
+
+```text
+A red rune glows along the sword's edge.
+```
+
+Expected:
+
+```text
+cosmetic/lore enchant success possible
+mechanical effect deferred
+no fire damage formula
+```
+
+---
+
+## PC19-022 — Mechanical enchantment deferred
+
+Output:
+
+```text
+The sword is now a Flamebrand that burns enemies with every strike.
+```
+
+Expected:
+
+```text
+enchantment mechanical claim deferred unless owner rules active
+no combat damage formula
+```
+
+---
+
+## PC19-023 — Crafting XP deferred
+
+Output:
+
+```text
+You finish the dagger and feel like you gained crafting experience.
+```
+
+Expected:
+
+```text
+no XP unless exact XP event validates through ProgressionReducer
+```
+
+---
+
+## PC19-024 — Command crafting non-canon
+
+Run:
+
+```text
+/craft
+/recipes
+```
+
+Feed output through Output hook.
+
+Expected:
+
+```text
+no crafting/material/item mutation
+```
+
+---
+
+## PC19-025 — Manual craft command disabled
+
+Run:
+
+```text
+/craftitem Dragonfire Blade
+/enchant sword fire
+/repairall
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no crafting/item/enchant mutation
+```
+
+---
+
+## PC19-026 — Craft display honest
+
+State:
+
+```text
+known salve recipe
+moonleaf visible but not owned
+repair quote active
+flame enchantment deferred
+```
+
+Run:
+
+```text
+/craft
+/recipes
+/inventory
+```
+
+Expected:
+
+```text
+known recipe shown
+moonleaf visible/not owned
+repair quote not completed
+flame enchantment deferred/no mechanical power
+```
+
+---
+
+## PC19-027 — Cleanup preserves active crafting state
+
+Setup:
+
+```text
+active crafting attempt
+known recipe
+pending inventory handoff
+repair record
+enchantment deferred warning
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active/pending records preserved
+only low-risk duplicate warnings compacted
+```
+
+---
+
+## PC19-028 — Ambiguous output blocks item creation
+
+Output:
+
+```text
+After hours of work, it is finished.
+```
+
+Expected:
+
+```text
+ambiguous output dispute if no bound attempt/output
+no item creation until target resolved
+```
+
+---
+
+## PC19-029 — Workstation visible not usable
+
+Output:
+
+```text
+You see the royal forge behind a locked iron gate.
+```
+
+Expected:
+
+```text
+workstation visible/locked
+not usable for crafting
+```
+
+---
+
+## PC19-030 — Service-crafted item needs handoff
+
+Output:
+
+```text
+The tailor finishes the cloak and says it is ready for pickup.
+```
+
+Expected:
+
+```text
+service/craft result ready
+cloak not owned until handoff/acquisition validates
+```
+
+---
+
+# 37. Regression placement
+
+Add PC19 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+30 PC19 tests registered
+0 critical PC19 failures
+```
+
+---
+
+# 38. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+crafting.materials
+crafting.recipes
+crafting.recipeKnowledge
+crafting.attempts
+crafting.progress
+crafting.results
+crafting.consumptions
+crafting.outputs
+crafting.workstations
+crafting.repairs
+crafting.upgrades
+crafting.enchantments
+crafting.failures
+crafting.disputes
+MaterialRecord shape
+RecipeRecord shape
+RecipeKnowledgeRecord shape
+IngredientRequirementRecord shape
+ToolRequirementRecord shape
+WorkstationRecord shape
+CraftingAttemptRecord shape
+CraftingProgressRecord shape
+CraftingResultRecord shape
+MaterialConsumptionRecord shape
+CraftOutputRecord shape
+RepairRecord shape
+UpgradeRecord shape
+EnchantingRecord shape
+CraftingDisputeRecord shape
+```
+
+---
+
+# 39. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+crafting intent/progress/success/failure detection
+recipe hint/known detection
+material ownership/access distinction
+repair quote/payment/completion distinction
+upgrade attempt/completion distinction
+enchantment cosmetic/descriptive/deferred distinction
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+manual craft mutation parser
+live card recipe import
+context recipe import
+equipment stat/enchantment power activation without owner rules
+crafting XP by default
+```
+
+---
+
+# 40. Reducer/checker changes
+
+Allowed:
+
+```text
+CraftingReducer attempt/progress/result/failure records
+material consumption/output proposals
+repair/upgrade/enchant records
+InventoryReducer owner-routed handoff integration
+crafting integrity checks
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+crafting directly adding/removing inventory items without InventoryReducer
+repair directly mutating item condition without owner path
+enchantment granting combat/stat/ability power by name
+manual /craftitem reducer
+```
+
+---
+
+# 41. Command/context/card changes
+
+Allowed:
+
+```text
+/craft display
+/recipes display
+/inventory crafting distinctions
+/context crafting packet
+/cardaudit recipe/crafting blocked claims
+/releasecheck PC19 gates
+/playerbreakercheck crafting cases
+```
+
+Forbidden:
+
+```text
+/craftitem active
+/enchant active
+/repairall active
+/importrecipefromcard active
+live card writes that create recipe/crafting truth
+```
+
+---
+
+# 42. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted economy build
+
+Start from:
+
+```text
+WorldLedgerV0.17.18_ECONOMY_TRADE_CONTRACTS_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.19_CRAFTING_REPAIR_ENCHANTING_WORKING.txt
+```
+
+## Step 2 — Add/verify crafting helper functions
+
+Create helpers for:
+
+```text
+ensureCraftingShape
+makeMaterialRecord
+makeRecipeRecord
+makeRecipeKnowledgeRecord
+makeIngredientRequirementRecord
+makeToolRequirementRecord
+makeWorkstationRecord
+makeCraftingAttemptRecord
+makeCraftingProgressRecord
+makeCraftingResultRecord
+makeMaterialConsumptionRecord
+makeCraftOutputRecord
+makeRepairRecord
+makeUpgradeRecord
+makeEnchantingRecord
+makeCraftingDisputeRecord
+isUnsafeCraftingSource
+isCraftIntentOnly
+isCraftSuccessConfirmed
+isMaterialAccessibleForConsumption
+isEnchantMechanicalDeferred
+```
+
+## Step 3 — Add RecipeBook helper
+
+Support:
+
+```text
+known/hinted/partial/hidden recipes
+requirements
+knowledge boundaries
+recipe display
+```
+
+## Step 4 — Add CraftingDisputeResolver
+
+Implement priority rules:
+
+```text
+source blocking first
+duplicate skip second
+intent is not success
+missing/ambiguous materials block consumption
+visible/shop/custody materials block consumption
+repair quote/payment is not completion
+enchant name is not mechanics
+```
+
+## Step 5 — Update CanonValidator crafting rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+intent
+progress
+success
+failure
+recipe learned
+material consumption
+output creation
+repair quote/completion
+upgrade completion
+enchantment success/deferred mechanics
+```
+
+## Step 6 — Update ProposalBuilder crafting support
+
+Ensure proposals carry:
+
+```text
+recipe target
+output target
+material targets
+quantities
+access states
+workstation/tool references
+repair/enchant target item
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 7 — Update CraftingReducerLite
+
+Implement safe commits for:
+
+```text
+recipe hint/knowledge
+attempt/progress
+success/failure/partial
+repair/upgrade/enchant records
+material/output handoff status
+```
+
+## Step 8 — Wire owner handoffs
+
+Route:
+
+```text
+material consumption -> InventoryReducer
+crafted output -> InventoryReducer
+repair condition update -> InventoryReducer/equipment owner
+enchantment description update -> InventoryReducer/equipment owner only if descriptive and safe
+```
+
+## Step 9 — Update commands/context
+
+Update:
+
+```text
+/craft
+/recipes
+/inventory
+/context crafting packet
+/cardaudit blocked recipe/craft claims
+```
+
+## Step 10 — Update IntegrityChecker
+
+Add crafting/material/recipe/repair/enchant/owner-handoff checks.
+
+## Step 11 — Add PC19 ReleaseCheck gates
+
+Add PC19-G01 through PC19-G18.
+
+## Step 12 — Add PC19 tests
+
+Add PC19-001 through PC19-030.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/craft
+/recipes
+/inventory
+/cardaudit
+```
+
+## Step 14 — Save accepted crafting build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.19_CRAFTING_REPAIR_ENCHANTING_ACCEPTED.txt
+```
+
+---
+
+# 43. What this chunk produces
+
+Production Chunk 19 should produce:
+
+```text
+WorldLedger V0.17.19 crafting/repair/enchanting accepted script if code changes are made
+Material/Recipe/RecipeKnowledge schemas
+Ingredient/Tool/Workstation schemas
+CraftingAttempt/Progress/Result schemas
+MaterialConsumption/CraftOutput schemas
+Repair/Upgrade/Enchanting schemas
+CraftingDisputeResolver
+CraftingReducerLite behavior
+InventoryReducer owner-routed material/output/repair handoffs
+/craft /recipes /inventory display improvements
+crafting context packet
+crafting integrity checks
+PC19 ReleaseCheck gates
+PC19 regression/player-breaker tests
+crafting acceptance report
+updated planning zip with Production Chunk 19 added
+```
+
+It should not produce:
+
+```text
+full item stat generator
+full enchantment power system
+full equipment modifier activation
+crafting XP economy
+manual craft/enchant/repair mutation commands
+live recipe card writes
+Story Card/context recipe import as active state
+```
+
+---
+
+# 44. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 19 passes if:
+
+```text
+recipes, recipe knowledge, materials, attempts, progress, results, repairs, upgrades, and enchantments are separated
+crafting intent does not create items
+visible/shop/custody/promised materials cannot be consumed as owned
+crafting success routes material consumption and output creation through InventoryReducer
+failure consumes materials only when validated
+repair quote/payment does not repair item
+upgrade completion routes through item owner and does not grant stat bonuses without rules
+enchantment name/glow does not grant mechanical powers by default
+duplicate craft/consume/output/repair/enchant keys work
+/craft /recipes /inventory display honestly
+command/context/card crafting text cannot become canon
+cleanup preserves active/pending crafting truth and durable keys
+PC19 tests pass
+ReleaseCheck has no PC19 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+enchantment mechanics are deferred
+equipment stat upgrades are deferred
+crafting XP is deferred
+workstation access rules are conservative
+recipe substitution rules are limited
+partial success is descriptive until owner systems support more detail
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+craft intent creates item
+recipe hint becomes known recipe
+Story Card/context recipe becomes player-known recipe
+visible/shop/custody material is consumed
+failure consumes materials without validation
+success creates output without InventoryReducer handoff
+repair quote/payment fixes item
+enchantment name grants damage/stat/ability power
+duplicate output creates duplicate items
+manual /craftitem or /enchant mutates state
+cleanup deletes active crafting/pending handoff/durable keys
+CraftingReducer trusts unsafe routed data
+```
+
+---
+
+# 45. Handoff to Production Chunk 20
+
+When this chunk passes, Production Chunk 20 begins:
+
+```text
+Production Chunk 20 — Factions, Reputation Evidence, Law, Crime, and Consequence Boundaries
+```
+
+Production Chunk 20 may use crafting/economy/world-lore records for guilds, blacksmiths, illegal goods, service contracts, and reputation evidence.
+
+Production Chunk 19 must leave crafting state reliable enough that PC20 can ask:
+
+```text
+Was this only a recipe hint?
+Does the player know the recipe?
+Were materials owned, visible, shop stock, or in custody?
+Was crafting only attempted, in progress, failed, or successful?
+Were materials actually consumed?
+Was the output actually created and handed to the player?
+Was repair only quoted, paid for, in progress, or completed?
+Was an enchantment cosmetic, descriptive, deferred, or mechanically active?
+```
+
+---
+
+# 46. Final doctrine
+
+Production Chunk 19 is where making things becomes real without becoming dangerous.
+
+Final rule:
+
+```text
+Crafting is a pipeline.
+Recipes, materials, tools, workstations, attempts, results, consumption, outputs, repairs, upgrades, and enchantments are separate records.
+Inventory owns items.
+Economy owns payment.
+Crafting owns process.
+Enchanting powers wait for owner rules.
+Nothing is created, consumed, repaired, or empowered just because text sounds cool.
+```
+
+Once this passes, the project can safely deepen factions, reputation evidence, law, crime, and consequence boundaries in Production Chunk 20.

@@ -1,0 +1,2742 @@
+# AIDRPG Production Chunk 20 — Factions, Reputation Evidence, Law, Crime, and Consequence Boundaries
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 20 — Factions, Reputation Evidence, Law, Crime, and Consequence Boundaries  
+**Production sequence:** 20 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.19 crafting/materials accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add faction records, reputation evidence, law/jurisdiction records, crime accusation/evidence/conviction boundaries, public/private consequence routing, bounty/fine/jail shells, and duplicate-safe legal/social consequence handling without private events becoming public reputation or rumor/lore/command text creating legal state.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 19 — Crafting, Materials, Repair, Enchanting Boundaries, and Recipe Safety.  
+**This document does not contain final script code.**
+
+Production Chunk 20 exists because factions, reputation, law, and crime can make AI Dungeon feel reactive and alive, but they can also corrupt the whole game if handled loosely.
+
+Old and rough builds risked:
+
+```text
+private actions becoming global reputation
+rumors becoming legal convictions
+NPC accusations becoming confirmed crimes
+Story Card faction lore changing player standing
+context summaries creating bounties
+witnesses who were not present reporting crimes
+quest completion automatically changing faction standing
+combat victory creating public fame everywhere
+merchant suspicion becoming legal guilt
+law text applying outside its jurisdiction
+bounty notices becoming paid fines
+fine due becoming fine paid
+jail threat becoming imprisonment
+crime attempt becoming completed crime
+stealing visible loot becoming owned item or criminal transfer without inventory validation
+duplicate outputs stacking reputation changes and bounties
+```
+
+This chunk builds the evidence-first social consequence layer.
+
+The system should support fun consequences:
+
+```text
+guards investigate theft
+witnesses remember crimes
+local factions respect or distrust the player
+laws differ by jurisdiction
+bounties and fines can exist
+public heroic acts may build reputation evidence
+criminal acts may create suspicion, reports, charges, and legal pressure
+```
+
+But those consequences must be routed through evidence, witnesses, publicness, jurisdiction, and owner systems.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Private action is not public reputation.
+Witnessed action is evidence, not conviction.
+Accusation is not proof.
+Suspicion is not guilt.
+Crime attempt is not completed crime.
+Law exists within jurisdiction.
+A bounty notice is not a paid fine.
+A fine due is not a fine paid.
+A threat of jail is not imprisonment.
+Faction lore is not player standing.
+Quest fame is not global reputation unless witnessed/reported/validated.
+Commands, cards, context, and lore cannot create legal or reputation canon.
+```
+
+Faction and law systems must be evidence-based, scoped, duplicate-safe, and honest.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 19 made crafting/material/economy transactions safe.
+
+Faction/law/reputation comes next because it depends on:
+
+```text
+actor presence and witness memory from PC08
+quest and reward state from PC07
+place/current jurisdiction from PC09
+combat event truth from PC12
+threat/encounter resolution from PC14
+world lore/faction lore boundaries from PC15
+context/card non-canon safety from PC16
+inventory ownership/custody/economy transaction truth from PC05/PC18
+```
+
+If reputation/law is not designed now, later domain, faction, divine, and endgame systems will repeatedly patch around false public consequences.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 20 may change:
+
+```text
+Faction schema helpers
+Reputation schema helpers
+Law/Jurisdiction schema helpers
+Crime schema helpers
+ConsequenceReducerLite / SocialConsequenceReducer
+CanonValidator faction/reputation/law/crime rules
+ProposalBuilder faction/legal event types
+EventScannerLite faction/law/crime hints
+CommandRenderers /reputation /factions /law /crime if supported
+ContextBuilder social/faction/legal packet
+OperationLedger reputation/legal/faction keys
+DirtyQueue faction/social/legal/context targets
+IntegrityChecker faction/legal checks
+ReleaseCheck PC20 gates
+Regression/player-breaker faction/law tests
+```
+
+Production Chunk 20 may add:
+
+```text
+FactionRecord schema
+FactionStandingRecord schema
+ReputationEvidenceRecord schema
+PublicKnowledgeEventRecord schema
+JurisdictionRecord schema
+LawRecord schema
+CrimeEventRecord schema
+CrimeEvidenceRecord schema
+WitnessReportRecord schema
+LegalStatusRecord schema
+LegalConsequenceRecord schema
+BountyRecord schema
+FineRecord schema
+CustodySentenceRecord shell
+FactionConsequenceRecord schema
+SocialConsequenceAuditRecord schema
+```
+
+Production Chunk 20 may not add:
+
+```text
+full faction war simulation
+full politics/diplomacy engine
+full government/domain management
+full court trial simulator
+full reputation numeric economy unless formula authority is locked
+automatic faction standing from every quest/combat result
+automatic jail/prison scene control
+automatic bounty hunters/encounter spawns
+manual /setreputation /clearcrime /addbounty commands
+live CardSync faction/law writes
+old card prose reputation import
+```
+
+Domain/governance and advanced faction systems remain later.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+FactionState helpers
+ReputationState helpers
+LawState helpers
+CrimeState helpers
+SocialConsequenceReducer
+CanonValidator social/legal rules
+ProposalBuilder social/legal proposals
+EventScannerLite social/legal hints
+Resolver faction/jurisdiction/actor target binding
+CommandRenderers: /reputation, /factions, /law, /crime if available
+ContextBuilderLite social/legal packet
+OperationLedger social/legal keys
+DirtyQueue social/legal dirty targets
+AuditLogger social/legal lines
+InvariantChecker social/legal checks
+ReleaseCheckLite PC20 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+InventoryReducer except owner-routed theft/transfer evidence references
+EconomyReducer except fines/debts/payment references
+QuestReducer except faction reward/reference links
+ActorReducer except witness/report/social memory references
+PlaceReducer except jurisdiction references
+CombatReducer except crime/violence evidence references
+ProgressionReducer
+WorldBible import except reference-only faction/law lore
+CardSync live writes
+manual mutation commands
+```
+
+Faction/law systems may link to owner-system events.
+
+They must not replace owner systems.
+
+---
+
+# 5. Faction/social state model
+
+Recommended faction/social root:
+
+```text
+factions: {
+  records: {},
+  standings: {},
+  reputationEvidence: {},
+  publicKnowledge: {},
+  consequences: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Recommended legal root:
+
+```text
+law: {
+  jurisdictions: {},
+  laws: {},
+  crimes: {},
+  crimeEvidence: {},
+  witnessReports: {},
+  legalStatuses: {},
+  legalConsequences: {},
+  bounties: {},
+  fines: {},
+  custodySentences: {},
+  warnings: [],
+  notes: []
+}
+```
+
+If existing state uses a `social` bucket, either place these under it or bridge cleanly.
+
+Do not create multiple competing reputation roots.
+
+---
+
+# 6. FactionRecord schema
+
+FactionRecord stores faction identity and lore references.
+
+Required shape:
+
+```text
+FactionRecord {
+  id,
+  key,
+  displayName,
+  factionType,
+  status,
+  sourceAuthority,
+  loreRecordKeys,
+  knownToPlayer,
+  jurisdictionKeys,
+  alliedFactionKeys,
+  rivalFactionKeys,
+  leaderActorKeys,
+  basePlaceKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Faction types:
+
+```text
+government
+guard
+criminal
+merchant_guild
+religious_order
+noble_house
+tribe
+village
+city
+kingdom
+empire
+cult_deferred
+monster_group_deferred
+unknown
+```
+
+Rules:
+
+```text
+faction lore does not create player standing
+faction existence does not create law enforcement everywhere
+faction hostility in lore is not personal hostility to player
+```
+
+---
+
+# 7. FactionStandingRecord schema
+
+Faction standing is the faction's evidence-based view of the player.
+
+Required shape:
+
+```text
+FactionStandingRecord {
+  id,
+  key,
+  factionKey,
+  subjectKey,
+  standingLabel,
+  numericScore,
+  numericKnown,
+  confidence,
+  evidenceKeys,
+  publicKnowledgeKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Standing labels:
+
+```text
+unknown
+neutral
+known_positive
+favored
+trusted
+honored
+known_negative
+suspicious
+wanted
+hated
+hostile
+exiled
+unknown_deferred
+```
+
+Rules:
+
+```text
+standingLabel may be descriptive if numeric formulas are inactive
+numericScore must remain null/unknown unless formula authority exists
+standing is scoped to a faction, not global by default
+standing changes require ReputationEvidenceRecord/public knowledge/report validation
+```
+
+---
+
+# 8. ReputationEvidenceRecord schema
+
+Reputation evidence is not reputation by itself.
+
+Required shape:
+
+```text
+ReputationEvidenceRecord {
+  id,
+  key,
+  subjectKey,
+  factionKey,
+  actorKey,
+  evidenceType,
+  valence,
+  magnitudeLabel,
+  publicness,
+  witnessScope,
+  confidence,
+  relatedQuestKey,
+  relatedCombatKey,
+  relatedCrimeKey,
+  relatedEconomyKey,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Evidence types:
+
+```text
+helped_faction
+harmed_faction
+completed_service
+broke_contract
+paid_debt
+refused_debt
+committed_crime
+accused_of_crime
+public_heroism
+public_violence
+private_kindness
+private_insult
+rumor
+lore_reference
+unknown
+```
+
+Valence:
+
+```text
+positive
+negative
+mixed
+neutral
+unknown
+```
+
+Publicness:
+
+```text
+private
+witnessed_private
+local_public
+faction_reported
+region_public
+global_deferred
+rumored
+unknown
+```
+
+Rules:
+
+```text
+private evidence does not become faction standing unless reported/known
+rumor evidence stays rumor
+lore reference evidence cannot change player standing
+```
+
+---
+
+# 9. PublicKnowledgeEventRecord schema
+
+Public knowledge explains how a faction or public group learns something.
+
+Required shape:
+
+```text
+PublicKnowledgeEventRecord {
+  id,
+  key,
+  subjectKey,
+  knowledgeType,
+  summary,
+  sourceEvidenceKey,
+  reporterActorKey,
+  witnessActorKeys,
+  factionKey,
+  placeKey,
+  jurisdictionKey,
+  spreadScope,
+  confidence,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Knowledge types:
+
+```text
+witnessed_event
+reported_event
+official_record
+rumor_spread
+public_notice
+confession
+investigation_result_deferred
+unknown
+```
+
+Spread scopes:
+
+```text
+single_actor
+small_group
+local_place
+settlement
+faction
+region
+global_deferred
+unknown
+```
+
+Rules:
+
+```text
+public knowledge requires witness/report/public notice/confession/investigation
+private action cannot skip into faction/global knowledge
+spread scope must not expand without validation
+```
+
+---
+
+# 10. JurisdictionRecord schema
+
+Law applies somewhere.
+
+Required shape:
+
+```text
+JurisdictionRecord {
+  id,
+  key,
+  displayName,
+  jurisdictionType,
+  controllingFactionKey,
+  placeKeys,
+  regionKeys,
+  lawKeys,
+  active,
+  knownToPlayer,
+  sourceAuthority,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Jurisdiction types:
+
+```text
+village
+city
+kingdom
+empire
+tribal_law
+guild_law
+temple_law
+wilderness_none
+contested
+unknown
+```
+
+Rules:
+
+```text
+law applies only if place/current scene falls under jurisdiction or actor authority validates it
+unknown jurisdiction means no automatic law consequence
+wilderness_none can still have social/faction consequences, but not formal local law unless validated
+```
+
+---
+
+# 11. LawRecord schema
+
+Law records describe rules, not crimes committed.
+
+Required shape:
+
+```text
+LawRecord {
+  id,
+  key,
+  jurisdictionKey,
+  displayName,
+  lawType,
+  description,
+  penaltyProfileKey,
+  sourceAuthority,
+  knownToPlayer,
+  active,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Law types:
+
+```text
+theft
+assault
+murder
+trespass
+forbidden_magic
+contraband
+fraud
+breach_of_contract
+debt_default
+public_disorder
+poaching
+blasphemy_deferred
+treason_deferred
+unknown
+```
+
+Rules:
+
+```text
+law existence does not mean player violated it
+law text does not create crime event
+penalty profile does not apply without legal process/evidence
+```
+
+---
+
+# 12. CrimeEventRecord schema
+
+Crime events are alleged or confirmed legal events.
+
+Required shape:
+
+```text
+CrimeEventRecord {
+  id,
+  key,
+  subjectKey,
+  crimeType,
+  status,
+  jurisdictionKey,
+  placeKey,
+  victimActorKey,
+  victimFactionKey,
+  itemKey,
+  relatedInventoryEventKey,
+  relatedCombatEventKey,
+  relatedEconomyEventKey,
+  evidenceKeys,
+  witnessReportKeys,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  updatedTurn,
+  resolvedTurn,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+suspected
+alleged
+attempted
+committed_private
+committed_witnessed
+reported
+charged
+convicted
+cleared
+pardoned
+escaped_deferred
+unknown
+```
+
+Rules:
+
+```text
+attempted is not completed
+suspected/alleged is not convicted
+committed_private is not public knowledge
+reported is not conviction
+convicted requires legal authority/policy
+```
+
+---
+
+# 13. CrimeEvidenceRecord schema
+
+Crime evidence is source-bound.
+
+Required shape:
+
+```text
+CrimeEvidenceRecord {
+  id,
+  key,
+  crimeEventKey,
+  evidenceType,
+  strength,
+  sourceFamily,
+  sourceKey,
+  witnessActorKey,
+  itemKey,
+  placeKey,
+  publicness,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Evidence types:
+
+```text
+witness_saw
+victim_report
+guard_observed
+item_missing
+item_found_on_subject
+confession
+combat_record
+inventory_transfer_record
+economy_default_record
+rumor
+lore_reference
+unknown
+```
+
+Strength:
+
+```text
+weak
+moderate
+strong
+direct
+contradicted
+unknown
+```
+
+Rules:
+
+```text
+evidence can support legal status
+rumor evidence does not convict
+lore reference evidence does not convict
+inventory/economy/combat owner records can support evidence, but cannot be invented here
+```
+
+---
+
+# 14. WitnessReportRecord schema
+
+Witness reports bridge Actor memory and law/reputation.
+
+Required shape:
+
+```text
+WitnessReportRecord {
+  id,
+  key,
+  witnessActorKey,
+  reporterActorKey,
+  subjectKey,
+  reportType,
+  reportedToFactionKey,
+  reportedToActorKey,
+  crimeEventKey,
+  reputationEvidenceKey,
+  accuracy,
+  publicness,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Report types:
+
+```text
+direct_report
+rumor_report
+official_statement
+false_accusation_deferred
+confession_report
+unknown
+```
+
+Accuracy:
+
+```text
+accurate
+inaccurate_deferred
+uncertain
+rumored
+unknown
+```
+
+Rules:
+
+```text
+witness must have memory or direct report source
+report creates public/faction knowledge, not automatic conviction
+false accusation handling remains cautious/deferred unless validated
+```
+
+---
+
+# 15. LegalStatusRecord schema
+
+Legal status is scoped to jurisdiction/faction.
+
+Required shape:
+
+```text
+LegalStatusRecord {
+  id,
+  key,
+  subjectKey,
+  jurisdictionKey,
+  factionKey,
+  statusLabel,
+  relatedCrimeKeys,
+  relatedConsequenceKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Status labels:
+
+```text
+clear
+suspected
+wanted_for_questioning
+charged
+wanted
+fugitive
+convicted
+pardoned
+banished_deferred
+unknown
+```
+
+Rules:
+
+```text
+legal status is not global by default
+wanted in one city does not automatically mean wanted everywhere
+status requires evidence/report/legal process
+```
+
+---
+
+# 16. LegalConsequenceRecord schema
+
+Legal consequences are stateful and separate from payments or imprisonment.
+
+Required shape:
+
+```text
+LegalConsequenceRecord {
+  id,
+  key,
+  subjectKey,
+  consequenceType,
+  status,
+  jurisdictionKey,
+  factionKey,
+  relatedCrimeKey,
+  relatedFineKey,
+  relatedBountyKey,
+  relatedCustodySentenceKey,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  resolvedTurn,
+  notes
+}
+```
+
+Consequence types:
+
+```text
+warning
+investigation
+questioning
+fine_due
+bounty_posted
+arrest_attempt
+custody
+jail_sentence_deferred
+banishment_deferred
+confiscation_deferred
+reputation_penalty
+unknown
+```
+
+Statuses:
+
+```text
+pending
+active
+resolved
+paid
+served
+disputed
+cancelled
+duplicate_skipped
+unknown
+```
+
+Rules:
+
+```text
+consequence threat is not consequence applied
+fine_due is not paid
+bounty_posted is not captured
+arrest_attempt is not imprisonment
+confiscation requires InventoryReducer owner event later
+```
+
+---
+
+# 17. BountyRecord schema
+
+Bounty records must not spawn bounty hunters automatically.
+
+Required shape:
+
+```text
+BountyRecord {
+  id,
+  key,
+  subjectKey,
+  amount,
+  currencyType,
+  issuerFactionKey,
+  jurisdictionKey,
+  reasonCrimeKey,
+  status,
+  postedTurn,
+  resolvedTurn,
+  sourceOperationKey,
+  notes
+}
+```
+
+Statuses:
+
+```text
+posted
+rumored
+claimed_deferred
+cancelled
+paid_out_deferred
+unknown
+```
+
+Rules:
+
+```text
+bounty posting does not remove player currency
+bounty posting does not spawn encounter automatically
+bounty claimed/payment routed through economy/inventory/progression as later owner events
+```
+
+---
+
+# 18. FineRecord schema
+
+Fines are debts/obligations until paid.
+
+Required shape:
+
+```text
+FineRecord {
+  id,
+  key,
+  subjectKey,
+  amount,
+  currencyType,
+  jurisdictionKey,
+  issuerFactionKey,
+  relatedCrimeKey,
+  status,
+  dueText,
+  paidOperationKey,
+  sourceOperationKey,
+  createdTurn,
+  paidTurn,
+  notes
+}
+```
+
+Statuses:
+
+```text
+due
+paid
+disputed
+waived
+overdue_deferred
+unknown
+```
+
+Rules:
+
+```text
+fine due does not subtract currency
+fine paid requires Economy/Inventory currency transfer validation
+fine waived requires legal authority validation
+```
+
+---
+
+# 19. CustodySentenceRecord shell
+
+Custody/jail is high-impact and should be conservative.
+
+Required shape:
+
+```text
+CustodySentenceRecord {
+  id,
+  key,
+  subjectKey,
+  jurisdictionKey,
+  factionKey,
+  custodyType,
+  status,
+  relatedCrimeKey,
+  placeKey,
+  startTurn,
+  endConditionText,
+  sourceOperationKey,
+  notes
+}
+```
+
+Custody types:
+
+```text
+detained
+arrested
+jailed_deferred
+house_arrest_deferred
+magical_binding_deferred
+unknown
+```
+
+Rules:
+
+```text
+jail threat is not custody
+arrest attempt is not custody
+custody requires validated story output and owner routing through place/actor state
+full jail scenario control remains deferred
+```
+
+---
+
+# 20. FactionConsequenceRecord schema
+
+Faction consequences are reactions, not always numeric reputation.
+
+Required shape:
+
+```text
+FactionConsequenceRecord {
+  id,
+  key,
+  factionKey,
+  subjectKey,
+  consequenceType,
+  status,
+  evidenceKeys,
+  publicKnowledgeKeys,
+  sourceOperationKey,
+  createdTurn,
+  resolvedTurn,
+  notes
+}
+```
+
+Consequence types:
+
+```text
+attitude_shift
+service_denied
+service_discount_deferred
+hostility_warning
+invitation_deferred
+rank_offer_deferred
+blacklist_deferred
+protection_deferred
+unknown
+```
+
+Rules:
+
+```text
+attitude/consequence requires faction knowledge or representative actor reaction
+service denial may be local merchant/faction consequence, not global economy change
+rank/discount/protection mechanics remain deferred unless future owner rules active
+```
+
+---
+
+# 21. Private/public consequence policy
+
+This policy is central.
+
+Private event examples:
+
+```text
+You insult Mira while alone.
+You steal from an empty room and no one sees.
+You secretly help a prisoner escape.
+```
+
+Expected:
+
+```text
+actor memory only if actor present/informed
+private evidence record if validated
+no public/faction/global reputation unless report/discovery occurs
+```
+
+Public event examples:
+
+```text
+The whole market sees you return the stolen purse.
+The city guard watches you stab the merchant.
+Old Bren publicly praises you for saving the village.
+```
+
+Expected:
+
+```text
+public knowledge event may record
+faction/reputation evidence may update
+legal consequence may begin if jurisdiction/law validates
+```
+
+---
+
+# 22. Law/jurisdiction policy
+
+Law is scoped.
+
+Rules:
+
+```text
+current place must bind to jurisdiction for formal legal effects
+controlling faction must be known or accepted
+wilderness acts may have witness/social consequences without formal law
+faction-specific law applies only to faction-controlled spaces or faction members when validated
+unknown jurisdiction blocks formal crime status beyond suspected/alleged evidence
+```
+
+Example:
+
+```text
+You pick a noble's pocket in Market Lane under city guard jurisdiction.
+```
+
+Can create:
+
+```text
+theft crime event if Inventory/scene validates theft attempt/success
+witness report if actor/guard sees
+legal status if reported/guard observed
+```
+
+But:
+
+```text
+private unseen theft does not instantly make city wanted status
+```
+
+---
+
+# 23. Crime and owner-system boundaries
+
+Crime records must not invent owner-system facts.
+
+## 23.1 Theft
+
+Theft depends on Inventory ownership/custody and transfer truth.
+
+```text
+item visible -> not theft
+attempt to take -> attempted theft only
+successful owner-routed item acquisition from another owner -> possible theft evidence
+```
+
+## 23.2 Assault/murder
+
+Violence depends on Combat/Body/Actor truth.
+
+```text
+attack intent -> attempted assault only
+confirmed damage to actor -> assault evidence
+confirmed death through death boundary -> murder/homicide evidence if law validates
+```
+
+## 23.3 Fraud/debt/default
+
+Fraud/debt depends on Economy/Contract truth.
+
+```text
+promise to pay -> not default
+missed validated due date/payment refusal -> debt/default evidence if contract exists
+```
+
+## 23.4 Trespass
+
+Trespass depends on Place/Law/Access truth.
+
+```text
+forbidden area lore -> not trespass until place/access/jurisdiction validates
+warning ignored in jurisdiction -> possible trespass evidence
+```
+
+---
+
+# 24. Reputation and quest boundaries
+
+Quest state does not automatically produce faction standing.
+
+Rules:
+
+```text
+quest completion can create reputation evidence only if faction/actor/publicness validates
+unreported quest completion does not create faction-wide fame
+quest reward promise does not create standing
+public praise/report can create public knowledge/evidence
+```
+
+Example:
+
+```text
+Old Bren thanks you privately.
+```
+
+Expected:
+
+```text
+relationship evidence with Old Bren
+possibly local faction evidence only if reported/public/faction-linked
+```
+
+Example:
+
+```text
+Old Bren praises you before the village council.
+```
+
+Expected:
+
+```text
+public knowledge event
+village faction reputation evidence possible
+```
+
+---
+
+# 25. Reputation and combat/encounter boundaries
+
+Combat victory is not automatically fame.
+
+Rules:
+
+```text
+private combat victory -> no public reputation unless witnessed/reported
+publicly saving villagers -> positive reputation evidence possible
+killing a guard in public -> legal/crime evidence possible
+combat victory still does not grant XP/loot unless owner events validate
+```
+
+---
+
+# 26. Faction/law CanonValidator expansion
+
+CanonValidator must enforce social/legal safety.
+
+## 26.1 Accept reputation evidence when
+
+All are true:
+
+```text
+safe story output or accepted owner event supports social consequence
+faction/actor/public group target is bound
+publicness/witness/report scope is known or conservative
+not command/context/card/audit/debug source
+operation key not duplicate
+```
+
+## 26.2 Accept faction standing change when
+
+```text
+reputation evidence exists
+public/faction knowledge exists or representative actor authority validates it
+standing formula/policy supports label change
+not duplicate
+```
+
+Default safe policy:
+
+```text
+record evidence first
+standing label changes only when strong/public/faction-scoped evidence supports it
+numeric score deferred unless formula authority active
+```
+
+## 26.3 Accept crime event when
+
+```text
+safe story output or owner-system event supports attempted/committed crime
+jurisdiction/law binds or crime remains alleged/suspected without formal consequence
+victim/item/combat/economy target is bound enough
+not command/context/card source
+```
+
+## 26.4 Accept legal consequence when
+
+```text
+crime/legal status/evidence supports it
+actor/faction/jurisdiction authority is present
+consequence type is explicit
+not merely threat/rumor
+not duplicate
+```
+
+## 26.5 Reject social/legal mutation when
+
+Any are true:
+
+```text
+private event with no witness/report becomes public
+NPC accusation becomes conviction
+rumor becomes legal status
+Story Card says player is wanted
+context says reputation changed
+command output says bounty active
+law lore applies outside jurisdiction
+quest/combat/economy event lacks owner validation
+```
+
+---
+
+# 27. ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+faction.record_candidate
+faction.standing_evidence_candidate
+faction.standing_change_candidate
+faction.consequence_candidate
+reputation.evidence_candidate
+public_knowledge.event_candidate
+law.jurisdiction_candidate
+law.rule_candidate
+crime.event_candidate
+crime.evidence_candidate
+crime.witness_report_candidate
+legal.status_candidate
+legal.consequence_candidate
+bounty.post_candidate
+fine.due_candidate
+fine.paid_candidate
+custody.detained_candidate
+custody.sentence_deferred_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+faction records
+reputation evidence
+public knowledge events
+scoped standing labels if validated
+jurisdiction/law records
+crime events and evidence
+witness reports
+legal status labels
+bounty/fine/custody shell records
+```
+
+Current chunk must not commit:
+
+```text
+automatic global reputation
+automatic faction war
+automatic jail scene control
+automatic bounty hunter encounter
+automatic currency fine payment
+automatic confiscation/inventory deletion
+```
+
+---
+
+# 28. EventScannerLite faction/law hints
+
+EventScannerLite may detect hints, but detection is not canon.
+
+Hint families:
+
+```text
+faction names and ranks
+guards/council/guild/temple/noble house
+praise/thanks/condemnation/public notice
+wanted/bounty/fine/arrest/law/crime/theft/murder/assault/trespass
+witness/report/accuse/confess/investigate
+jurisdiction/city law/guild law/temple law
+```
+
+Must flag:
+
+```text
+privateEvent
+publicEvent
+witnessed
+reported
+rumorOnly
+accusationOnly
+threatOnly
+jurisdictionUnknown
+ownerSystemRequired
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+legalHighImpact
+standingFormulaRequired
+```
+
+Parser cannot mutate faction/law state directly.
+
+---
+
+# 29. SocialConsequenceReducer behavior
+
+SocialConsequenceReducer should:
+
+```text
+create/update FactionRecords
+create ReputationEvidenceRecords
+create PublicKnowledgeEventRecords
+update FactionStandingRecord only when evidence/publicness policy allows
+create FactionConsequenceRecords
+create law/jurisdiction records
+create CrimeEvent/Evidence/WitnessReport records
+create LegalStatus/Consequence/Bounty/Fine/Custody shell records
+route currency payment to Economy/Inventory owner systems
+route confiscation to Inventory owner system if future policy validates
+mark dirty targets
+```
+
+It should not:
+
+```text
+invent witnesses
+invent public knowledge
+invent crimes from lore
+turn accusation into conviction
+apply fines as paid
+remove currency
+remove inventory
+start encounter
+award XP
+```
+
+---
+
+# 30. Defensive guards
+
+Faction/law reducers must reject/no-op if routed result has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+private as public
+evidence as conviction
+accusation as proof
+rumor as fact
+law outside jurisdiction
+fine due as paid
+bounty posted as captured/paid
+arrest threat as custody
+quest/combat/economy claim without owner validation
+missing faction/jurisdiction key for formal consequence
+wrong owner reducer
+```
+
+Reducers must not blindly trust upstream.
+
+---
+
+# 31. Operation keys
+
+Required faction/reputation keys:
+
+```text
+faction.record.<factionKey>.<sourceHash>
+faction.standing.<factionKey>.<subjectKey>.<sourceHash>
+reputation.evidence.<subjectKey>.<factionKey>.<evidenceType>.<sourceHash>
+public.knowledge.<subjectKey>.<spreadScope>.<sourceHash>
+faction.consequence.<factionKey>.<subjectKey>.<consequenceType>.<sourceHash>
+```
+
+Required law/crime keys:
+
+```text
+law.jurisdiction.<jurisdictionKey>.<sourceHash>
+law.rule.<jurisdictionKey>.<lawType>.<sourceHash>
+crime.event.<subjectKey>.<crimeType>.<placeKey>.<sourceHash>
+crime.evidence.<crimeEventKey>.<evidenceType>.<sourceHash>
+crime.witness.<witnessKey>.<crimeEventKey>.<sourceHash>
+legal.status.<subjectKey>.<jurisdictionKey>.<statusLabel>.<sourceHash>
+legal.consequence.<subjectKey>.<consequenceType>.<sourceHash>
+bounty.post.<subjectKey>.<issuerFactionKey>.<amountKey>.<sourceHash>
+fine.due.<subjectKey>.<jurisdictionKey>.<amountKey>.<sourceHash>
+fine.paid.<fineKey>.<paymentOperationKey>
+custody.detained.<subjectKey>.<jurisdictionKey>.<sourceHash>
+```
+
+Rules:
+
+```text
+legal status/consequence keys are durable
+reputation evidence keys prevent duplicate standing spam
+fine/bounty keys prevent duplicate obligations
+paid fine key links to economy payment key
+cleanup must preserve durable legal/reputation keys
+```
+
+---
+
+# 32. Dirty targets
+
+Faction/law updates should mark:
+
+```text
+social_memory
+faction_status
+legal_status
+context
+quest_log if quest-linked evidence
+current_location if jurisdiction/legal pressure affects scene
+inventory_equipment only if owner-routed confiscation/theft evidence links
+```
+
+Mapping:
+
+```text
+reputation evidence -> social_memory, faction_status, context
+public knowledge -> social_memory, faction_status, context
+crime evidence -> legal_status, social_memory, context
+legal consequence -> legal_status, context, current_location if active pressure
+fine/bounty -> legal_status, economy reference dirty, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 33. `/reputation`, `/factions`, `/law`, `/crime` display
+
+If command budget permits, add:
+
+```text
+/reputation
+/factions
+/law
+/crime
+```
+
+If not, fold into:
+
+```text
+/stateaudit
+/actors
+/location
+/quests
+```
+
+## 33.1 `/reputation`
+
+Should show:
+
+```text
+faction-scoped standing labels
+recent reputation evidence
+public/private distinction
+rumors vs confirmed public knowledge
+numeric score disabled/deferred if not active
+```
+
+## 33.2 `/factions`
+
+Should show:
+
+```text
+known factions
+known faction lore/player knowledge
+player standing if known
+important consequences
+```
+
+## 33.3 `/law`
+
+Should show:
+
+```text
+current jurisdiction
+known laws
+active legal statuses
+fines/bounties/custody shells
+unknown/deferred warnings
+```
+
+## 33.4 `/crime`
+
+Should show:
+
+```text
+suspected/alleged/reported/charged/convicted crimes separately
+witness/evidence summary
+resolved/cleared/pardoned states
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 34. ContextBuilder social/legal packet
+
+Context should include only relevant social/legal facts.
+
+Include:
+
+```text
+current jurisdiction if known
+active legal pressure
+wanted/fine/bounty status if confirmed/scoped
+faction standing only if relevant
+public/private distinction for recent evidence
+warnings about accusations/rumors as uncertain
+```
+
+Do not include:
+
+```text
+private acts as public reputation
+rumor as conviction
+hidden faction lore before discovery
+global reputation if only local evidence exists
+fine due as paid
+bounty as encounter spawn
+```
+
+Example:
+
+```text
+Law: In Market Lane, city guard jurisdiction applies. You are suspected of theft because a guard saw you take a purse, but no conviction is recorded. Fine/payment has not occurred.
+```
+
+---
+
+# 35. IntegrityChecker faction/legal checks
+
+Add checks:
+
+```text
+FactionStandingRecords have factionKey and evidence
+standing labels do not exist without evidence unless setup-confirmed
+numeric reputation disabled unless formula active
+private evidence not marked public without PublicKnowledgeEventRecord
+crime statuses are not escalated from accusation to conviction without authority
+law/jurisdiction exists for formal legal consequence
+fine paid has economy payment key
+bounty posted does not create encounter
+command/card/context sources not active social/legal truth
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not change reputation, clear crimes, create convictions, pay fines, or spawn consequences.
+
+---
+
+# 36. Cleanup faction/legal protections
+
+Cleanup may compact:
+
+```text
+old duplicate rumor evidence
+old rejected card/context legal claims
+old resolved low-risk social evidence summaries
+old duplicate reputation warning spam
+```
+
+Cleanup must not delete:
+
+```text
+active legal statuses
+active bounty/fine/custody records
+unresolved crime evidence
+public knowledge events
+standing evidence needed for audit
+faction records used by quests/law
+operation keys preventing duplicate consequences
+```
+
+Cleanup must not clear crimes, pay fines, erase bounties, change standing, or make private events public.
+
+---
+
+# 37. ReleaseCheck gates for this chunk
+
+Add or verify PC20-specific gates:
+
+```text
+PC20-G01 FactionRecord schema exists or equivalent faction structure exists
+PC20-G02 FactionStandingRecord and ReputationEvidenceRecord exist or equivalents exist
+PC20-G03 PublicKnowledgeEventRecord exists or equivalent public knowledge structure exists
+PC20-G04 JurisdictionRecord and LawRecord exist or equivalents exist
+PC20-G05 CrimeEventRecord and CrimeEvidenceRecord exist or equivalents exist
+PC20-G06 WitnessReportRecord exists or equivalent report structure exists
+PC20-G07 LegalStatusRecord and LegalConsequenceRecord exist or equivalents exist
+PC20-G08 BountyRecord, FineRecord, and CustodySentenceRecord shells exist or equivalents exist
+PC20-G09 CanonValidator separates private/public/reported/rumored/convicted states
+PC20-G10 CanonValidator rejects accusation/rumor/card/context/command as conviction or standing
+PC20-G11 SocialConsequenceReducer rejects unsafe routed social/legal events
+PC20-G12 faction standing requires evidence/public knowledge or representative authority
+PC20-G13 law/crime effects require jurisdiction or remain alleged/suspected
+PC20-G14 fine/bounty/custody states do not mutate currency/inventory/place unless owner-routed
+PC20-G15 duplicate reputation/legal/fine/bounty keys exist and are durable
+PC20-G16 /reputation /factions /law /crime or equivalent displays states honestly
+PC20-G17 command/context/card faction/legal text cannot become canon
+PC20-G18 cleanup preserves active legal/reputation evidence and keys
+PC20-G19 advanced faction war/domain/trial simulation remains deferred
+PC20-G20 player-breaker faction/legal tests registered
+```
+
+ReleaseCheck must fail if private acts become public reputation, accusations become convictions, Story Card/context text creates wanted status, or fines/bounties mutate currency/encounters automatically.
+
+---
+
+# 38. Required tests
+
+## PC20-001 — Private kindness not public reputation
+
+Output:
+
+```text
+You quietly help Mira while no one else is present.
+```
+
+Expected:
+
+```text
+actor relationship/private evidence possible
+no faction/global reputation change
+```
+
+---
+
+## PC20-002 — Public praise creates evidence
+
+Output:
+
+```text
+Old Bren praises you before the village council for saving the mill.
+```
+
+Expected:
+
+```text
+public knowledge event possible
+village faction positive reputation evidence possible
+standing changes only if policy supports it
+```
+
+---
+
+## PC20-003 — Rumor does not create standing
+
+Output:
+
+```text
+People say you robbed the shrine.
+```
+
+Expected:
+
+```text
+rumor evidence only
+no conviction
+no confirmed standing change unless rumor policy later supports suspicion label
+```
+
+---
+
+## PC20-004 — Accusation is not conviction
+
+Output:
+
+```text
+The merchant accuses you of theft.
+```
+
+Expected:
+
+```text
+accusation/alleged crime possible
+not convicted
+no fine paid
+```
+
+---
+
+## PC20-005 — Witnessed theft creates evidence, not conviction
+
+Output:
+
+```text
+The guard watches you slip the purse into your coat.
+```
+
+Expected:
+
+```text
+crime evidence/witness report possible if inventory event validates theft
+legal status suspected/reported/charged according to policy
+not automatic conviction
+```
+
+---
+
+## PC20-006 — Unseen theft not public
+
+Output:
+
+```text
+You steal the ring from the empty room, unseen.
+```
+
+Expected:
+
+```text
+theft evidence/private crime possible only if inventory acquisition validates
+no public/faction knowledge
+```
+
+---
+
+## PC20-007 — Theft attempt not completed theft
+
+Input/output:
+
+```text
+You try to pickpocket the noble, but he pulls away before you touch the purse.
+```
+
+Expected:
+
+```text
+attempted theft/suspicion possible
+no completed theft
+no item acquired
+```
+
+---
+
+## PC20-008 — Law outside jurisdiction blocked
+
+Setup:
+
+```text
+currentPlace = wilderness with no known jurisdiction
+```
+
+Output:
+
+```text
+City law declares you guilty.
+```
+
+Expected:
+
+```text
+formal legal consequence blocked/pending unless authority/jurisdiction binds
+```
+
+---
+
+## PC20-009 — Current jurisdiction recognized
+
+Setup:
+
+```text
+currentPlace = Market Lane
+jurisdiction = City Guard
+```
+
+Output:
+
+```text
+The city guard cites you for public disorder.
+```
+
+Expected:
+
+```text
+legal status/consequence possible under City Guard jurisdiction
+not global law
+```
+
+---
+
+## PC20-010 — Fine due not paid
+
+Output:
+
+```text
+The magistrate fines you 15 gold.
+```
+
+Expected:
+
+```text
+FineRecord due
+currency unchanged
+```
+
+---
+
+## PC20-011 — Fine paid owner-routed
+
+Output:
+
+```text
+You pay the magistrate the 15 gold fine.
+```
+
+Expected:
+
+```text
+FineRecord paid only if Economy/Inventory currency transfer validates
+currency loss owner-routed
+```
+
+---
+
+## PC20-012 — Bounty posted does not spawn encounter
+
+Output:
+
+```text
+The guard posts a 50 gold bounty for your arrest.
+```
+
+Expected:
+
+```text
+BountyRecord posted
+no bounty hunter encounter spawned
+no currency change
+```
+
+---
+
+## PC20-013 — Bounty rumor not confirmed
+
+Output:
+
+```text
+A drunk claims there is a bounty on your head.
+```
+
+Expected:
+
+```text
+rumored bounty or rumor evidence
+no confirmed bounty unless authority validates
+```
+
+---
+
+## PC20-014 — Arrest threat not custody
+
+Output:
+
+```text
+The guard threatens to throw you in jail.
+```
+
+Expected:
+
+```text
+threat/legal pressure possible
+no custody/imprisonment
+```
+
+---
+
+## PC20-015 — Detainment validated
+
+Output:
+
+```text
+The guards seize your arms and drag you into the holding cell.
+```
+
+Expected:
+
+```text
+custody/detained record possible
+Place/Actor context dirty
+inventory confiscation not automatic
+```
+
+---
+
+## PC20-016 — Confiscation requires InventoryReducer
+
+Output:
+
+```text
+The guard takes your sword as evidence.
+```
+
+Expected:
+
+```text
+legal consequence/reference possible
+sword custody changes only if InventoryReducer validates transfer/custody
+```
+
+---
+
+## PC20-017 — Quest completion not automatic reputation
+
+Output:
+
+```text
+You complete the wolf quest in secret.
+```
+
+Expected:
+
+```text
+quest state may update through QuestReducer
+no public reputation unless reported/witnessed
+```
+
+---
+
+## PC20-018 — Public quest report reputation evidence
+
+Output:
+
+```text
+The village council announces that you saved the mill.
+```
+
+Expected:
+
+```text
+public knowledge/reputation evidence possible
+standing scoped to village/faction
+```
+
+---
+
+## PC20-019 — Combat victory not fame by itself
+
+Output:
+
+```text
+You defeat the bandit alone in the woods.
+```
+
+Expected:
+
+```text
+combat/encounter result possible
+no reputation unless witnessed/reported
+```
+
+---
+
+## PC20-020 — Public violence creates legal evidence
+
+Output:
+
+```text
+In front of the city guard, you stab the merchant.
+```
+
+Expected:
+
+```text
+combat attack/damage owner-routed
+crime evidence/witness report possible
+legal status scoped to city jurisdiction
+```
+
+---
+
+## PC20-021 — Story Card wanted status blocked
+
+Story Card text:
+
+```text
+The player is wanted by the City Guard.
+```
+
+Expected:
+
+```text
+no legal status mutation
+blocked/lore reference audit only
+```
+
+---
+
+## PC20-022 — Context reputation claim blocked
+
+Context text:
+
+```text
+The Ash Guard hates the player.
+```
+
+Expected:
+
+```text
+no faction standing mutation
+source blocked
+```
+
+---
+
+## PC20-023 — Command reputation non-canon
+
+Run:
+
+```text
+/reputation
+/factions
+/law
+/crime
+```
+
+Feed output through Output hook.
+
+Expected:
+
+```text
+no faction/legal mutation
+```
+
+---
+
+## PC20-024 — Duplicate evidence skipped
+
+Repeat same witnessed theft output.
+
+Expected:
+
+```text
+no duplicate evidence/standing spam
+operation key skip/update audit
+```
+
+---
+
+## PC20-025 — Duplicate fine skipped
+
+Repeat same fine output.
+
+Expected:
+
+```text
+no duplicate fine due
+operation key prevents stacked fines unless new authority/source validates a separate fine
+```
+
+---
+
+## PC20-026 — Display distinguishes legal states
+
+State:
+
+```text
+suspected theft
+fine due 15 gold
+bounty rumored
+no conviction
+```
+
+Run:
+
+```text
+/law
+/crime
+```
+
+Expected:
+
+```text
+suspected separate from convicted
+fine due separate from paid
+bounty rumored separate from confirmed
+```
+
+---
+
+## PC20-027 — Reputation display scoped
+
+State:
+
+```text
+Village Council positive evidence
+City Guard suspicious evidence
+```
+
+Run:
+
+```text
+/reputation
+/factions
+```
+
+Expected:
+
+```text
+standing/evidence shown separately per faction
+no global reputation collapse
+```
+
+---
+
+## PC20-028 — Cleanup preserves legal evidence
+
+Setup:
+
+```text
+active legal status
+fine due
+reputation evidence
+public knowledge event
+operation keys
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+active records/keys preserved
+only low-risk duplicates compacted
+```
+
+---
+
+## PC20-029 — Manual social/legal commands disabled
+
+Run:
+
+```text
+/setreputation CityGuard hated
+/clearcrime theft
+/addbounty 100
+/payfine free
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no social/legal/currency mutation
+```
+
+---
+
+## PC20-030 — Lore faction hostility does not become personal standing
+
+World lore:
+
+```text
+The Ash Guard distrusts outsiders.
+```
+
+Expected:
+
+```text
+faction lore possible
+player standing unchanged unless direct evidence/public interaction validates it
+```
+
+---
+
+# 39. Regression placement
+
+Add PC20 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+30 PC20 tests registered
+0 critical PC20 failures
+```
+
+---
+
+# 40. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+factions.records
+factions.standings
+factions.reputationEvidence
+factions.publicKnowledge
+factions.consequences
+law.jurisdictions
+law.laws
+law.crimes
+law.crimeEvidence
+law.witnessReports
+law.legalStatuses
+law.legalConsequences
+law.bounties
+law.fines
+law.custodySentences
+FactionRecord shape
+FactionStandingRecord shape
+ReputationEvidenceRecord shape
+PublicKnowledgeEventRecord shape
+JurisdictionRecord shape
+LawRecord shape
+CrimeEventRecord shape
+CrimeEvidenceRecord shape
+WitnessReportRecord shape
+LegalStatusRecord shape
+LegalConsequenceRecord shape
+BountyRecord shape
+FineRecord shape
+CustodySentenceRecord shell
+FactionConsequenceRecord shape
+SocialConsequenceAuditRecord shape
+```
+
+---
+
+# 41. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+faction identity detection
+reputation evidence detection
+public/private/witness/report classification
+jurisdiction/law/crime detection
+fine/bounty/custody shell detection
+accusation/rumor/conviction separation
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+full faction war parser
+full trial/court system parser
+manual reputation/legal mutation parser
+card/context legal import
+automatic bounty hunter spawn parser
+automatic reputation score formula without authority
+```
+
+---
+
+# 42. Reducer/checker changes
+
+Allowed:
+
+```text
+SocialConsequenceReducer evidence/public knowledge/legal shell behavior
+FactionStanding label updates only with evidence policy
+LegalStatus/Consequence shell records
+fine/bounty/custody records
+social/legal integrity checks
+duplicate skip results
+```
+
+Forbidden:
+
+```text
+global reputation mutation
+automatic conviction from accusation
+automatic currency payment/removal
+confiscation without InventoryReducer
+jail scene control without Place/Actor/story validation
+automatic encounter spawn from bounty
+```
+
+---
+
+# 43. Command/context/card changes
+
+Allowed:
+
+```text
+/reputation display if available
+/factions display if available
+/law display if available
+/crime display if available
+/context social/legal packet
+/cardaudit faction/law boundary labels
+/releasecheck PC20 gates
+/playerbreakercheck social/legal cases
+```
+
+Forbidden:
+
+```text
+/setreputation
+/clearcrime
+/addbounty
+/payfine free
+/convict
+/pardon active command
+live card writes that create legal/faction truth
+```
+
+---
+
+# 44. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted crafting/materials build
+
+Start from:
+
+```text
+WorldLedgerV0.17.19_CRAFTING_MATERIALS_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.20_FACTION_LAW_REPUTATION_WORKING.txt
+```
+
+## Step 2 — Add/verify faction/legal helper functions
+
+Create helpers for:
+
+```text
+ensureFactionShape
+ensureLawShape
+makeFactionRecord
+makeFactionStandingRecord
+makeReputationEvidenceRecord
+makePublicKnowledgeEventRecord
+makeJurisdictionRecord
+makeLawRecord
+makeCrimeEventRecord
+makeCrimeEvidenceRecord
+makeWitnessReportRecord
+makeLegalStatusRecord
+makeLegalConsequenceRecord
+makeBountyRecord
+makeFineRecord
+makeCustodySentenceRecord
+isPrivateEvent
+isPublicEvent
+isAccusationOnly
+isRumorOnlyLegalClaim
+isUnsafeSocialLegalSource
+```
+
+## Step 3 — Add private/public classification
+
+Make publicness explicit before reputation/legal changes.
+
+Never infer global/public from private scenes.
+
+## Step 4 — Add jurisdiction/law binding
+
+Bind legal consequences to current place/jurisdiction when available.
+
+If jurisdiction unknown, keep suspected/alleged/pending rather than formal consequence.
+
+## Step 5 — Update social/legal CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+reputation evidence
+public knowledge
+faction standing labels
+crime events
+crime evidence
+witness reports
+legal statuses
+legal consequences
+fine/bounty/custody shells
+```
+
+## Step 6 — Update ProposalBuilder social/legal support
+
+Ensure proposals carry:
+
+```text
+faction key
+subject key
+jurisdiction key
+publicness/witness/report flags
+crime type/status
+fine/bounty amount if present
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 7 — Implement SocialConsequenceReducer
+
+Implement safe commits for:
+
+```text
+faction records
+reputation evidence
+public knowledge
+standing labels when validated
+crime evidence/status shell
+legal consequences
+fine/bounty/custody shells
+```
+
+## Step 8 — Wire owner-system references only
+
+Link to:
+
+```text
+Inventory events for theft/confiscation
+Combat events for assault/murder evidence
+Economy events for fines/debts/payments
+Quest events for public service evidence
+Actor memories for witnesses/reports
+Place records for jurisdiction
+```
+
+Do not mutate those owner systems here.
+
+## Step 9 — Update commands and context
+
+Add/update:
+
+```text
+/reputation
+/factions
+/law
+/crime
+ContextBuilder social/legal packet
+```
+
+## Step 10 — Update IntegrityChecker
+
+Add checks for public/private, jurisdiction, accusation/conviction, fine paid, bounty spawn, source blocking, and duplicate keys.
+
+## Step 11 — Add PC20 ReleaseCheck gates
+
+Add PC20-G01 through PC20-G20.
+
+## Step 12 — Add PC20 tests
+
+Add PC20-001 through PC20-030.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/reputation if available
+/factions if available
+/law if available
+/crime if available
+```
+
+## Step 14 — Save accepted faction/law build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.20_FACTION_LAW_REPUTATION_ACCEPTED.txt
+```
+
+---
+
+# 45. What this chunk produces
+
+Production Chunk 20 should produce:
+
+```text
+WorldLedger V0.17.20 faction/law/reputation accepted script if code changes are made
+FactionRecord/FactionStanding/ReputationEvidence schemas
+PublicKnowledgeEvent records
+Jurisdiction/Law records
+CrimeEvent/CrimeEvidence/WitnessReport schemas
+LegalStatus/LegalConsequence/Bounty/Fine/Custody shells
+SocialConsequenceReducer
+private/public consequence policy
+jurisdiction/law binding
+faction/legal context packet
+/reputation /factions /law /crime displays if available
+social/legal integrity checks
+PC20 ReleaseCheck gates
+PC20 regression/player-breaker tests
+faction/law acceptance report
+updated planning zip with Production Chunk 20 added
+```
+
+It should not produce:
+
+```text
+full faction war simulation
+full court/trial system
+full political/domain governance
+automatic bounty hunter encounters
+automatic global reputation
+manual reputation/legal mutation commands
+live card faction/law writes
+owner-state mutation from lore/context/cards
+```
+
+---
+
+# 46. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 20 passes if:
+
+```text
+faction/reputation/law/crime records exist
+private/public/witness/report states are separated
+reputation evidence and faction standing are separated
+law and legal consequence are jurisdiction-scoped
+crime suspicion/allegation/report/charge/conviction are separated
+fine due/payment and bounty posted/captured are separated
+legal/economy/inventory/combat owner boundaries are preserved
+command/context/card faction/legal text cannot become canon
+duplicate reputation/legal/fine/bounty keys work
+commands/context display states honestly
+cleanup preserves active legal/reputation evidence and keys
+PC20 tests pass
+ReleaseCheck has no PC20 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+numeric reputation scoring is deferred
+court/trial simulation is deferred
+faction war/domain politics are deferred
+jail scene control is conservative
+bounty hunter encounters are not automatic
+standing labels are evidence-based but coarse
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+private event becomes public reputation
+rumor becomes conviction
+accusation becomes legal proof/conviction
+Story Card/context/command text makes player wanted
+law applies outside jurisdiction without validation
+fine due removes currency
+bounty posted spawns encounter automatically
+quest/combat victory creates global reputation automatically
+confiscation removes inventory without InventoryReducer
+cleanup clears crimes/pays fines/changes standing
+SocialConsequenceReducer trusts unsafe routed data
+```
+
+---
+
+# 47. Handoff to Production Chunk 21
+
+When this chunk passes, Production Chunk 21 begins:
+
+```text
+Production Chunk 21 — Romance, Loyalty, Companions, Party State, and Consent/Boundary Safety
+```
+
+Production Chunk 21 may use relationship evidence, reputation evidence, public/private memory, and faction/legal pressure, but must not convert affection, loyalty, or companionship into automatic control.
+
+Production Chunk 20 must leave social/legal state reliable enough that PC21 can ask:
+
+```text
+Is this relationship private or public?
+Does this faction actually know what happened?
+Is this character wanted locally, rumored wanted, charged, convicted, or clear?
+Was a companion's loyalty earned, promised, coerced, or only assumed?
+Can social consequences affect party behavior without bypassing consent and ownership boundaries?
+```
+
+---
+
+# 48. Final doctrine
+
+Production Chunk 20 is where consequences become believable without becoming omniscient.
+
+Final rule:
+
+```text
+Reputation is evidence plus knowledge.
+Law is evidence plus jurisdiction.
+Crime is status, not a single boolean.
+Factions know what they can know.
+Private acts stay private until witnessed, reported, confessed, or discovered.
+Consequences are scoped, owner-routed, duplicate-safe, and honest.
+```
+
+Once this passes, the project can safely deepen romance, loyalty, companions, party state, and consent/boundary safety in Production Chunk 21.

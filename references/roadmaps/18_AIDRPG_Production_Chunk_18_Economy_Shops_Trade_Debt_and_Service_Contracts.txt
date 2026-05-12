@@ -1,0 +1,2418 @@
+# AIDRPG Production Chunk 18 — Economy, Shops, Trade, Debt, and Service Contracts
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 18 — Economy, Shops, Trade, Debt, and Service Contracts  
+**Production sequence:** 18 of 25 remaining production chunks  
+**Build target:** WorldLedger V0.17.17 creature-ecology accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add economy records, shop offers, price quotes, buy/sell/trade validation, merchant stock boundaries, debt/loan/service-contract handling, deposits/escrow, currency transaction safety, and duplicate-safe payment behavior without turning listed prices, promises, shop stock, or service offers into owned inventory or paid currency.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 17 — Creature Ecology, Species Rules, and Bestiary Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 18 exists because economy systems are easy to make useful, but even easier to corrupt.
+
+Old and rough builds risked:
+
+```text
+merchant stock becoming player inventory
+price listings becoming purchases
+purchase intent spending money before the seller accepts
+item offers becoming owned items
+promised payment becoming paid currency
+selling an item without removing it
+buying an item without subtracting currency
+duplicate output charging twice or granting twice
+barter text duplicating both items
+service offers completing before service is performed
+loans/debts becoming free money or repeated debt
+Card/context shop text creating items or prices
+```
+
+This chunk makes economy gameplay practical for AI Dungeon: shops, prices, trade, debt, and services can appear naturally in story, but every actual item/currency change must be validated, owner-routed, and duplicate-safe.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+A price is not a purchase.
+A shop listing is not owned inventory.
+An offer is not acceptance.
+A promise to pay is not payment.
+A debt is not currency received unless funds are handed over.
+A service offer is not a completed service.
+A sale removes the sold item and adds payment only if both sides validate.
+A purchase removes payment and adds item only if both sides validate.
+A barter is two owner-routed transfers, not a vague swap.
+Duplicate trade output cannot charge, grant, sell, or repay twice.
+```
+
+Economy truth must be transactional, owner-routed, and reversible/auditable.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 17 made creature and bestiary boundaries safe.
+
+Economy comes next because it depends on earlier systems:
+
+```text
+inventory ownership, custody, scene items, and currency from PC05
+quest reward promise/payment separation from PC07
+actors/merchants from PC08
+places/shops/current scene from PC09
+progression/stat boundaries from PC10–PC11
+combat/loot boundaries from PC12
+threat/encounter loot separation from PC14
+lore/card safety from PC15–PC16
+creature parts/material boundaries from PC17
+```
+
+AI Dungeon gameplay frequently involves merchants, taverns, inn fees, bribes, loans, bounties, repairs, healing services, training fees, crafting commissions, transport, and debt.
+
+This chunk creates the safe economy foundation without building the full advanced market simulation yet.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 18 may change:
+
+```text
+Economy schema helpers
+EconomyReducerLite
+Shop/Trade helper
+PriceQuote helper
+Debt/ServiceContract helper
+CanonValidator economy/trade rules
+ProposalBuilder economy event types
+EventScannerLite economy hints
+CommandRenderers /inventory, /quests, optional /shop, optional /economy
+ContextBuilder economy packet
+OperationLedger economy/currency/trade keys
+DirtyQueue economy/inventory/quest/actor targets
+IntegrityChecker economy checks
+ReleaseCheck economy gates
+Regression/player-breaker economy tests
+```
+
+Production Chunk 18 may add:
+
+```text
+EconomyState schema
+CurrencyAccountRecord schema
+CurrencyTransactionRecord schema
+PriceQuoteRecord schema
+ShopRecord schema
+ShopStockRecord schema
+TradeOfferRecord schema
+PurchaseRecord schema
+SaleRecord schema
+BarterRecord schema
+ServiceContractRecord schema
+DebtRecord schema
+LoanRecord schema
+DepositEscrowRecord schema
+EconomicDisputeRecord schema
+MerchantRelationNote shell
+```
+
+Production Chunk 18 may not add:
+
+```text
+full dynamic economy simulation
+regional inflation/market generation
+merchant AI pricing engine
+crafting economy automation
+full reputation/faction discounts
+full banking/investment system
+manual /buy /sell /givemoney mutation commands
+live CardSync shop writes
+shop card import as inventory truth
+```
+
+Crafting/material systems are later.
+
+Faction/reputation pricing is later.
+
+Advanced settlement/domain economy is later.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+EconomyState helpers
+EconomyReducerLite
+TradeTransactionHelper
+PriceQuoteHelper
+DebtServiceHelper
+InventoryReducer split-owner handoff
+QuestReducer reward/payment references
+ActorReducer merchant/service references
+PlaceReducer shop/place references
+CanonValidator economy rules
+ProposalBuilder economy proposals
+EventScannerLite economy hints
+CommandRenderers: /inventory, /quests, optional /shop, optional /economy
+ContextBuilderLite economy packet
+OperationLedger economy keys
+DirtyQueue economy dirty targets
+AuditLogger economy lines
+InvariantChecker economy checks
+ReleaseCheckLite PC18 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+Inventory ownership rules except validated split transactions
+Quest reward logic except references to service/payment/debt
+Actor relationship/reputation automation
+Full shop generation
+World market simulation
+Crafting/material recipes
+Manual mutation commands
+CardSync live writes
+```
+
+EconomyReducer coordinates transactions.
+
+InventoryReducer still owns item and currency truth.
+
+---
+
+# 5. Economy state model
+
+Add or verify an economy bucket.
+
+Recommended shape:
+
+```text
+economy: {
+  accounts: {},
+  transactions: {},
+  priceQuotes: {},
+  shops: {},
+  shopStock: {},
+  tradeOffers: {},
+  purchases: {},
+  sales: {},
+  barters: {},
+  serviceContracts: {},
+  debts: {},
+  loans: {},
+  depositsEscrow: {},
+  disputes: {},
+  warnings: [],
+  notes: []
+}
+```
+
+If currency currently lives entirely inside inventory, do not duplicate currency truth.
+
+Economy may store account references and transaction metadata, but InventoryReducer remains the owner of player currency amounts.
+
+---
+
+# 6. CurrencyAccountRecord schema
+
+Currency accounts describe holders, not just player totals.
+
+Required shape:
+
+```text
+CurrencyAccountRecord {
+  id,
+  key,
+  holderType,
+  holderKey,
+  displayName,
+  currencyTypes,
+  ownerSystem,
+  knownToPlayer,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Holder types:
+
+```text
+player
+actor
+shop
+faction_deferred
+bank_deferred
+quest_escrow
+unknown
+```
+
+Rules:
+
+```text
+player currency truth remains with InventoryReducer unless architecture already owns it elsewhere
+merchant currency may be unknown and should not be invented
+shop accounts can be reference-only unless needed for transaction audit
+```
+
+---
+
+# 7. CurrencyTransactionRecord schema
+
+Every actual currency change needs a transaction record or equivalent audit.
+
+Required shape:
+
+```text
+CurrencyTransactionRecord {
+  id,
+  key,
+  transactionType,
+  amount,
+  currencyType,
+  fromHolderKey,
+  toHolderKey,
+  relatedTradeKey,
+  relatedQuestKey,
+  relatedDebtKey,
+  sourceOperationKey,
+  inventoryOperationKey,
+  status,
+  createdTurn,
+  appliedTurn,
+  duplicateOf,
+  warnings,
+  notes
+}
+```
+
+Transaction types:
+
+```text
+purchase_payment
+sale_payment
+quest_reward_payment
+service_payment
+debt_issued
+debt_repayment
+loan_principal
+loan_repayment
+bribe_deferred
+fine_deferred
+deposit
+escrow_hold
+refund
+unknown
+```
+
+Statuses:
+
+```text
+proposed
+accepted
+applied
+deferred
+rejected
+disputed
+skipped_duplicate
+unknown
+```
+
+Rules:
+
+```text
+transaction applied only if InventoryReducer currency result validates
+promise/quote/listing creates no currency transaction applied
+duplicate transaction keys prevent double charges/payments
+```
+
+---
+
+# 8. PriceQuoteRecord schema
+
+Price quotes are information, not transactions.
+
+Required shape:
+
+```text
+PriceQuoteRecord {
+  id,
+  key,
+  itemKey,
+  serviceKey,
+  displayName,
+  amount,
+  currencyType,
+  quoteType,
+  sellerActorKey,
+  shopKey,
+  validScope,
+  sourceOperationKey,
+  createdTurn,
+  expiresTurn,
+  status,
+  warnings,
+  notes
+}
+```
+
+Quote types:
+
+```text
+ask_price
+sell_offer
+buy_offer
+service_fee
+inn_fee
+training_fee
+repair_fee
+transport_fee
+bounty_offer
+rumored_price
+unknown
+```
+
+Rules:
+
+```text
+quote does not spend currency
+quote does not grant item/service
+quote can be used to validate later purchase if still relevant
+rumored price is not confirmed shop price
+```
+
+---
+
+# 9. ShopRecord schema
+
+Shop records describe commerce locations/actors.
+
+Required shape:
+
+```text
+ShopRecord {
+  id,
+  key,
+  displayName,
+  shopType,
+  placeKey,
+  ownerActorKey,
+  merchantActorKeys,
+  stockKeys,
+  serviceKeys,
+  pricePolicyKey,
+  status,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Shop types:
+
+```text
+general_store
+blacksmith
+alchemist
+inn
+tavern
+healer
+trainer
+stable
+market_stall
+fence_deferred
+bank_deferred
+unknown
+```
+
+Statuses:
+
+```text
+known
+open
+closed
+unavailable
+rumored
+unknown
+```
+
+Rules:
+
+```text
+shop exists does not mean current location
+shop stock does not mean player ownership
+shop services do not mean completed service
+```
+
+---
+
+# 10. ShopStockRecord schema
+
+Shop stock is available-for-sale or known-stock, not owned by player.
+
+Required shape:
+
+```text
+ShopStockRecord {
+  id,
+  key,
+  shopKey,
+  itemKey,
+  displayName,
+  quantity,
+  quantityKnown,
+  priceQuoteKey,
+  stockStatus,
+  sourceOperationKey,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Stock statuses:
+
+```text
+available
+reserved
+sold_out
+unknown_stock
+rumored_stock
+not_for_sale
+unknown
+```
+
+Rules:
+
+```text
+available stock is not player inventory
+reserved stock is not owned unless purchase validates
+sold out stock cannot be purchased without restock validation
+quantity unknown should not be guessed
+```
+
+---
+
+# 11. TradeOfferRecord schema
+
+Trade offers are proposals.
+
+Required shape:
+
+```text
+TradeOfferRecord {
+  id,
+  key,
+  offerType,
+  offeredByHolderKey,
+  offeredToHolderKey,
+  giveItemKeys,
+  receiveItemKeys,
+  giveCurrency,
+  receiveCurrency,
+  serviceKeys,
+  conditionsText,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  acceptedTurn,
+  rejectedTurn,
+  notes
+}
+```
+
+Offer types:
+
+```text
+purchase_offer
+sale_offer
+barter_offer
+service_offer
+loan_offer
+debt_repayment_offer
+reward_offer
+unknown
+```
+
+Statuses:
+
+```text
+offered
+accepted
+rejected
+countered
+expired
+disputed
+unknown
+```
+
+Rules:
+
+```text
+offered does not transfer items/currency
+accepted still needs owner-routed transaction effects
+counteroffer does not complete old offer
+```
+
+---
+
+# 12. PurchaseRecord schema
+
+Purchases must route both currency and item ownership.
+
+Required shape:
+
+```text
+PurchaseRecord {
+  id,
+  key,
+  buyerHolderKey,
+  sellerHolderKey,
+  shopKey,
+  itemKey,
+  itemDisplayName,
+  quantity,
+  priceAmount,
+  currencyType,
+  priceQuoteKey,
+  paymentOperationKey,
+  inventoryReceiveOperationKey,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  appliedTurn,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+intent
+accepted
+payment_applied
+item_received
+completed
+failed
+rejected
+skipped_duplicate
+disputed
+unknown
+```
+
+Rules:
+
+```text
+purchase intent does not spend currency
+purchase accepted does not complete until payment and item handoff validate
+completed purchase should have both payment and item ownership records or explicit deferred warning
+```
+
+---
+
+# 13. SaleRecord schema
+
+Sales must remove/surrender item and add payment.
+
+Required shape:
+
+```text
+SaleRecord {
+  id,
+  key,
+  sellerHolderKey,
+  buyerHolderKey,
+  itemKey,
+  itemDisplayName,
+  quantity,
+  priceAmount,
+  currencyType,
+  itemTransferOperationKey,
+  paymentOperationKey,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  appliedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+sale offer does not remove item
+sale completed requires item transfer/removal and currency gain validation
+cannot sell item not owned/carried unless custody policy supports it
+```
+
+---
+
+# 14. BarterRecord schema
+
+Barter is two or more transfers with no assumed currency.
+
+Required shape:
+
+```text
+BarterRecord {
+  id,
+  key,
+  partyAHolderKey,
+  partyBHolderKey,
+  partyAOffers,
+  partyBOffers,
+  status,
+  partyATransferKeys,
+  partyBTransferKeys,
+  sourceOperationKey,
+  createdTurn,
+  appliedTurn,
+  warnings,
+  notes
+}
+```
+
+Rules:
+
+```text
+barter proposal does not transfer
+completed barter requires both owner-routed sides
+if one side fails, mark disputed/deferred rather than silently completing
+```
+
+---
+
+# 15. ServiceContractRecord schema
+
+Services are common in AI Dungeon: healing, repairs, training, lodging, transport, information, crafting commissions.
+
+Required shape:
+
+```text
+ServiceContractRecord {
+  id,
+  key,
+  serviceType,
+  providerActorKey,
+  customerHolderKey,
+  shopKey,
+  description,
+  priceAmount,
+  currencyType,
+  status,
+  paymentOperationKey,
+  resultOperationKeys,
+  relatedQuestKey,
+  createdTurn,
+  paidTurn,
+  completedTurn,
+  warnings,
+  notes
+}
+```
+
+Service types:
+
+```text
+healing
+repair
+training
+lodging
+transport
+information
+crafting_commission
+identification_deferred
+curse_removal_deferred
+legal_service_deferred
+unknown
+```
+
+Statuses:
+
+```text
+offered
+accepted
+paid
+in_progress
+completed
+failed
+refunded
+disputed
+unknown
+```
+
+Rules:
+
+```text
+service offer is not completed service
+service payment is not service result
+healing service result must route through BodyReducer
+repair service result must route through Inventory/Equipment/Crafting owner rules
+training service result does not grant ability/XP unless owner rules validate
+transport service does not move player until PlaceReducer validates travel/arrival
+```
+
+---
+
+# 16. DebtRecord and LoanRecord schemas
+
+Debt and loans need separate promise, issuance, and repayment states.
+
+DebtRecord:
+
+```text
+DebtRecord {
+  id,
+  key,
+  debtorHolderKey,
+  creditorHolderKey,
+  amount,
+  currencyType,
+  reason,
+  status,
+  dueText,
+  dueTurn,
+  issuedOperationKey,
+  repaymentOperationKeys,
+  relatedQuestKey,
+  createdTurn,
+  updatedTurn,
+  settledTurn,
+  warnings,
+  notes
+}
+```
+
+LoanRecord:
+
+```text
+LoanRecord {
+  id,
+  key,
+  lenderHolderKey,
+  borrowerHolderKey,
+  principalAmount,
+  currencyType,
+  interestPolicyDeferred,
+  collateralKeys,
+  status,
+  principalPaymentOperationKey,
+  repaymentOperationKeys,
+  createdTurn,
+  issuedTurn,
+  settledTurn,
+  warnings,
+  notes
+}
+```
+
+Debt statuses:
+
+```text
+proposed
+owed
+issued
+partially_repaid
+repaid
+forgiven
+defaulted_deferred
+disputed
+unknown
+```
+
+Rules:
+
+```text
+debt owed does not add currency to player
+loan principal adds currency only when funds are handed over
+repayment subtracts currency only when payment validates
+interest/default consequences deferred unless later rules exist
+```
+
+---
+
+# 17. DepositEscrowRecord schema
+
+Deposits and escrow prevent ownership confusion.
+
+Required shape:
+
+```text
+DepositEscrowRecord {
+  id,
+  key,
+  holderKey,
+  counterpartyKey,
+  itemKeys,
+  currencyAmount,
+  currencyType,
+  purpose,
+  status,
+  releaseConditionText,
+  depositOperationKeys,
+  releaseOperationKeys,
+  createdTurn,
+  releasedTurn,
+  warnings,
+  notes
+}
+```
+
+Statuses:
+
+```text
+proposed
+held
+released
+forfeited
+disputed
+unknown
+```
+
+Rules:
+
+```text
+escrow item/currency is not free inventory/currency
+release requires validation
+forfeit requires explicit validated event or future policy
+```
+
+---
+
+# 18. EconomicDisputeRecord schema
+
+Economy needs dispute records because AI Dungeon often contradicts itself.
+
+Required shape:
+
+```text
+EconomicDisputeRecord {
+  id,
+  key,
+  disputeType,
+  relatedTradeKey,
+  claimA,
+  claimB,
+  resolvedStatus,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Dispute types:
+
+```text
+price_changed
+seller_refuses
+insufficient_funds
+item_not_owned
+stock_unavailable
+payment_claimed_but_not_validated
+item_claimed_but_not_validated
+service_paid_but_not_completed
+duplicate_transaction
+unknown
+```
+
+Rules:
+
+```text
+dispute blocks unsafe transfers
+dispute appears in /shop or /stateaudit
+```
+
+---
+
+# 19. Price and value policy
+
+This chunk should not invent a full pricing economy.
+
+Allowed:
+
+```text
+record explicit prices from safe story output
+record shop quotes
+record offer/counteroffer
+record service fees
+record debt amounts
+record barter terms
+```
+
+Forbidden by default:
+
+```text
+auto-price every item
+calculate regional inflation
+auto-discount from reputation
+scale prices to player level
+generate shop stock from lore/cards
+```
+
+If price is unknown:
+
+```text
+show price unknown
+ask story to establish price naturally
+```
+
+Do not guess.
+
+---
+
+# 20. Economy CanonValidator expansion
+
+## 20.1 Accept price quote when
+
+```text
+safe output directly states seller/shop/service price
+price amount and currency are bound
+not command/context/card/debug source
+not rumor unless stored as rumored price
+```
+
+Result:
+
+```text
+PriceQuoteRecord only
+no currency/item mutation
+```
+
+## 20.2 Accept purchase when
+
+All are true:
+
+```text
+safe output confirms buyer pays or seller hands over after accepted purchase
+item/service target bound
+amount/currency bound if payment applies
+not merely price/intention/offer
+not command/context/card source
+operation key not duplicate
+```
+
+Result:
+
+```text
+PurchaseRecord and split owner events:
+InventoryReducer currency loss
+InventoryReducer item gain
+or service result owner event if service
+```
+
+## 20.3 Accept sale when
+
+```text
+safe output confirms player sells/transfers item and receives payment
+item is owned/available to sell
+amount/currency bound
+operation key not duplicate
+```
+
+Result:
+
+```text
+SaleRecord and split owner events:
+InventoryReducer item removal/transfer
+InventoryReducer currency gain
+```
+
+## 20.4 Accept service contract when
+
+```text
+safe output offers/accepts/pays/completes service
+service type and provider/customer bound enough
+```
+
+Result:
+
+```text
+service record updates
+service result only routes to owner if validated
+```
+
+## 20.5 Reject economy mutation when
+
+Any are true:
+
+```text
+price listing only
+shop stock listing only
+player intent only
+merchant promise only
+quest reward promise only
+service offer only
+command/context/card/debug source
+insufficient ownership/currency if strict validation active
+ambiguous item/currency target
+duplicate operation key
+```
+
+---
+
+# 21. ProposalBuilder economy event types
+
+Add or verify event types:
+
+```text
+economy.price_quote_candidate
+economy.shop_known_candidate
+economy.shop_stock_candidate
+economy.trade_offer_candidate
+economy.purchase_intent_candidate
+economy.purchase_payment_candidate
+economy.purchase_item_receive_candidate
+economy.sale_offer_candidate
+economy.sale_payment_candidate
+economy.sale_item_transfer_candidate
+economy.barter_offer_candidate
+economy.barter_transfer_candidate
+economy.service_offer_candidate
+economy.service_payment_candidate
+economy.service_complete_candidate
+economy.debt_candidate
+economy.loan_issue_candidate
+economy.debt_repayment_candidate
+economy.deposit_candidate
+economy.escrow_release_candidate
+economy.dispute_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+price quotes
+shop records
+stock records as not-owned
+trade offers
+purchase/sale/barter records
+service contracts
+debt/loan/deposit/escrow records
+split owner-routed item/currency changes
+```
+
+---
+
+# 22. EventScannerLite economy hints
+
+EventScannerLite may detect economy hints, but detection is not canon.
+
+Hint families:
+
+```text
+buy/purchase/pay/sell/trade/barter
+price/cost/fee/quote/offer
+merchant/shop/stall/market/inn/tavern/blacksmith/alchemist/healer/trainer
+loan/debt/owe/borrow/repay/interest
+service/repair/heal/train/lodging/transport/commission
+refund/deposit/escrow/collateral
+```
+
+Must flag:
+
+```text
+priceOnly
+stockOnly
+intentOnly
+offerOnly
+paymentConfirmed
+handoffConfirmed
+serviceCompleted
+promiseOnly
+debtOnly
+insufficientFundsRisk
+ownershipRisk
+ambiguousCurrency
+ambiguousItem
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+```
+
+Parser cannot mutate economy/inventory.
+
+---
+
+# 23. EconomyReducerLite behavior
+
+EconomyReducerLite owns:
+
+```text
+economy.transactions
+economy.priceQuotes
+economy.shops
+economy.shopStock
+economy.tradeOffers
+economy.purchases
+economy.sales
+economy.barters
+economy.serviceContracts
+economy.debts
+economy.loans
+economy.depositsEscrow
+economy.disputes
+```
+
+## 23.1 Price/shop/stock commit
+
+Accepted quote/stock/shop should:
+
+```text
+create/update shop/quote/stock records
+not mutate player inventory or currency
+mark economy/context dirty
+```
+
+## 23.2 Purchase commit
+
+Accepted purchase should:
+
+```text
+create/update PurchaseRecord
+validate payment/handoff split
+route currency loss to InventoryReducer
+route item gain to InventoryReducer
+mark completed only when both sides apply or explicitly defer with warning
+```
+
+## 23.3 Sale commit
+
+Accepted sale should:
+
+```text
+create/update SaleRecord
+route item removal/transfer to InventoryReducer
+route currency gain to InventoryReducer
+mark completed only when both sides apply or explicitly defer with warning
+```
+
+## 23.4 Service commit
+
+Accepted service update should:
+
+```text
+create/update ServiceContractRecord
+route payment to InventoryReducer
+route result to appropriate owner only if validated
+keep paid vs completed separate
+```
+
+## 23.5 Debt/loan/repayment commit
+
+Accepted debt/loan should:
+
+```text
+record obligation separately from currency
+apply loan funds only when handed over
+apply repayment only when payment validates
+preserve due/deadline links if any
+```
+
+## 23.6 Barter/deposit/escrow commit
+
+Accepted barter/deposit/escrow should:
+
+```text
+record terms
+route item/currency custody through InventoryReducer when actual handoff validates
+mark disputed/deferred if any side fails
+```
+
+---
+
+# 24. Split-owner economy contract
+
+EconomyReducer coordinates, but owner reducers apply truth.
+
+```text
+InventoryReducer owns player items/currency.
+QuestReducer owns quest reward states.
+ActorReducer owns merchant/social memory references.
+PlaceReducer owns shop/current location references.
+BodyReducer owns healing service results.
+AbilityReducer owns training service ability evidence/stability.
+ProgressionReducer owns XP training/reward results.
+```
+
+If split-owner routing cannot safely apply both sides:
+
+```text
+record economy transaction as deferred/disputed
+show warning
+never silently complete
+```
+
+---
+
+# 25. Operation keys
+
+Required economy operation keys:
+
+```text
+economy.price.<sellerKey>.<itemOrServiceKey>.<amount>.<sourceHash>
+economy.shop.<shopKey>.<sourceHash>
+economy.stock.<shopKey>.<itemKey>.<sourceHash>
+economy.offer.<offerType>.<partyA>.<partyB>.<sourceHash>
+economy.purchase.<buyerKey>.<sellerKey>.<itemKey>.<amount>.<sourceHash>
+economy.sale.<sellerKey>.<buyerKey>.<itemKey>.<amount>.<sourceHash>
+economy.barter.<partyA>.<partyB>.<termsHash>
+economy.service.<serviceType>.<providerKey>.<customerKey>.<sourceHash>
+economy.debt.<debtorKey>.<creditorKey>.<amount>.<sourceHash>
+economy.loan.issue.<lenderKey>.<borrowerKey>.<amount>.<sourceHash>
+economy.debt.repay.<debtorKey>.<creditorKey>.<amount>.<sourceHash>
+economy.deposit.<holderKey>.<counterpartyKey>.<termsHash>
+economy.escrow.release.<escrowKey>.<sourceHash>
+economy.dispute.<disputeType>.<sourceHash>
+```
+
+Linked Inventory keys:
+
+```text
+currency.loss.<amount>.<currencyType>.<economyTransactionKey>
+currency.gain.<amount>.<currencyType>.<economyTransactionKey>
+item.purchase.receive.<itemKey>.<economyTransactionKey>
+item.sale.transfer.<itemKey>.<economyTransactionKey>
+item.barter.transfer.<itemKey>.<economyTransactionKey>
+```
+
+Rules:
+
+```text
+purchase/sale/payment keys are durable
+stock/quote keys can be update-safe
+same output replay cannot charge or grant twice
+```
+
+---
+
+# 26. Dirty targets
+
+Economy updates should mark:
+
+```text
+economy
+inventory_equipment
+quest_log when tied to quest reward/payment/service
+social_memory when tied to merchant/actor promise or dispute
+current_location when shop/place display changes
+context
+```
+
+Mapping:
+
+```text
+quote/shop/stock -> economy, context
+purchase/sale/barter -> economy, inventory_equipment, context
+service -> economy, inventory_equipment if payment, body/ability/progression owner if result applies, context
+debt/loan -> economy, inventory_equipment if funds/payment apply, quest_log if linked, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 27. `/inventory`, optional `/shop`, optional `/economy` updates
+
+## 27.1 `/inventory`
+
+Must not show shop stock as owned.
+
+Should distinguish:
+
+```text
+owned currency
+promised rewards
+shop prices
+available shop stock
+items held in escrow/deposit
+items sold/transferred away
+```
+
+## 27.2 Optional `/shop`
+
+If command budget permits:
+
+```text
+/shop
+```
+
+Shows:
+
+```text
+current/known shop
+available stock
+price quotes
+services offered
+trade offers
+purchase/sale warnings
+```
+
+## 27.3 Optional `/economy`
+
+Shows:
+
+```text
+recent transactions
+debts/loans
+service contracts
+deposits/escrow
+disputes
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 28. ContextBuilder economy packet
+
+Context should include only relevant economy facts.
+
+Include:
+
+```text
+current shop/service offers if in scene
+active unpaid debts
+active service contract paid/completed status
+important trade disputes
+promised vs paid money distinctions
+```
+
+Do not include:
+
+```text
+shop stock as owned inventory
+price quote as completed purchase
+offer as accepted trade
+debt as money received
+paid service as completed healing/training unless owner result validates
+```
+
+Example:
+
+```text
+Economy: The blacksmith offers an iron dagger for 8 gold. You have not bought it. You owe Old Bren 5 gold due before sunset. The healer was paid 3 silver, but the wound has not been confirmed healed yet.
+```
+
+---
+
+# 29. IntegrityChecker economy checks
+
+Add checks:
+
+```text
+shop stock not in player owned inventory unless purchased
+price quotes not applied as transactions
+purchase completed has payment and item handoff or explicit deferred warning
+sale completed has item transfer/removal and payment or explicit deferred warning
+debt/loan/repayment states are separated
+service paid vs completed separated
+currency transactions have operation keys
+no duplicate purchase/sale/payment keys
+command/card/context source not active economy truth
+```
+
+IntegrityChecker may warn/quarantine bad economy records.
+
+It may not grant items/currency, complete services, repay debts, or alter shop stock.
+
+---
+
+# 30. Cleanup economy protections
+
+Cleanup may compact:
+
+```text
+old expired price quotes
+old rejected offer spam
+old duplicate transaction warnings
+old completed low-value transaction summaries after audit retention
+```
+
+Cleanup must not delete:
+
+```text
+active debts/loans
+unsettled service contracts
+deposits/escrow
+unresolved disputes
+recent/important transactions
+operation keys preventing duplicate charges/grants
+promised vs paid reward/payment distinctions
+```
+
+Cleanup must not settle debts, complete services, delete owed money, or convert shop stock into owned items.
+
+---
+
+# 31. ReleaseCheck gates for this chunk
+
+Add or verify PC18-specific gates:
+
+```text
+PC18-G01 EconomyState schema exists or equivalent economy bucket exists
+PC18-G02 CurrencyTransactionRecord schema exists or equivalent transaction audit exists
+PC18-G03 PriceQuoteRecord, ShopRecord, and ShopStockRecord schemas exist or equivalents exist
+PC18-G04 TradeOfferRecord, PurchaseRecord, SaleRecord, and BarterRecord schemas exist or equivalents exist
+PC18-G05 ServiceContractRecord, DebtRecord, LoanRecord, and DepositEscrowRecord schemas exist or equivalents exist
+PC18-G06 CanonValidator separates price/stock/offer/intent from purchase/payment/handoff
+PC18-G07 EconomyReducer rejects unsafe routed economy events
+PC18-G08 purchase/sale/barter route item/currency changes through InventoryReducer
+PC18-G09 service payment and service result are separated and owner-routed
+PC18-G10 debts/loans/repayments are stateful and not free currency
+PC18-G11 duplicate payment/purchase/sale/repayment keys exist and are durable
+PC18-G12 /inventory and /shop or /economy display shop stock, quotes, owned inventory, and debts honestly
+PC18-G13 command/context/card economy text cannot become canon
+PC18-G14 cleanup preserves active debts/contracts/escrow/disputes/transaction keys
+PC18-G15 full market simulation/reputation discounts/crafting economy remain deferred
+PC18-G16 player-breaker economy tests registered
+```
+
+ReleaseCheck must fail if shop stock becomes owned inventory, price quote spends currency, purchase duplicates, sale pays without item transfer, debt creates free money, or command/card/context shop text mutates state.
+
+---
+
+# 32. Required tests
+
+## PC18-001 — Price quote no purchase
+
+Output:
+
+```text
+The blacksmith says the iron dagger costs 8 gold.
+```
+
+Expected:
+
+```text
+PriceQuoteRecord created
+no currency loss
+no dagger gained
+```
+
+---
+
+## PC18-002 — Shop stock not owned
+
+Output:
+
+```text
+On the shelf are three red healing potions for sale.
+```
+
+Expected:
+
+```text
+shop stock/available stock record
+potions not owned inventory
+```
+
+---
+
+## PC18-003 — Purchase intent no payment
+
+Input:
+
+```text
+I want to buy the iron dagger.
+```
+
+Expected:
+
+```text
+purchase intent/offer only
+no currency loss
+no dagger gained
+```
+
+---
+
+## PC18-004 — Purchase confirmed applies both sides
+
+Output:
+
+```text
+You pay the blacksmith 8 gold, and he hands you the iron dagger.
+```
+
+Expected:
+
+```text
+PurchaseRecord accepted/completed if split owner results apply
+currency -8 gold through InventoryReducer
+iron dagger gained through InventoryReducer
+```
+
+---
+
+## PC18-005 — Duplicate purchase skipped
+
+Repeat same purchase output.
+
+Expected:
+
+```text
+no second -8 gold
+no duplicate dagger
+operation key skip/audit
+```
+
+---
+
+## PC18-006 — Purchase denied no payment
+
+Output:
+
+```text
+The blacksmith refuses to sell you the dagger.
+```
+
+Expected:
+
+```text
+purchase rejected/failed
+no currency loss
+no item gain
+```
+
+---
+
+## PC18-007 — Insufficient funds blocks or disputes
+
+Setup:
+
+```text
+player has 2 gold
+item costs 8 gold
+```
+
+Output:
+
+```text
+You try to buy the iron dagger.
+```
+
+Expected:
+
+```text
+no purchase completed
+insufficient_funds dispute/warning if strict funds known
+```
+
+---
+
+## PC18-008 — Sale offer no transfer
+
+Output:
+
+```text
+The merchant offers 5 gold for your silver ring.
+```
+
+Expected:
+
+```text
+sale offer/quote
+ring still owned
+currency unchanged
+```
+
+---
+
+## PC18-009 — Sale confirmed transfers item and pays
+
+Output:
+
+```text
+You sell the silver ring, and the merchant pays you 5 gold.
+```
+
+Expected:
+
+```text
+ring removed/transferred through InventoryReducer
+currency +5 gold through InventoryReducer
+SaleRecord completed only if both validate
+```
+
+---
+
+## PC18-010 — Cannot sell unowned item
+
+Setup:
+
+```text
+Crown of Dawn held by Mira, not owned
+```
+
+Output:
+
+```text
+You sell the Crown of Dawn for 50 gold.
+```
+
+Expected:
+
+```text
+sale rejected/disputed unless custody/ownership changes validate
+no +50 gold
+```
+
+---
+
+## PC18-011 — Barter offer no transfer
+
+Output:
+
+```text
+Mira offers to trade her map for your red potion.
+```
+
+Expected:
+
+```text
+barter offer only
+no item transfer
+```
+
+---
+
+## PC18-012 — Barter confirmed transfers both sides
+
+Output:
+
+```text
+You give Mira the red potion, and she gives you the map.
+```
+
+Expected:
+
+```text
+red potion removed/transferred
+map gained
+BarterRecord completed only if both owner effects apply
+```
+
+---
+
+## PC18-013 — Service offer no result
+
+Output:
+
+```text
+The healer offers to close your wound for 3 silver.
+```
+
+Expected:
+
+```text
+service offer/price quote
+no healing
+no currency loss
+```
+
+---
+
+## PC18-014 — Service payment no automatic healing
+
+Output:
+
+```text
+You pay the healer 3 silver.
+```
+
+Expected:
+
+```text
+service paid if contract bound
+currency -3 silver
+wound not healed unless healing result validates
+```
+
+---
+
+## PC18-015 — Service completion routes to owner
+
+Output:
+
+```text
+The healer closes the wound and stops the bleeding.
+```
+
+Expected:
+
+```text
+service completed if bound
+BodyReducer handles wound/bleeding improvement
+EconomyReducer does not heal directly
+```
+
+---
+
+## PC18-016 — Training fee no ability unlock
+
+Output:
+
+```text
+You pay the trainer 10 gold for sword lessons.
+```
+
+Expected:
+
+```text
+payment transaction if validated
+no ability/XP/stat gain unless owner rules separately validate
+```
+
+---
+
+## PC18-017 — Inn fee no time/location auto-change
+
+Output:
+
+```text
+You pay 1 gold for a room at the inn.
+```
+
+Expected:
+
+```text
+lodging service paid
+no time advance/rest/healing/location change unless Place/Time/Body validate
+```
+
+---
+
+## PC18-018 — Debt owed no currency gain
+
+Output:
+
+```text
+You owe Old Bren 5 gold.
+```
+
+Expected:
+
+```text
+DebtRecord owed
+currency unchanged
+```
+
+---
+
+## PC18-019 — Loan issued gives currency once
+
+Output:
+
+```text
+Old Bren lends you 5 gold and says you must repay him tomorrow.
+```
+
+Expected:
+
+```text
+LoanRecord issued
+currency +5 gold only once through InventoryReducer
+DebtRecord/repayment obligation created
+```
+
+---
+
+## PC18-020 — Loan duplicate skipped
+
+Repeat same loan output.
+
+Expected:
+
+```text
+no second +5 gold
+operation key skip/audit
+```
+
+---
+
+## PC18-021 — Debt repayment subtracts currency once
+
+Output:
+
+```text
+You repay Old Bren the 5 gold you owed.
+```
+
+Expected:
+
+```text
+currency -5 gold through InventoryReducer
+DebtRecord repaid/settled if applied
+no duplicate repayment on replay
+```
+
+---
+
+## PC18-022 — Deposit held not lost forever
+
+Output:
+
+```text
+You leave 2 gold as a deposit for the rented horse.
+```
+
+Expected:
+
+```text
+deposit/escrow held
+currency -2 gold if handed over
+release/refund requires later validation
+```
+
+---
+
+## PC18-023 — Refund returns currency once
+
+Output:
+
+```text
+The stablemaster returns your 2 gold deposit.
+```
+
+Expected:
+
+```text
+currency +2 gold once
+DepositEscrowRecord released
+```
+
+---
+
+## PC18-024 — Command economy non-canon
+
+Run:
+
+```text
+/shop
+/economy
+/inventory
+```
+
+Feed command output through Output hook.
+
+Expected:
+
+```text
+no economy/inventory mutation from command text
+```
+
+---
+
+## PC18-025 — Story Card shop text non-canon
+
+Story Card text:
+
+```text
+The shop sells iron daggers for 8 gold and the player bought one.
+```
+
+Expected:
+
+```text
+no price/purchase/item/currency mutation from card text
+blocked/reference-only audit if scanned
+```
+
+---
+
+## PC18-026 — Context economy text non-canon
+
+Context text:
+
+```text
+You paid 8 gold and own an iron dagger.
+```
+
+Expected:
+
+```text
+no currency/item mutation from context text
+```
+
+---
+
+## PC18-027 — Economy display honest
+
+State:
+
+```text
+shop stock iron dagger for 8 gold
+player has not bought it
+player owes 5 gold
+healer service paid but wound not healed
+```
+
+Run:
+
+```text
+/inventory
+/shop if available
+/economy if available
+```
+
+Expected:
+
+```text
+shop stock shown not owned
+debt shown owed
+service paid but result pending shown honestly
+```
+
+---
+
+## PC18-028 — Cleanup preserves active economy obligations
+
+Setup:
+
+```text
+active debt
+unsettled service contract
+escrow deposit
+unresolved dispute
+durable transaction keys
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+all active obligations/keys preserved
+only old expired quote/rejected offer spam compacted
+```
+
+---
+
+# 33. Regression placement
+
+Add PC18 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+28 PC18 tests registered
+0 critical PC18 failures
+```
+
+---
+
+# 34. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+economy.accounts
+economy.transactions
+economy.priceQuotes
+economy.shops
+economy.shopStock
+economy.tradeOffers
+economy.purchases
+economy.sales
+economy.barters
+economy.serviceContracts
+economy.debts
+economy.loans
+economy.depositsEscrow
+economy.disputes
+CurrencyAccountRecord shape
+CurrencyTransactionRecord shape
+PriceQuoteRecord shape
+ShopRecord shape
+ShopStockRecord shape
+TradeOfferRecord shape
+PurchaseRecord shape
+SaleRecord shape
+BarterRecord shape
+ServiceContractRecord shape
+DebtRecord shape
+LoanRecord shape
+DepositEscrowRecord shape
+EconomicDisputeRecord shape
+```
+
+---
+
+# 35. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+price/stock/offer/purchase/sale/barter/service/debt/loan/deposit detection
+promise/payment/handoff separation
+shop stock vs owned inventory separation
+service paid vs service completed separation
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+manual buy/sell/givemoney parser
+shop stock generation from lore/card
+market simulation parser
+reputation discount parser
+crafting economy automation parser
+card/context economy import
+```
+
+---
+
+# 36. Reducer/checker changes
+
+Allowed:
+
+```text
+EconomyReducer records and transaction coordination
+InventoryReducer split item/currency handoff
+service owner-routing shell
+currency transaction audit
+trade/debt/escrow duplicate skip results
+economy integrity checks
+```
+
+Forbidden:
+
+```text
+EconomyReducer directly rewriting inventory/currency outside owner contract
+free money from debt
+free item from shop stock
+service result without owner validation
+manual economy mutation reducer
+```
+
+---
+
+# 37. Command/context/card changes
+
+Allowed:
+
+```text
+/inventory economy distinctions
+/shop optional command
+/economy optional command
+/context economy packet
+/cardaudit economy risk labels
+/releasecheck PC18 gates
+/playerbreakercheck economy cases
+```
+
+Forbidden:
+
+```text
+/buy active mutation command
+/sell active mutation command
+/givemoney
+/setprice
+/clearDebt active command
+live card writes that create shop/economy truth
+```
+
+---
+
+# 38. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted creature ecology build
+
+Start from:
+
+```text
+WorldLedgerV0.17.17_CREATURE_ECOLOGY_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.18_ECONOMY_TRADE_CONTRACTS_WORKING.txt
+```
+
+## Step 2 — Add/verify economy helper functions
+
+Create helpers for:
+
+```text
+ensureEconomyShape
+makeCurrencyAccountRecord
+makeCurrencyTransactionRecord
+makePriceQuoteRecord
+makeShopRecord
+makeShopStockRecord
+makeTradeOfferRecord
+makePurchaseRecord
+makeSaleRecord
+makeBarterRecord
+makeServiceContractRecord
+makeDebtRecord
+makeLoanRecord
+makeDepositEscrowRecord
+makeEconomicDisputeRecord
+isUnsafeEconomySource
+isPriceOnly
+isOfferOnly
+isPaymentConfirmed
+isHandoffConfirmed
+```
+
+## Step 3 — Update economy CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+price quote
+shop stock
+purchase intent
+purchase payment/handoff
+sale offer/payment/handoff
+barter offer/transfer
+service offer/payment/completion
+debt/loan/repayment
+deposit/escrow/refund
+```
+
+## Step 4 — Update ProposalBuilder economy support
+
+Ensure proposals carry:
+
+```text
+buyer/seller/provider/customer
+item/service target
+amount/currency
+shop/place/actor keys
+payment/handoff flags
+source/localClause/safety flags
+operation key suggestion
+```
+
+## Step 5 — Implement EconomyReducerLite records
+
+Start with records and audits before complex behavior.
+
+Do not mutate inventory directly.
+
+## Step 6 — Wire split owner effects
+
+Route:
+
+```text
+currency losses/gains -> InventoryReducer
+item gains/removals/transfers -> InventoryReducer
+healing service results -> BodyReducer
+training service results -> Ability/Progression only if validated
+travel/lodging effects -> Place/Time/Body only if validated
+```
+
+## Step 7 — Update commands and context
+
+Update:
+
+```text
+/inventory
+/shop if available
+/economy if available
+ContextBuilder economy packet
+CardAudit economy risk labels
+```
+
+## Step 8 — Update IntegrityChecker
+
+Add checks for:
+
+```text
+stock not owned
+quote not purchase
+purchase/sale split effects
+service paid/completed separation
+debt/loan/repayment separation
+duplicate transaction keys
+unsafe source blocking
+```
+
+## Step 9 — Add PC18 ReleaseCheck gates
+
+Add PC18-G01 through PC18-G16.
+
+## Step 10 — Add PC18 tests
+
+Add PC18-001 through PC18-028.
+
+## Step 11 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/inventory
+/shop if available
+/economy if available
+/context
+```
+
+## Step 12 — Save accepted economy build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.18_ECONOMY_TRADE_CONTRACTS_ACCEPTED.txt
+```
+
+---
+
+# 39. What this chunk produces
+
+Production Chunk 18 should produce:
+
+```text
+WorldLedger V0.17.18 economy/trade/contracts accepted script if code changes are made
+EconomyState records
+price/shop/stock/trade schemas
+purchase/sale/barter/service/debt/loan/deposit schemas
+EconomyReducerLite coordination behavior
+economy CanonValidator refinement
+split owner contract with InventoryReducer and other owners
+/inventory /shop /economy display improvements
+economy context packet
+economy integrity checks
+PC18 ReleaseCheck gates
+PC18 regression/player-breaker tests
+economy acceptance report
+updated planning zip with Production Chunk 18 added
+```
+
+It should not produce:
+
+```text
+full dynamic market simulation
+manual economy mutation commands
+crafting economy automation
+reputation pricing engine
+live CardSync shop writes
+shop card import as inventory truth
+```
+
+---
+
+# 40. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 18 passes if:
+
+```text
+price/stock/offer/intent are separated from purchase/payment/handoff
+shop stock does not become owned inventory
+purchase/sale/barter split item/currency effects are owner-routed
+duplicate payment/purchase/sale/repayment keys work
+service paid vs completed remains separated
+debt/loan/repayment states are separated
+command/context/card economy text cannot become canon
+/inventory and /shop or /economy display honestly
+cleanup preserves active obligations and transaction keys
+PC18 tests pass
+ReleaseCheck has no PC18 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+regional pricing is deferred
+reputation discounts are deferred
+crafting economy is deferred
+shop stock generation is manual/story-driven only
+merchant currency is unknown/reference-only
+some service effects are owner-deferred
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+price quote spends currency
+shop stock becomes owned
+purchase intent buys item
+sale offer removes item or adds money
+purchase duplicates charge/grant twice
+sale duplicates pay twice
+debt creates free money
+service payment heals/trains/transports without owner validation
+command/context/card text mutates economy/inventory
+cleanup deletes active debt/contract/escrow/dispute or transaction keys
+EconomyReducer bypasses InventoryReducer for item/currency truth
+```
+
+---
+
+# 41. Handoff to Production Chunk 19
+
+When this chunk passes, Production Chunk 19 begins:
+
+```text
+Production Chunk 19 — Crafting, Materials, Repair, Enchanting Boundaries, and Recipe Safety
+```
+
+Production Chunk 19 may use economy prices, service contracts, shop stock, creature materials, and inventory truth to define crafting and repair.
+
+Production Chunk 18 must leave economy reliable enough that PC19 can ask:
+
+```text
+Is this material owned, visible, shop stock, promised, or held in custody?
+Was payment made?
+Was the service only offered, paid, or completed?
+Was the item sold or still owned?
+Is this debt active, repaid, disputed, or only proposed?
+Can crafting consume materials without duplicating economy/payment effects?
+```
+
+---
+
+# 42. Final doctrine
+
+Production Chunk 18 is where money stops being magic text.
+
+Final rule:
+
+```text
+Economy is a transaction pipeline.
+Prices, offers, stock, promises, debts, payments, handoffs, services, and results are separate.
+Every real item or currency change must be owner-routed, duplicate-safe, and display-honest.
+```
+
+Once this passes, the project can safely deepen crafting, materials, repair, enchanting boundaries, and recipe safety in Production Chunk 19.

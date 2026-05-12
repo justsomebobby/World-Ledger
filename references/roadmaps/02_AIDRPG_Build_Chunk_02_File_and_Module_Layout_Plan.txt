@@ -1,0 +1,1449 @@
+AIDRPG Build Chunk 2 — File and Module Layout Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 2 — File and Module Layout Plan
+Build target: AIDRPG Core MVP v0.1
+Purpose: Define the exact script organization, section order, module boundaries, call rules, and append-safe layout before any final script code is generated.
+Status: Practical build document.
+Follows: Build Chunk 1 — Implementation Start Packet.
+This document does not contain final script code.
+
+This chunk exists because previous versions became difficult to maintain when fixes were layered into scattered patches, wrappers, late repair systems, and large tangled code blocks.
+
+Core MVP v0.1 must be organized so future build chunks can add systems without breaking the foundation.
+
+⸻
+
+1. Purpose of Build Chunk 2
+
+Build Chunk 2 locks the internal layout of the future script.
+
+It answers:
+
+* what sections the script should contain
+* what order those sections should appear in
+* what each module owns
+* what each module must not own
+* which modules may call each other
+* which modules must stay read-only
+* where future systems will attach later
+* how to avoid patch-pile growth
+* how to keep the file buildable in single-message chunks
+
+This chunk still does not write the final script.
+
+It prepares the code layout so script generation can start safely later.
+
+⸻
+
+2. Core layout doctrine
+
+The first script must be structured as one clear engine, not a patch pile.
+
+Doctrine:
+
+One root namespace.
+One state root.
+One runtime contract.
+One command router.
+One audit layer.
+One ledger.
+One owner module per truth type.
+No direct parser writes.
+No card-to-canon path.
+No context writes.
+No generated cards in MVP.
+
+The script may physically exist as one AI Dungeon script file, but internally it must behave like modules.
+
+⸻
+
+3. Single-file reality
+
+AI Dungeon scripts are often edited as one large script body.
+
+Therefore, the build should use a single-file modular layout.
+
+That means:
+
+* sections are clearly labeled
+* module objects/functions are grouped together
+* future chunks append or fill designated sections
+* no random code is inserted between unrelated modules
+* section order stays stable
+* every future chunk declares touched sections
+
+Do not create a scattered script where functions are pasted wherever convenient.
+
+⸻
+
+4. Recommended top-level namespace
+
+Use one root namespace object internally.
+
+Recommended name:
+
+AIDRPG
+
+All major modules should live under it conceptually:
+
+AIDRPG.Constants
+AIDRPG.Utils
+AIDRPG.StateManager
+AIDRPG.Runtime
+AIDRPG.CommandRouter
+AIDRPG.Commands
+AIDRPG.AuditLogger
+AIDRPG.OperationLedger
+AIDRPG.ReleaseCheck
+AIDRPG.EventScannerLite
+AIDRPG.ProposalBuilder
+AIDRPG.CanonValidator
+AIDRPG.ReducerRegistry
+AIDRPG.Reducers
+AIDRPG.ContextBuilderLite
+AIDRPG.CardSyncLite
+AIDRPG.CleanupManagerLite
+AIDRPG.Hooks
+
+If platform constraints make namespace objects awkward, equivalent section-scoped constants/functions are acceptable, but naming must remain consistent.
+
+⸻
+
+5. Required section order
+
+The final script should use this section order.
+
+00 HEADER / BUILD WARNING
+01 CONSTANTS AND VERSION
+02 FEATURE FLAGS AND DEFAULTS
+03 UTILITY HELPERS
+04 STATE SCHEMA DEFAULTS
+05 STATE MANAGER
+06 RUNTIME HOOK CONTRACT
+07 AUDIT LOGGER
+08 OPERATION LEDGER
+09 COMMAND ROUTER
+10 COMMAND RENDERERS
+11 RELEASE CHECK LITE
+12 EVENT SCANNER LITE SHELL
+13 PROPOSAL BUILDER SHELL
+14 CANON VALIDATOR SHELL
+15 REDUCER REGISTRY SHELL
+16 MVP REDUCER SHELLS
+17 CONTEXT BUILDER LITE SHELL
+18 CARD SYNC LITE SHELL
+19 CLEANUP MANAGER LITE SHELL
+20 HOOK ENTRY POINTS
+21 RESERVED FUTURE APPENDICES / DO NOT ACTIVATE
+
+This order is intentional.
+
+Foundational utilities and state come before runtime.
+
+Runtime comes before commands.
+
+Commands come before advanced parsing.
+
+Parsing/validation/reducers are shells at first.
+
+Context/Card/Cleanup shells come after the state and audit systems they depend on.
+
+Hook entry points come last.
+
+⸻
+
+6. Section 00 — Header / Build Warning
+
+Purpose
+
+Make the script self-identifying and protect future users from misunderstanding the build stage.
+
+Should contain
+
+* build name
+* build stage
+* schema version
+* generated cards disabled warning
+* deferred systems warning
+* no direct editing warning if relevant
+
+Required header facts
+
+AIDRPG Core MVP v0.1
+Foundation build
+Generated cards disabled
+Advanced systems disabled
+Cards mirror state only
+Context read-only
+Commands inspect-only
+
+Must not contain
+
+* gameplay logic
+* parser rules
+* hardcoded player-specific details
+
+⸻
+
+7. Section 01 — Constants and Version
+
+Purpose
+
+Hold stable constants used across the script.
+
+Owns
+
+* project name
+* build name
+* build stage
+* schema version
+* command list
+* feature names
+* protected card keys
+* status enum values
+* access state enum values
+* caps and limits
+
+Must include constants for
+
+PROJECT_NAME
+BUILD_NAME
+BUILD_STAGE
+SCHEMA_VERSION
+MAX_RECENT_KEYS
+MAX_DIRTY_TARGETS
+MAX_AUDIT_ENTRIES
+MAX_RUNTIME_WARNINGS
+MAX_RUNTIME_ERRORS
+MAX_HOOK_TRACE
+PROTECTED_CARD_KEYS
+MVP_ACTIVE_COMMANDS
+MVP_DISABLED_SYSTEMS
+
+Must not own
+
+* mutable state
+* command output text generation
+* parser decisions
+
+⸻
+
+8. Section 02 — Feature Flags and Defaults
+
+Purpose
+
+Define default enabled/disabled system flags.
+
+Owns default flags
+
+generatedCardsEnabled = false
+protectedCardWritesEnabled = false
+cardSyncDryRun = true
+cardSyncSafeMode = true
+economyEnabled = false
+craftingEnabled = false
+investigationEnabled = false
+reputationEnabled = false
+domainEnabled = false
+absorptionEnabled = false
+multiProtagonistEnabled = false
+advancedCombatEnabled = false
+manualMutationCommandsEnabled = false
+
+Must not allow
+
+* generated cards active by default
+* economy/crafting/investigation/domain active by default
+* manual mutation commands active by default
+
+Dependency
+
+Used by StateManager and ReleaseCheckLite.
+
+⸻
+
+9. Section 03 — Utility Helpers
+
+Purpose
+
+Provide safe small helpers used by all modules.
+
+Owns
+
+* safe object checks
+* safe array checks
+* text preview
+* stable normalization
+* simple hashing
+* cap array helper
+* enum validation
+* clone/copy helper if needed
+* safe number clamp
+* safe string conversion
+* operation key normalization
+
+Recommended utility functions
+
+isObject(value)
+ensureArray(value)
+safeString(value)
+normalizeKey(text)
+shortPreview(text, maxLength)
+simpleHash(text)
+capArray(array, max)
+clampNumber(value, min, max)
+ensureEnum(value, allowed, fallback)
+nowTurn(state)
+
+Must not own
+
+* gameplay decisions
+* validation rules
+* state mutation outside helper returns
+* card writes
+
+Important rule
+
+Utilities must stay boring.
+
+Do not hide gameplay behavior inside helpers.
+
+⸻
+
+10. Section 04 — State Schema Defaults
+
+Purpose
+
+Define default shapes for every root state bucket.
+
+Owns default factory functions
+
+createDefaultMeta()
+createDefaultFeatures()
+createDefaultRuntime()
+createDefaultStartup()
+createDefaultPlayer()
+createDefaultBody()
+createDefaultProgression()
+createDefaultInventory()
+createDefaultAbilities()
+createDefaultQuests()
+createDefaultActors()
+createDefaultPlaces()
+createDefaultTime()
+createDefaultCards()
+createDefaultOperationLedger()
+createDefaultAudits()
+createDefaultMigration()
+createDefaultQuarantine()
+createDefaultDirty()
+createDefaultCleanup()
+createDefaultRootState()
+
+Must not own
+
+* runtime hook execution
+* command rendering
+* event scanning
+
+Required rule
+
+Default factories must not share mutable arrays/objects accidentally.
+
+Each fresh state should get fresh arrays.
+
+⸻
+
+11. Section 05 — State Manager
+
+Purpose
+
+Own initialization, repair, migration shell, and integrity protection.
+
+Owns
+
+StateManager.getRoot()
+StateManager.init()
+StateManager.ensureDefaults()
+StateManager.repairMissingBuckets()
+StateManager.migrateIfNeeded()
+StateManager.validateIntegrity()
+StateManager.markGameplayStarted()
+StateManager.lockStartup()
+
+May mutate
+
+* root state shape
+* missing buckets
+* schema repair fields
+* migration warnings
+* startup lock flags
+* audit repair warnings
+
+Must not mutate
+
+* inventory from prose
+* quests from cards
+* abilities from old card text
+* generated cards
+* advanced systems
+
+Must preserve
+
+* valid existing player data
+* valid inventory data
+* valid ability data
+* valid quest data
+* valid actor/place data
+* operation keys
+
+Call dependencies
+
+May call:
+
+* Constants
+* Defaults
+* Utils
+* AuditLogger for warnings, if already defined or via safe deferred audit pattern
+
+Must not call:
+
+* EventScanner
+* Reducers
+* CardSync live writes
+
+⸻
+
+12. Section 06 — Runtime Hook Contract
+
+Purpose
+
+Own Input/Context/Output hook safety.
+
+Owns
+
+Runtime.beginHook(hookName, text)
+Runtime.endHook(hookName, result)
+Runtime.failSoft(hookName, phase, error, originalText)
+Runtime.hashInput(text)
+Runtime.hashOutput(text)
+Runtime.isDuplicateOutput(root, outputHash)
+Runtime.markOutputApplied(root, outputHash)
+Runtime.setCommandSuppression(root, commandName, commandHash)
+Runtime.clearCommandSuppression(root)
+Runtime.shouldSuppressScanForCommandOutput(root, text)
+
+May mutate
+
+* runtime hook metadata
+* current turn
+* hook trace
+* runtime warnings/errors
+* command suppression fields
+* input/output hashes
+
+Must not mutate
+
+* gameplay state directly
+* inventory
+* quests
+* abilities
+* actors
+* places
+* cards
+
+Hook boundary rule
+
+Runtime may manage hook metadata only.
+
+It does not decide gameplay truth.
+
+⸻
+
+13. Section 07 — Audit Logger
+
+Purpose
+
+Provide capped audit writing across modules.
+
+Owns
+
+AuditLogger.debug(root, message)
+AuditLogger.warn(root, message)
+AuditLogger.runtimeError(root, record)
+AuditLogger.card(root, message)
+AuditLogger.context(root, message)
+AuditLogger.cleanup(root, message)
+AuditLogger.migration(root, message)
+AuditLogger.validation(root, record)
+AuditLogger.proposal(root, record)
+AuditLogger.release(root, result)
+AuditLogger.capAll(root)
+
+May mutate
+
+* audit buckets only
+
+Must not mutate
+
+* gameplay truth
+* cards
+* dirty targets, unless explicitly audit dirty later
+
+Important rule
+
+Audit output is non-canon.
+
+Command renderers may show audit entries, but they must not become parser sources.
+
+⸻
+
+14. Section 08 — Operation Ledger
+
+Purpose
+
+Prevent duplicate operation application.
+
+Owns
+
+OperationLedger.hasAny(root, key)
+OperationLedger.hasRecent(root, key)
+OperationLedger.hasPermanent(root, key)
+OperationLedger.hasReward(root, key)
+OperationLedger.hasCard(root, key)
+OperationLedger.addRecent(root, key)
+OperationLedger.addPermanent(root, key)
+OperationLedger.addReward(root, key)
+OperationLedger.addCard(root, key)
+OperationLedger.addSourceUse(root, key)
+OperationLedger.compact(root)
+
+May mutate
+
+* operationLedger only
+
+Must not mutate
+
+* inventory
+* XP
+* quests
+* cards except ledger card keys
+
+Important rule
+
+Ledger records dedupe keys.
+
+Ledger does not itself perform gameplay effects.
+
+⸻
+
+15. Section 09 — Command Router
+
+Purpose
+
+Detect commands, route them, enforce inspect-only MVP behavior, and suppress command output scanning.
+
+Owns
+
+CommandRouter.isCommand(text)
+CommandRouter.parseCommand(text)
+CommandRouter.route(root, commandText)
+CommandRouter.resolveAlias(commandName)
+CommandRouter.renderDisabled(commandName, reason)
+CommandRouter.markSuppression(root, commandName, outputText)
+
+May mutate
+
+* runtime command suppression fields
+* audit diagnostic fields
+
+Must not mutate gameplay
+
+MVP command router must not add/remove:
+
+* items
+* quests
+* abilities
+* actors
+* XP
+* HP/MP/EP
+* location
+* cards
+
+Alias handling
+
+Aliases should be defined here, not scattered.
+
+Examples:
+
+/questlog -> /quests
+/finalcheck -> /releasecheck
+/cardedits -> /cardaudit
+
+⸻
+
+16. Section 10 — Command Renderers
+
+Purpose
+
+Render human-readable command outputs.
+
+Owns renderers for
+
+renderHelp(root)
+renderVersion(root)
+renderSheet(root)
+renderStatus(root)
+renderInventory(root)
+renderAbilities(root)
+renderQuests(root)
+renderActors(root)
+renderLocation(root)
+renderTime(root)
+renderDebugLast(root)
+renderCardAudit(root)
+renderContextAudit(root)
+renderStateAudit(root)
+renderLedger(root)
+renderDirty(root)
+renderMigration(root)
+renderQuarantine(root)
+renderReleaseCheck(root)
+renderStartupAudit(root)
+renderDisabledSystem(root, systemName)
+
+May read
+
+* all state buckets needed for display
+
+May mutate
+
+* nothing except maybe audit that command was run, if needed
+
+Must not mutate gameplay
+
+Renderers are read-only.
+
+Output style
+
+Command output should be readable and concise.
+
+Do not dump full raw JSON by default.
+
+⸻
+
+17. Section 11 — Release Check Lite
+
+Purpose
+
+Provide the first readiness checker.
+
+Owns
+
+ReleaseCheck.run(root)
+ReleaseCheck.checkMeta(root)
+ReleaseCheck.checkFeatures(root)
+ReleaseCheck.checkRuntime(root)
+ReleaseCheck.checkStateBuckets(root)
+ReleaseCheck.checkCommands(root)
+ReleaseCheck.checkLedger(root)
+ReleaseCheck.checkCards(root)
+ReleaseCheck.checkContext(root)
+ReleaseCheck.checkDeferredSystems(root)
+ReleaseCheck.formatResult(result)
+
+May read
+
+* all state/config buckets
+
+May mutate
+
+* releaseCheck audit result
+
+Must not mutate gameplay
+
+ReleaseCheck reports, it does not fix gameplay truth.
+
+Required result levels
+
+PASS
+WARN
+FAIL
+BLOCKED
+
+⸻
+
+18. Section 12 — Event Scanner Lite Shell
+
+Purpose
+
+Reserve the parser scanner location without activating full parsing too early.
+
+Owns initially
+
+EventScannerLite.scanInputIntent(text, root)
+EventScannerLite.scanOutput(text, root)
+
+v0.1 initial behavior
+
+In the first foundation build, this may return empty arrays or very limited debug-safe hits.
+
+It must not mutate state.
+
+Future expansion
+
+Build Chunk 9 will define real EventScannerLite behavior.
+
+Must not do yet
+
+* item pickup parsing
+* reward parsing
+* ability success parsing
+* quest automation
+* XP automation
+* actor/place promotion
+
+unless later build chunks explicitly unlock them.
+
+⸻
+
+19. Section 13 — Proposal Builder Shell
+
+Purpose
+
+Reserve the place where parser hits become EventProposal objects.
+
+Owns initially
+
+ProposalBuilder.fromParserHit(hit, root)
+ProposalBuilder.createDebugProposal(type, data)
+
+v0.1 initial behavior
+
+May be inert or minimal.
+
+Must not mutate state.
+
+Future expansion
+
+Build Chunk 10 will define the full EventProposal schema and creation behavior.
+
+⸻
+
+20. Section 14 — Canon Validator Shell
+
+Purpose
+
+Reserve the central validation gate.
+
+Owns initially
+
+CanonValidator.validate(proposal, root)
+CanonValidator.reject(reason)
+CanonValidator.accept(notes)
+CanonValidator.pending(reason)
+
+v0.1 initial behavior
+
+If no real proposal pipeline is active yet, it may exist as a shell.
+
+If called, default should be conservative.
+
+Recommended safe default:
+
+unknown proposal types reject or pending
+
+Must not do
+
+* accept every event by default
+* bypass OperationLedger
+* mutate state
+
+Future expansion
+
+Build Chunk 11 defines full validation rules.
+
+⸻
+
+21. Section 15 — Reducer Registry Shell
+
+Purpose
+
+Reserve owner reducer routing.
+
+Owns initially
+
+ReducerRegistry.getOwner(eventType)
+ReducerRegistry.apply(validatedProposal, root)
+ReducerRegistry.unknownReducerResult(proposal)
+
+v0.1 initial behavior
+
+May reject unknown proposals and avoid active gameplay commits.
+
+Must not do
+
+* route unknown events to random reducers
+* commit unvalidated proposals
+* mutate multiple truth buckets without ownership
+
+Future expansion
+
+Build Chunk 12 defines full routing.
+
+⸻
+
+22. Section 16 — MVP Reducer Shells
+
+Purpose
+
+Reserve owner reducers without fully implementing every mechanic yet.
+
+Shell reducers
+
+BodyReducer
+InventoryReducer
+AbilityReducer
+QuestReducerLite
+ActorReducerLite
+PlaceReducerLite
+TimeReducerLite
+ProgressionReducerLite
+
+v0.1 initial behavior
+
+Reducers may expose empty/safe apply methods and dirty target helper placeholders.
+
+Must not do yet
+
+* full combat
+* full inventory parsing
+* full quest rewards
+* full progression automation
+* generated cards
+
+Future expansion
+
+Build Chunks 14–20 define reducer behavior in detail.
+
+⸻
+
+23. Section 17 — Context Builder Lite Shell
+
+Purpose
+
+Reserve read-only context generation.
+
+Owns initially
+
+ContextBuilderLite.buildPackets(root)
+ContextBuilderLite.serialize(packets, root)
+ContextBuilderLite.audit(root, packets, skipped)
+
+v0.1 initial behavior
+
+May return minimal safe context or placeholder.
+
+Must be read-only.
+
+Must not do
+
+* mutate gameplay state
+* create proposals
+* create cards
+* import card text
+
+Future expansion
+
+Build Chunk 21 defines full ContextBuilderLite.
+
+⸻
+
+24. Section 18 — Card Sync Lite Shell
+
+Purpose
+
+Reserve Story Card mirror logic without unsafe live writes.
+
+Owns initially
+
+CardSyncLite.ensureRegistry(root)
+CardSyncLite.planProtectedUpdates(root)
+CardSyncLite.audit(root)
+CardSyncLite.suppressGeneratedCards(root)
+
+v0.1 initial behavior
+
+Dry-run/audit only.
+
+Generated cards disabled.
+
+Live writes disabled unless later explicitly unlocked.
+
+Must not do
+
+* live generated card creation
+* live protected writes without adapter tests
+* parse Story Card text
+* import old card prose as canon
+
+Future expansion
+
+Build Chunk 22 defines protected CardSyncLite.
+
+Generated card beta later after MVP tests.
+
+⸻
+
+25. Section 19 — Cleanup Manager Lite Shell
+
+Purpose
+
+Reserve conservative cleanup behavior.
+
+Owns initially
+
+CleanupManagerLite.lightCleanup(root)
+CleanupManagerLite.compactAudits(root)
+CleanupManagerLite.compactDirtyQueue(root)
+CleanupManagerLite.audit(root, message)
+
+v0.1 initial behavior
+
+May cap audits and dirty queue only.
+
+Must not do
+
+* delete active inventory
+* delete active quests
+* delete important actors
+* delete protected card registry
+* resolve quarantine automatically
+* create truth
+
+Future expansion
+
+Build Chunk F already defines safety; later coding can implement it.
+
+⸻
+
+26. Section 20 — Hook Entry Points
+
+Purpose
+
+Expose actual AI Dungeon hook functions.
+
+Owns
+
+Platform-facing wrappers like:
+
+inputModifier(text)
+contextModifier(text)
+outputModifier(text)
+
+or platform equivalent.
+
+Required behavior
+
+Input entry point:
+
+StateManager.init
+Runtime.beginHook('input')
+CommandRouter.route if command
+Intent shell only if non-command
+Runtime.endHook
+return safe shape
+
+Context entry point:
+
+StateManager.init
+Runtime.beginHook('context')
+ContextBuilderLite read-only shell
+Runtime.endHook
+return safe shape
+
+Output entry point:
+
+StateManager.init
+Runtime.beginHook('output')
+Duplicate output check
+Scanner/Proposal/Validator/Reducer shells if active
+CardSync/Cleanup shells if safe
+Runtime.endHook
+return safe shape
+
+Must not do
+
+* direct gameplay mutation in entry points
+* raw Story Card API calls
+* direct inventory/quest/XP changes
+
+Entry points orchestrate; modules own behavior.
+
+⸻
+
+27. Section 21 — Reserved Future Appendices / Do Not Activate
+
+Purpose
+
+Make clear where future systems belong without activating them.
+
+May include comments/placeholders for:
+
+EconomyReducer later
+CraftingReducer later
+InvestigationReducer later
+ReputationReducer later
+DomainReducer later
+PartySystem later
+ScaleCombatSystem later
+AbsorptionEvolutionSystem later
+GeneratedCardSync beta later
+WholeSystemTester later
+
+Must include warning
+
+Reserved only. Do not activate without mini-spec and build chunk.
+
+⸻
+
+28. Allowed call graph
+
+The first build should follow this call graph.
+
+28.1 Universal dependencies
+
+Most modules may call:
+
+Constants
+Utils
+AuditLogger
+
+28.2 StateManager may call
+
+Constants
+Defaults
+Utils
+AuditLogger
+
+StateManager must not call:
+
+EventScanner
+Reducers
+CardSync live writes
+ContextBuilder
+
+28.3 Runtime may call
+
+Constants
+Utils
+StateManager
+AuditLogger
+CommandRouter only through hook orchestration
+
+Runtime must not call reducers directly.
+
+28.4 CommandRouter may call
+
+CommandRenderers
+Runtime suppression helpers
+AuditLogger
+ReleaseCheck
+
+CommandRouter must not call gameplay reducers in MVP.
+
+28.5 CommandRenderers may call
+
+Utils
+ReleaseCheck formatter
+
+CommandRenderers must not mutate gameplay state.
+
+28.6 ReleaseCheck may call
+
+Utils
+AuditLogger
+
+ReleaseCheck may read all state.
+
+ReleaseCheck must not repair gameplay.
+
+28.7 EventScanner may call
+
+Utils
+
+EventScanner must not call reducers.
+
+28.8 ProposalBuilder may call
+
+Utils
+Resolver later
+
+ProposalBuilder must not call reducers.
+
+28.9 CanonValidator may call
+
+OperationLedger read checks
+Resolvers later
+Utils
+
+CanonValidator must not mutate gameplay except maybe audit through AuditLogger.
+
+28.10 ReducerRegistry may call
+
+owner reducers
+OperationLedger after validation
+AuditLogger
+
+ReducerRegistry must not route unknown events loosely.
+
+28.11 Reducers may call
+
+Utils
+OperationLedger if commit design requires
+AuditLogger
+DirtyQueue helpers
+
+Reducers must not call parser or context.
+
+28.12 ContextBuilder may call
+
+Utils
+AuditLogger
+
+ContextBuilder must not call reducers or CardSync writes.
+
+28.13 CardSync may call
+
+Utils
+AuditLogger
+OperationLedger card keys
+CardApiAdapter later
+
+CardSync must not call parsers or reducers.
+
+28.14 CleanupManager may call
+
+Utils
+AuditLogger
+OperationLedger cleanup keys if needed
+
+CleanupManager must not call parsers or create gameplay events.
+
+⸻
+
+29. Forbidden call paths
+
+These call paths are forbidden.
+
+EventScanner -> InventoryReducer direct
+EventScanner -> QuestReducer direct
+EventScanner -> ProgressionReducer direct
+ContextBuilder -> any gameplay reducer
+CardSync -> any gameplay reducer
+CommandRenderer -> any gameplay reducer
+Story Card API -> CanonValidator as input source
+ReleaseCheck -> gameplay mutation
+CleanupManager -> create item/quest/actor/XP
+StateManager migration -> import Story Card prose as canon
+Hook entry point -> direct item/quest/XP mutation
+
+If a future chunk needs an exception, it must be explicitly specified and tested.
+
+⸻
+
+30. Append-safe coding policy
+
+Future build chunks should be append-safe.
+
+Each coding chunk must declare:
+
+Touched sections:
+New functions added:
+Existing functions modified:
+Why modification is required:
+Tests affected:
+Deferred systems still disabled:
+Rollback note:
+
+30.1 No silent rewrites
+
+Do not rewrite the full script unless the build explicitly calls for a consolidation version.
+
+30.2 No hidden patches
+
+Do not add surprise modules like:
+
+FinalFixSystem
+EmergencyPatchSystem
+RandomRepairLayer
+PolishEverythingSystem
+
+Every fix belongs to an owner module.
+
+30.3 No ambiguous insertion instructions
+
+Avoid instructions like:
+
+Find the old function and replace part of it.
+
+Prefer:
+
+In Section 05 StateManager, replace function StateManager.ensureDefaults with this full function.
+
+or:
+
+Append this function at the end of Section 08 OperationLedger.
+
+⸻
+
+31. Line budget policy
+
+The final code should remain manageable.
+
+31.1 Per production chunk budget
+
+Recommended:
+
+Target max per coding chunk: 700 lines
+Absolute max per coding chunk: 800 lines
+
+If a coding chunk would exceed the limit, split it.
+
+31.2 Per section caution
+
+If any section becomes too large, future chunks should consider:
+
+* sub-section labels
+* helper extraction
+* shell now, expansion later
+* separate later build chunk
+
+31.3 No giant all-at-once script
+
+Do not attempt to generate the entire final AIDRPG script in one response.
+
+The first code version should be foundation only.
+
+⸻
+
+32. Naming conventions
+
+32.1 Function names
+
+Use clear module-prefixed names if namespace style is not possible.
+
+Examples:
+
+StateManager_init
+Runtime_beginHook
+CommandRouter_route
+ReleaseCheck_run
+
+If namespace style is possible:
+
+StateManager.init
+Runtime.beginHook
+CommandRouter.route
+ReleaseCheck.run
+
+32.2 IDs and keys
+
+Use normalized lowercase snake keys.
+
+Examples:
+
+protected:player_sheet
+item:rusty_dagger
+actor:mara
+quest:clear_mill_wolves
+ability:mana_slash
+
+32.3 Operation keys
+
+Use dot-separated operation keys.
+
+Examples:
+
+item.pickup.rusty_dagger.scene_12
+quest.reward.clear_mill_wolves.old_bren
+card.update.protected.player_sheet.hash_abc
+startup.import.player.name
+
+⸻
+
+33. Commenting policy
+
+Comments should explain boundaries, not narrate obvious code.
+
+Good comments:
+
+// Context is read-only. Do not mutate gameplay state here.
+// Generated cards are disabled in MVP.
+// Parser shell must not commit state directly.
+
+Bad comments:
+
+// increment i
+// set x to y
+
+Important safety comments should stay near the relevant section.
+
+⸻
+
+34. Initial implementation sequence after this layout
+
+Once this layout is accepted, actual code should be built in this order:
+
+1. Header / constants / feature defaults
+2. Utility helpers
+3. State schema defaults
+4. StateManager init/repair
+5. AuditLogger basic caps
+6. Runtime hook metadata/fail-soft
+7. OperationLedger shell
+8. CommandRouter + command renderers
+9. ReleaseCheckLite
+10. Hook entry points
+11. Inert scanner/proposal/validator/reducer/context/card/cleanup shells
+12. Run first tests
+
+Do not code advanced parser/reducer systems before the foundation tests pass.
+
+⸻
+
+35. Build Chunk 2 acceptance tests
+
+These are planning/layout acceptance tests, not runtime script tests yet.
+
+BC2-001 — Section order exists
+
+Expected:
+
+* final code plan has sections 00–21 in the required order
+
+Fail if:
+
+* modules are unordered or scattered
+
+BC2-002 — Each module has one owner role
+
+Expected:
+
+* StateManager owns state init/repair
+* Runtime owns hook metadata
+* CommandRouter owns commands
+* AuditLogger owns audits
+* OperationLedger owns dedupe
+
+Fail if:
+
+* multiple modules own same core truth without boundary
+
+BC2-003 — Forbidden call paths listed
+
+Expected:
+
+* parser cannot call reducers directly
+* context cannot call reducers
+* cards cannot feed canon
+* commands cannot mutate gameplay in MVP
+
+Fail if:
+
+* forbidden paths are unspecified
+
+BC2-004 — Deferred systems reserved but inactive
+
+Expected:
+
+* economy/crafting/investigation/domain/absorption/generated cards are reserved only
+
+Fail if:
+
+* layout implies they are active in v0.1
+
+BC2-005 — Append-safe policy defined
+
+Expected:
+
+* future chunks must declare touched sections and modified functions
+
+Fail if:
+
+* future edits can be pasted randomly
+
+BC2-006 — Line budget defined
+
+Expected:
+
+* coding chunks target 700 lines, absolute 800 lines
+
+Fail if:
+
+* no production size control exists
+
+BC2-007 — Hook entry points last
+
+Expected:
+
+* platform-facing hooks appear after all internal modules
+
+Fail if:
+
+* hook logic appears before dependencies or contains direct state mutation
+
+BC2-008 — Shell modules are honest
+
+Expected:
+
+* parser/validator/reducer/context/card shells do not claim full automation yet
+
+Fail if:
+
+* placeholders pretend to implement systems not active
+
+⸻
+
+36. Relationship to Gap Chunks A–G
+
+Build Chunk 2 incorporates Gap Chunks A–G by enforcing these layout decisions:
+
+* Gap A: old fixes become owner modules, not patches
+* Gap B: runtime hook contract has its own section
+* Gap C: CardSync and card API are isolated from canon
+* Gap D: parser/resolver have shells and cannot mutate state
+* Gap E: migration/releasecheck/command honesty have dedicated sections
+* Gap F: context/dirty/cleanup/performance have dedicated shells and caps
+* Gap G: startup/identity/natural confirmation are represented in state/defaults and future parser/validator boundaries
+
+⸻
+
+37. What Build Chunk 3 should do next
+
+Next build document:
+
+Build Chunk 3 — State Schema Lock
+
+Build Chunk 3 should fully lock field names and default structures for every root state bucket so coding can initialize state without guessing.
+
+It should expand the defaults from Build Chunk 1 into a precise schema document.
+
+⸻
+
+38. Final Build Chunk 2 doctrine
+
+AIDRPG must be built as a controlled engine, not as a growing pile of fixes.
+
+The final rule is:
+
+Stable section order.
+One owner per truth type.
+No forbidden call paths.
+No hidden patch systems.
+No active deferred systems.
+Append safely or do not append.
+
+With this layout locked, the next safe step is to lock the complete state schema.

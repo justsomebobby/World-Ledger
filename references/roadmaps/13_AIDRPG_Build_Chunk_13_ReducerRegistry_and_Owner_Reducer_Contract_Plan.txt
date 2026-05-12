@@ -1,0 +1,1137 @@
+AIDRPG Build Chunk 13 — ReducerRegistry and Owner Reducer Contract Plan
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 13 — ReducerRegistry and Owner Reducer Contract Plan
+Build target: AIDRPG Core MVP v0.1 / final-core architecture path
+Purpose: Define the exact ReducerRegistry behavior, owner reducer contracts, accepted-result handoff, operation key ordering, dirty target creation, audit requirements, and reducer safety tests before individual reducer plans are written.
+Status: Practical build document.
+Follows: Build Chunk 11 — CanonValidator and Build Chunk 12 — Resolver and Owner-Specific Sanitizer Plan.
+This document does not contain final script code.
+
+This chunk exists because old versions repeatedly failed when multiple systems could mutate the same truth, when parser patches mutated state directly, or when late repair layers tried to fix already-corrupted state.
+
+The reducer layer is the first layer allowed to commit gameplay state.
+
+Only accepted CanonValidator results may reach reducers.
+
+Each truth family must have exactly one reducer owner.
+
+⸻
+
+1. Reducer doctrine
+
+The reducer doctrine is:
+
+Parser detects.
+ProposalBuilder structures.
+CanonValidator decides eligibility.
+ReducerRegistry routes.
+OwnerReducers commit.
+OperationLedger dedupes.
+DirtyQueue marks mirrors.
+AuditLogger explains.
+
+Reducers are not parsers.
+
+Reducers are not validators.
+
+Reducers are not command renderers.
+
+Reducers are not card writers.
+
+Reducers only commit accepted, validated, owner-routed changes.
+
+⸻
+
+2. Why this chunk matters
+
+Previous versions fell into patch loops because different layers could mutate truth:
+
+parser directly added items
+ability cleanup created abilities
+command output was parsed as story
+context reminders became state
+Story Cards became canon
+late patches repaired old bugs by overwriting state
+multiple systems could update actors, scenes, cards, or abilities
+
+This build stops that by enforcing reducer ownership.
+
+If the InventoryReducer owns inventory, no other module directly adds items.
+
+If the AbilityReducer owns abilities, no parser/sanitizer/card/context layer creates stable abilities.
+
+If the PlaceReducer owns current location, weak place mentions cannot update state outside that path.
+
+⸻
+
+3. Placement in final script
+
+ReducerRegistry belongs in:
+
+Section 15 — Reducer Registry Shell
+
+Owner reducers belong in:
+
+Section 16 — MVP Reducer Shells
+
+ReducerRegistry follows:
+
+EventScannerLite
+ProposalBuilder
+CanonValidator
+Resolver/Sanitizer
+OperationLedger
+AuditLogger
+
+ReducerRegistry comes before:
+
+ContextBuilderLite
+CardSyncLite
+CleanupManagerLite
+Hook entry point final orchestration
+
+⸻
+
+4. ReducerRegistry responsibilities
+
+ReducerRegistry owns:
+
+* receiving accepted validation results
+* rejecting non-accepted results from commit path
+* mapping family/eventType to owner reducer
+* enforcing one-owner-per-truth-family
+* invoking owner reducer apply functions
+* handling reducer result objects
+* coordinating operation key commit order policy
+* coordinating dirty target creation through owner reducer result
+* collecting reducer audit summaries
+* fail-softing unknown reducer routes
+* preventing reducer overlap
+
+ReducerRegistry does not own:
+
+* parsing text
+* proposal construction
+* canon validation
+* target sanitization
+* command rendering
+* Story Card writing
+* context generation
+* cleanup deletion
+* feature activation
+
+⸻
+
+5. Owner reducer responsibilities
+
+Owner reducers own actual state mutation for their truth family.
+
+Each owner reducer must:
+
+* accept only accepted ValidationResults
+* verify the required owner/family before commit
+* check the operation key if repeat-sensitive
+* mutate only its owned state bucket(s)
+* preserve valid existing data
+* create dirty targets for mirror/context updates
+* record concise audit lines
+* return a structured ReducerResult
+* fail softly without corrupting unrelated state
+
+Owner reducers must not:
+
+* parse raw story text
+* import Story Card prose
+* read command output as story
+* validate canon from scratch outside CanonValidator
+* mutate another reducer’s bucket except through approved cross-bucket contract
+* enable deferred systems
+* create generated cards
+
+⸻
+
+6. Required ReducerRegistry functions
+
+The final script should provide these functions or equivalents.
+
+ReducerRegistry.applyAcceptedBatch(root, validationBatch)
+ReducerRegistry.applyOne(root, validationResult)
+ReducerRegistry.getOwner(validationResult)
+ReducerRegistry.isAcceptedForCommit(validationResult)
+ReducerRegistry.rejectNonAccepted(validationResult)
+ReducerRegistry.routeToOwner(root, validationResult, ownerName)
+ReducerRegistry.handleUnknownOwner(root, validationResult)
+ReducerRegistry.collectReducerResult(root, reducerResult)
+ReducerRegistry.auditBatch(root, reducerResults)
+ReducerRegistry.failSoftReducer(root, validationResult, error)
+ReducerRegistry.getRegistryMap()
+ReducerRegistry.validateRegistryIntegrity(root)
+
+Names may change in code, but these responsibilities must exist.
+
+⸻
+
+7. Required owner reducer functions
+
+Each owner reducer should follow a shared function pattern.
+
+Reducer.apply(root, validationResult)
+Reducer.canHandle(validationResult)
+Reducer.buildOperationKey(validationResult, root)
+Reducer.checkDuplicate(root, validationResult, operationKey)
+Reducer.commit(root, validationResult, operationKey)
+Reducer.markDirty(root, validationResult, commitSummary)
+Reducer.audit(root, validationResult, reducerResult)
+Reducer.failSoft(root, validationResult, error)
+
+Some reducers may be shell-only in early MVP, but they must honestly return deferred/shell results rather than pretending to commit.
+
+⸻
+
+8. ReducerResult schema
+
+Every reducer returns a structured result.
+
+ReducerResult {
+  validationId: string,
+  proposalId: string,
+  family: string,
+  eventType: string,
+  ownerReducer: string,
+  status: 'committed' | 'skipped_duplicate' | 'rejected_wrong_owner' | 'deferred' | 'no_op' | 'failed_softly',
+  operationKey: string,
+  operationKeyAdded: boolean,
+  mutatedBuckets: string[],
+  dirtyTargets: DirtyTarget[],
+  auditLine: string,
+  warnings: string[],
+  errors: string[],
+  notes: string[]
+}
+
+Reducers should never return raw undefined/null.
+
+⸻
+
+9. Accepted-result handoff contract
+
+ReducerRegistry may process only:
+
+ValidationResult.status = accepted
+ValidationResult.canonAllowed = true
+ValidationResult.reducerAllowed = true
+ValidationResult.requiredReducer is known
+
+Everything else must be excluded from the commit path:
+
+rejected
+pending
+deferred
+blocked
+malformed
+duplicate_skipped
+
+These may be audited or displayed, but not committed.
+
+⸻
+
+10. Owner map
+
+The reducer registry must use a clear owner map.
+
+inventory -> InventoryReducer
+ability -> AbilityReducer
+body_status -> BodyReducer
+body_injury -> BodyReducer
+quest -> QuestReducerLite
+reward -> QuestReducerLite / RewardReducerLite if separated later
+actor -> ActorReducerLite
+place_scene -> PlaceReducerLite
+place -> PlaceReducerLite
+time -> TimeReducerLite
+progression -> ProgressionReducerLite
+card_mirror -> CardSyncLite, not gameplay reducer
+migration -> MigrationManager, not gameplay reducer
+unknown -> no reducer
+
+MVP may keep some reducers as shells, but the owner mapping must be explicit.
+
+⸻
+
+11. One-owner-per-truth-family rule
+
+Each state truth family has one primary owner.
+
+Truth family	State bucket	Owner reducer
+player identity	player	PlayerReducer later / StateManager startup only in MVP
+body resources/status/injury	body	BodyReducer
+XP/level/stats	progression	ProgressionReducerLite
+inventory/currency/equipment/scene items	inventory	InventoryReducer
+abilities/evidence/status	abilities	AbilityReducer
+quests/objectives/rewards	quests	QuestReducerLite
+actors/memory/presence	actors	ActorReducerLite
+places/current scene/travel intent	places	PlaceReducerLite
+time/deadlines	time	TimeReducerLite
+Story Card registry/mirrors	cards	CardSyncLite, not gameplay canon
+migration/quarantine	migration/quarantine	MigrationManager / QuarantineManager
+dirty queue	dirty	DirtyQueue helper via owner reducer results
+
+No other module may directly mutate these buckets for gameplay truth.
+
+⸻
+
+12. Cross-bucket mutation policy
+
+Some accepted events affect more than one bucket.
+
+Examples:
+
+reward payment -> quests + inventory currency
+ability training -> abilities + maybe progression/statXP later
+arrival -> places + scene actors/items cleanup later
+quest completion -> quests + progression XP/reward readiness later
+body recovery -> body + time/rest notes later
+
+To avoid overlapping reducers, cross-bucket changes require explicit policy.
+
+12.1 MVP preferred policy
+
+For MVP, keep cross-bucket changes conservative.
+
+A reducer may mutate only its primary bucket and return suggested follow-up dirty targets or follow-up proposals unless a cross-bucket contract exists.
+
+12.2 Allowed MVP cross-bucket contracts
+
+Allowed only when explicitly defined:
+
+QuestReward accepted payment may call Inventory currency helper through RewardReducer contract, or be split into reward payment validation + inventory currency event.
+PlaceReducer may update currentScene visibleItems/presentActors references but not actor permanent records unless ActorReducer validates.
+BodyReducer may update body resources/status only, not progression.
+AbilityReducer may record ability evidence only, not stat gain unless ProgressionReducer handles it.
+
+12.3 Forbidden casual cross-bucket mutation
+
+Forbidden:
+
+InventoryReducer completing quests
+AbilityReducer awarding XP
+PlaceReducer creating persistent actors freely
+ActorReducer changing current location
+CardSync changing inventory
+ContextBuilder changing anything
+Cleanup resolving active quests
+
+⸻
+
+13. Operation key commit ordering
+
+Repeat-sensitive reducer commits must use OperationLedger.
+
+13.1 Standard commit order
+
+Recommended MVP order:
+
+1. Receive accepted ValidationResult.
+2. Build or read operation key.
+3. Check duplicate key.
+4. If duplicate, return skipped_duplicate; do not mutate.
+5. Apply state mutation.
+6. Add operation key to correct ledger bucket.
+7. Mark dirty targets.
+8. Audit success.
+
+13.2 If mutation succeeds but key add fails
+
+This is a critical warning.
+
+Reducer should:
+
+* record warning/error
+* avoid retry loops
+* return committed with operationKeyAdded false and critical audit
+* ReleaseCheck should warn/fail depending severity
+
+13.3 If key is added before mutation
+
+Avoid this in MVP unless rollback exists.
+
+If key added first and mutation fails, effect may be permanently skipped.
+
+MVP should generally mutate then add key, while keeping mutation simple and local.
+
+13.4 Duplicate-sensitive key buckets
+
+item pickup/transfer/consume/drop -> recent or permanent depending item
+reward payment -> rewardKeys
+XP/level/stat gains -> rewardKeys or permanent/progression keys
+ability stabilization -> permanentKeys or ability-specific durable key
+ability use evidence -> recentKeys unless durable evidence
+card writes -> cardKeys
+time/age advance -> permanent or recent depending event
+startup import -> permanentKeys/startupOperationKeys
+migration import/quarantine -> migrationOperationKeys/permanentKeys
+
+⸻
+
+14. Dirty target contract
+
+Reducers do not write Story Cards or context directly.
+
+They mark dirty targets.
+
+Dirty target families:
+
+player_sheet
+body_status
+abilities
+inventory_equipment
+quest_log
+social_memory
+current_location
+context
+card_registry
+migration
+audit
+
+14.1 Required dirty mapping
+
+Mutated bucket	Dirty families
+player	player_sheet, context
+body	body_status, context
+progression	player_sheet, context
+inventory	inventory_equipment, current_location, context
+abilities	abilities, context
+quests	quest_log, context
+actors	social_memory, current_location, context
+places	current_location, context
+time	current_location, quest_log, context
+cards	card_registry, audit
+migration/quarantine	migration, audit
+
+Dirty targets do not create gameplay truth.
+
+⸻
+
+15. Audit contract
+
+Every reducer commit or skip must produce a concise audit line.
+
+Examples:
+
+Inventory committed: acquired red_healing_potion from Mara handoff.
+Inventory skipped duplicate: item.acquire.red_healing_potion.mara.hash_abc already applied.
+Ability evidence added: Ember Ward training intent recorded.
+Place updated: current scene set to The Drunken Huntsman from confirmed arrival.
+Reward skipped duplicate: quest.reward.clear_mill_wolves.old_bren.15_gold already paid.
+
+Audit must not mutate gameplay state.
+
+Audit must be capped.
+
+Audit must not dump full raw output text.
+
+⸻
+
+16. Reducer fail-soft policy
+
+If a reducer fails:
+
+* do not crash the hook
+* do not continue unsafe optional commits
+* record runtime/reducer error
+* return failed_softly ReducerResult
+* preserve existing valid state
+* do not reset the whole bucket
+* do not enable fallback broad mutation
+
+Reducer fail-soft must not become hidden repair logic.
+
+⸻
+
+17. InventoryReducer contract summary
+
+InventoryReducer owns:
+
+inventory.items
+inventory.equipped
+inventory.currency when explicitly authorized
+inventory.sceneItems
+inventory item access/custody state
+
+It handles accepted validation events such as:
+
+inventory.acquire_candidate
+inventory.handoff_candidate
+inventory.transfer_candidate
+inventory.drop_candidate
+inventory.lose_candidate
+inventory.consume_candidate
+inventory.destroy_candidate
+inventory.visible_candidate as scene item only if accepted for scene item
+inventory.available_loot_candidate as scene item only if accepted for available loot
+
+It must not:
+
+complete quests
+pay promised rewards unless reward contract authorizes currency update
+create abilities
+change current location
+parse command output
+import card text
+
+Key old-failure protections:
+
+denied item no acquisition
+failed grab no acquisition
+abstract item no acquisition
+dream item no acquisition
+visible item not owned
+available loot not owned until accepted acquisition
+mixed clause target separation
+
+⸻
+
+18. AbilityReducer contract summary
+
+AbilityReducer owns:
+
+abilities.records
+ability evidence
+ability status transitions
+ability costs/cooldowns/reliability labels if validated
+
+It handles accepted validation events such as:
+
+ability.train_intent
+ability.train_candidate
+ability.use_success_candidate
+ability.use_failure_candidate
+ability.evidence_candidate
+ability.stabilize_candidate
+
+It must not:
+
+create stable ability from unsupported output-only claim
+award XP/stat gains directly
+create generated cards
+clean item/place names
+parse raw input
+
+Key old-failure protections:
+
+explicit training creates evidence/candidate, not automatic mastery
+output-only learned ability not stable by default
+failed/pretend/quoted ability not stable
+owner-specific AbilityNameSanitizer result required
+repeated ability use deduped
+
+⸻
+
+19. BodyReducer contract summary
+
+BodyReducer owns:
+
+body.hp
+body.mp
+body.ep
+body.injuries
+body.conditions
+body.fatigue
+body.deathBoundary
+body.bodyTraits when body-state validated
+
+It handles accepted validation events such as:
+
+body.status_gain_candidate
+body.status_loss_candidate
+body.injury_candidate
+body.resource_change_candidate
+body.resource_state_candidate
+body.recovery_candidate
+body.death_boundary_candidate
+
+It must not:
+
+change player identity species unless transformation contract exists
+award XP
+complete quests
+apply death from rumor/quote/dream/metaphor
+turn fatigue into exhaustion without validated severity
+
+Key old-failure protections:
+
+exhausted visible when explicit
+fatigued separate from exhausted
+burned/bleeding/poisoned statuses persist correctly
+death rumor/quote rejected before reducer
+
+⸻
+
+20. QuestReducerLite contract summary
+
+QuestReducerLite owns:
+
+quests.records
+quest objectives
+quest statuses
+quest reward status
+
+It handles accepted validation events such as:
+
+quest.offer_candidate
+quest.accept_candidate
+quest.objective_progress_candidate
+quest.objective_complete_candidate
+quest.ready_to_turn_in_candidate
+quest.failed_candidate
+quest.abandoned_candidate
+reward.promise_candidate
+reward.ready_candidate
+reward.payment_candidate through explicit reward contract
+reward.denied_candidate
+reward.disputed_candidate
+
+It must not:
+
+add currency without reward payment contract
+activate rumor-only quests
+pay promised rewards
+award XP without ProgressionReducer contract
+
+Key old-failure protections:
+
+promise not payment
+objective completion not reward paid
+reward paid once
+objective verb breadth preserved
+rumor/offer/active/completed/rewarded separate
+
+⸻
+
+21. ActorReducerLite contract summary
+
+ActorReducerLite owns:
+
+actors.records
+actors.sceneActors
+actor presence
+actor relationship/memory notes
+actor custody item references only when validated
+
+It handles accepted validation events such as:
+
+actor.present_candidate
+actor.scene_only_candidate
+actor.memory_candidate
+actor.relationship_claim_candidate
+actor.status_candidate
+actor.absent_candidate
+
+It must not:
+
+make absent/reference-only actors present
+harm actors from training dummy/reference text
+promote generic actors to persistent actors automatically
+change reputation automation in MVP
+transfer inventory custody without inventory contract
+
+Key old-failure protections:
+
+compound actor duplicate suppressed
+absent actor not present
+reference-only actor not mutated
+witness memory isolated
+private report not public reputation
+
+⸻
+
+22. PlaceReducerLite contract summary
+
+PlaceReducerLite owns:
+
+places.currentLocation
+places.currentScene
+places.records
+places.travelIntent
+
+It handles accepted validation events such as:
+
+place.current_scene_confirm_candidate
+place.arrival_candidate
+place.travel_intent_candidate
+place.visible_reference
+place.nearby_reference
+
+It must not:
+
+turn weak mention into current scene
+mark future intent as arrival
+promote route/interstitial word as destination over named place
+create persistent actors/items directly
+
+Key old-failure protections:
+
+market lane remains confirms scene
+chapel visible from market lane does not overwrite scene
+enter chapel updates scene
+After road, enter The Drunken Huntsman targets named place, not road
+
+⸻
+
+23. TimeReducerLite contract summary
+
+TimeReducerLite owns:
+
+time.text
+time.turn when gameplay-turn policy requires
+time.lastAdvance
+time.deadlines
+
+It handles accepted validation events such as:
+
+time.advance_candidate
+time.age_candidate only through age policy
+time.deadline_candidate
+
+It must not:
+
+age player from quote/dream/pretend/nonliteral wording
+advance time from planning to rest/travel
+duplicate time advance from repeated output
+modify player age without age policy
+
+Key old-failure protections:
+
+"Twenty years pass" quote no aging
+Dream time skip no aging
+Literal exile time passage can be accepted/pending
+same output replay no duplicate aging
+
+⸻
+
+24. ProgressionReducerLite contract summary
+
+ProgressionReducerLite owns:
+
+progression.level
+progression.currentXP
+progression.totalXP
+progression.xpToNext
+progression.stats
+progression.statXP
+progression histories
+
+It handles accepted validation events such as:
+
+progression.xp_gain_candidate
+progression.level_up_candidate
+progression.stat_gain_candidate
+progression.training_progress_candidate
+
+It must not:
+
+award XP from vague learning-experience wording
+rubber-band world actor levels to player level
+mutate stats without formula support
+apply repeated XP/level from duplicate output
+
+Key old-failure protections:
+
+explicit XP only
+duplicate XP blocked
+formula matrix tests required before full automation
+world scaling not player rubber-band
+
+⸻
+
+25. CardSyncLite as non-gameplay reducer-like owner
+
+CardSyncLite owns:
+
+cards.registry
+cards.protectedCards
+cards.dirtyCards
+cards.tombstones
+cards.duplicateWarnings
+cards.api
+cards.sync
+
+It handles accepted card mirror events only.
+
+It must not:
+
+create gameplay canon from card text
+parse Story Card prose into inventory/ability/quest
+create generated cards in MVP
+enable live writes without adapter tests
+
+Key old-failure protections:
+
+protected singleton enforcement
+broad trigger rejection
+generated cards disabled
+card text non-canon
+manual card edits do not import truth
+
+⸻
+
+26. MigrationManager as structural owner
+
+MigrationManager owns:
+
+migration
+quarantine
+safe structural imports
+ignored legacy data
+repair records
+
+It may repair structure.
+
+It must not:
+
+import old card prose as gameplay canon
+turn quarantined items into inventory
+turn quarantined abilities into stable abilities
+resolve quarantine automatically
+
+Key old-failure protections:
+
+corrupt save repair
+future schema safety
+old patch layers quarantined
+valid truth preserved
+unsafe old data isolated
+
+⸻
+
+27. ReducerRegistry integrity checks
+
+ReducerRegistry must verify at startup or releasecheck:
+
+all active families map to owner reducers
+no active family maps to multiple reducers
+unknown families do not route loosely
+deferred systems do not have active reducers
+rejected/pending/deferred results cannot reach reducers
+operation-key-required families declare key policy
+dirty target mapping exists for owned buckets
+
+⸻
+
+28. Required reducer registry tests
+
+BC13-001 — Rejected result not committed
+
+Given rejected inventory validation.
+
+Expected:
+
+ReducerRegistry does not call InventoryReducer
+state unchanged
+
+⸻
+
+BC13-002 — Pending result not committed
+
+Given pending ability output-only learning claim.
+
+Expected:
+
+AbilityReducer not called for stable creation
+state may store evidence only if explicitly accepted as evidence in separate result
+
+⸻
+
+BC13-003 — Deferred result not committed
+
+Given crafting proposal.
+
+Expected:
+
+no reducer called
+no crafting state created
+
+⸻
+
+BC13-004 — Accepted inventory routes to InventoryReducer
+
+Given accepted red healing potion handoff.
+
+Expected:
+
+InventoryReducer called
+inventory bucket only mutated as allowed
+operation key created
+inventory/context dirty targets marked
+
+⸻
+
+BC13-005 — Duplicate inventory skipped
+
+Accepted inventory handoff with existing item operation key.
+
+Expected:
+
+ReducerResult skipped_duplicate
+no second item
+
+⸻
+
+BC13-006 — Accepted ability training routes to AbilityReducer
+
+Given accepted Ember Ward training evidence.
+
+Expected:
+
+AbilityReducer called
+ability evidence/candidate updated
+no stable mastery unless validated
+
+⸻
+
+BC13-007 — AbilityReducer cannot award XP
+
+Given ability training result.
+
+Expected:
+
+abilities may update
+progression unchanged unless separate ProgressionReducer event accepted
+
+⸻
+
+BC13-008 — Accepted exhausted status routes to BodyReducer
+
+Given accepted exhausted status.
+
+Expected:
+
+BodyReducer updates body conditions/fatigue/status
+inventory/quests unchanged
+
+⸻
+
+BC13-009 — Reward promise does not call Inventory currency
+
+Given accepted reward promise.
+
+Expected:
+
+QuestReducer updates reward status promised
+currency unchanged
+
+⸻
+
+BC13-010 — Reward payment duplicate skipped
+
+Given accepted reward payment with existing reward key.
+
+Expected:
+
+no second currency change
+reward duplicate audit
+
+⸻
+
+BC13-011 — Weak scene mention not routed as arrival
+
+Given rejected/pending weak chapel reference.
+
+Expected:
+
+PlaceReducer not called for current scene overwrite
+
+⸻
+
+BC13-012 — Strong arrival routes to PlaceReducer
+
+Given accepted chapel arrival.
+
+Expected:
+
+PlaceReducer updates current scene/location as allowed
+current_location/context dirty targets marked
+
+⸻
+
+BC13-013 — Nonliteral time rejected not routed
+
+Given rejected quote time skip.
+
+Expected:
+
+TimeReducer not called
+age/time unchanged
+
+⸻
+
+BC13-014 — Literal time passage duplicate skipped
+
+Given accepted time advance with existing key.
+
+Expected:
+
+skipped_duplicate
+no second time/age advance
+
+⸻
+
+BC13-015 — Absent actor not present
+
+Given rejected present actor result for absent goblin.
+
+Expected:
+
+ActorReducer not called for present actor
+
+⸻
+
+BC13-016 — Unknown owner fails softly
+
+Given accepted result with unknown owner.
+
+Expected:
+
+ReducerRegistry returns failed_softly/no_op
+state unchanged
+audit warning
+
+⸻
+
+BC13-017 — Wrong owner rejected
+
+Send inventory validation result to AbilityReducer intentionally in test.
+
+Expected:
+
+AbilityReducer rejects wrong owner
+state unchanged
+
+⸻
+
+BC13-018 — Dirty target mapping created
+
+Given accepted inventory update.
+
+Expected:
+
+dirty targets include inventory_equipment and context
+
+⸻
+
+BC13-019 — Reducer audit compact
+
+Reducer commit audit expected.
+
+Expected:
+
+compact readable line
+no full raw output dump
+
+⸻
+
+BC13-020 — Reducer fail-soft preserves state
+
+Simulate reducer error.
+
+Expected:
+
+failed_softly result
+no unrelated bucket reset
+runtime/audit error recorded
+
+⸻
+
+29. ReleaseCheck requirements for Build Chunk 13
+
+ReleaseCheck must eventually verify:
+
+ReducerRegistry exists
+owner map exists
+all active families have exactly one owner
+rejected/pending/deferred/blocked/malformed results cannot reach reducers
+unknown owner fails softly
+wrong owner rejects
+operation key policy exists for repeat-sensitive families
+dirty target mapping exists
+audit line produced for commits/skips/failures
+reducers do not parse raw text
+reducers do not call CardSync live writes
+reducers do not mutate non-owned buckets without explicit contract
+deferred systems have no active reducers
+
+ReleaseCheck must fail if:
+
+ParserHit or EventProposal can mutate state without validation and reducer
+non-accepted validation result can mutate state
+multiple reducers own same truth family
+InventoryReducer can create abilities or complete quests casually
+AbilityReducer can award XP directly without contract
+PlaceReducer can create persistent actors directly
+CardSync can create gameplay canon
+ContextBuilder can call reducers
+manual mutation commands bypass reducers in MVP
+
+⸻
+
+30. Relationship to Final Build Control Map v1
+
+This chunk directly supports:
+
+F006 inventory false-grant prevention through owner-only inventory commits
+F003 ability false canon prevention through owner-only ability commits
+F004 body/status visibility through BodyReducer ownership
+F005 and F008 scene safety through PlaceReducer ownership
+F009 time/aging safety through TimeReducer ownership
+F010 repeated ability use through ledger/reducer contract
+F013 actor presence/reference-only safety through ActorReducer boundary
+F019 CardSync non-canon separation
+F020 context no-write separation
+F021 migration/quarantine boundary
+F022 fail-soft hook safety and no direct mutation
+F023 reward duplicate/payment separation
+F024 command/manual mutation safety
+
+⸻
+
+31. What Build Chunk 14 should do next
+
+Next build document:
+
+Build Chunk 14 — Core Reducer Plans: Inventory, Ability, Scene, Time, Quest, Actor, Body
+
+Build Chunk 14 should expand the owner reducer summaries into exact per-family reducer behavior for current-stage MVP systems.
+
+It must include:
+
+* InventoryReducer detailed plan
+* AbilityReducer detailed plan
+* BodyReducer detailed plan
+* Quest/RewardReducer detailed plan
+* ActorReducerLite detailed plan
+* PlaceReducerLite detailed plan
+* TimeReducerLite detailed plan
+* ProgressionReducerLite shell plan
+* per-reducer operation keys
+* per-reducer dirty targets
+* per-reducer tests
+
+⸻
+
+32. Final Build Chunk 13 doctrine
+
+ReducerRegistry is the commit gate.
+
+Owner reducers are the only gameplay writers.
+
+Final rule:
+
+No accepted validation, no reducer.
+No owner reducer, no mutation.
+No operation key for repeat-sensitive effect, no repeat-safe commit.
+No dirty target, no mirror/context update.
+No audit, no trust.
+
+With ReducerRegistry and owner contracts locked, the next safe step is to detail the core reducers.

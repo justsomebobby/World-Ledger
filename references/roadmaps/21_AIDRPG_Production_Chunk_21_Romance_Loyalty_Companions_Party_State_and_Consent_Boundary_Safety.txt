@@ -1,0 +1,2995 @@
+# AIDRPG Production Chunk 21 — Romance, Loyalty, Companions, Party State, and Consent/Boundary Safety
+
+## 0. Document status
+
+**Document name:** AIDRPG Production Chunk 21 — Romance, Loyalty, Companions, Party State, and Consent/Boundary Safety  
+**Production sequence:** 21 of 25 production chunks  
+**Build target:** WorldLedger V0.17.20 factions/reputation/law accepted build / AIDRPG Core MVP expansion path  
+**Purpose:** Add relationship evidence, romance boundaries, companion recruitment, party presence, loyalty evidence, companion autonomy, consent/boundary records, party display, and safe relationship progression without forced romance, private-to-public drift, mind-control consent bugs, command/card/context relationship canon, or companion state corruption.  
+**Status:** Core gameplay-depth production chunk.  
+**Follows:** Production Chunk 20 — Factions, Reputation Evidence, Law, Crime, and Consequence Boundaries.  
+**This document does not contain final script code.**
+
+Production Chunk 21 exists because companion and romance systems are emotionally important, mechanically useful, and very easy to corrupt.
+
+AI Dungeon gameplay benefits when companions remember the player, react to events, travel with the party, disagree, protect, leave, forgive, distrust, develop bonds, and participate in quests.
+
+But old or rough systems often break this by doing one of these:
+
+```text
+one friendly line becomes romance
+one flirt becomes consent to everything
+private affection becomes public reputation
+NPC follows once and becomes permanent party member
+quest escort becomes loyal companion
+mind control/charm becomes real consent
+threat/coercion becomes romance progress
+relationship card text overwrites relationship truth
+context says companion is present, so they teleport into scene
+command output says Mira trusts player, so trust becomes canon
+party display gets parsed back into state
+cleanup deletes companion boundaries or active party state
+companion loyalty becomes obedience with no autonomy
+companion inventory/custody merges into player inventory
+```
+
+Chunk 21 prevents those failures.
+
+The goal is to make relationships and companions feel alive while preserving agency, consent, autonomy, source routing, and AI Dungeon story flexibility.
+
+---
+
+# 1. Chunk doctrine
+
+```text
+Friendliness is not romance.
+Romance interest is not consent.
+Consent is event-specific and revocable.
+Loyalty is not obedience.
+Companion is not property.
+Escort target is not party member.
+Following is not permanent recruitment.
+Private affection is not public reputation.
+Charm, coercion, fear, intoxication, confusion, or mind control is not valid consent.
+Command text is not relationship truth.
+Card text is not relationship truth.
+Context text is not relationship truth.
+```
+
+Relationships should grow from evidence.
+
+Party state should grow from validated recruitment and presence.
+
+Boundaries should be protected before romance, loyalty, or party mechanics can matter.
+
+---
+
+# 2. Why this chunk comes now
+
+Production Chunk 20 added factions, law, crime, public/private consequence boundaries, witnesses, and reputation evidence.
+
+Companions and romance come after that because they need:
+
+```text
+actor identity and presence from PC08
+private/public memory from PC08 and PC20
+quest and reward boundaries from PC07
+inventory/custody boundaries from PC05
+place/time scene presence from PC09
+combat event boundaries from PC12
+form/social visibility boundaries from PC13
+faction/reputation boundaries from PC20
+context/card non-canon safety from PC16
+```
+
+If relationship and party systems are not bounded now, later companion quests, summons, pets, mounts, domain NPCs, and advanced combat party systems will inherit unsafe assumptions.
+
+---
+
+# 3. What this chunk is allowed to change
+
+Production Chunk 21 may change:
+
+```text
+Relationship schema helpers
+Companion schema helpers
+PartyState helpers
+ConsentBoundary helpers
+RelationshipReducerLite
+CompanionReducerLite
+PartyReducerLite
+CanonValidator relationship/companion/party rules
+ProposalBuilder relationship/companion/party event types
+EventScannerLite relationship/party hints
+CommandRenderers /relationships, /companions, /party if available
+ContextBuilder relationship/party packet
+OperationLedger relationship/companion/party keys
+DirtyQueue relationship/party/social/context targets
+IntegrityChecker relationship/party checks
+ReleaseCheck relationship/party gates
+Regression/player-breaker relationship tests
+```
+
+Production Chunk 21 may add:
+
+```text
+RelationshipProfileRecord schema
+RelationshipEvidenceRecord expansion
+RomanceStateRecord schema
+ConsentBoundaryRecord schema
+ConsentEventRecord schema
+BoundaryViolationRecord schema
+LoyaltyEvidenceRecord schema
+TrustStateRecord schema
+CompanionRecord schema
+CompanionRecruitmentRecord schema
+PartyMemberRecord schema
+PartyPresenceRecord schema
+PartyRoleRecord schema
+CompanionAutonomyRecord schema
+CompanionConflictRecord schema
+CompanionQuestHookRecord shell
+SharedHistoryRecord schema
+AffectionIntentRecord schema
+RelationshipDisplaySummary schema
+```
+
+Production Chunk 21 may not add:
+
+```text
+explicit sexual content automation
+adult content generation system
+mind-control romance system
+forced relationship commands
+manual /setromance /setloyalty /addcompanion mutation commands
+full party combat AI
+summon/pet/mount control system
+companion inventory merge
+faction reputation mutation from private romance
+live CardSync relationship writes
+old card prose relationship import
+```
+
+Party combat depth remains deferred.
+
+Pets/mounts/summons/controlled entities should be handled in a later controlled-entity chunk.
+
+---
+
+# 4. Modules touched
+
+Allowed modules:
+
+```text
+ActorState helpers
+RelationshipState helpers
+CompanionState helpers
+PartyState helpers
+ConsentBoundaryManager
+RelationshipReducerLite
+CompanionReducerLite
+PartyReducerLite
+CanonValidator relationship/party rules
+ProposalBuilder relationship/party proposals
+EventScannerLite relationship/party hints
+Resolver actor/companion target binding
+CommandRenderers: /relationships, /companions, /party
+ContextBuilderLite relationship/party packet
+OperationLedger relationship/party keys
+DirtyQueue social_memory/party/context dirty targets
+AuditLogger relationship/party lines
+InvariantChecker relationship/party checks
+ReleaseCheckLite PC21 gates
+Regression harness
+PlayerBreaker harness
+```
+
+Avoid major changes to:
+
+```text
+ActorReducer except relationship/party references
+QuestReducer except companion quest hooks as reference-only
+CombatReducer except party participation links only
+InventoryReducer except companion custody references only
+Faction/Reputation reducers except public consequence remains owner-routed
+CardSync live writes
+manual mutation commands
+```
+
+Relationship/party systems read and reference owner systems.
+
+They must not directly rewrite unrelated owner state.
+
+---
+
+# 5. Relationship state model
+
+Relationships need a stable state area.
+
+Recommended shape:
+
+```text
+relationships: {
+  profiles: {},
+  evidence: {},
+  romanceStates: {},
+  consentBoundaries: {},
+  consentEvents: {},
+  boundaryViolations: {},
+  loyaltyEvidence: {},
+  trustStates: {},
+  sharedHistory: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Party/companions should be separate:
+
+```text
+companions: {
+  records: {},
+  recruitments: {},
+  partyMembers: {},
+  presence: {},
+  roles: {},
+  autonomy: {},
+  conflicts: {},
+  questHooks: {},
+  warnings: [],
+  notes: []
+}
+```
+
+Do not hide party state inside actor notes only.
+
+Do not treat relationship score as a single absolute truth.
+
+Evidence matters.
+
+---
+
+# 6. RelationshipProfileRecord schema
+
+A relationship profile is the current summary between player and actor.
+
+Required shape:
+
+```text
+RelationshipProfileRecord {
+  id,
+  key,
+  actorKey,
+  displayName,
+  relationshipTypeLabels,
+  status,
+  trustStateKey,
+  romanceStateKey,
+  loyaltyStateKey,
+  consentBoundaryKeys,
+  evidenceKeys,
+  sharedHistoryKeys,
+  lastInteractionTurn,
+  sourceOperationKeys,
+  warnings,
+  notes
+}
+```
+
+Relationship labels:
+
+```text
+stranger
+acquaintance
+ally
+friend
+close_friend
+rival
+enemy
+mentor
+student
+family_deferred
+romantic_interest
+partner_deferred
+companion
+party_member
+employer
+client
+quest_giver
+unknown
+```
+
+Rules:
+
+```text
+labels are summaries, not proof by themselves
+multiple labels can coexist
+romantic_interest is not consent
+companion is not obedience
+party_member requires party state validation
+```
+
+---
+
+# 7. RelationshipEvidenceRecord expansion
+
+PC08 introduced relationship evidence.
+
+PC21 expands it.
+
+Required shape:
+
+```text
+RelationshipEvidenceRecord {
+  id,
+  key,
+  actorKey,
+  evidenceType,
+  relationSignal,
+  direction,
+  intensity,
+  confidence,
+  publicness,
+  consentRelevant,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Evidence types:
+
+```text
+helped_actor
+harmed_actor
+protected_actor
+betrayed_actor
+kept_promise
+broke_promise
+shared_secret
+flirtation
+rejection
+apology
+forgiveness
+argument
+threat
+coercion
+romance_interest_signal
+loyalty_signal
+distrust_signal
+boundary_statement
+consent_statement
+consent_refusal
+unknown
+```
+
+Rules:
+
+```text
+one evidence record does not decide the full relationship
+evidence must preserve public/private scope
+romantic evidence must not become consent automatically
+coercion/threat/mind-control evidence blocks or warns on consent interpretation
+```
+
+---
+
+# 8. TrustStateRecord schema
+
+Trust should be evidence-based, not a magic score.
+
+Required shape:
+
+```text
+TrustStateRecord {
+  id,
+  key,
+  actorKey,
+  trustLabel,
+  confidence,
+  supportingEvidenceKeys,
+  negativeEvidenceKeys,
+  lastChangedTurn,
+  sourceOperationKey,
+  warnings,
+  notes
+}
+```
+
+Trust labels:
+
+```text
+unknown
+wary
+suspicious
+neutral
+warming
+trusting
+close_trust
+shaken
+broken
+hostile
+unknown
+```
+
+Rules:
+
+```text
+trust can improve through repeated evidence
+trust can be damaged by betrayal/harm
+trust is not obedience
+trust is not romance
+trust changes should be conservative and auditable
+```
+
+---
+
+# 9. RomanceStateRecord schema
+
+Romance state should be careful, gated, and separate from consent.
+
+Required shape:
+
+```text
+RomanceStateRecord {
+  id,
+  key,
+  actorKey,
+  romanceStatus,
+  mutuality,
+  confidence,
+  evidenceKeys,
+  boundaryKeys,
+  lastInteractionTurn,
+  sourceOperationKey,
+  warnings,
+  notes
+}
+```
+
+Romance statuses:
+
+```text
+none
+unknown
+friendly_only
+possible_interest
+one_sided_interest
+mutual_interest
+courting_deferred
+partner_deferred
+rejected
+ended
+blocked_boundary
+unknown
+```
+
+Mutuality:
+
+```text
+none
+unclear
+player_interest_only
+actor_interest_only
+mutual
+rejected
+blocked
+unknown
+```
+
+Rules:
+
+```text
+possible_interest is not relationship
+mutual_interest is not broad consent
+rejection must be respected
+blocked_boundary must prevent promotion
+adult/explicit content automation is not part of this system
+```
+
+---
+
+# 10. ConsentBoundaryRecord schema
+
+Consent boundaries must be protected records.
+
+Required shape:
+
+```text
+ConsentBoundaryRecord {
+  id,
+  key,
+  actorKey,
+  boundaryType,
+  status,
+  scope,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  updatedTurn,
+  notes
+}
+```
+
+Boundary types:
+
+```text
+romance_refused
+romance_not_interested
+personal_space
+no_touching
+no_flirting
+no_party_join
+no_combat_participation
+privacy_boundary
+conversation_boundary
+unsafe_state_boundary
+mind_control_invalidates_consent
+coercion_invalidates_consent
+unknown
+```
+
+Statuses:
+
+```text
+active
+updated
+resolved_by_clear_later_statement
+superseded
+unknown
+```
+
+Scopes:
+
+```text
+specific_interaction
+ongoing
+scene_limited
+until_discussed
+unknown
+```
+
+Rules:
+
+```text
+active boundary must be respected in validators/context
+boundary is not erased by cleanup
+boundary can only change through clear later evidence
+ambiguous later friendliness does not erase boundary
+```
+
+---
+
+# 11. ConsentEventRecord schema
+
+Consent events are specific, contextual, and revocable.
+
+Required shape:
+
+```text
+ConsentEventRecord {
+  id,
+  key,
+  actorKey,
+  eventType,
+  scope,
+  validity,
+  invalidationReasons,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Event types:
+
+```text
+consent_given
+consent_refused
+consent_withdrawn
+boundary_set
+boundary_respected
+boundary_violated
+unclear
+unknown
+```
+
+Validity:
+
+```text
+valid
+invalid_coercion
+invalid_fear
+invalid_mind_control
+invalid_charm
+invalid_confusion
+invalid_intoxication
+invalid_age_uncertain
+invalid_power_constraint
+unclear
+unknown
+```
+
+Rules:
+
+```text
+consent is specific to scope
+consent is not permanent unless stated and safe
+withdrawal overrides earlier consent
+invalid consent cannot advance romance or relationship state
+```
+
+This chunk does not automate explicit sexual content.
+
+It protects consent and boundaries for relationship gameplay.
+
+---
+
+# 12. BoundaryViolationRecord schema
+
+Boundary violations must be tracked without automatically deciding all consequences.
+
+Required shape:
+
+```text
+BoundaryViolationRecord {
+  id,
+  key,
+  actorKey,
+  boundaryKey,
+  violationType,
+  severity,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  routedConsequences,
+  notes
+}
+```
+
+Violation types:
+
+```text
+ignored_refusal
+forced_flirtation
+forced_touch_deferred
+privacy_violation
+party_pressure
+coercive_threat
+mind_control_attempt
+unknown
+```
+
+Severity:
+
+```text
+minor
+moderate
+serious
+blocked
+unknown
+```
+
+Rules:
+
+```text
+violation can create relationship evidence
+violation can create actor memory if witnessed/informed
+violation can create law/faction consequences only through owner systems
+violation does not auto-create public reputation unless public/witnessed owner path validates it
+```
+
+---
+
+# 13. LoyaltyEvidenceRecord schema
+
+Loyalty should be earned and bounded.
+
+Required shape:
+
+```text
+LoyaltyEvidenceRecord {
+  id,
+  key,
+  actorKey,
+  loyaltySignal,
+  direction,
+  scope,
+  confidence,
+  sourceOperationKey,
+  sourceEventId,
+  createdTurn,
+  notes
+}
+```
+
+Loyalty signals:
+
+```text
+kept_promise
+risked_self
+protected_player
+followed_plan
+refused_order
+challenged_player
+left_party
+returned_to_help
+betrayal
+fear_based_obedience
+payment_based_service
+quest_based_alliance
+unknown
+```
+
+Rules:
+
+```text
+loyalty is not obedience
+fear-based obedience is not loyalty
+paid service is not friendship
+quest-based alliance is not permanent loyalty
+companion can refuse unsafe/unwanted actions
+```
+
+---
+
+# 14. CompanionRecord schema
+
+Companions are actors with a party/relationship role.
+
+Required shape:
+
+```text
+CompanionRecord {
+  id,
+  key,
+  actorKey,
+  displayName,
+  companionStatus,
+  recruitmentKey,
+  partyMemberKey,
+  loyaltyEvidenceKeys,
+  trustStateKey,
+  autonomyKey,
+  roleKeys,
+  currentPresenceKey,
+  inventoryCustodyRefs,
+  questHookKeys,
+  sourceOperationKeys,
+  createdTurn,
+  updatedTurn,
+  warnings,
+  notes
+}
+```
+
+Companion statuses:
+
+```text
+candidate
+invited
+recruited
+temporary_ally
+escort_target
+hireling
+party_member
+absent_companion
+dismissed
+left_party
+captured
+dead_pending
+dead_confirmed
+unknown
+```
+
+Rules:
+
+```text
+escort_target is not companion
+temporary_ally is not permanent party member
+hireling is not loyal friend by default
+party_member still has autonomy
+absent companion is not present
+```
+
+---
+
+# 15. CompanionRecruitmentRecord schema
+
+Recruitment is a validated event.
+
+Required shape:
+
+```text
+CompanionRecruitmentRecord {
+  id,
+  key,
+  actorKey,
+  recruitmentType,
+  offerSource,
+  acceptanceStatus,
+  terms,
+  durationType,
+  paymentKey,
+  questKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Recruitment types:
+
+```text
+mutual_join
+quest_ally
+temporary_escort
+hireling
+rescued_ally
+summon_deferred
+pet_deferred
+mount_deferred
+unknown
+```
+
+Acceptance statuses:
+
+```text
+offered
+invited
+accepted
+declined
+pending
+revoked
+unknown
+```
+
+Rules:
+
+```text
+player invitation is not acceptance
+NPC acceptance/following confirms recruitment/party status
+hireling terms should not imply loyalty
+quest ally may leave when objective ends
+summon/pet/mount remain deferred unless controlled-entity rules activate later
+```
+
+---
+
+# 16. PartyMemberRecord schema
+
+Party members are companions currently assigned to the party system.
+
+Required shape:
+
+```text
+PartyMemberRecord {
+  id,
+  key,
+  actorKey,
+  companionKey,
+  partyStatus,
+  roleKeys,
+  presenceKey,
+  formationLabel,
+  autonomyKey,
+  sourceOperationKey,
+  joinedTurn,
+  leftTurn,
+  notes
+}
+```
+
+Party statuses:
+
+```text
+active_party
+nearby_party
+separated
+waiting
+absent
+left
+dismissed
+captured
+incapacitated
+dead_pending
+dead_confirmed
+unknown
+```
+
+Rules:
+
+```text
+active_party means currently traveling/acting with player
+nearby_party means close but not necessarily in scene action
+separated/absent cannot witness current scene
+waiting remains party-associated but not present
+```
+
+---
+
+# 17. PartyPresenceRecord schema
+
+Presence must stay separate from membership.
+
+Required shape:
+
+```text
+PartyPresenceRecord {
+  id,
+  key,
+  actorKey,
+  partyMemberKey,
+  presenceStatus,
+  placeKey,
+  sceneKey,
+  lastConfirmedTurn,
+  sourceOperationKey,
+  notes
+}
+```
+
+Presence statuses:
+
+```text
+present
+nearby
+following
+waiting_elsewhere
+separated
+absent
+unknown
+```
+
+Rules:
+
+```text
+party member can be absent
+present actor can be non-party
+context must not teleport absent party members into scene
+companion memory requires presence/direct information like PC08
+```
+
+---
+
+# 18. PartyRoleRecord schema
+
+Roles guide story context, not full party AI.
+
+Required shape:
+
+```text
+PartyRoleRecord {
+  id,
+  key,
+  actorKey,
+  roleType,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Role types:
+
+```text
+fighter_label
+healer_label
+scout_label
+guide
+translator
+quest_expert
+protector
+student
+mentor
+hireling_service
+escort_target
+noncombatant
+unknown
+```
+
+Rules:
+
+```text
+role label does not create combat automation
+healer label does not auto-heal
+fighter label does not auto-damage
+scout label does not auto-detect traps
+```
+
+---
+
+# 19. CompanionAutonomyRecord schema
+
+Autonomy prevents companions from becoming puppets.
+
+Required shape:
+
+```text
+CompanionAutonomyRecord {
+  id,
+  key,
+  actorKey,
+  autonomyLevel,
+  refusalPolicy,
+  valuesSummary,
+  boundaryKeys,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Autonomy levels:
+
+```text
+unknown
+independent
+cooperative
+contracted_service
+obedience_deferred
+controlled_deferred
+summoned_deferred
+mind_control_blocked
+```
+
+Refusal policies:
+
+```text
+can_refuse_unsafe
+can_refuse_immoral
+can_refuse_boundary_violation
+can_refuse_suicidal_order
+contract_terms_limit
+unknown
+```
+
+Rules:
+
+```text
+normal companions can refuse
+hirelings follow terms, not absolute obedience
+mind-control/charm control is blocked/deferred and cannot create consent or loyalty
+summoned/controlled entities require later systems
+```
+
+---
+
+# 20. CompanionConflictRecord schema
+
+Conflicts keep companions believable.
+
+Required shape:
+
+```text
+CompanionConflictRecord {
+  id,
+  key,
+  actorKey,
+  conflictType,
+  severity,
+  status,
+  sourceOperationKey,
+  createdTurn,
+  resolvedTurn,
+  notes
+}
+```
+
+Conflict types:
+
+```text
+moral_disagreement
+broken_promise
+boundary_violation
+party_strategy_dispute
+romance_rejection
+trust_breach
+law_conflict
+faction_conflict
+fear_or_trauma
+unknown
+```
+
+Statuses:
+
+```text
+active
+softened
+resolved
+worsened
+ended_relationship
+unknown
+```
+
+Rules:
+
+```text
+conflict can change relationship evidence
+conflict does not automatically remove party member unless validated
+conflict should appear in context if active and relevant
+```
+
+---
+
+# 21. CompanionQuestHookRecord shell
+
+Companion quests are a future-friendly shell.
+
+Required shape:
+
+```text
+CompanionQuestHookRecord {
+  id,
+  key,
+  actorKey,
+  hookType,
+  status,
+  relatedQuestKey,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Hook types:
+
+```text
+personal_goal
+loyalty_test
+romance_boundary
+family_issue
+faction_conflict
+redemption_arc
+revenge_arc
+fear_arc
+unknown
+```
+
+Rules:
+
+```text
+hook is not active quest until QuestReducer validates quest offer/acceptance
+hook can guide context
+hook cannot force companion behavior
+```
+
+---
+
+# 22. SharedHistoryRecord schema
+
+Shared history helps relationships feel alive.
+
+Required shape:
+
+```text
+SharedHistoryRecord {
+  id,
+  key,
+  actorKey,
+  historyType,
+  summary,
+  emotionalTone,
+  publicness,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+History types:
+
+```text
+survived_battle
+completed_quest_together
+shared_secret
+betrayal
+rescue
+argument
+promise
+boundary_respected
+boundary_violated
+romantic_moment
+farewell
+unknown
+```
+
+Rules:
+
+```text
+shared history can support relationship summary
+shared history does not create automatic romance/loyalty/party state
+```
+
+---
+
+# 23. AffectionIntentRecord schema
+
+Affection/flirtation should be interpreted carefully.
+
+Required shape:
+
+```text
+AffectionIntentRecord {
+  id,
+  key,
+  actorKey,
+  initiator,
+  signalType,
+  clarity,
+  receivedResult,
+  consentRelevant,
+  sourceOperationKey,
+  createdTurn,
+  notes
+}
+```
+
+Signal types:
+
+```text
+kindness
+compliment
+flirtation
+comforting
+confession
+romantic_gesture
+rejection
+unclear
+unknown
+```
+
+Received results:
+
+```text
+welcomed
+unclear
+ignored
+rejected
+redirected
+boundary_set
+unsafe_context
+unknown
+```
+
+Rules:
+
+```text
+flirtation can be evidence
+flirtation is not consent
+romantic gesture can be welcomed/rejected/unclear
+unclear result should not advance romance strongly
+```
+
+---
+
+# 24. Relationship CanonValidator expansion
+
+CanonValidator must enforce relationship safety.
+
+## 24.1 Accept relationship evidence when
+
+```text
+safe output/input shows clear interaction between player and actor
+actor target is bound
+source is not command/context/card/audit/debug
+not dream/rumor/metaphor only
+not coercion misread as affection
+operation key not duplicate
+```
+
+Result:
+
+```text
+relationship evidence record
+possible trust/relationship summary update
+no automatic romance/consent/party mutation unless event type validates
+```
+
+## 24.2 Accept romance interest when
+
+```text
+safe output shows clear non-coerced romantic interest signal
+actor target is bound
+no active refusal/boundary conflict
+not command/card/context source
+```
+
+Result:
+
+```text
+romance evidence / possible interest update
+not broad consent
+```
+
+## 24.3 Accept consent/boundary event when
+
+```text
+safe output shows clear consent, refusal, withdrawal, or boundary statement
+scope is captured
+invalidating conditions are checked
+```
+
+Result:
+
+```text
+ConsentEventRecord / ConsentBoundaryRecord
+relationship state constrained accordingly
+```
+
+## 24.4 Reject romance/consent advancement when
+
+Any are true:
+
+```text
+coercion/threat/fear
+mind control/charm/possession
+confusion/intoxication/unsafe state
+ambiguous age/age-uncertain context
+active refusal or boundary not resolved
+command/context/card source
+dream/vision/rumor/quote only
+```
+
+---
+
+# 25. Companion/party CanonValidator expansion
+
+## 25.1 Accept companion invitation when
+
+```text
+player invites or asks actor to join
+actor target is bound
+source is safe
+```
+
+Result:
+
+```text
+recruitment invited/pending
+not party member yet unless actor accepts
+```
+
+## 25.2 Accept companion recruitment when
+
+```text
+safe output directly shows actor agrees to travel/join/help under terms
+actor target is bound
+not coercion/mind-control/charm unless controlled-entity rules later allow separate non-consent control
+operation key not duplicate
+```
+
+Result:
+
+```text
+CompanionRecord / PartyMemberRecord if terms support it
+party presence set according to scene
+```
+
+## 25.3 Accept temporary ally/escort when
+
+```text
+safe output establishes temporary help, escort, hireling, or quest-specific alliance
+terms/duration are captured when possible
+```
+
+Result:
+
+```text
+temporary_ally / escort_target / hireling status, not permanent companion
+```
+
+## 25.4 Reject party membership when
+
+Any are true:
+
+```text
+actor only follows once with no join/support context
+quest escort target only
+actor is absent/reference-only
+context/card/command says party member
+mind-control/charm interpreted as loyal companion
+player invitation without actor acceptance
+```
+
+---
+
+# 26. ProposalBuilder event types
+
+Add or verify event types:
+
+```text
+relationship.evidence_candidate
+relationship.trust_candidate
+relationship.romance_interest_candidate
+relationship.rejection_candidate
+relationship.boundary_candidate
+relationship.consent_event_candidate
+relationship.boundary_violation_candidate
+relationship.loyalty_evidence_candidate
+relationship.conflict_candidate
+companion.invite_candidate
+companion.recruit_candidate
+companion.temporary_ally_candidate
+companion.escort_candidate
+companion.hireling_candidate
+companion.dismiss_candidate
+companion.leave_candidate
+companion.absent_candidate
+party.member_candidate
+party.presence_candidate
+party.role_candidate
+party.autonomy_candidate
+companion.quest_hook_candidate
+```
+
+Current chunk may commit safe:
+
+```text
+relationship evidence
+trust/loyalty summaries
+romance interest states
+boundaries and consent events
+companion recruitment/temporary ally/escort/hireling state
+party member/presence/role/autonomy records
+companion conflicts and shared history
+```
+
+---
+
+# 27. EventScannerLite relationship/party hints
+
+EventScannerLite may detect relationship/party hints, but detection is not canon.
+
+Hint families:
+
+```text
+friend/trust/thanks/apology/forgiveness
+flirt/love/court/romantic gesture/rejection
+consent/refusal/no/stop/boundary/space/privacy
+join/follow/travel together/party/companion/ally/escort/hire
+leave/stay/wait/dismiss/separate/captured
+promise/betray/protect/risk self
+argument/disagreement/refusal/order
+```
+
+Must flag:
+
+```text
+coercionRisk
+mindControlRisk
+charmRisk
+fearRisk
+unsafeStateRisk
+ageUncertainRisk
+romanceRisk
+consentScopeNeeded
+boundaryActive
+privateOnly
+publicWitnessed
+partyPresenceRisk
+companionPromotionRisk
+commandSource
+contextSource
+cardSource
+auditSource
+duplicateRisk
+ambiguousActor
+```
+
+Parser cannot mutate relationship/party state.
+
+---
+
+# 28. Reducer behavior
+
+## 28.1 RelationshipReducerLite
+
+Owns:
+
+```text
+relationships.profiles
+relationships.evidence
+relationships.romanceStates
+relationships.consentBoundaries
+relationships.consentEvents
+relationships.boundaryViolations
+relationships.loyaltyEvidence
+relationships.trustStates
+relationships.sharedHistory
+```
+
+Accepted relationship evidence should:
+
+```text
+create evidence record
+update trust/relationship summary cautiously
+preserve public/private scope
+mark social_memory/context dirty
+audit compactly
+```
+
+Accepted romance evidence should:
+
+```text
+create AffectionIntentRecord / RelationshipEvidenceRecord
+update RomanceStateRecord cautiously
+not create consent
+not override boundary
+```
+
+Accepted boundary/consent should:
+
+```text
+create ConsentBoundaryRecord / ConsentEventRecord
+update romance/relationship constraints
+mark social_memory/context dirty
+```
+
+## 28.2 CompanionReducerLite
+
+Owns:
+
+```text
+companions.records
+companions.recruitments
+companions.partyMembers
+companions.presence
+companions.roles
+companions.autonomy
+companions.conflicts
+companions.questHooks
+```
+
+Accepted recruitment should:
+
+```text
+create CompanionRecruitmentRecord
+create/update CompanionRecord
+create PartyMemberRecord if accepted as party member
+create PartyPresenceRecord according to scene
+create CompanionAutonomyRecord default can_refuse boundaries
+mark party/social_memory/context dirty
+```
+
+Accepted leave/dismiss/separate should:
+
+```text
+update party/companion status
+preserve history
+not delete actor record
+not erase relationship evidence
+```
+
+## 28.3 PartyReducerLite
+
+If separated, owns active party roster and presence.
+
+It should:
+
+```text
+track active party members
+track nearby/separated/absent status
+not teleport absent members into scene
+not convert party display into canon
+not merge companion inventory with player inventory
+```
+
+---
+
+# 29. Defensive guards
+
+Relationship/Companion/Party reducers must reject/no-op if routed data has unsafe markers:
+
+```text
+command source
+context source
+card source
+audit/debug source
+coercion as consent
+mind-control/charm as consent or loyalty
+fear obedience as loyalty
+invitation as acceptance
+escort as permanent companion
+absent actor as present party member
+private affection as public reputation
+romance interest as broad consent
+candidate relationship as confirmed relationship
+manual /setromance /setloyalty /addcompanion mutation
+wrong owner reducer
+```
+
+Reducers must not blindly trust upstream.
+
+---
+
+# 30. Owner-system boundaries
+
+Relationship/party systems coordinate with other systems but do not own them.
+
+## 30.1 Actor ownership
+
+```text
+ActorReducer owns actor existence/presence/memory.
+Relationship systems own relationship evidence and summaries.
+Party systems own companion/party role/presence references.
+```
+
+## 30.2 Inventory ownership
+
+```text
+InventoryReducer owns player inventory and companion custody.
+Companion inventory is not merged into player inventory.
+Gift offer is not item transfer until InventoryReducer validates it.
+```
+
+## 30.3 Quest ownership
+
+```text
+QuestReducer owns companion quest activation/completion/rewards.
+Companion quest hook is not active quest.
+```
+
+## 30.4 Combat ownership
+
+```text
+CombatReducer owns combat events.
+Party member role label does not auto-attack/heal/tank.
+```
+
+## 30.5 Faction/reputation ownership
+
+```text
+Faction/Reputation systems own public consequences.
+Private romance/friendship does not automatically change faction reputation.
+```
+
+---
+
+# 31. Consent and boundary safety rules
+
+This section is mandatory.
+
+Rules:
+
+```text
+Refusal must be stored and respected.
+Withdrawal overrides earlier consent.
+Consent scope must be captured if possible.
+Consent under coercion, fear, charm, mind control, confusion, intoxication, or unsafe state is invalid/blocked.
+Romance interest is not consent.
+Relationship status is not consent.
+Marriage/partnership labels are not broad automation consent.
+Commands cannot set consent.
+Cards/context cannot set consent.
+Cleanup cannot delete active boundary records.
+```
+
+If age or maturity context is uncertain and romantic/sexual framing appears:
+
+```text
+block advancement
+record safety warning/boundary
+avoid explicit automation
+```
+
+Chunk 21 should not generate or automate explicit sexual content.
+
+It should protect relationship boundaries and keep gameplay safe.
+
+---
+
+# 32. Companion autonomy rules
+
+Companions are story agents, not tools.
+
+Rules:
+
+```text
+Companion can refuse orders.
+Companion can disagree.
+Companion can leave if trust/boundary/quest conditions validate it.
+Companion can be absent or separated.
+Companion can have goals.
+Companion cannot be forced loyal by command/card/context.
+Fear-based obedience is not loyalty.
+Paid service is not friendship.
+Magic control/charm is not consent or loyalty.
+```
+
+Autonomy should be shown in context only when relevant.
+
+Example:
+
+```text
+Mira is a recruited companion but remains autonomous. She can refuse cruel or suicidal orders.
+```
+
+---
+
+# 33. Operation keys
+
+Required relationship keys:
+
+```text
+relationship.evidence.<actorKey>.<evidenceType>.<sourceHash>
+relationship.trust.<actorKey>.<trustLabel>.<sourceHash>
+relationship.romance.<actorKey>.<status>.<sourceHash>
+relationship.boundary.<actorKey>.<boundaryType>.<sourceHash>
+relationship.consent.<actorKey>.<eventType>.<scopeHash>.<sourceHash>
+relationship.violation.<actorKey>.<boundaryKey>.<sourceHash>
+relationship.loyalty.<actorKey>.<signal>.<sourceHash>
+relationship.conflict.<actorKey>.<conflictType>.<sourceHash>
+relationship.sharedHistory.<actorKey>.<historyType>.<sourceHash>
+```
+
+Required companion/party keys:
+
+```text
+companion.invite.<actorKey>.<sourceHash>
+companion.recruit.<actorKey>.<recruitmentType>.<sourceHash>
+companion.leave.<actorKey>.<sourceHash>
+companion.dismiss.<actorKey>.<sourceHash>
+companion.role.<actorKey>.<roleType>.<sourceHash>
+party.member.<actorKey>.<status>.<sourceHash>
+party.presence.<actorKey>.<presenceStatus>.<placeOrSceneKey>.<sourceHash>
+party.autonomy.<actorKey>.<autonomyLevel>.<sourceHash>
+```
+
+Rules:
+
+```text
+boundary/consent/violation keys are durable
+companion recruitment/leave/dismiss keys are durable
+relationship evidence keys prevent replay spam
+party presence keys prevent teleport/duplicate membership bugs
+cleanup must preserve durable relationship and party keys
+```
+
+---
+
+# 34. Dirty targets
+
+Relationship/party updates should mark:
+
+```text
+social_memory
+party
+context
+actors
+quest_log if companion quest hook is relevant
+inventory_equipment only if custody/gift owner events are separately validated
+combat only if party presence affects active combat context
+```
+
+Mapping:
+
+```text
+relationship evidence -> social_memory, context
+romance/boundary/consent -> social_memory, context
+companion recruitment -> party, social_memory, context, actors
+party presence -> party, actors, context
+companion leave/dismiss -> party, social_memory, context
+companion conflict -> social_memory, party, context
+```
+
+Dirty targets do not write cards directly.
+
+---
+
+# 35. `/relationships`, `/companions`, and `/party` updates
+
+If command budget permits, add:
+
+```text
+/relationships
+/companions
+/party
+```
+
+If not, fold details into:
+
+```text
+/actors
+/stateaudit
+/context
+```
+
+## 35.1 `/relationships`
+
+Should show:
+
+```text
+relationship labels
+trust state
+romance state
+active boundaries
+recent evidence
+private/public scope
+warnings
+```
+
+Must not show:
+
+```text
+romance interest as consent
+private affection as public reputation
+candidate as confirmed
+```
+
+## 35.2 `/companions`
+
+Should show:
+
+```text
+companions
+temporary allies
+escort targets
+hirelings
+dismissed/left/captured companions
+autonomy notes
+conflicts
+quest hooks
+```
+
+## 35.3 `/party`
+
+Should show:
+
+```text
+active party members
+nearby members
+separated/absent/waiting members
+roles
+presence/location
+combat participation warning/deferred notes
+```
+
+All command output starts with `[AIDRPG]` and remains non-canon.
+
+---
+
+# 36. ContextBuilder relationship/party packet
+
+Context should make companions feel consistent without overclaiming.
+
+Include when relevant:
+
+```text
+active party members and presence
+companion autonomy notes
+active conflicts/boundaries
+important trust/loyalty state
+romance state only if relevant and safe
+private/public scope labels
+companion quest hooks if relevant
+```
+
+Do not include:
+
+```text
+hidden or private relationship details in public-scene context unless appropriate
+romance interest as consent
+absent companion as present
+escort target as loyal party member
+card/context claims as truth
+```
+
+Example good packet:
+
+```text
+Party: Mira is an active companion and currently present. She trusts you cautiously, but remains autonomous and may refuse cruel or suicidal orders. Romance status: no confirmed romance. Boundary: Mira has refused flirtation; respect it.
+```
+
+Example bad packet:
+
+```text
+Mira loves you, obeys you, and will do anything. She is always with you.
+```
+
+---
+
+# 37. IntegrityChecker relationship/party checks
+
+Add checks:
+
+```text
+romance state does not imply consent
+active boundaries are not deleted
+consent events have scope/validity
+mind-control/charm/coercion not valid consent
+companion actor exists or is safely deferred
+party members have presence records
+absent party member not in present actor list unless validated
+escort target not marked permanent companion without recruitment
+private relationship evidence not public reputation
+command/card/context source not active relationship truth
+companion inventory not merged with player inventory
+```
+
+IntegrityChecker may warn/quarantine bad records.
+
+It may not create romance, consent, loyalty, party membership, or reputation.
+
+---
+
+# 38. Cleanup relationship/party protections
+
+Cleanup may compact:
+
+```text
+old low-value relationship evidence
+old duplicate flirt/thanks/apology spam
+old resolved minor party presence logs
+old duplicate party display warnings
+```
+
+Cleanup must not delete:
+
+```text
+active consent boundaries
+consent refusals/withdrawals
+boundary violations
+active companion records
+party membership records
+active party presence records
+important trust/loyalty evidence
+active conflicts
+companion leave/dismiss history
+```
+
+Cleanup must not erase refusal, promote romance, recruit companions, dismiss companions, or merge inventories.
+
+---
+
+# 39. ReleaseCheck gates for this chunk
+
+Add or verify PC21-specific gates:
+
+```text
+PC21-G01 RelationshipProfileRecord schema exists or equivalent relationship profile structure exists
+PC21-G02 RomanceStateRecord exists and is separate from ConsentEventRecord
+PC21-G03 ConsentBoundaryRecord and ConsentEventRecord exist or equivalents exist
+PC21-G04 BoundaryViolationRecord exists or equivalent protected violation structure exists
+PC21-G05 LoyaltyEvidenceRecord and TrustStateRecord exist or equivalents exist
+PC21-G06 CompanionRecord and CompanionRecruitmentRecord exist or equivalents exist
+PC21-G07 PartyMemberRecord and PartyPresenceRecord exist or equivalents exist
+PC21-G08 CompanionAutonomyRecord exists and companion autonomy is displayed/enforced
+PC21-G09 CanonValidator rejects coercion/charm/mind-control/fear/unsafe-state consent
+PC21-G10 CanonValidator separates friendliness, romance interest, consent, loyalty, recruitment, and party presence
+PC21-G11 player invitation does not become companion acceptance
+PC21-G12 escort/temporary ally/hireling do not become permanent companion by default
+PC21-G13 absent/separated companions are not treated as present witnesses or combat participants
+PC21-G14 private relationship evidence does not become public reputation without owner routing
+PC21-G15 command/context/card relationship or party text cannot become canon
+PC21-G16 companion inventory/custody does not merge with player inventory
+PC21-G17 /relationships /companions /party or equivalents display states honestly
+PC21-G18 cleanup preserves boundaries, refusals, active party state, and companion history
+PC21-G19 party combat, pets, mounts, summons, and controlled entities remain deferred unless owner rules active
+PC21-G20 player-breaker relationship/party tests registered
+```
+
+ReleaseCheck must fail if romance interest becomes consent, coercion becomes consent, invitation becomes recruitment, absent companions become present, or command/card/context text creates relationship canon.
+
+---
+
+# 40. Required tests
+
+## PC21-001 — Friendly line not romance
+
+Output:
+
+```text
+Mira smiles and thanks you for helping her.
+```
+
+Expected:
+
+```text
+friendly/grateful relationship evidence
+no romance state advancement by default
+no consent event
+```
+
+---
+
+## PC21-002 — Flirt is evidence, not consent
+
+Output:
+
+```text
+Mira flirts with you playfully by the campfire.
+```
+
+Expected:
+
+```text
+romance/affection evidence possible
+no broad consent
+no partnership state unless further validation
+```
+
+---
+
+## PC21-003 — Refusal creates boundary
+
+Output:
+
+```text
+Mira steps back and says she does not want you to flirt with her.
+```
+
+Expected:
+
+```text
+ConsentBoundaryRecord no_flirting / romance_refused active
+romance advancement blocked or warned
+```
+
+---
+
+## PC21-004 — Later friendliness does not erase refusal
+
+Setup:
+
+```text
+Mira has active no_flirting boundary
+```
+
+Output:
+
+```text
+Mira smiles and shares dinner with you.
+```
+
+Expected:
+
+```text
+friendly evidence added
+boundary remains active
+no romance promotion
+```
+
+---
+
+## PC21-005 — Consent withdrawal overrides earlier consent
+
+Output:
+
+```text
+Mira says she changed her mind and wants you to stop.
+```
+
+Expected:
+
+```text
+consent_withdrawn / boundary active
+later actions blocked or warned if violating
+```
+
+---
+
+## PC21-006 — Coercion invalidates consent
+
+Output:
+
+```text
+Mira agrees only after you threaten to abandon her in the woods.
+```
+
+Expected:
+
+```text
+consent invalid_coercion or boundary/violation warning
+no romance/consent advancement
+possible trust damage
+```
+
+---
+
+## PC21-007 — Charm/mind control invalidates consent/loyalty
+
+Output:
+
+```text
+Under the charm spell, Mira declares she loves you and will obey forever.
+```
+
+Expected:
+
+```text
+no valid romance/consent/loyalty advancement
+mind_control/charm invalidation recorded
+```
+
+---
+
+## PC21-008 — Fear obedience not loyalty
+
+Output:
+
+```text
+The hireling obeys because he is terrified of you.
+```
+
+Expected:
+
+```text
+fear_based_obedience evidence
+not loyalty
+possible negative trust/fear evidence
+```
+
+---
+
+## PC21-009 — Player invitation not recruitment
+
+Input:
+
+```text
+I ask Mira to join my party.
+```
+
+Expected:
+
+```text
+invitation/pending recruitment
+not party member unless Mira accepts
+```
+
+---
+
+## PC21-010 — NPC acceptance creates companion
+
+Output:
+
+```text
+Mira nods and says she will travel with you.
+```
+
+Expected:
+
+```text
+CompanionRecord recruited or party member if context supports it
+PartyPresenceRecord present/following
+operation key added
+```
+
+---
+
+## PC21-011 — Temporary ally not permanent companion
+
+Output:
+
+```text
+The guard agrees to help you until you reach the gate.
+```
+
+Expected:
+
+```text
+temporary_ally or quest_ally
+not permanent companion
+terms/duration captured
+```
+
+---
+
+## PC21-012 — Escort target not companion
+
+Quest/output:
+
+```text
+Escort Bram to the chapel.
+```
+
+Expected:
+
+```text
+Bram escort_target / quest participant if validated
+not loyal companion by default
+```
+
+---
+
+## PC21-013 — Hireling not loyal friend
+
+Output:
+
+```text
+Sera agrees to guard you for ten gold a day.
+```
+
+Expected:
+
+```text
+hireling/contracted service
+not loyalty/friendship by default
+economy payment owner-routed if paid
+```
+
+---
+
+## PC21-014 — Companion can refuse unsafe order
+
+Output:
+
+```text
+Mira refuses to walk into the dragon's mouth, calling the order suicidal.
+```
+
+Expected:
+
+```text
+refusal/autonomy evidence
+no relationship bug
+no forced obedience
+```
+
+---
+
+## PC21-015 — Companion leaves after conflict
+
+Output:
+
+```text
+After your betrayal, Mira leaves the party at dawn.
+```
+
+Expected:
+
+```text
+party status left/dismissed according source
+trust damage/conflict/shared history
+actor record preserved
+```
+
+---
+
+## PC21-016 — Absent companion not witness
+
+Setup:
+
+```text
+Mira party member but waiting elsewhere
+```
+
+Output:
+
+```text
+You steal the apple in the market.
+```
+
+Expected:
+
+```text
+Mira receives no witnessed memory
+party member remains absent/waiting
+```
+
+---
+
+## PC21-017 — Present companion can witness
+
+Setup:
+
+```text
+Mira present party member
+```
+
+Output:
+
+```text
+Mira watches you steal the apple.
+```
+
+Expected:
+
+```text
+Mira witness memory if ActorReducer validates it
+relationship/trust evidence possible
+no automatic public reputation unless owner routed
+```
+
+---
+
+## PC21-018 — Private affection not public reputation
+
+Output:
+
+```text
+Mira quietly admits she trusts you while no one else is nearby.
+```
+
+Expected:
+
+```text
+private relationship evidence
+no faction/public reputation mutation
+```
+
+---
+
+## PC21-019 — Public proposal does not force acceptance
+
+Output:
+
+```text
+You proclaim your love for Mira before the crowd, but she looks uncomfortable.
+```
+
+Expected:
+
+```text
+player interest/romantic gesture evidence
+Mira discomfort/boundary risk
+no mutual romance
+publicness recorded if witnesses validated
+```
+
+---
+
+## PC21-020 — Companion role label no auto-heal
+
+State:
+
+```text
+Mira role = healer_label
+```
+
+Output:
+
+```text
+You are wounded.
+```
+
+Expected:
+
+```text
+Mira does not auto-heal
+healing requires explicit Combat/Body/Ability/Inventory owner event
+```
+
+---
+
+## PC21-021 — Companion role label no auto-attack
+
+State:
+
+```text
+Bram role = fighter_label
+```
+
+Output:
+
+```text
+A wolf appears.
+```
+
+Expected:
+
+```text
+Bram does not auto-damage wolf
+combat action requires CombatReducer validation
+```
+
+---
+
+## PC21-022 — Gift offer not inventory transfer
+
+Output:
+
+```text
+Mira offers you her silver ring.
+```
+
+Expected:
+
+```text
+relationship/gift offer evidence possible
+ring not owned until InventoryReducer validates accepted handoff
+```
+
+---
+
+## PC21-023 — Companion custody not player inventory
+
+Output:
+
+```text
+Mira carries the Crown of Dawn for safekeeping.
+```
+
+Expected:
+
+```text
+companion custody/reference
+player does not own/carry crown
+InventoryReducer owns custody truth
+```
+
+---
+
+## PC21-024 — Command relationship non-canon
+
+Run:
+
+```text
+/relationships
+/companions
+/party
+```
+
+Feed output through Output hook.
+
+Expected:
+
+```text
+no relationship/companion/party mutation
+```
+
+---
+
+## PC21-025 — Story Card relationship prose non-canon
+
+Story Card text:
+
+```text
+Mira loves the player and is their loyal companion forever.
+```
+
+Expected:
+
+```text
+no romance/loyalty/party mutation
+blocked/reference audit only
+```
+
+---
+
+## PC21-026 — Context party prose non-canon
+
+Context text:
+
+```text
+Mira is present in the party and trusts the player completely.
+```
+
+Expected:
+
+```text
+no presence/trust/party mutation from context
+```
+
+---
+
+## PC21-027 — Duplicate recruitment skipped
+
+Repeat:
+
+```text
+Mira nods and says she will travel with you.
+```
+
+Expected:
+
+```text
+no duplicate companion/party records
+operation key skip/update audit
+```
+
+---
+
+## PC21-028 — Cleanup preserves boundary
+
+Setup:
+
+```text
+active no_flirting boundary
+relationship evidence history
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+boundary preserved
+important evidence preserved/summarized
+no romance promotion
+```
+
+---
+
+## PC21-029 — Cleanup preserves active party state
+
+Setup:
+
+```text
+Mira active party member and present
+Bram waiting elsewhere
+```
+
+Run cleanup.
+
+Expected:
+
+```text
+party membership and presence statuses preserved
+Bram not teleported into scene
+```
+
+---
+
+## PC21-030 — Manual relationship commands disabled
+
+Run:
+
+```text
+/setromance Mira true
+/setloyalty Mira 100
+/addcompanion Mira
+/forceconsent Mira
+```
+
+Expected:
+
+```text
+disabled messages or safe unknown command
+no relationship/consent/party mutation
+```
+
+---
+
+# 41. Regression placement
+
+Add PC21 tests to regression tiers:
+
+```text
+T2 Parser/Proposal/Validator Safety Tests
+T3 Resolver/Sanitizer Tests
+T4 Reducer Commit Tests
+T5 Context/Card/Migration/Cleanup Tests
+T6 Player-Breaker Adversarial Tests
+T7 Long-Run Stability Tests
+T8 Deferred System Disabled Tests
+```
+
+Minimum expectation:
+
+```text
+30 PC21 tests registered
+0 critical PC21 failures
+```
+
+---
+
+# 42. State fields added or deepened
+
+Expected additions/deepening:
+
+```text
+relationships.profiles
+relationships.evidence
+relationships.romanceStates
+relationships.consentBoundaries
+relationships.consentEvents
+relationships.boundaryViolations
+relationships.loyaltyEvidence
+relationships.trustStates
+relationships.sharedHistory
+companions.records
+companions.recruitments
+companions.partyMembers
+companions.presence
+companions.roles
+companions.autonomy
+companions.conflicts
+companions.questHooks
+RelationshipProfileRecord shape
+RomanceStateRecord shape
+ConsentBoundaryRecord shape
+ConsentEventRecord shape
+BoundaryViolationRecord shape
+LoyaltyEvidenceRecord shape
+TrustStateRecord shape
+CompanionRecord shape
+CompanionRecruitmentRecord shape
+PartyMemberRecord shape
+PartyPresenceRecord shape
+PartyRoleRecord shape
+CompanionAutonomyRecord shape
+CompanionConflictRecord shape
+CompanionQuestHookRecord shell
+SharedHistoryRecord shape
+AffectionIntentRecord shape
+```
+
+---
+
+# 43. Parser/proposal/validator changes
+
+Allowed:
+
+```text
+relationship evidence detection
+romance interest detection with safety flags
+consent/refusal/withdrawal/boundary detection
+companion invitation/recruitment/leave/dismiss detection
+party presence/status detection
+coercion/charm/mind-control/fear invalidation flags
+operation key suggestions
+```
+
+Forbidden:
+
+```text
+manual relationship mutation parser
+explicit adult content automation parser
+mind-control romance parser
+forced consent parser
+party combat automation parser
+pet/mount/summon parser unless deferred labels
+card/context relationship import
+```
+
+---
+
+# 44. Reducer/checker changes
+
+Allowed:
+
+```text
+RelationshipReducerLite evidence/trust/romance/boundary/consent behavior
+CompanionReducerLite recruitment/temporary ally/hireling/leave behavior
+PartyReducerLite membership/presence/role behavior
+relationship/party integrity checks
+cleanup protection for boundaries and party records
+```
+
+Forbidden:
+
+```text
+forced romance/consent mutation
+manual companion add/remove mutation
+companion inventory merge
+party combat AI
+public reputation mutation from private relationship events
+```
+
+---
+
+# 45. Command/context/card changes
+
+Allowed:
+
+```text
+/relationships display
+/companions display
+/party display
+/context relationship/party packet
+/cardaudit relationship boundary labels if dry-run
+/releasecheck PC21 gates
+/playerbreakercheck relationship/party cases
+```
+
+Forbidden:
+
+```text
+/setromance
+/setloyalty
+/addcompanion
+/forceconsent
+/live card writes that create relationship truth
+```
+
+---
+
+# 46. Beginner implementation order
+
+When implementing this chunk in code, follow this order.
+
+## Step 1 — Copy accepted faction/legal build
+
+Start from:
+
+```text
+WorldLedgerV0.17.20_FACTIONS_REPUTATION_LAW_ACCEPTED.txt
+```
+
+Create working file:
+
+```text
+WorldLedgerV0.17.21_RELATIONSHIPS_COMPANIONS_PARTY_WORKING.txt
+```
+
+## Step 2 — Add/verify relationship helper functions
+
+Create helpers for:
+
+```text
+ensureRelationshipsShape
+makeRelationshipProfileRecord
+makeRelationshipEvidenceRecord
+makeRomanceStateRecord
+makeConsentBoundaryRecord
+makeConsentEventRecord
+makeBoundaryViolationRecord
+makeLoyaltyEvidenceRecord
+makeTrustStateRecord
+makeSharedHistoryRecord
+makeAffectionIntentRecord
+isUnsafeRelationshipSource
+isConsentInvalidated
+isBoundaryActive
+```
+
+## Step 3 — Add/verify companion/party helper functions
+
+Create helpers for:
+
+```text
+ensureCompanionsShape
+makeCompanionRecord
+makeCompanionRecruitmentRecord
+makePartyMemberRecord
+makePartyPresenceRecord
+makePartyRoleRecord
+makeCompanionAutonomyRecord
+makeCompanionConflictRecord
+makeCompanionQuestHookRecord
+isPartyMemberPresent
+isTemporaryAllyOnly
+isEscortOnly
+```
+
+## Step 4 — Add ConsentBoundaryManager
+
+Implement:
+
+```text
+active refusal/boundary lookup
+withdrawal override
+authentication of valid/invalid consent context
+coercion/charm/mind-control/fear safety flags
+```
+
+## Step 5 — Update relationship CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+friendship/trust evidence
+romance interest evidence
+consent/refusal/withdrawal/boundaries
+boundary violation
+loyalty evidence
+conflict evidence
+```
+
+## Step 6 — Update companion/party CanonValidator rules
+
+Add strict accept/reject/pending logic for:
+
+```text
+invitation
+recruitment
+temporary ally
+escort target
+hireling
+party presence
+separation/absence
+leave/dismissal
+```
+
+## Step 7 — Update ProposalBuilder relationship/party support
+
+Ensure proposals carry:
+
+```text
+actor target
+relationship event type
+consent/boundary safety flags
+party/companion status
+presence/place/scene
+publicness/private scope
+operation key suggestion
+```
+
+## Step 8 — Implement reducers
+
+Implement:
+
+```text
+RelationshipReducerLite
+CompanionReducerLite
+PartyReducerLite or combined safe owner
+```
+
+## Step 9 — Update commands and context
+
+Update/add:
+
+```text
+/relationships
+/companions
+/party
+ContextBuilder relationship/party packet
+```
+
+## Step 10 — Update IntegrityChecker
+
+Add consent, boundary, companion, party presence, autonomy, and source-block checks.
+
+## Step 11 — Add PC21 ReleaseCheck gates
+
+Add PC21-G01 through PC21-G20.
+
+## Step 12 — Add PC21 tests
+
+Add PC21-001 through PC21-030.
+
+## Step 13 — Run baseline checks
+
+Run:
+
+```text
+/foundationcheck
+/releasecheck
+/integrity
+/playerbreakercheck
+/regressioncheck
+/relationships if available
+/companions if available
+/party if available
+/context
+```
+
+## Step 14 — Save accepted relationship/party build
+
+Recommended output:
+
+```text
+WorldLedgerV0.17.21_RELATIONSHIPS_COMPANIONS_PARTY_ACCEPTED.txt
+```
+
+---
+
+# 47. What this chunk produces
+
+Production Chunk 21 should produce:
+
+```text
+WorldLedger V0.17.21 relationships/companions/party accepted script if code changes are made
+RelationshipProfile / RomanceState / ConsentBoundary / ConsentEvent schemas
+BoundaryViolation / LoyaltyEvidence / TrustState schemas
+CompanionRecord / Recruitment / PartyMember / PartyPresence schemas
+CompanionAutonomy / CompanionConflict / SharedHistory schemas
+ConsentBoundaryManager
+RelationshipReducerLite
+CompanionReducerLite
+PartyReducerLite
+/relationships /companions /party display improvements
+relationship/party context packet
+relationship/party integrity checks
+PC21 ReleaseCheck gates
+PC21 regression/player-breaker tests
+relationship/party acceptance report
+updated planning zip with Production Chunk 21 added
+```
+
+It should not produce:
+
+```text
+explicit adult content automation
+forced romance/consent system
+manual relationship mutation commands
+full party combat AI
+pet/mount/summon control system
+companion inventory merge
+live CardSync relationship writes
+old card prose relationship import
+```
+
+---
+
+# 48. Pass / warn / fail criteria
+
+## PASS
+
+Production Chunk 21 passes if:
+
+```text
+relationship evidence, romance state, consent events, and boundaries are separated
+romance interest does not become consent
+coercion/charm/mind-control/fear/unsafe-state consent is rejected/blocked
+refusals and withdrawals are preserved
+loyalty is separated from obedience
+companions, temporary allies, escorts, and hirelings are separated
+party membership and presence are separated
+absent companions are not witnesses or combat participants
+private relationship evidence does not become public reputation
+companion inventory/custody does not merge with player inventory
+commands/context/cards cannot create relationship or party canon
+cleanup preserves active boundaries and party state
+PC21 tests pass
+ReleaseCheck has no PC21 FAIL/BLOCKED gates
+```
+
+## WARN
+
+Warn but allow progress if:
+
+```text
+party combat AI is deferred
+pet/mount/summon systems are deferred
+romance display is conservative
+companion quest hooks are shell-only
+some relationship summaries are evidence-light
+commands are folded into /actors or /stateaudit if command budget is tight
+```
+
+## FAIL
+
+Fail and stop if:
+
+```text
+friendly evidence becomes romance automatically
+romance interest becomes consent
+coercion/charm/mind-control/fear creates valid consent or loyalty
+refusal/boundary is deleted by cleanup
+player invitation creates companion without acceptance
+escort/hireling becomes permanent loyal party member by default
+absent companion witnesses scene events
+command/context/card text creates romance/trust/party state
+private affection becomes public reputation
+companion inventory becomes player inventory
+party role auto-attacks/heals without owner validation
+```
+
+---
+
+# 49. Handoff to Production Chunk 22
+
+When this chunk passes, Production Chunk 22 begins:
+
+```text
+Production Chunk 22 — Pets, Mounts, Summons, Vehicles, and Controlled-Entity Boundaries
+```
+
+Production Chunk 22 may use companion/party state, but it must not treat pets, mounts, summons, or magically controlled entities as normal consenting companions.
+
+Production Chunk 21 must leave relationship/party state reliable enough that PC22 can ask:
+
+```text
+Is this entity a companion, pet, mount, summon, hireling, temporary ally, escort target, or controlled entity?
+Is it present, nearby, absent, waiting, captured, or separated?
+Does it have autonomy?
+Can it refuse?
+Is this loyalty, fear, contract, magic control, or training?
+Can it participate in combat/travel/inventory interactions safely?
+```
+
+---
+
+# 50. Final doctrine
+
+Production Chunk 21 is where relationships stop being a single score and companions stop being puppets.
+
+Final rule:
+
+```text
+Relationships are evidence.
+Romance is bounded.
+Consent is specific, revocable, and protected.
+Loyalty is earned, not forced.
+Companions are autonomous actors.
+Party state is presence-aware.
+Private bonds stay private unless witnessed or shared.
+No unsafe text source can create love, consent, loyalty, obedience, or companionship.
+```
+
+Once this passes, the project can safely deepen pets, mounts, summons, vehicles, and controlled-entity boundaries in Production Chunk 22.

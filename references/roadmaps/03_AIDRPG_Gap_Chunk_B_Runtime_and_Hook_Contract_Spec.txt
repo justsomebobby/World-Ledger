@@ -1,0 +1,1173 @@
+AIDRPG Gap Chunk B — Runtime and Hook Contract Spec
+
+0. Document status
+
+Document name: AIDRPG Gap Chunk B — Runtime and Hook Contract Spec
+Purpose: Define the exact runtime and hook behavior required before script coding begins.
+Status: Pre-code blocker.
+Applies after: Gap Chunk A — Old Fix Salvage Matrix.
+Applies before: Story Card API Adapter, Parser Rulebook, MVP coding, and any live CardSync work.
+This document does not contain final script code.
+
+This spec exists because many old issues came from unclear hook behavior, repeated output application, command output being parsed as story, Context writing state, and runtime failures causing partial commits.
+
+The new script must have a strict runtime contract before any gameplay systems are coded.
+
+⸻
+
+1. Runtime doctrine
+
+AIDRPG must treat AI Dungeon hooks as separate surfaces with separate authority.
+
+The core doctrine is:
+
+Input records intent.
+Context reads state and writes context text only.
+Output proposes and validates consequences.
+Commands inspect state unless explicitly manual.
+Cards mirror state only.
+
+No hook may silently bypass the canon pipeline.
+
+No hook may return an invalid shape.
+
+No hook may partially mutate state and then crash without audit.
+
+No hook may parse its own generated command/context/card output as story.
+
+⸻
+
+2. Required runtime surfaces
+
+The script must be organized around these surfaces:
+
+onInput(text)
+onContext(text)
+onOutput(text)
+shared runtime/library helpers
+
+The actual AI Dungeon scripting environment may differ slightly, but the internal contract must behave as if these hooks exist.
+
+If the platform provides a different call shape, an adapter must translate it into this contract.
+
+⸻
+
+3. Runtime ownership boundaries
+
+3.1 Input hook owns
+
+* runtime validation
+* state initialization
+* command detection
+* command routing
+* input intent proposals
+* command output suppression
+* turn start metadata
+
+Input does not own:
+
+* completed item acquisition
+* enemy defeat
+* quest completion
+* reward payment
+* XP gain
+* stable ability creation
+* long-distance arrival
+* card creation
+
+3.2 Context hook owns
+
+* context packet construction
+* compact truth reminders
+* correction packets
+* context audit records
+
+Context does not own:
+
+* gameplay state mutation
+* proposal creation
+* reducer commits
+* Story Card creation
+* XP/items/quests/actors/abilities/time changes
+
+3.3 Output hook owns
+
+* AI output consequence scanning
+* EventProposal creation
+* CanonValidator calls
+* owner reducer commits
+* OperationLedger writes
+* dirty target marking
+* protected card update attempts
+* output audit records
+
+Output does not own:
+
+* parsing command output
+* parsing Context packets
+* parsing Story Card text
+* bypassing validation
+* direct non-owner state mutation
+* generated card creation in MVP
+
+⸻
+
+4. Required runtime state fields
+
+The root AIDRPG state must contain runtime/hook metadata.
+
+Recommended structure:
+
+runtime: {
+  currentHook: string,
+  currentTurn: number,
+  hookDepth: number,
+  hookTrace: HookTraceRecord[],
+  lastInputHash: string,
+  lastContextHash: string,
+  lastOutputHash: string,
+  lastAppliedOutputHash: string,
+  lastCommandHash: string,
+  commandActive: boolean,
+  suppressEventScanForCommandOutput: boolean,
+  lastCommandTurn: number,
+  lastCommandName: string,
+  pendingInputIntentId: string,
+  outputReplayDetected: boolean,
+  runtimeWarnings: string[],
+  runtimeErrors: RuntimeErrorRecord[],
+  failSoftCount: number
+}
+
+4.1 HookTraceRecord
+
+HookTraceRecord {
+  turn: number,
+  hook: 'input' | 'context' | 'output' | 'command' | 'system',
+  textHash: string,
+  startedAt: string,
+  endedAt: string,
+  status: 'started' | 'completed' | 'failed' | 'fail_soft',
+  notes: string[]
+}
+
+4.2 RuntimeErrorRecord
+
+RuntimeErrorRecord {
+  turn: number,
+  hook: string,
+  phase: string,
+  message: string,
+  safeTextReturned: boolean,
+  partialCommitBlocked: boolean
+}
+
+4.3 Runtime warning limits
+
+Runtime warnings and errors must be capped.
+
+Recommended caps:
+
+runtimeWarnings max: 25
+runtimeErrors max: 20
+hookTrace max: 30
+
+Older entries may be compacted, but not before audit can show recent failures.
+
+⸻
+
+5. Valid hook return shapes
+
+Every hook must return a valid response.
+
+5.1 Normal return
+
+{ text: string }
+
+5.2 Safe unchanged return
+
+If the script chooses not to alter text:
+
+{ text: originalText }
+
+5.3 Fail-soft return
+
+If a hook fails:
+
+{ text: safeText }
+
+Where safeText is usually the original text unless the hook was a command.
+
+5.4 Forbidden returns
+
+Forbidden:
+
+undefined
+null
+false
+true
+number
+plain string, unless platform explicitly requires it
+object without text field
+
+If the platform requires a different return shape, a runtime adapter must still internally normalize to this contract.
+
+⸻
+
+6. Runtime validation contract
+
+Before any hook logic runs, RuntimeGate behavior must validate:
+
+text is string or safely convertible
+state exists or can be created
+state.aidrpg is object or can be repaired
+required root buckets can be created
+hook name is allowed
+script is not already inside forbidden recursion
+
+6.1 Invalid text handling
+
+If input text is missing, null, or non-string:
+
+* convert to empty string if safe
+* log warning
+* do not create gameplay proposals
+* return safe text
+
+6.2 Invalid state handling
+
+If state.aidrpg is missing:
+
+* initialize default state
+* audit initialization
+
+If state.aidrpg exists but is malformed:
+
+* quarantine malformed portions
+* repair missing root fields
+* do not erase valid records
+* audit repair
+
+6.3 Runtime validation failure
+
+If validation fails completely:
+
+* do not mutate gameplay systems
+* log runtime error if possible
+* return original text or safe command failure text
+
+⸻
+
+7. Turn lifecycle
+
+7.1 Turn start
+
+A new turn begins when the Input hook receives non-command player input.
+
+Recommended behavior:
+
+onInput(nonCommand): currentTurn += 1
+
+Commands may either:
+
+* not advance gameplay turn, or
+* advance a diagnostic command counter only
+
+MVP recommendation:
+
+Commands do not advance gameplay time or trigger gameplay consequences.
+
+7.2 Input → Context → Output sequence
+
+Expected gameplay sequence:
+
+Input hook: records intent
+Context hook: injects relevant state
+AI generates output
+Output hook: validates consequences
+
+The script must not assume every hook always fires perfectly, but it should behave safely when they do.
+
+7.3 Output commit moment
+
+Gameplay consequences are committed only during Output hook after validation.
+
+Exception:
+
+* explicit manual override commands, later
+* setup import before gameplay lock
+* migration path
+
+MVP has no normal manual mutation commands.
+
+7.4 Turn end
+
+At the end of Output hook:
+
+* audit summary is finalized
+* dirty targets remain queued if not processed
+* lastAppliedOutputHash updates only if output consequences were processed safely
+* command suppression flags clear if appropriate
+
+⸻
+
+8. Input hook contract
+
+8.1 Input hook steps
+
+Input hook must follow this order:
+
+1. RuntimeGate.validate('input', text)
+2. StateManager.init/repair/migrate
+3. beginHook('input')
+4. hash input text
+5. check if command
+6. if command: route command, set command suppression, return command text
+7. if not command: create input intent proposals only
+8. store pending intent if useful
+9. endHook('input')
+10. return original player input text
+
+8.2 Input hook may create
+
+* intent proposal
+* pending input intent record
+* audit record
+* runtime hook trace
+
+8.3 Input hook may not create
+
+* owned item
+* paid reward
+* completed quest
+* XP gain
+* enemy defeat
+* stable ability
+* confirmed location arrival from long-distance travel
+* protected card update
+* generated card
+
+8.4 Input examples
+
+Example: item attempt
+
+Player input:
+
+I try to grab the gem.
+
+Input may create:
+
+EventProposal intentType: item_take_attempt
+completedAction: false
+
+Input must not add gem to inventory.
+
+Example: attack attempt
+
+Player input:
+
+I kill the dragon with one punch.
+
+Input may create:
+
+combat_attack_attempt
+completedAction: false
+
+Input must not kill dragon.
+
+Example: travel intent
+
+Player input:
+
+I head toward the chapel.
+
+Input may create:
+
+place.location_intent
+completedAction: false
+
+Input must not set current location to chapel.
+
+⸻
+
+9. Command handling contract
+
+9.1 Command detection
+
+A command is any input beginning with / followed by a command token.
+
+Examples:
+
+/help
+/sheet
+/status
+/inventory
+/debuglast
+
+9.2 Command routing
+
+Command flow:
+
+Input hook detects command
+CommandRouter routes command
+Command output returned
+suppressEventScanForCommandOutput = true
+lastCommandHash recorded
+lastCommandName recorded
+commandActive = true for this hook cycle
+
+9.3 Command output suppression
+
+Command output must never be scanned as story.
+
+If /inventory displays:
+
+Rusty Dagger
+
+the parser must not add another Rusty Dagger.
+
+9.4 Command mutation policy
+
+MVP commands are inspect-only.
+
+Allowed MVP commands:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/releasecheck
+
+These commands must not mutate gameplay state except diagnostic metadata.
+
+Manual mutation commands are deferred.
+
+9.5 Disabled command behavior
+
+If a user runs a deferred command, return a clear disabled message.
+
+Example:
+
+/crafting is not active in MVP. Crafting requires the Crafting Mini-Spec and later build phase.
+
+Do not crash.
+
+Do not create placeholder gameplay state.
+
+⸻
+
+10. Context hook contract
+
+10.1 Context hook steps
+
+Context hook must follow this order:
+
+1. RuntimeGate.validate('context', text)
+2. StateManager.init/repair/migrate
+3. beginHook('context')
+4. hash incoming context text
+5. build context packets from state
+6. serialize packets under budget
+7. record context audit
+8. endHook('context')
+9. return { text: serializedContext }
+
+10.2 Context may read
+
+* player status
+* current location
+* active scene
+* actor presence
+* item custody/access
+* active quest/deadline
+* ability limits
+* time text
+* recent corrections
+
+10.3 Context may not write
+
+Context may not mutate:
+
+* player sheet
+* body/resources
+* inventory
+* abilities
+* quests
+* actors
+* places
+* time
+* cards
+* OperationLedger, except context packet hashes/audit if explicitly allowed
+
+10.4 Context may write only diagnostics
+
+Allowed:
+
+* context audit entry
+* context packet hash cache
+* runtime hook trace
+
+These must not be gameplay truth.
+
+10.5 Context packet source rule
+
+Context packets are generated from state.
+
+They are not state themselves.
+
+A packet saying:
+
+The Iron Sword is in Mara's custody.
+
+reminds the AI of state.
+
+It does not create or transfer the sword.
+
+10.6 Context no-write hard rule
+
+If any module attempts gameplay mutation during Context hook, RuntimeHookContract must block or flag it.
+
+/releasecheck must fail if ContextBuilder can mutate gameplay truth.
+
+⸻
+
+11. Output hook contract
+
+11.1 Output hook steps
+
+Output hook must follow this order:
+
+1. RuntimeGate.validate('output', text)
+2. StateManager.init/repair/migrate
+3. beginHook('output')
+4. hash output text
+5. detect command-output replay and suppress if needed
+6. check lastAppliedOutputHash for duplicate replay
+7. EventScannerLite scans output
+8. ProposalBuilder creates EventProposals
+9. CanonValidator validates proposals
+10. ReducerRegistry routes accepted proposals
+11. OperationLedger records committed keys
+12. AuditLogger records accept/reject/duplicate/soft_fail
+13. mark dirty targets
+14. CardSyncLite updates allowed protected cards if dirty and safe
+15. CleanupManagerLite runs lightweight cleanup if budget allows
+16. endHook('output')
+17. return original AI output text
+
+11.2 Output may create proposals for
+
+MVP allowed event families:
+
+* body damage/healing/resource cost/recovery
+* inventory visible item / loot / pickup / drop / equip / custody
+* ability use/evidence/candidate/status
+* quest rumor/offer/accept/progress/reward
+* actor presence/memory/status/custody
+* location arrival/intent/scene update
+* time advance/rest
+* simple XP gain if safe
+* protected card dirty/update audit
+
+11.3 Output may not directly mutate
+
+Output scanner must not directly mutate:
+
+* inventory
+* XP
+* cards
+* actor records
+* quest rewards
+* player identity
+* body state
+
+All changes must go through proposal/validation/reducer.
+
+11.4 Output duplicate replay behavior
+
+If outputHash === lastAppliedOutputHash:
+
+* do not reapply consequences
+* do not duplicate inventory/XP/reward/time/card writes
+* may record duplicate replay audit
+* return original output text
+
+If same output appears but hash differs slightly, OperationLedger must still block duplicate operation keys.
+
+11.5 Output command suppression behavior
+
+If Output hook receives text that matches the last command output or command suppression is active:
+
+* do not scan it as story
+* clear suppression if safe
+* audit suppression
+* return text unchanged
+
+⸻
+
+12. Duplicate output and operation idempotency
+
+The runtime has two duplicate layers.
+
+12.1 Hash-level duplicate protection
+
+Prevents exact same output from being processed twice.
+
+Fields:
+
+lastOutputHash
+lastAppliedOutputHash
+
+12.2 OperationLedger duplicate protection
+
+Prevents repeated or slightly varied text from applying same operation twice.
+
+Examples:
+
+reward.quest.clear_mill_wolves.gold.old_bren
+item.pickup.rusty_dagger.scene_dagger_1
+xp.quest.clear_mill_wolves.complete
+card.update.protected.player_sheet.hash_abc
+
+12.3 Required duplicate behavior
+
+If duplicate detected:
+
+* do not commit again
+* do not mark extra dirty target unless audit needs it
+* do not update card again unnecessarily
+* do not advance time again
+* do not pay reward again
+* do not add XP again
+* audit duplicate skip
+
+⸻
+
+13. Source authority contract
+
+Every proposal must include sourceHook.
+
+Allowed source hooks:
+
+input
+output
+command
+manual
+migration
+setup
+system
+
+13.1 Mutating source rules
+
+Input
+
+Can create intent proposals only.
+
+Output
+
+Can create consequence proposals.
+
+Command
+
+MVP commands are inspect-only.
+
+Future manual commands must be explicit and audited.
+
+Manual
+
+Deferred. When added, may mutate only through explicit manual override path.
+
+Migration
+
+May mutate only during migration/repair and must audit changes.
+
+Setup
+
+May mutate only before gameplay lock and must be idempotent.
+
+System
+
+May mutate only for schema/default/cleanup metadata, not gameplay truth unless owner-approved.
+
+13.2 Non-canon source rules
+
+The following cannot create gameplay proposals:
+
+* Context packet text
+* Story Card text
+* protected card text
+* generated card text
+* command output
+* debug output
+* help text
+* example text
+* old logs
+* archived summaries
+
+⸻
+
+14. Partial commit protection
+
+A hook must not commit half of a multi-step event and then crash without audit.
+
+14.1 Commit unit
+
+Each accepted proposal is its own commit unit.
+
+A proposal commit should be:
+
+validate -> reducer apply -> ledger key -> dirty targets -> audit
+
+If reducer apply fails before ledger key:
+
+* rollback if possible
+* otherwise quarantine partial state warning
+* do not add ledger key falsely
+
+If ledger add fails after reducer apply:
+
+* audit critical error
+* mark state integrity warning
+* releasecheck fails until repaired
+
+14.2 Multi-proposal events
+
+Some events imply multiple proposals.
+
+Example:
+
+Old Bren pays you 15 gold for completing the quest.
+
+Possible proposals:
+
+* quest.reward_paid
+* inventory.currency_gain_simple
+
+Rules:
+
+* each proposal has its own owner
+* payment should only commit if quest eligibility validates
+* if inventory currency commit fails, quest reward status should not falsely become paid unless recovery is defined
+
+MVP may avoid tightly coupled multi-commit events until required.
+
+⸻
+
+15. Runtime fail-soft contract
+
+If any hook throws an error, the script must fail softly.
+
+15.1 Fail-soft steps
+
+1. Catch error.
+2. Record runtime error.
+3. Preserve original text if possible.
+4. Avoid further gameplay mutation.
+5. Mark state integrity warning.
+6. Return valid text object.
+
+15.2 Fail-soft text
+
+For normal story hooks:
+
+return original text
+
+For command hooks:
+
+AIDRPG command failed safely. State was not intentionally changed. Use /debuglast or /stateaudit.
+
+15.3 Fail-soft forbidden behavior
+
+Do not:
+
+* erase state
+* reset player sheet
+* clear inventory
+* enable generated cards
+* retry card writes endlessly
+* keep mutating after a critical error
+* return undefined
+
+⸻
+
+16. Hook reentrancy and recursion protection
+
+Hooks should not recursively call themselves.
+
+Required field:
+
+runtime.hookDepth
+
+Rule:
+
+If hookDepth > 1, block gameplay mutation and audit recursion warning.
+
+This prevents command/card/context calls from accidentally triggering nested parsing.
+
+⸻
+
+17. Runtime hash rules
+
+17.1 Hash purpose
+
+Hashes are used to detect duplicate input/output/context/command text without storing unbounded raw text.
+
+17.2 Hash fields
+
+lastInputHash
+lastContextHash
+lastOutputHash
+lastAppliedOutputHash
+lastCommandHash
+
+17.3 Hash safety
+
+A hash collision should be unlikely, but OperationLedger must still be the real duplicate protection for gameplay operations.
+
+Hash-level duplicate protection is a first filter, not the only safeguard.
+
+17.4 Text normalization before hash
+
+Recommended normalization:
+
+* convert null to empty string
+* preserve meaningful punctuation for parser but normalize whitespace for hash
+* trim leading/trailing whitespace
+* collapse repeated whitespace
+
+Do not lowercase everything if exact text is needed for display/audit.
+
+⸻
+
+18. Runtime audit requirements
+
+Every hook should leave enough audit information to explain what happened.
+
+18.1 Input audit
+
+Must record:
+
+* command detected or not
+* input hash
+* pending intent created or not
+* suppressed scan if command
+
+18.2 Context audit
+
+Must record:
+
+* packets selected
+* packets skipped
+* budget reason
+* correction packets
+* context hash
+
+18.3 Output audit
+
+Must record:
+
+* output hash
+* replay detected or not
+* proposals created
+* validation outcomes
+* accepted commits
+* duplicate skips
+* dirty targets
+* protected card updates/skips
+* runtime errors
+
+18.4 Runtime error audit
+
+Must record:
+
+* hook
+* phase
+* error message
+* whether safe text returned
+* whether partial commit was blocked
+
+⸻
+
+19. Releasecheck runtime requirements
+
+/releasecheck must verify runtime contract health.
+
+Required checks:
+
+runtime bucket exists
+currentHook field exists
+currentTurn field exists
+lastInputHash exists
+lastOutputHash exists
+lastAppliedOutputHash exists
+command suppression field exists
+hookTrace capped
+runtimeErrors capped
+ContextBuilder read-only rule registered
+Output duplicate replay protection enabled
+CommandRouter suppression enabled
+fail-soft handler installed
+no generated cards live in MVP
+
+Releasecheck must fail if:
+
+* hook returns may be invalid
+* Context can mutate gameplay state
+* command output can be parsed as story
+* duplicate output replay can apply consequences twice
+* fail-soft is missing
+* runtime errors are not audited
+
+⸻
+
+20. Runtime tests
+
+These tests must exist before coding proceeds beyond foundation.
+
+B001 — Input hook valid return
+
+Starting state:
+
+fresh or missing state
+
+Input:
+
+I look around.
+
+Expected:
+
+* returns valid { text }
+* state initializes
+* currentTurn increments
+* no gameplay consequence committed
+
+Fail if:
+
+* return undefined
+* input creates item/XP/quest
+
+⸻
+
+B002 — Command output suppression
+
+Input:
+
+/inventory
+
+Expected:
+
+* command output returned
+* suppressEventScanForCommandOutput true for command cycle
+* no parser proposals from displayed inventory
+
+Fail if:
+
+* displayed item duplicates
+
+⸻
+
+B003 — Context read-only
+
+Starting state:
+
+context packet mentions Iron Sword in Mara's custody
+
+Run Context hook.
+
+Expected:
+
+* context text generated
+* no inventory mutation
+* no actor mutation
+* no quest mutation
+* context audit records packet
+
+Fail if:
+
+* Context writes gameplay state
+
+⸻
+
+B004 — Output duplicate hash skip
+
+AI output:
+
+You pick up the rusty dagger.
+
+Run same output twice.
+
+Expected:
+
+* first output may commit pickup if valid
+* second output replay skipped or duplicate-key blocked
+* one dagger only
+
+Fail if:
+
+* two daggers
+
+⸻
+
+B005 — OperationLedger duplicate despite text variation
+
+Output 1:
+
+Old Bren pays you 15 gold.
+
+Output 2:
+
+Old Bren pays you the promised fifteen gold coins.
+
+Expected:
+
+* if both resolve to same quest reward key, payment applies once
+
+Fail if:
+
+* reward paid twice
+
+⸻
+
+B006 — Runtime fail-soft on parser error
+
+Simulate EventScanner error.
+
+Expected:
+
+* original output returned
+* error logged
+* no partial state commit
+* releasecheck reports runtime warning if unresolved
+
+Fail if:
+
+* crash
+* undefined return
+* partial item/XP/quest mutation
+
+⸻
+
+B007 — Hook recursion blocked
+
+Simulate hookDepth > 1.
+
+Expected:
+
+* gameplay mutation blocked
+* recursion warning audited
+* safe text returned
+
+Fail if:
+
+* nested hook mutates state
+
+⸻
+
+B008 — Player input attempt not success
+
+Input:
+
+I take the jeweled crown.
+
+No confirming output.
+
+Expected:
+
+* input intent only
+* no crown in inventory
+
+Fail if:
+
+* Input hook adds crown
+
+⸻
+
+B009 — Context text not event source
+
+Context text:
+
+Rumor: wolves near the mill.
+
+Expected:
+
+* no quest created from context text
+
+Fail if:
+
+* active quest appears
+
+⸻
+
+B010 — Command disabled safely
+
+Input:
+
+/crafting
+
+Expected:
+
+* returns disabled MVP message
+* no crafting state created
+* no project created
+
+Fail if:
+
+* crafting system activates
+
+⸻
+
+21. Runtime blocker checklist
+
+Before Script v0.1 coding proceeds, the runtime plan is complete only if:
+
+* Input hook contract is defined
+* Context hook read-only rule is defined
+* Output hook proposal/validation/commit order is defined
+* command output suppression is defined
+* duplicate output hash behavior is defined
+* OperationLedger duplicate layer is defined
+* fail-soft behavior is defined
+* hook return shapes are defined
+* runtime state fields are defined
+* hook trace/audit fields are defined
+* partial commit protection is defined
+* releasecheck runtime checks are defined
+* runtime tests B001–B010 are accepted
+
+⸻
+
+22. Final Gap Chunk B doctrine
+
+The runtime contract is the foundation under every other system.
+
+If the hooks are unsafe, every gameplay system becomes unsafe.
+
+The final doctrine is:
+
+Input may intend.
+Context may remind.
+Output may propose.
+CanonValidator may approve.
+Reducers may commit.
+OperationLedger may dedupe.
+Cards may mirror.
+Commands may inspect.
+Audits must explain.
+
+No system may bypass this order.
+
+Next required gap chunk:
+
+Gap Chunk C — Story Card API Adapter + Protected Singleton Contract

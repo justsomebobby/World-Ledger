@@ -1,0 +1,1898 @@
+AIDRPG Build Chunk 3 — State Schema Lock
+
+0. Document status
+
+Document name: AIDRPG Build Chunk 3 — State Schema Lock
+Build target: AIDRPG Core MVP v0.1
+Purpose: Lock the exact state schema, bucket names, default values, ownership rules, and mutation boundaries before final script code is generated.
+Status: Practical build document.
+Follows: Build Chunk 2 — File and Module Layout Plan.
+This document does not contain final script code.
+
+This chunk exists because the script cannot be stable if each build step invents field names while coding.
+
+The state schema must be locked before StateManager, commands, runtime hooks, validation, reducers, ContextBuilder, CardSync, migration, cleanup, or tests are coded.
+
+⸻
+
+1. Purpose of Build Chunk 3
+
+Build Chunk 3 defines the canonical root state shape for AIDRPG Core MVP v0.1.
+
+It answers:
+
+* what state.aidrpg contains
+* what every root bucket is named
+* what every bucket owns
+* what default values are used
+* which module may mutate each bucket
+* which modules may only read each bucket
+* what must be preserved during repair/migration
+* what must never be inferred from cards/context/commands
+* what fields are MVP-active versus placeholder/deferred
+
+The goal is to let the first real code build initialize state without guessing.
+
+⸻
+
+2. Core schema doctrine
+
+AIDRPG uses one canonical state root:
+
+state.aidrpg
+
+All AIDRPG gameplay truth, runtime metadata, audits, migration records, card registry data, and feature flags live under that root.
+
+No major system should create hidden sibling roots like:
+
+state.tasis
+state.playerData
+state.cardSync
+state.inventorySystem
+state.patchData
+
+If legacy roots are found later, migration may read/quarantine them, but new truth belongs under state.aidrpg.
+
+⸻
+
+3. Required root state buckets
+
+The root state must contain exactly these primary buckets for Core MVP v0.1:
+
+state.aidrpg = {
+  meta,
+  features,
+  runtime,
+  startup,
+  player,
+  body,
+  progression,
+  inventory,
+  abilities,
+  quests,
+  actors,
+  places,
+  time,
+  cards,
+  operationLedger,
+  audits,
+  migration,
+  quarantine,
+  dirty,
+  cleanup
+}
+
+Every bucket must exist after StateManager initialization.
+
+If a bucket is missing, StateManager must create that bucket without erasing valid existing buckets.
+
+⸻
+
+4. Root state ownership map
+
+Bucket	Primary Owner	May Read	Must Not Mutate
+meta	StateManager	all modules	parser, cards, context
+features	StateManager / ReleaseCheck	all modules	parser, cards, context
+runtime	RuntimeHookContract	commands, audits	reducers except via hook metadata
+startup	StateManager / Startup importer later	commands, releasecheck	parser after setup lock
+player	StateManager / future PlayerReducer	commands, context, cards	cards, context, commands
+body	BodyReducer	commands, context, cards	parser direct, cards, context
+progression	ProgressionReducerLite	commands, context, cards	parser direct, cards, context
+inventory	InventoryReducer	commands, context, cards	parser direct, cards, context
+abilities	AbilityReducer	commands, context, cards	parser direct, cards, context
+quests	QuestReducerLite	commands, context, cards	parser direct, cards, context
+actors	ActorReducerLite	commands, context, cards	parser direct, cards, context
+places	PlaceReducerLite	commands, context, cards	parser direct, cards, context
+time	TimeReducerLite	commands, context, cards	parser direct, cards, context
+cards	CardSyncLite	commands, releasecheck	parser, context
+operationLedger	OperationLedger	validators, reducers, audits	parser direct, cards, context
+audits	AuditLogger	commands, releasecheck	parser as gameplay
+migration	StateManager / Migration	commands, releasecheck	cards as canon
+quarantine	Migration / StateManager	commands, releasecheck	cleanup as auto-resolver
+dirty	DirtyQueue helpers / reducers	CardSync, ContextBuilder	dirty target as gameplay truth
+cleanup	CleanupManagerLite	commands, releasecheck	cleanup creating truth
+
+⸻
+
+5. Schema version policy
+
+5.1 Required fields
+
+The schema must include:
+
+meta.schemaVersion
+meta.buildName
+meta.buildStage
+meta.projectName
+
+5.2 MVP value
+
+For Core MVP v0.1:
+
+schemaVersion = 1
+buildName = 'AIDRPG Core MVP v0.1'
+buildStage = 'core_mvp_v0_1_foundation'
+projectName = 'AIDRPG'
+
+5.3 Version mutation rule
+
+Only StateManager or explicit future migration may update schemaVersion.
+
+No gameplay event may update schemaVersion.
+
+⸻
+
+6. meta schema
+
+6.1 Purpose
+
+meta identifies the project, build, schema version, and authority state.
+
+6.2 Schema
+
+meta: {
+  projectName: string,
+  buildName: string,
+  buildStage: string,
+  schemaVersion: number,
+  packageAuthority: string,
+  createdBy: string,
+  createdTurn: number,
+  lastUpdatedTurn: number,
+  lastReleaseCheckResult: 'unknown' | 'PASS' | 'WARN' | 'FAIL' | 'BLOCKED',
+  notes: string[]
+}
+
+6.3 Default
+
+projectName = 'AIDRPG'
+buildName = 'AIDRPG Core MVP v0.1'
+buildStage = 'core_mvp_v0_1_foundation'
+schemaVersion = 1
+packageAuthority = 'v1.3 roadmap gap aligned'
+createdBy = 'AIDRPG script'
+createdTurn = 0
+lastUpdatedTurn = 0
+lastReleaseCheckResult = 'unknown'
+notes = []
+
+6.4 Mutation rules
+
+May mutate:
+
+* StateManager during initialization/migration
+* ReleaseCheck may update lastReleaseCheckResult
+
+Must not mutate:
+
+* EventScanner
+* ContextBuilder
+* CardSync from card text
+* Command renderers except ReleaseCheck result through official path
+
+⸻
+
+7. features schema
+
+7.1 Purpose
+
+features controls which systems are active.
+
+7.2 Schema
+
+features: {
+  generatedCardsEnabled: boolean,
+  protectedCardWritesEnabled: boolean,
+  cardSyncDryRun: boolean,
+  cardSyncSafeMode: boolean,
+  economyEnabled: boolean,
+  craftingEnabled: boolean,
+  investigationEnabled: boolean,
+  reputationEnabled: boolean,
+  domainEnabled: boolean,
+  absorptionEnabled: boolean,
+  multiProtagonistEnabled: boolean,
+  advancedCombatEnabled: boolean,
+  manualMutationCommandsEnabled: boolean,
+  fullParserEnabled: boolean,
+  reducerCommitsEnabled: boolean,
+  notes: string[]
+}
+
+7.3 Default
+
+generatedCardsEnabled = false
+protectedCardWritesEnabled = false
+cardSyncDryRun = true
+cardSyncSafeMode = true
+economyEnabled = false
+craftingEnabled = false
+investigationEnabled = false
+reputationEnabled = false
+domainEnabled = false
+absorptionEnabled = false
+multiProtagonistEnabled = false
+advancedCombatEnabled = false
+manualMutationCommandsEnabled = false
+fullParserEnabled = false
+reducerCommitsEnabled = false or conservative shell mode until reducers are built
+notes = []
+
+7.4 Important rule
+
+A disabled feature must not silently create state.
+
+Example:
+
+If craftingEnabled = false, then /craft must not create crafting projects.
+
+If generatedCardsEnabled = false, no generated cards may be created.
+
+⸻
+
+8. runtime schema
+
+8.1 Purpose
+
+runtime tracks hook lifecycle, command suppression, duplicate output hashes, and fail-soft information.
+
+8.2 Schema
+
+runtime: {
+  currentHook: 'none' | 'input' | 'context' | 'output' | 'command' | 'system',
+  currentTurn: number,
+  hookDepth: number,
+  hookTrace: HookTraceRecord[],
+  lastInputHash: string,
+  lastContextHash: string,
+  lastOutputHash: string,
+  lastAppliedOutputHash: string,
+  lastCommandHash: string,
+  commandActive: boolean,
+  suppressEventScanForCommandOutput: boolean,
+  lastCommandTurn: number,
+  lastCommandName: string,
+  pendingInputIntentId: string,
+  outputReplayDetected: boolean,
+  runtimeWarnings: string[],
+  runtimeErrors: RuntimeErrorRecord[],
+  failSoftCount: number
+}
+
+8.3 HookTraceRecord
+
+HookTraceRecord: {
+  turn: number,
+  hook: 'input' | 'context' | 'output' | 'command' | 'system',
+  textHash: string,
+  startedAt: string,
+  endedAt: string,
+  status: 'started' | 'completed' | 'failed' | 'fail_soft',
+  notes: string[]
+}
+
+8.4 RuntimeErrorRecord
+
+RuntimeErrorRecord: {
+  turn: number,
+  hook: string,
+  phase: string,
+  message: string,
+  safeTextReturned: boolean,
+  partialCommitBlocked: boolean
+}
+
+8.5 Defaults
+
+currentHook = 'none'
+currentTurn = 0
+hookDepth = 0
+hookTrace = []
+lastInputHash = ''
+lastContextHash = ''
+lastOutputHash = ''
+lastAppliedOutputHash = ''
+lastCommandHash = ''
+commandActive = false
+suppressEventScanForCommandOutput = false
+lastCommandTurn = 0
+lastCommandName = ''
+pendingInputIntentId = ''
+outputReplayDetected = false
+runtimeWarnings = []
+runtimeErrors = []
+failSoftCount = 0
+
+8.6 Caps
+
+hookTrace max = 30
+runtimeWarnings max = 25
+runtimeErrors max = 20
+
+⸻
+
+9. startup schema
+
+9.1 Purpose
+
+startup tracks one-time setup import and prevents repeated or drifting setup.
+
+9.2 Schema
+
+startup: {
+  setupStatus: 'not_started' | 'in_progress' | 'completed' | 'completed_with_warnings' | 'locked' | 'failed',
+  setupImported: boolean,
+  gameplayStarted: boolean,
+  setupLockedTurn: number,
+  setupSourceHash: string,
+  importedFields: StartupImportRecord[],
+  rejectedFields: StartupRejectRecord[],
+  warnings: string[],
+  errors: string[],
+  startupOperationKeys: string[]
+}
+
+9.3 StartupImportRecord
+
+StartupImportRecord: {
+  field: string,
+  valuePreview: string,
+  source: 'structured_setup' | 'initial_text' | 'manual' | 'migration',
+  confidence: number,
+  reason: string,
+  turn: number
+}
+
+9.4 StartupRejectRecord
+
+StartupRejectRecord: {
+  field: string,
+  rejectedValuePreview: string,
+  source: string,
+  reason: string,
+  severity: 'info' | 'warning' | 'danger',
+  turn: number
+}
+
+9.5 Defaults
+
+setupStatus = 'not_started'
+setupImported = false
+gameplayStarted = false
+setupLockedTurn = 0
+setupSourceHash = ''
+importedFields = []
+rejectedFields = []
+warnings = []
+errors = []
+startupOperationKeys = []
+
+9.6 Mutation rule
+
+Startup import may mutate starting truth only before setup lock.
+
+After gameplayStarted = true, setup cannot casually overwrite player identity or starting inventory.
+
+⸻
+
+10. player schema
+
+10.1 Purpose
+
+player stores protected player identity and stable player profile fields.
+
+10.2 Schema
+
+player: {
+  id: string,
+  name: string,
+  raceSpecies: string,
+  age: string | number,
+  appearance: string,
+  bodyType: string,
+  buildIdentity: string,
+  specialization: string,
+  titles: string[],
+  nicknames: string[],
+  origin: string,
+  temporaryAppearance: string,
+  activeDisguise: string,
+  activeIllusion: string,
+  identityWarnings: string[]
+}
+
+10.3 Defaults
+
+id = 'player'
+name = 'Unnamed Player'
+raceSpecies = 'human'
+age = 'unknown'
+appearance = 'unspecified'
+bodyType = 'humanoid'
+buildIdentity = 'balanced'
+specialization = 'none'
+titles = []
+nicknames = []
+origin = ''
+temporaryAppearance = ''
+activeDisguise = ''
+activeIllusion = ''
+identityWarnings = []
+
+10.4 Protected fields
+
+These must not drift from vague narration:
+
+name
+raceSpecies
+age
+appearance
+bodyType
+buildIdentity
+specialization
+
+10.5 Mutation rule
+
+Allowed mutation paths:
+
+* startup import before lock
+* validated transformation event later
+* validated title grant later
+* validated aging/time skip later
+* explicit manual override later
+* safe structured migration
+
+Forbidden mutation paths:
+
+* Story Card text
+* Context text
+* command output
+* dream/vision
+* disguise
+* NPC introduction
+* vague metaphor
+
+⸻
+
+11. body schema
+
+11.1 Purpose
+
+body stores HP/MP/EP, injuries, conditions, fatigue, and death boundary.
+
+11.2 Schema
+
+body: {
+  hp: ResourceTrack,
+  mp: ResourceTrack,
+  ep: ResourceTrack,
+  injuries: InjuryRecord[],
+  conditions: ConditionRecord[],
+  fatigue: 'normal' | 'tired' | 'exhausted' | 'collapsed' | 'unknown',
+  deathBoundary: 'alive' | 'unconscious' | 'dying' | 'dead' | 'captured' | 'unknown',
+  bodyTraits: string[],
+  bodyWarnings: string[]
+}
+
+11.3 ResourceTrack
+
+ResourceTrack: {
+  current: number,
+  max: number
+}
+
+11.4 InjuryRecord
+
+InjuryRecord: {
+  injuryId: string,
+  name: string,
+  location: string,
+  severity: 'minor' | 'moderate' | 'severe' | 'critical' | 'unknown',
+  status: 'active' | 'healing' | 'healed' | 'scarred',
+  sourceEventKey: string,
+  createdTurn: number,
+  notes: string[]
+}
+
+11.5 ConditionRecord
+
+ConditionRecord: {
+  conditionId: string,
+  name: string,
+  severity: 'minor' | 'moderate' | 'severe' | 'critical' | 'unknown',
+  status: 'active' | 'fading' | 'resolved',
+  sourceEventKey: string,
+  createdTurn: number,
+  expiresTurn?: number,
+  notes: string[]
+}
+
+11.6 Defaults
+
+hp.current = 100
+hp.max = 100
+mp.current = 100
+mp.max = 100
+ep.current = 100
+ep.max = 100
+injuries = []
+conditions = []
+fatigue = 'normal'
+deathBoundary = 'alive'
+bodyTraits = []
+bodyWarnings = []
+
+11.7 Mutation owner
+
+Only BodyReducer may mutate body gameplay fields after startup/migration.
+
+Context, cards, commands, and parser hits may not mutate body directly.
+
+⸻
+
+12. progression schema
+
+12.1 Purpose
+
+progression stores level, XP, stats, and formula automation status.
+
+12.2 Schema
+
+progression: {
+  level: number,
+  currentXP: number,
+  totalXP: number,
+  xpToNext: number,
+  stats: StatBlock,
+  statXP: StatXPBlock,
+  levelHistory: LevelHistoryRecord[],
+  xpHistory: XPHistoryRecord[],
+  formulaStatus: string,
+  progressionWarnings: string[]
+}
+
+12.3 StatBlock
+
+StatBlock: {
+  ATK: number,
+  DEF: number,
+  SPD: number,
+  INT: number,
+  LCK: number
+}
+
+12.4 StatXPBlock
+
+StatXPBlock: {
+  ATK: number,
+  DEF: number,
+  SPD: number,
+  INT: number,
+  LCK: number
+}
+
+12.5 LevelHistoryRecord
+
+LevelHistoryRecord: {
+  fromLevel: number,
+  toLevel: number,
+  turn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+12.6 XPHistoryRecord
+
+XPHistoryRecord: {
+  amount: number,
+  reason: string,
+  sourceEventKey: string,
+  turn: number,
+  duplicateBlocked: boolean
+}
+
+12.7 Defaults
+
+level = 1
+currentXP = 0
+totalXP = 0
+xpToNext = 125
+stats.ATK = 10
+stats.DEF = 10
+stats.SPD = 10
+stats.INT = 10
+stats.LCK = 10
+statXP all = 0
+levelHistory = []
+xpHistory = []
+formulaStatus = 'formula_appendix_v1_available_not_fully_automated'
+progressionWarnings = []
+
+12.8 Mutation owner
+
+ProgressionReducerLite owns XP, levels, stats, and statXP.
+
+Formula Appendix informs math but does not mutate state by itself.
+
+⸻
+
+13. inventory schema
+
+13.1 Purpose
+
+inventory stores owned items, equipment, currency, scene items, and custody/access states.
+
+13.2 Schema
+
+inventory: {
+  items: ItemRecord[],
+  equipped: EquippedRecord[],
+  currency: CurrencyRecord,
+  sceneItems: SceneItemRecord[],
+  accessStates: string[],
+  inventoryWarnings: string[]
+}
+
+13.3 ItemRecord
+
+ItemRecord: {
+  itemId: string,
+  name: string,
+  canonicalKey: string,
+  itemType: string,
+  quantity: number,
+  owner: 'player' | 'actor' | 'unknown' | 'none',
+  ownerId: string,
+  custody: 'player' | 'actor' | 'place' | 'unknown',
+  custodyId: string,
+  accessState: 'held' | 'equipped' | 'stored' | 'npc_custody' | 'inaccessible' | 'lost' | 'sold' | 'destroyed' | 'consumed',
+  equippedSlot: string,
+  questLinked: boolean,
+  unique: boolean,
+  personalName: string,
+  baseName: string,
+  condition: 'new' | 'good' | 'worn' | 'damaged' | 'broken' | 'unknown',
+  createdTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+13.4 EquippedRecord
+
+EquippedRecord: {
+  slot: string,
+  itemId: string
+}
+
+13.5 CurrencyRecord
+
+CurrencyRecord: {
+  copper: number,
+  silver: number,
+  gold: number,
+  abstractValue: number,
+  notes: string[]
+}
+
+MVP may use whichever currency fields are relevant, but must not treat future economy as active.
+
+13.6 SceneItemRecord
+
+SceneItemRecord: {
+  sceneItemId: string,
+  name: string,
+  canonicalKey: string,
+  itemType: string,
+  quantity: number,
+  accessState: 'visible' | 'available_loot' | 'inaccessible',
+  locationId: string,
+  sceneId: string,
+  custodyId: string,
+  questLinked: boolean,
+  expiresOnSceneChange: boolean,
+  createdTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+13.7 Defaults
+
+items = []
+equipped = []
+currency.copper = 0
+currency.silver = 0
+currency.gold = 0
+currency.abstractValue = 0
+currency.notes = []
+sceneItems = []
+accessStates = ['visible','available_loot','held','equipped','stored','npc_custody','inaccessible','lost','sold','destroyed','consumed']
+inventoryWarnings = []
+
+13.8 Key rule
+
+visible and available_loot are scene item states, not inventory ownership.
+
+⸻
+
+14. abilities schema
+
+14.1 Purpose
+
+abilities stores stable, unstable, candidate, passive, talent, sealed, and unavailable ability records.
+
+14.2 Schema
+
+abilities: {
+  records: AbilityRecord[],
+  statuses: string[],
+  abilityWarnings: string[]
+}
+
+14.3 AbilityRecord
+
+AbilityRecord: {
+  abilityId: string,
+  name: string,
+  canonicalKey: string,
+  status: 'unknown' | 'hint' | 'candidate' | 'unstable' | 'stable' | 'sealed' | 'unavailable',
+  category: 'active' | 'passive' | 'talent' | 'skill' | 'specialization' | 'unknown',
+  rank: string,
+  evidence: AbilityEvidenceRecord[],
+  costLabel: string,
+  resourceCosts: ResourceCostRecord[],
+  requirements: string[],
+  cooldown: string,
+  reliability: 'none' | 'low' | 'medium' | 'high' | 'stable' | 'unknown',
+  sealedReason: string,
+  createdTurn: number,
+  lastUsedTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+14.4 AbilityEvidenceRecord
+
+AbilityEvidenceRecord: {
+  evidenceId: string,
+  type: 'attempt' | 'failure' | 'partial_success' | 'success' | 'training' | 'setup' | 'manual' | 'unknown',
+  confidence: number,
+  turn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+14.5 ResourceCostRecord
+
+ResourceCostRecord: {
+  resource: 'HP' | 'MP' | 'EP' | 'hybrid' | 'unknown',
+  amountLabel: string,
+  numericEstimate: number | null
+}
+
+14.6 Defaults
+
+records = []
+statuses = ['unknown','hint','candidate','unstable','stable','sealed','unavailable']
+abilityWarnings = []
+
+14.7 Key rule
+
+Candidate ability is not stable.
+
+Failed attempt may add evidence but must not create stable ability.
+
+⸻
+
+15. quests schema
+
+15.1 Purpose
+
+quests stores quest records, objectives, rewards, and quest status.
+
+15.2 Schema
+
+quests: {
+  records: QuestRecord[],
+  statuses: string[],
+  rewardStatuses: string[],
+  questWarnings: string[]
+}
+
+15.3 QuestRecord
+
+QuestRecord: {
+  questId: string,
+  title: string,
+  canonicalKey: string,
+  status: 'rumored' | 'offered' | 'active' | 'blocked' | 'ready_to_turn_in' | 'completed' | 'rewarded' | 'failed' | 'abandoned' | 'archived',
+  giverActorId: string,
+  relatedActorIds: string[],
+  relatedPlaceIds: string[],
+  objectives: QuestObjectiveRecord[],
+  reward: QuestRewardRecord,
+  deadline: string,
+  truthStatus: 'confirmed' | 'rumored' | 'claimed' | 'suspected' | 'unknown',
+  createdTurn: number,
+  updatedTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+15.4 QuestObjectiveRecord
+
+QuestObjectiveRecord: {
+  objectiveId: string,
+  text: string,
+  status: 'not_started' | 'active' | 'blocked' | 'complete' | 'failed',
+  progressCurrent: number,
+  progressRequired: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+15.5 QuestRewardRecord
+
+QuestRewardRecord: {
+  status: 'none' | 'promised' | 'ready' | 'paid' | 'disputed' | 'denied',
+  description: string,
+  currency: CurrencyRecord,
+  items: string[],
+  xp: number,
+  operationKey: string,
+  paidTurn: number,
+  notes: string[]
+}
+
+15.6 Defaults
+
+records = []
+statuses = ['rumored','offered','active','blocked','ready_to_turn_in','completed','rewarded','failed','abandoned','archived']
+rewardStatuses = ['none','promised','ready','paid','disputed','denied']
+questWarnings = []
+
+15.7 Key rule
+
+Promised reward is not paid reward.
+
+Quest objective completion is not reward payment.
+
+⸻
+
+16. actors schema
+
+16.1 Purpose
+
+actors stores persistent actors, scene actors, companions, presence, relationships, and social memory.
+
+16.2 Schema
+
+actors: {
+  records: ActorRecord[],
+  sceneActors: SceneActorRecord[],
+  presenceStates: string[],
+  actorWarnings: string[]
+}
+
+16.3 ActorRecord
+
+ActorRecord: {
+  actorId: string,
+  name: string,
+  canonicalKey: string,
+  actorType: 'npc' | 'companion' | 'enemy' | 'familiar' | 'summon' | 'merchant' | 'quest_giver' | 'unknown',
+  importance: 'minor' | 'important' | 'major' | 'companion' | 'unknown',
+  presence: 'present' | 'nearby' | 'elsewhere' | 'unknown' | 'absent' | 'dead' | 'captured',
+  currentPlaceId: string,
+  relationshipToPlayer: string,
+  status: string,
+  truthStatus: 'confirmed' | 'claimed' | 'rumored' | 'suspected' | 'unknown',
+  memories: ActorMemoryRecord[],
+  custodyItems: string[],
+  aliases: string[],
+  createdTurn: number,
+  updatedTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+16.4 ActorMemoryRecord
+
+ActorMemoryRecord: {
+  memoryId: string,
+  text: string,
+  truthStatus: 'confirmed' | 'claimed' | 'rumored' | 'suspected' | 'unknown',
+  sourceEventKey: string,
+  turn: number,
+  notes: string[]
+}
+
+16.5 SceneActorRecord
+
+SceneActorRecord: {
+  sceneActorId: string,
+  name: string,
+  canonicalKey: string,
+  actorId: string,
+  presence: 'present' | 'nearby' | 'unknown',
+  promoted: boolean,
+  expiresOnSceneChange: boolean,
+  createdTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+16.6 Defaults
+
+records = []
+sceneActors = []
+presenceStates = ['present','nearby','elsewhere','unknown','absent','dead','captured']
+actorWarnings = []
+
+16.7 Key rule
+
+Absent actors cannot act in the current scene.
+
+Generic scene actors do not become persistent automatically.
+
+⸻
+
+17. places schema
+
+17.1 Purpose
+
+places stores current location, current scene, known places, and travel intent.
+
+17.2 Schema
+
+places: {
+  currentLocation: CurrentLocationRecord,
+  currentScene: CurrentSceneRecord,
+  records: PlaceRecord[],
+  travelIntent: TravelIntentRecord | null,
+  placeWarnings: string[]
+}
+
+17.3 CurrentLocationRecord
+
+CurrentLocationRecord: {
+  placeId: string,
+  name: string,
+  confidence: 'confirmed' | 'likely' | 'unknown',
+  sourceEventKey: string,
+  updatedTurn: number
+}
+
+17.4 CurrentSceneRecord
+
+CurrentSceneRecord: {
+  sceneId: string,
+  summary: string,
+  presentActors: string[],
+  visibleItems: string[],
+  hazards: string[],
+  exits: string[],
+  createdTurn: number,
+  updatedTurn: number
+}
+
+17.5 PlaceRecord
+
+PlaceRecord: {
+  placeId: string,
+  name: string,
+  canonicalKey: string,
+  placeType: 'location' | 'route' | 'room' | 'settlement' | 'building' | 'region' | 'unknown',
+  importance: 'scene' | 'known' | 'important' | 'major' | 'unknown',
+  aliases: string[],
+  truthStatus: 'confirmed' | 'rumored' | 'claimed' | 'unknown',
+  createdTurn: number,
+  updatedTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+17.6 TravelIntentRecord
+
+TravelIntentRecord: {
+  destinationText: string,
+  destinationPlaceId: string,
+  status: 'intended' | 'in_progress' | 'interrupted' | 'arrived' | 'cancelled',
+  createdTurn: number,
+  sourceEventKey: string,
+  notes: string[]
+}
+
+17.7 Defaults
+
+currentLocation.placeId = 'unknown'
+currentLocation.name = 'Unknown Location'
+currentLocation.confidence = 'unknown'
+currentLocation.sourceEventKey = ''
+currentLocation.updatedTurn = 0
+currentScene.sceneId = 'initial_scene'
+currentScene.summary = 'No scene established yet.'
+currentScene.presentActors = []
+currentScene.visibleItems = []
+currentScene.hazards = []
+currentScene.exits = []
+currentScene.createdTurn = 0
+currentScene.updatedTurn = 0
+records = []
+travelIntent = null
+placeWarnings = []
+
+17.8 Key rule
+
+Travel intent is not arrival.
+
+Generic rooms/roads/doors do not become durable places by default.
+
+⸻
+
+18. time schema
+
+18.1 Purpose
+
+time stores text-based campaign time, turn count, time advancement notes, rest notes, and deadlines.
+
+18.2 Schema
+
+time: {
+  text: string,
+  turn: number,
+  lastAdvance: TimeAdvanceRecord | null,
+  deadlines: DeadlineRecord[],
+  timeWarnings: string[]
+}
+
+18.3 TimeAdvanceRecord
+
+TimeAdvanceRecord: {
+  amountText: string,
+  reason: string,
+  sourceEventKey: string,
+  turn: number,
+  duplicateBlocked: boolean
+}
+
+18.4 DeadlineRecord
+
+DeadlineRecord: {
+  deadlineId: string,
+  text: string,
+  linkedQuestId: string,
+  status: 'active' | 'missed' | 'completed' | 'cancelled' | 'unknown',
+  sourceEventKey: string,
+  notes: string[]
+}
+
+18.5 Defaults
+
+text = 'unknown'
+turn = 0
+lastAdvance = null
+deadlines = []
+timeWarnings = []
+
+18.6 Key rule
+
+Planning to rest or travel does not advance time.
+
+Confirmed time passage may advance time once.
+
+⸻
+
+19. cards schema
+
+19.1 Purpose
+
+cards stores Story Card registry/mirror state, protected card definitions, sync flags, tombstones, and card audits.
+
+19.2 Schema
+
+cards: {
+  registry: CardRegistryEntry[],
+  protectedCards: string[],
+  dirtyCards: string[],
+  tombstones: CardTombstoneRecord[],
+  duplicateWarnings: CardDuplicateWarning[],
+  api: CardApiState,
+  sync: CardSyncState,
+  lastCardAudit: string[]
+}
+
+19.3 CardRegistryEntry
+
+CardRegistryEntry: {
+  canonicalKey: string,
+  visibleTitle: string,
+  cardFamily: 'protected' | 'generated',
+  cardType: string,
+  externalId: string,
+  externalRef: string,
+  knownTitleVariants: string[],
+  allowedTriggers: string[],
+  sourceStateIds: string[],
+  protected: boolean,
+  generated: boolean,
+  dirty: boolean,
+  disabled: boolean,
+  tombstoned: boolean,
+  lastRenderedHash: string,
+  lastKnownExternalHash: string,
+  lastUpdatedTurn: number,
+  createOperationKey: string,
+  updateOperationKeys: string[],
+  status: 'planned' | 'active' | 'missing' | 'duplicate_detected' | 'disabled' | 'error' | 'dry_run_only',
+  notes: string[]
+}
+
+19.4 CardApiState
+
+CardApiState: {
+  capabilitiesChecked: boolean,
+  available: boolean,
+  supportsList: boolean,
+  supportsAdd: boolean,
+  supportsUpdate: boolean,
+  supportsRemove: boolean,
+  supportsDisable: boolean,
+  lastCapabilityCheckTurn: number,
+  warnings: string[],
+  errors: string[]
+}
+
+19.5 CardSyncState
+
+CardSyncState: {
+  dryRun: boolean,
+  safeMode: boolean,
+  liveWritesEnabled: boolean,
+  protectedWritesEnabled: boolean,
+  generatedCardsEnabled: boolean,
+  maxProtectedUpdatesPerTurn: number,
+  maxGeneratedCreatesPerTurn: number,
+  maxGeneratedUpdatesPerTurn: number,
+  lastSyncTurn: number,
+  writesThisTurn: number,
+  generatedCreatesThisTurn: number,
+  generatedUpdatesThisTurn: number
+}
+
+19.6 Defaults
+
+registry = []
+protectedCards = [
+  'protected:player_sheet',
+  'protected:body_status',
+  'protected:abilities',
+  'protected:inventory_equipment',
+  'protected:quest_log',
+  'protected:social_memory',
+  'protected:current_location'
+]
+dirtyCards = []
+tombstones = []
+duplicateWarnings = []
+api.capabilitiesChecked = false
+api.available = false
+api.supportsList = false
+api.supportsAdd = false
+api.supportsUpdate = false
+api.supportsRemove = false
+api.supportsDisable = false
+api.lastCapabilityCheckTurn = 0
+api.warnings = []
+api.errors = []
+sync.dryRun = true
+sync.safeMode = true
+sync.liveWritesEnabled = false
+sync.protectedWritesEnabled = false
+sync.generatedCardsEnabled = false
+sync.maxProtectedUpdatesPerTurn = 3
+sync.maxGeneratedCreatesPerTurn = 0
+sync.maxGeneratedUpdatesPerTurn = 0
+sync.lastSyncTurn = 0
+sync.writesThisTurn = 0
+sync.generatedCreatesThisTurn = 0
+sync.generatedUpdatesThisTurn = 0
+lastCardAudit = []
+
+19.7 Key rule
+
+Cards mirror state only.
+
+Card text cannot create canon.
+
+Generated cards disabled in MVP.
+
+⸻
+
+20. operationLedger schema
+
+20.1 Purpose
+
+operationLedger prevents duplicate operations.
+
+20.2 Schema
+
+operationLedger: {
+  permanentKeys: string[],
+  recentKeys: string[],
+  rewardKeys: string[],
+  cardKeys: string[],
+  sourceUseKeys: string[],
+  maxRecentKeys: number,
+  ledgerWarnings: string[]
+}
+
+20.3 Defaults
+
+permanentKeys = []
+recentKeys = []
+rewardKeys = []
+cardKeys = []
+sourceUseKeys = []
+maxRecentKeys = 250
+ledgerWarnings = []
+
+20.4 Key rule
+
+Important one-time operations must use stable keys.
+
+Examples:
+
+startup.import.player.name
+item.pickup.rusty_dagger.scene_12
+quest.reward.clear_mill_wolves.old_bren
+card.create.protected.player_sheet
+
+⸻
+
+21. audits schema
+
+21.1 Purpose
+
+audits stores capped diagnostics for commands, validation, runtime, cards, context, cleanup, migration, and release checks.
+
+21.2 Schema
+
+audits: {
+  lastTurnSummary: TurnSummaryRecord | null,
+  recentProposals: AuditRecord[],
+  recentValidationResults: AuditRecord[],
+  debugMessages: string[],
+  runtimeWarnings: string[],
+  cardAudit: string[],
+  contextAudit: string[],
+  cleanupAudit: string[],
+  migrationAudit: string[],
+  releaseCheck: ReleaseCheckRecord | null
+}
+
+21.3 TurnSummaryRecord
+
+TurnSummaryRecord: {
+  turn: number,
+  inputHash: string,
+  outputHash: string,
+  proposalsCreated: number,
+  accepted: number,
+  rejected: number,
+  duplicateSkipped: number,
+  dirtyTargets: string[],
+  notes: string[]
+}
+
+21.4 AuditRecord
+
+AuditRecord: {
+  turn: number,
+  family: string,
+  outcome: string,
+  reason: string,
+  sourceEventKey: string,
+  preview: string,
+  notes: string[]
+}
+
+21.5 ReleaseCheckRecord
+
+ReleaseCheckRecord: {
+  turn: number,
+  result: 'PASS' | 'WARN' | 'FAIL' | 'BLOCKED',
+  passes: string[],
+  warnings: string[],
+  failures: string[],
+  blockers: string[]
+}
+
+21.6 Defaults
+
+lastTurnSummary = null
+recentProposals = []
+recentValidationResults = []
+debugMessages = []
+runtimeWarnings = []
+cardAudit = []
+contextAudit = []
+cleanupAudit = []
+migrationAudit = []
+releaseCheck = null
+
+21.7 Caps
+
+Recommended:
+
+recentProposals max = 50
+recentValidationResults max = 50
+debugMessages max = 50
+runtimeWarnings max = 25
+cardAudit max = 50
+contextAudit max = 50
+cleanupAudit max = 50
+migrationAudit max = 50
+
+⸻
+
+22. migration schema
+
+22.1 Purpose
+
+migration tracks old-state repair, safe imports, quarantine, ignored data, repaired fields, duplicate cards, and migration warnings.
+
+22.2 Schema
+
+migration: {
+  currentMigrationVersion: string,
+  lastMigrationTurn: number,
+  migrationStatus: 'none' | 'needed' | 'in_progress' | 'completed' | 'completed_with_warnings' | 'failed' | 'blocked',
+  imported: MigrationRecord[],
+  quarantined: QuarantineRecord[],
+  ignored: MigrationIgnoredRecord[],
+  repaired: MigrationRepairRecord[],
+  neutralizedCards: MigrationCardActionRecord[],
+  duplicateCards: MigrationCardActionRecord[],
+  warnings: string[],
+  errors: string[],
+  migrationOperationKeys: string[]
+}
+
+22.3 Defaults
+
+currentMigrationVersion = 'none'
+lastMigrationTurn = 0
+migrationStatus = 'none'
+imported = []
+quarantined = []
+ignored = []
+repaired = []
+neutralizedCards = []
+duplicateCards = []
+warnings = []
+errors = []
+migrationOperationKeys = []
+
+22.4 Key rule
+
+Old Story Card prose is not imported as canon.
+
+Unsafe old data is quarantined, not guessed.
+
+⸻
+
+23. quarantine schema
+
+23.1 Purpose
+
+quarantine stores unsafe but potentially relevant data that must not affect gameplay until manually resolved in a future system.
+
+23.2 Schema
+
+quarantine: {
+  records: QuarantineRecord[],
+  unresolvedCount: number,
+  quarantineWarnings: string[]
+}
+
+23.3 QuarantineRecord
+
+QuarantineRecord: {
+  quarantineId: string,
+  source: 'state' | 'card' | 'setup' | 'manual' | 'system',
+  sourceKey: string,
+  originalPreview: string,
+  reason: string,
+  severity: 'info' | 'warning' | 'danger' | 'blocked',
+  suggestedAction: 'ignore' | 'manual_review' | 'repair_later' | 'delete_later' | 'map_later',
+  createdTurn: number,
+  resolved: boolean,
+  resolution: string
+}
+
+23.4 Defaults
+
+records = []
+unresolvedCount = 0
+quarantineWarnings = []
+
+23.5 Key rule
+
+Quarantined records do not affect gameplay state.
+
+A quarantined item is not inventory.
+
+A quarantined quest is not active.
+
+A quarantined ability is not usable.
+
+⸻
+
+24. dirty schema
+
+24.1 Purpose
+
+dirty stores queued mirror/context/audit update targets.
+
+Dirty targets are not gameplay truth.
+
+24.2 Schema
+
+dirty: {
+  targets: DirtyTarget[],
+  maxDirtyTargets: number,
+  dirtyWarnings: string[]
+}
+
+24.3 DirtyTarget
+
+DirtyTarget: {
+  dirtyId: string,
+  family: 'player_sheet' | 'body_status' | 'abilities' | 'inventory_equipment' | 'quest_log' | 'social_memory' | 'current_location' | 'context' | 'card_registry' | 'migration' | 'audit',
+  stateIds: string[],
+  reason: string,
+  priority: number,
+  createdTurn: number,
+  lastAttemptTurn: number,
+  attempts: number,
+  status: 'queued' | 'processed' | 'skipped' | 'blocked' | 'error',
+  lastResult: string
+}
+
+24.4 Defaults
+
+targets = []
+maxDirtyTargets = 100
+dirtyWarnings = []
+
+24.5 Key rule
+
+Dirty targets may trigger card/context/audit refreshes only.
+
+They may not create gameplay facts.
+
+⸻
+
+25. cleanup schema
+
+25.1 Purpose
+
+cleanup stores cleanup status, schedules, warnings, and errors.
+
+25.2 Schema
+
+cleanup: {
+  lastCleanupTurn: number,
+  nextDeepCleanupTurn: number,
+  lastCleanupType: 'none' | 'lightweight' | 'scene' | 'deep' | 'migration',
+  recordsInspectedLastRun: number,
+  recordsChangedLastRun: number,
+  warnings: string[],
+  errors: string[]
+}
+
+25.3 Defaults
+
+lastCleanupTurn = 0
+nextDeepCleanupTurn = 25
+lastCleanupType = 'none'
+recordsInspectedLastRun = 0
+recordsChangedLastRun = 0
+warnings = []
+errors = []
+
+25.4 Key rule
+
+Cleanup may not delete important truth.
+
+Cleanup may not resolve quarantine automatically.
+
+Cleanup may not create gameplay state.
+
+⸻
+
+26. Deferred system placeholder policy
+
+Do not add active root buckets for deferred systems unless needed as disabled flags.
+
+Avoid active buckets like:
+
+economy
+crafting
+investigation
+domain
+absorption
+warfare
+
+in MVP root state unless a later build chunk explicitly unlocks them.
+
+MVP may mention deferred systems only in:
+
+* features flags
+* help text
+* releasecheck disabled-system checks
+* notes/warnings
+
+This prevents the script from pretending deferred systems are active.
+
+⸻
+
+27. State repair policy
+
+StateManager may repair:
+
+* missing root state
+* missing buckets
+* missing default fields
+* invalid enum values, using safe fallback and warning
+* malformed arrays, replacing with empty arrays only if no valid data exists
+* resource current/max bounds, with warning
+* cap oversized audit arrays
+
+StateManager must not:
+
+* erase valid records
+* import Story Card prose as truth
+* create gameplay outcomes from old logs
+* enable generated cards
+* resolve quarantine automatically
+* delete active inventory/quests/actors/abilities
+
+⸻
+
+28. State mutation source policy
+
+28.1 Allowed gameplay mutation path
+
+The normal gameplay mutation path is:
+
+AI output -> ParserHit -> EventProposal -> CanonValidator -> ReducerRegistry -> OwnerReducer -> OperationLedger -> DirtyTargets -> Audit
+
+28.2 Non-gameplay mutation path
+
+Allowed structural mutations:
+
+StateManager initialization
+StateManager repair
+migration/quarantine structural repair
+audit writes
+runtime hook metadata
+command suppression metadata
+cleanup of temporary/audit records
+
+28.3 Forbidden mutation sources
+
+Forbidden as gameplay sources:
+
+* Story Card text
+* Context text
+* command output
+* debug output
+* help text
+* old logs
+* archived summaries
+* generated cards
+* protected cards
+
+⸻
+
+29. Required command views by bucket
+
+Each command reads specific buckets.
+
+Command	Reads
+/help	meta, features
+/version	meta, features, migration, releaseCheck
+/sheet	player, progression
+/status	body
+/inventory	inventory
+/abilities	abilities
+/quests	quests
+/actors	actors
+/location	places
+/time	time
+/debuglast	audits, runtime
+/cardaudit	cards, audits.cardAudit
+/contextaudit	audits.contextAudit
+/stateaudit	meta, migration, quarantine, cleanup, dirty, audits
+/ledger	operationLedger
+/dirty	dirty
+/migration	migration
+/quarantine	quarantine
+/releasecheck	all buckets read-only
+/startupaudit	startup
+
+Commands may not mutate gameplay state.
+
+⸻
+
+30. Required dirty target mapping by bucket
+
+When future reducers mutate a bucket, they should mark dirty families.
+
+Mutated Bucket	Dirty Families
+player	player_sheet, context
+body	body_status, context
+progression	player_sheet, context
+inventory	inventory_equipment, current_location, context
+abilities	abilities, context
+quests	quest_log, context
+actors	social_memory, current_location, context
+places	current_location, context
+time	current_location, quest_log, context
+cards	card_registry, audit
+migration/quarantine	migration, audit
+cleanup	audit
+
+Dirty targets do not create gameplay truth.
+
+⸻
+
+31. Required state caps
+
+Recommended caps from Gap Chunk F:
+
+recentProposals max = 50
+recentValidationResults max = 50
+debugMessages max = 50
+runtimeWarnings max = 25
+runtimeErrors max = 20
+hookTrace max = 30
+recentOperationKeys max = 250
+contextPacketHashes max = 100, if added later
+dirtyTargets max = 100
+sceneItems max = 50
+sceneActors max = 30
+actorCandidates max = 50, if added later
+placeCandidates max = 50, if added later
+abilityEvidenceRecent max = 50
+quarantineRecords max = 100 before summary compaction
+
+If exact cap behavior is not coded yet, ReleaseCheck should warn until implemented.
+
+⸻
+
+32. State schema acceptance tests
+
+These are planning/schema tests.
+
+BC3-001 — Root buckets complete
+
+Expected:
+
+state.aidrpg contains all required buckets:
+
+meta, features, runtime, startup, player, body, progression, inventory, abilities, quests, actors, places, time, cards, operationLedger, audits, migration, quarantine, dirty, cleanup
+
+Fail if any required bucket is missing.
+
+BC3-002 — Feature defaults safe
+
+Expected:
+
+* generatedCardsEnabled false
+* cardSyncDryRun true
+* cardSyncSafeMode true
+* economy/crafting/investigation/domain/absorption disabled
+* manualMutationCommandsEnabled false
+
+Fail if dangerous features default active.
+
+BC3-003 — Runtime duplicate fields exist
+
+Expected:
+
+* lastOutputHash exists
+* lastAppliedOutputHash exists
+* suppressEventScanForCommandOutput exists
+
+Fail if duplicate output/command suppression cannot be tracked.
+
+BC3-004 — Inventory separates scene items from owned items
+
+Expected:
+
+* inventory.items exists
+* inventory.sceneItems exists
+* accessStates include visible and available_loot
+* visible/available_loot are not owned inventory states
+
+Fail if visible items are stored as owned by default.
+
+BC3-005 — Ability statuses include candidate/stable distinction
+
+Expected:
+
+* candidate
+* unstable
+* stable
+* sealed
+* unavailable
+
+Fail if candidate and stable are collapsed.
+
+BC3-006 — Quest reward statuses separate promised/paid
+
+Expected:
+
+* promised
+* ready
+* paid
+* disputed
+* denied
+
+Fail if promised reward implies paid currency.
+
+BC3-007 — Actor presence supports absent/elsewhere
+
+Expected:
+
+Presence states include:
+
+present, nearby, elsewhere, unknown, absent, dead, captured
+
+Fail if absent companion cannot be represented.
+
+BC3-008 — Place schema separates travel intent from current location
+
+Expected:
+
+* currentLocation exists
+* currentScene exists
+* travelIntent exists separately
+
+Fail if heading toward a location must overwrite current location.
+
+BC3-009 — Card defaults suppress generated cards
+
+Expected:
+
+* generatedCardsEnabled false in features and card sync
+* maxGeneratedCreatesPerTurn 0
+* maxGeneratedUpdatesPerTurn 0
+
+Fail if generated cards can activate by default.
+
+BC3-010 — OperationLedger buckets exist
+
+Expected:
+
+* permanentKeys
+* recentKeys
+* rewardKeys
+* cardKeys
+* sourceUseKeys
+
+Fail if reward/card duplicate prevention cannot be represented.
+
+BC3-011 — Quarantine exists and is non-gameplay
+
+Expected:
+
+* quarantine.records exists
+* quarantined records do not affect gameplay state
+
+Fail if quarantine data is treated as active truth.
+
+BC3-012 — Dirty targets are mirrors only
+
+Expected:
+
+* dirty.targets exists
+* dirty target families exist
+* dirty targets cannot create gameplay state
+
+Fail if dirty queue can create item/quest/actor/card truth.
+
+⸻
+
+33. Relationship to Gap Chunks A–G
+
+Build Chunk 3 incorporates Gap Chunks A–G in the schema:
+
+* Gap A: old fix owners are represented as buckets/modules, not patch roots
+* Gap B: runtime hook contract fields are included
+* Gap C: card registry/sync/tombstone/duplicate structures are included
+* Gap D: parser safety is supported through separate state ownership and future audit fields
+* Gap E: migration/quarantine/releasecheck fields are included
+* Gap F: dirty/cleanup/caps/audits are included
+* Gap G: startup and protected identity fields are included
+
+⸻
+
+34. What Build Chunk 4 should do next
+
+Next build document:
+
+Build Chunk 4 — Command Output Format Lock
+
+Build Chunk 4 should define exact output formats for:
+
+/help
+/version
+/sheet
+/status
+/inventory
+/abilities
+/quests
+/actors
+/location
+/time
+/debuglast
+/cardaudit
+/contextaudit
+/stateaudit
+/ledger
+/dirty
+/migration
+/quarantine
+/releasecheck
+/startupaudit
+
+It should make commands readable, honest, and non-mutating.
+
+⸻
+
+35. Final Build Chunk 3 doctrine
+
+The schema is now the contract.
+
+Do not invent new field names casually during coding.
+
+Do not add active deferred buckets early.
+
+Do not let display text become state.
+
+Do not let temporary records masquerade as permanent truth.
+
+Final rule:
+
+One root state.
+Named buckets.
+Known owners.
+Safe defaults.
+No hidden roots.
+No guessed canon.
+No state mutation without authority.
+
+With this schema locked, command output formats can be finalized next.
