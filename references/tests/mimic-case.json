@@ -1,0 +1,6 @@
+{
+  "turns": [
+    { "input": "I pick up the rusted iron key.", "output": "You pick up the rusted iron key and place it in your pouch." },
+    { "input": "I try to take the jeweled crown.", "output": "You reach for the jeweled crown, but Mira stops you before you can take it." }
+  ]
+}

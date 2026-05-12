@@ -1,0 +1,404 @@
+[
+  {
+    "name": "AI Dungeon Story Card API / add duplicate returns false and uses entry field",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The tester must emulate AI Dungeon addStoryCard(keys, entry, type) closely enough to catch CardSync mistakes.",
+    "expectedOutcome": "addStoryCard returns a numeric index, duplicate keys return false, and storyCards expose entry/keys/type.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "first": 0,
+          "duplicate": false,
+          "length": 1,
+          "firstEntry": "A goblin guard blocks the hall.",
+          "firstKeys": "goblin,guard",
+          "firstType": "character"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.first",
+        "expected": 0,
+        "passed": true,
+        "actual": 0
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.duplicate",
+        "expected": false,
+        "passed": true,
+        "actual": false
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.length",
+        "expected": 1,
+        "passed": true,
+        "actual": 1
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardApi.firstEntry",
+        "expected": "goblin guard",
+        "passed": true,
+        "actual": "A goblin guard blocks the hall."
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardApi.firstKeys",
+        "expected": "goblin",
+        "passed": true,
+        "actual": "goblin,guard"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardApi.firstType",
+        "expected": "character",
+        "passed": true,
+        "actual": "character"
+      },
+      {
+        "type": "storyCardsHaveEntryFields",
+        "passed": true,
+        "actual": {
+          "count": 1,
+          "bad": []
+        }
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "first": 0,
+          "duplicate": false,
+          "length": 1,
+          "firstEntry": "A goblin guard blocks the hall.",
+          "firstKeys": "goblin,guard",
+          "firstType": "character"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 157
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [
+      {
+        "op": "addStoryCard",
+        "index": 0,
+        "card": {
+          "id": 0,
+          "keys": "goblin,guard",
+          "entry": "A goblin guard blocks the hall.",
+          "value": "A goblin guard blocks the hall.",
+          "type": "character"
+        },
+        "result": 0
+      },
+      {
+        "op": "addStoryCard",
+        "keys": "goblin,guard",
+        "entry": "Duplicate should not be added.",
+        "type": "character",
+        "result": false,
+        "reason": "duplicate_keys"
+      }
+    ],
+    "lastReturn": {
+      "first": 0,
+      "duplicate": false,
+      "length": 1,
+      "firstEntry": "A goblin guard blocks the hall.",
+      "firstKeys": "goblin,guard",
+      "firstType": "character"
+    }
+  },
+  {
+    "name": "AI Dungeon Story Card API / update and remove by numeric index",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The tester must catch CardSync code that assumes object/id patch behavior instead of numeric index update/remove.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "updated": true,
+          "updatedEntry": "New entry after update.",
+          "updatedKeys": "new key",
+          "removed": true,
+          "length": 0
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.updated",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardUpdate.updatedEntry",
+        "expected": "New entry",
+        "passed": true,
+        "actual": "New entry after update."
+      },
+      {
+        "type": "containsText",
+        "path": "state.__storyCardUpdate.updatedKeys",
+        "expected": "new key",
+        "passed": true,
+        "actual": "new key"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.removed",
+        "expected": true,
+        "passed": true,
+        "actual": true
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardUpdate.length",
+        "expected": 0,
+        "passed": true,
+        "actual": 0
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "updated": true,
+          "updatedEntry": "New entry after update.",
+          "updatedKeys": "new key",
+          "removed": true,
+          "length": 0
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 129
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [
+      {
+        "op": "addStoryCard",
+        "index": 0,
+        "card": {
+          "id": 0,
+          "keys": "old key",
+          "entry": "Old entry.",
+          "value": "Old entry.",
+          "type": "item"
+        },
+        "result": 0
+      },
+      {
+        "op": "updateStoryCard",
+        "index": 0,
+        "legacy": false,
+        "card": {
+          "id": 0,
+          "keys": "new key",
+          "entry": "New entry after update.",
+          "value": "New entry after update.",
+          "type": "item"
+        },
+        "result": true
+      },
+      {
+        "op": "removeStoryCard",
+        "index": 0,
+        "legacy": false,
+        "removed": {
+          "id": 0,
+          "keys": "new key",
+          "entry": "New entry after update.",
+          "value": "New entry after update.",
+          "type": "item"
+        },
+        "result": true
+      }
+    ],
+    "lastReturn": {
+      "updated": true,
+      "updatedEntry": "New entry after update.",
+      "updatedKeys": "new key",
+      "removed": true,
+      "length": 0
+    }
+  },
+  {
+    "name": "AI Dungeon Story Card API / missing update and remove throw",
+    "suite": "storycard-api",
+    "expectedSystem": "Story Card API Mock",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Missing card updates/removals should be surfaced as errors in tests rather than silently succeeding.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "eval",
+        "text": "",
+        "returnValue": {
+          "update": "throw",
+          "remove": "throw"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "equals",
+        "path": "state.__storyCardMissing.update",
+        "expected": "throw",
+        "passed": true,
+        "actual": "throw"
+      },
+      {
+        "type": "equals",
+        "path": "state.__storyCardMissing.remove",
+        "expected": "throw",
+        "passed": true,
+        "actual": "throw"
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "update": "throw",
+          "remove": "throw"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "eval",
+            "text": "",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 58
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "eval",
+        "text": "",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "update": "throw",
+      "remove": "throw"
+    }
+  }
+]

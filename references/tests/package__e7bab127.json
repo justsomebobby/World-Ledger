@@ -1,0 +1,14 @@
+{
+  "name": "aidrpg-whole-system-tester-starter",
+  "version": "1.4.0",
+  "description": "AIDRPG Final AI Dungeon Stress Tester v1.4 with supervised official runs and AI Dungeon play-loop canon-confirmation harness.",
+  "main": "runner.js",
+  "scripts": {
+    "test": "node runner.js --suite smoke",
+    "smoke": "node runner.js --suite smoke",
+    "all": "node runner.js --suite all",
+    "v14:quick": "node run_v14_all.js --quick",
+    "v14:custom": "node runner14.js --preset standard"
+  },
+  "license": "UNLICENSED"
+}

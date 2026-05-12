@@ -1,0 +1,18 @@
+{
+  "name": "aidrpg-ai-dungeon-mimic-tester",
+  "version": "1.4.1",
+  "description": "AIDRPG AI Dungeon mimic/stress tester with safe script resolution, quick ChatGPT runs, and bounded play-loop tests.",
+  "main": "aid-mimic.js",
+  "scripts": {
+    "test": "node runner14.js --preset smoke --limit 10",
+    "smoke": "node runner14.js --preset smoke --limit 10",
+    "mimic": "node aid-mimic.js --input \"I look around.\" --output \"You look around the room.\"",
+    "official-smoke": "node runner.js --suite smoke --include-passed",
+    "quick": "node run_v14_all.js --quick --no-official --custom-timeout-ms 60000",
+    "all": "node run_v14_all.js --custom-preset standard",
+    "isolated": "node runner14.js --preset smoke --limit 10 --isolated",
+    "quick-with-official": "node run_v14_all.js --quick --custom-timeout-ms 60000 --official-timeout-ms 45000",
+    "denial-one": "node runner14.js --category inventory-denial --limit 1 --isolated --case-timeout-ms 6000"
+  },
+  "license": "UNLICENSED"
+}

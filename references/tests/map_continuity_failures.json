@@ -1,0 +1,3238 @@
+[
+  {
+    "name": "Route timing / break affects actual elapsed time but not base route duration",
+    "suite": "adventure-route-time",
+    "expectedSystem": "TimeTravelSystem",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "Inspect route duration memory and trip-event logging.",
+    "severity": "High",
+    "maturity": "FINAL_PRODUCT_EXPECTATION",
+    "intendedFunction": "Breaks should affect actual elapsed travel without rewriting the remembered base route.",
+    "expectedOutcome": "Known route stays one hour; actual interrupted trip can be one hour thirty.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "We travel from the guild to the Old Barrow but take a thirty minute lunch break halfway.",
+        "returnValue": {
+          "text": "We travel from the guild to the Old Barrow but take a thirty minute lunch break halfway."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "The base walk to the Old Barrow is one hour, but the lunch break makes the trip take one hour and thirty minutes total.",
+        "returnValue": {
+          "text": "The base walk to the Old Barrow is one hour, but the lunch break makes the trip take one hour and thirty minutes total."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "We go back later without taking a break.",
+        "returnValue": {
+          "text": "We go back later without taking a break."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "Without the break, the walk back to the Adventurers Guild takes the normal one hour.",
+        "returnValue": {
+          "text": "Without the break, the walk back to the Adventurers Guild takes the normal one hour."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 9\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 9.13\nKnown Route Times: 1\nContradiction Flags: none\nKnown Routes: adventurers guild <-> Old Barrow = 60m base\nRecent Route Notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\n"
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route with break and normal return.",
+        "returnValue": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +2 from exploration\nTime: Day 1 | 09:08 | Season: spring | Weather: clear | Routes: adventurers guild <-> Old Barrow 60m base | Route notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\nScene: Adventurers Guild Hall | Location: Old Barrow | Type: building interior\nNearby actors: local_actor_adventurer [humanoid] lvl 1-5\n\nContinue after route with break and normal return."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "anyStringContainsAll",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": true,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "9.13",
+          "routes",
+          "knownTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "fromRef",
+          "adventurers_guild",
+          "toRef",
+          "location_old_barrow",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "route_location_old_barrow_to_adventurers_guild",
+          "fromRef",
+          "location_old_barrow",
+          "toRef",
+          "adventurers_guild",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "baseTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "60",
+          "recentRouteEvents",
+          "turn",
+          "1",
+          "message",
+          "Route memory: adventurers guild <-> old barrow is 60 minutes.",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "0",
+          "note",
+          "travel",
+          "minutesAdvanced",
+          "60",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ],
+        "missing": []
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "thirty",
+          "30",
+          "break",
+          "1.5",
+          "90"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "9.13",
+          "routes",
+          "knownTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "fromRef",
+          "adventurers_guild",
+          "toRef",
+          "location_old_barrow",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "route_location_old_barrow_to_adventurers_guild",
+          "fromRef",
+          "location_old_barrow",
+          "toRef",
+          "adventurers_guild",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "baseTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "60",
+          "recentRouteEvents",
+          "turn",
+          "1",
+          "message",
+          "Route memory: adventurers guild <-> old barrow is 60 minutes.",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "0",
+          "note",
+          "travel",
+          "minutesAdvanced",
+          "60",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "one hour",
+          "1 hour",
+          "normal"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "9.13",
+          "routes",
+          "knownTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "fromRef",
+          "adventurers_guild",
+          "toRef",
+          "location_old_barrow",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "route_location_old_barrow_to_adventurers_guild",
+          "fromRef",
+          "location_old_barrow",
+          "toRef",
+          "adventurers_guild",
+          "minutes",
+          "60",
+          "lastActualMinutes",
+          "60",
+          "lastDelayReason",
+          "",
+          "lastConfirmedTurn",
+          "1",
+          "symmetric",
+          "true",
+          "baseTravelTimes",
+          "route_adventurers_guild_to_location_old_barrow",
+          "60",
+          "recentRouteEvents",
+          "turn",
+          "1",
+          "message",
+          "Route memory: adventurers guild <-> old barrow is 60 minutes.",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "0",
+          "note",
+          "travel",
+          "minutesAdvanced",
+          "60",
+          "day",
+          "1",
+          "hour",
+          "9",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "lastReturnContainsAny",
+        "expected": [
+          "break",
+          "normal",
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": true,
+        "actual": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +2 from exploration\nTime: Day 1 | 09:08 | Season: spring | Weather: clear | Routes: adventurers guild <-> Old Barrow 60m base | Route notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\nScene: Adventurers Guild Hall | Location: Old Barrow | Type: building interior\nNearby actors: local_actor_adventurer [humanoid] lvl 1-5\n\nContinue after route with break and normal return."
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +2 from exploration\nTime: Day 1 | 09:08 | Season: spring | Weather: clear | Routes: adventurers guild <-> Old Barrow 60m base | Route notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\nScene: Adventurers Guild Hall | Location: Old Barrow | Type: building interior\nNearby actors: local_actor_adventurer [humanoid] lvl 1-5\n\nContinue after route with break and normal return."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "We travel from the guild to the Old Barrow but take a thirty minute lunch break halfway.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "The base walk to the Old Barrow is one hour, but the lunch break makes the trip take one hour and thirty minutes total.",
+            "durationMs": 7
+          },
+          {
+            "hook": "input",
+            "text": "We go back later without taking a break.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "Without the break, the walk back to the Adventurers Guild takes the normal one hour.",
+            "durationMs": 3
+          },
+          {
+            "hook": "input",
+            "text": "/time",
+            "durationMs": 1
+          },
+          {
+            "hook": "context",
+            "text": "Continue after route with break and normal return.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 14355
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 574
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg.meta.currentTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history",
+        "after": {
+          "type": "object",
+          "keyCount": 1,
+          "keys": [
+            "recentGains"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "lastSource",
+            "repeatCount"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.derived.combatPressure",
+        "after": 10
+      },
+      {
+        "path": "state.aidrpg.player.derived.mobility",
+        "after": 8
+      },
+      {
+        "path": "state.aidrpg.player.derived.threatRating",
+        "after": 35
+      },
+      {
+        "path": "state.aidrpg.player.age",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.titles",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.history",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "majorEvents",
+            "timeSkips"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.traitState",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "byId",
+            "byKey",
+            "allIds",
+            "conditionIds",
+            "traitIds",
+            "resistanceTags",
+            "immunityTags",
+            "vulnerabilityTags",
+            "adaptationTags",
+            "sensitivityTags",
+            "exposureByDomain",
+            "growthHooks",
+            "recentEvents"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "combat_capable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "balanced_method"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "stamina_leaning",
+            "control_sensitive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "power_bias",
+            "technical_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "power-biased",
+            "technical-biased"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.matchupProfile",
+        "after": {
+          "type": "object",
+          "keyCount": 3,
+          "keys": [
+            "strongAgainst",
+            "weakAgainst",
+            "unfamiliarAgainst"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.byKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.skillIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.talentIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.passiveIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.recentEvents",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.scene",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.storage",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.actors",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.equipment.mainHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.offHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.head",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.body",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.hands",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.legs",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.feet",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.accessory1",
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "We travel from the guild to the Old Barrow but take a thirty minute lunch break halfway.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "The base walk to the Old Barrow is one hour, but the lunch break makes the trip take one hour and thirty minutes total.",
+        "durationMs": 7
+      },
+      {
+        "hook": "input",
+        "text": "We go back later without taking a break.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "Without the break, the walk back to the Adventurers Guild takes the normal one hour.",
+        "durationMs": 3
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "durationMs": 1
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route with break and normal return.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 9\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 9.13\nKnown Route Times: 1\nContradiction Flags: none\nKnown Routes: adventurers guild <-> Old Barrow = 60m base\nRecent Route Notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +2 from exploration\nTime: Day 1 | 09:08 | Season: spring | Weather: clear | Routes: adventurers guild <-> Old Barrow 60m base | Route notes: Route memory: adventurers guild <-> old barrow is 60 minutes.\nScene: Adventurers Guild Hall | Location: Old Barrow | Type: building interior\nNearby actors: local_actor_adventurer [humanoid] lvl 1-5\n\nContinue after route with break and normal return."
+    }
+  },
+  {
+    "name": "Route timing variant / rain delay changes actual trip but not base route",
+    "suite": "adventure-route-time",
+    "expectedSystem": "TimeTravelSystem",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "Inspect delay/event reason capture and route baseline separation.",
+    "severity": "High",
+    "maturity": "FINAL_PRODUCT_EXPECTATION",
+    "intendedFunction": "Delays should be logged as actual trip conditions, not random route rewrites.",
+    "expectedOutcome": "Base route remains stable while the delayed trip is remembered.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but muddy rain slows you down.",
+        "returnValue": {
+          "text": "We go from the Adventurers Guild to the Old Barrow, but muddy rain slows you down."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "The rain and mud make the trip to the Old Barrow take one hour and twenty minutes, but the dry return later takes the usual one hour.",
+        "returnValue": {
+          "text": "The rain and mud make the trip to the Old Barrow take one hour and twenty minutes, but the dry return later takes the usual one hour."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: rain\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "returnValue": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: rain\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "anyStringContainsAll",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "rain",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ],
+        "missing": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "one hour",
+          "1 hour",
+          "normal",
+          "usual"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "rain",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "delay",
+          "ninety",
+          "90",
+          "two hours",
+          "2 hours",
+          "forty",
+          "40",
+          "twenty",
+          "20",
+          "detour",
+          "mud",
+          "limps",
+          "scouts"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "rain",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: rain\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "We go from the Adventurers Guild to the Old Barrow, but muddy rain slows you down.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "The rain and mud make the trip to the Old Barrow take one hour and twenty minutes, but the dry return later takes the us",
+            "durationMs": 2
+          },
+          {
+            "hook": "input",
+            "text": "/time",
+            "durationMs": 1
+          },
+          {
+            "hook": "context",
+            "text": "Continue after route variant.",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 9927
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 370
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg.meta.currentTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history",
+        "after": {
+          "type": "object",
+          "keyCount": 1,
+          "keys": [
+            "recentGains"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "lastSource",
+            "repeatCount"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.derived.combatPressure",
+        "after": 10
+      },
+      {
+        "path": "state.aidrpg.player.derived.mobility",
+        "after": 8
+      },
+      {
+        "path": "state.aidrpg.player.derived.threatRating",
+        "after": 35
+      },
+      {
+        "path": "state.aidrpg.player.age",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.titles",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.history",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "majorEvents",
+            "timeSkips"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.traitState",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "byId",
+            "byKey",
+            "allIds",
+            "conditionIds",
+            "traitIds",
+            "resistanceTags",
+            "immunityTags",
+            "vulnerabilityTags",
+            "adaptationTags",
+            "sensitivityTags",
+            "exposureByDomain",
+            "growthHooks",
+            "recentEvents"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "combat_capable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "balanced_method"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "stamina_leaning",
+            "control_sensitive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "power_bias",
+            "technical_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "power-biased",
+            "technical-biased"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.matchupProfile",
+        "after": {
+          "type": "object",
+          "keyCount": 3,
+          "keys": [
+            "strongAgainst",
+            "weakAgainst",
+            "unfamiliarAgainst"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.byKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.skillIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.talentIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.passiveIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.recentEvents",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.scene",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.storage",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.actors",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.equipment.mainHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.offHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.head",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.body",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.hands",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.legs",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.feet",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.accessory1",
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but muddy rain slows you down.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "The rain and mud make the trip to the Old Barrow take one hour and twenty minutes, but the dry return later takes the us",
+        "durationMs": 2
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "durationMs": 1
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: rain\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: rain\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+    }
+  },
+  {
+    "name": "Route timing variant / injured companion delay changes actual trip but not base route",
+    "suite": "adventure-route-time",
+    "expectedSystem": "TimeTravelSystem",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "Inspect delay/event reason capture and route baseline separation.",
+    "severity": "High",
+    "maturity": "FINAL_PRODUCT_EXPECTATION",
+    "intendedFunction": "Delays should be logged as actual trip conditions, not random route rewrites.",
+    "expectedOutcome": "Base route remains stable while the delayed trip is remembered.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but Mira limps on the road.",
+        "returnValue": {
+          "text": "We go from the Adventurers Guild to the Old Barrow, but Mira limps on the road."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "Because Mira limps, the trip to the Old Barrow takes one hour and forty minutes. After she is healed, the return takes the normal one hour.",
+        "returnValue": {
+          "text": "Because Mira limps, the trip to the Old Barrow takes one hour and forty minutes. After she is healed, the return takes the normal one hour."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "returnValue": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "anyStringContainsAll",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ],
+        "missing": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "one hour",
+          "1 hour",
+          "normal",
+          "usual"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "delay",
+          "ninety",
+          "90",
+          "two hours",
+          "2 hours",
+          "forty",
+          "40",
+          "twenty",
+          "20",
+          "detour",
+          "mud",
+          "limps",
+          "scouts"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "We go from the Adventurers Guild to the Old Barrow, but Mira limps on the road.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "Because Mira limps, the trip to the Old Barrow takes one hour and forty minutes. After she is healed, the return takes t",
+            "durationMs": 3
+          },
+          {
+            "hook": "input",
+            "text": "/time",
+            "durationMs": 0
+          },
+          {
+            "hook": "context",
+            "text": "Continue after route variant.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 9931
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 371
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg.meta.currentTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history",
+        "after": {
+          "type": "object",
+          "keyCount": 1,
+          "keys": [
+            "recentGains"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "lastSource",
+            "repeatCount"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.derived.combatPressure",
+        "after": 10
+      },
+      {
+        "path": "state.aidrpg.player.derived.mobility",
+        "after": 8
+      },
+      {
+        "path": "state.aidrpg.player.derived.threatRating",
+        "after": 35
+      },
+      {
+        "path": "state.aidrpg.player.age",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.titles",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.history",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "majorEvents",
+            "timeSkips"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.traitState",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "byId",
+            "byKey",
+            "allIds",
+            "conditionIds",
+            "traitIds",
+            "resistanceTags",
+            "immunityTags",
+            "vulnerabilityTags",
+            "adaptationTags",
+            "sensitivityTags",
+            "exposureByDomain",
+            "growthHooks",
+            "recentEvents"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "combat_capable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "balanced_method"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "stamina_leaning",
+            "control_sensitive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "power_bias",
+            "technical_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "power-biased",
+            "technical-biased"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.matchupProfile",
+        "after": {
+          "type": "object",
+          "keyCount": 3,
+          "keys": [
+            "strongAgainst",
+            "weakAgainst",
+            "unfamiliarAgainst"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.byKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.skillIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.talentIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.passiveIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.recentEvents",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.scene",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.storage",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.actors",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.equipment.mainHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.offHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.head",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.body",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.hands",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.legs",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.feet",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.accessory1",
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but Mira limps on the road.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "Because Mira limps, the trip to the Old Barrow takes one hour and forty minutes. After she is healed, the return takes t",
+        "durationMs": 3
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "durationMs": 0
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+    }
+  },
+  {
+    "name": "Route timing variant / scouting delay changes actual trip but not base route",
+    "suite": "adventure-route-time",
+    "expectedSystem": "TimeTravelSystem",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "Inspect delay/event reason capture and route baseline separation.",
+    "severity": "High",
+    "maturity": "FINAL_PRODUCT_EXPECTATION",
+    "intendedFunction": "Delays should be logged as actual trip conditions, not random route rewrites.",
+    "expectedOutcome": "Base route remains stable while the delayed trip is remembered.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but Bram scouts ahead.",
+        "returnValue": {
+          "text": "We go from the Adventurers Guild to the Old Barrow, but Bram scouts ahead."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "Bram scouts ahead twice, so reaching the Old Barrow takes ninety minutes. The direct return takes one hour.",
+        "returnValue": {
+          "text": "Bram scouts ahead twice, so reaching the Old Barrow takes ninety minutes. The direct return takes one hour."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "returnValue": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "anyStringContainsAll",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ],
+        "missing": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "one hour",
+          "1 hour",
+          "normal",
+          "usual"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "delay",
+          "ninety",
+          "90",
+          "two hours",
+          "2 hours",
+          "forty",
+          "40",
+          "twenty",
+          "20",
+          "detour",
+          "mud",
+          "limps",
+          "scouts"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "We go from the Adventurers Guild to the Old Barrow, but Bram scouts ahead.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "Bram scouts ahead twice, so reaching the Old Barrow takes ninety minutes. The direct return takes one hour.",
+            "durationMs": 2
+          },
+          {
+            "hook": "input",
+            "text": "/time",
+            "durationMs": 0
+          },
+          {
+            "hook": "context",
+            "text": "Continue after route variant.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 9928
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 371
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg.meta.currentTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history",
+        "after": {
+          "type": "object",
+          "keyCount": 1,
+          "keys": [
+            "recentGains"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "lastSource",
+            "repeatCount"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.derived.combatPressure",
+        "after": 10
+      },
+      {
+        "path": "state.aidrpg.player.derived.mobility",
+        "after": 8
+      },
+      {
+        "path": "state.aidrpg.player.derived.threatRating",
+        "after": 35
+      },
+      {
+        "path": "state.aidrpg.player.age",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.titles",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.history",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "majorEvents",
+            "timeSkips"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.traitState",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "byId",
+            "byKey",
+            "allIds",
+            "conditionIds",
+            "traitIds",
+            "resistanceTags",
+            "immunityTags",
+            "vulnerabilityTags",
+            "adaptationTags",
+            "sensitivityTags",
+            "exposureByDomain",
+            "growthHooks",
+            "recentEvents"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "combat_capable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "balanced_method"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "stamina_leaning",
+            "control_sensitive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "power_bias",
+            "technical_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "power-biased",
+            "technical-biased"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.matchupProfile",
+        "after": {
+          "type": "object",
+          "keyCount": 3,
+          "keys": [
+            "strongAgainst",
+            "weakAgainst",
+            "unfamiliarAgainst"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.byKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.skillIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.talentIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.passiveIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.recentEvents",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.scene",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.storage",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.actors",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.equipment.mainHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.offHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.head",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.body",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.hands",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.legs",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.feet",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.accessory1",
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but Bram scouts ahead.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "Bram scouts ahead twice, so reaching the Old Barrow takes ninety minutes. The direct return takes one hour.",
+        "durationMs": 2
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "durationMs": 0
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+    }
+  },
+  {
+    "name": "Route timing variant / detour delay changes actual trip but not base route",
+    "suite": "adventure-route-time",
+    "expectedSystem": "TimeTravelSystem",
+    "description": "",
+    "whyItMatters": "",
+    "patchHint": "Inspect delay/event reason capture and route baseline separation.",
+    "severity": "High",
+    "maturity": "FINAL_PRODUCT_EXPECTATION",
+    "intendedFunction": "Delays should be logged as actual trip conditions, not random route rewrites.",
+    "expectedOutcome": "Base route remains stable while the delayed trip is remembered.",
+    "evaluationNotes": "",
+    "passed": false,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but a fallen tree blocks the north road.",
+        "returnValue": {
+          "text": "We go from the Adventurers Guild to the Old Barrow, but a fallen tree blocks the north road."
+        }
+      },
+      {
+        "hook": "output",
+        "text": "The fallen tree forces a detour, making the trip two hours. Once cleared, the same route back takes one hour.",
+        "returnValue": {
+          "text": "The fallen tree forces a detour, making the trip two hours. Once cleared, the same route back takes one hour."
+        }
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "returnValue": {
+          "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "returnValue": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "anyStringContainsAll",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ],
+        "missing": [
+          "Old Barrow",
+          "Adventurers Guild"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "one hour",
+          "1 hour",
+          "normal",
+          "usual"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "anyStringContainsAny",
+        "path": "state.aidrpg.time",
+        "expected": [
+          "delay",
+          "ninety",
+          "90",
+          "two hours",
+          "2 hours",
+          "forty",
+          "40",
+          "twenty",
+          "20",
+          "detour",
+          "mud",
+          "limps",
+          "scouts"
+        ],
+        "passed": false,
+        "actual": [
+          "current",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "season",
+          "spring",
+          "weather",
+          "clear",
+          "elapsed",
+          "totalHours",
+          "8.13",
+          "routes",
+          "knownTravelTimes",
+          "baseTravelTimes",
+          "recentRouteEvents",
+          "contradictionFlags",
+          "timeline",
+          "recentEvents",
+          "day",
+          "1",
+          "hour",
+          "8",
+          "minute",
+          "8",
+          "note",
+          "movement",
+          "minutesAdvanced",
+          "8",
+          "pendingAdvance"
+        ]
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "We go from the Adventurers Guild to the Old Barrow, but a fallen tree blocks the north road.",
+            "durationMs": 1
+          },
+          {
+            "hook": "output",
+            "text": "The fallen tree forces a detour, making the trip two hours. Once cleared, the same route back takes one hour.",
+            "durationMs": 3
+          },
+          {
+            "hook": "input",
+            "text": "/time",
+            "durationMs": 1
+          },
+          {
+            "hook": "context",
+            "text": "Continue after route variant.",
+            "durationMs": 1
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 9720
+      },
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 371
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [
+      {
+        "path": "state.aidrpg.meta.currentTurn",
+        "before": 0,
+        "after": 1
+      },
+      {
+        "path": "state.aidrpg.player.levelState.history",
+        "after": {
+          "type": "object",
+          "keyCount": 1,
+          "keys": [
+            "recentGains"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.antiFarm",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "lastSource",
+            "repeatCount"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.levelState.lastGainTurn",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.derived.combatPressure",
+        "after": 10
+      },
+      {
+        "path": "state.aidrpg.player.derived.mobility",
+        "after": 8
+      },
+      {
+        "path": "state.aidrpg.player.derived.threatRating",
+        "after": 35
+      },
+      {
+        "path": "state.aidrpg.player.age",
+        "after": 0
+      },
+      {
+        "path": "state.aidrpg.player.titles",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.player.history",
+        "after": {
+          "type": "object",
+          "keyCount": 2,
+          "keys": [
+            "majorEvents",
+            "timeSkips"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.player.traitState",
+        "after": {
+          "type": "object",
+          "keyCount": 13,
+          "keys": [
+            "byId",
+            "byKey",
+            "allIds",
+            "conditionIds",
+            "traitIds",
+            "resistanceTags",
+            "immunityTags",
+            "vulnerabilityTags",
+            "adaptationTags",
+            "sensitivityTags",
+            "exposureByDomain",
+            "growthHooks",
+            "recentEvents"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.originTags",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "species:human",
+            "baseline_mortal",
+            "adaptable",
+            "novice"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.combatTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "direct_force",
+            "combat_capable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.methodTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "balanced_method"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.resourceTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "stamina_leaning",
+            "control_sensitive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.defenseTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "evasive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.specializationTags",
+        "after": {
+          "type": "array",
+          "length": 2,
+          "sample": [
+            "power_bias",
+            "technical_bias"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.temperamentTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "stable"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.styleTags",
+        "after": {
+          "type": "array",
+          "length": 1,
+          "sample": [
+            "offensive"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.archetypeSummary",
+        "after": {
+          "type": "array",
+          "length": 4,
+          "sample": [
+            "force-leaning",
+            "stamina-leaning",
+            "power-biased",
+            "technical-biased"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.build.masteryNotes",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.build.matchupProfile",
+        "after": {
+          "type": "object",
+          "keyCount": 3,
+          "keys": [
+            "strongAgainst",
+            "weakAgainst",
+            "unfamiliarAgainst"
+          ]
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.byKey",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.allIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.skillIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.talentIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.passiveIds",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.abilities.recentEvents",
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.player",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.scene",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.storage",
+        "before": {
+          "type": "array",
+          "length": 0,
+          "sample": []
+        },
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.ownership.actors",
+        "after": {
+          "type": "object",
+          "keyCount": 0,
+          "keys": []
+        }
+      },
+      {
+        "path": "state.aidrpg.items.equipment.mainHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.offHand",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.head",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.body",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.hands",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.legs",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.feet",
+        "after": null
+      },
+      {
+        "path": "state.aidrpg.items.equipment.accessory1",
+        "after": null
+      }
+    ],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "We go from the Adventurers Guild to the Old Barrow, but a fallen tree blocks the north road.",
+        "durationMs": 1
+      },
+      {
+        "hook": "output",
+        "text": "The fallen tree forces a detour, making the trip two hours. Once cleared, the same route back takes one hour.",
+        "durationMs": 3
+      },
+      {
+        "hook": "input",
+        "text": "/time",
+        "durationMs": 1
+      },
+      {
+        "hook": "context",
+        "text": "Continue after route variant.",
+        "durationMs": 1
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/time",
+        "text": "[AIDRPG /time]\nDay: 1\nHour: 8\nMinute: 8\nSeason: spring\nWeather: clear\n\nElapsed Hours: 8.13\nKnown Route Times: 0\nContradiction Flags: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPlayer: Lvl 3 | Age unknown | human | Titles: none | HP 100/100 | MP 35/35 | EP 60/60 | Cond: none | Injuries: none | Outfit: travel-worn adventuring clothes\nRecent: XP +1 from exploration\nTime: Day 1 | 08:08 | Season: spring | Weather: clear\nScene: Adventurers Guild Hall | Location: Guild District | Type: building interior\n\nContinue after route variant."
+    }
+  }
+]

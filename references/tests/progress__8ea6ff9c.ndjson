@@ -1,0 +1,10 @@
+{"index":0,"total":10,"name":"runtime identity and basic commands","category":"smoke-loop","passed":true,"message":"Runtime and debug/admin commands work.","maxHookMs":13}
+{"index":1,"total":10,"name":"input-only pickup does not grant rusted iron key","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":12}
+{"index":2,"total":10,"name":"input-only pickup does not grant obsidian key","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":6}
+{"index":3,"total":10,"name":"input-only pickup does not grant silver dagger","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":4}
+{"index":4,"total":10,"name":"input-only pickup does not grant red healing potion","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":3}
+{"index":5,"total":10,"name":"input-only pickup does not grant black gate key","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":2}
+{"index":6,"total":10,"name":"input-only pickup does not grant jeweled crown","category":"input-only","passed":true,"message":"Input alone stayed proposal-only.","maxHookMs":2}
+{"index":7,"total":10,"name":"confirmed pick up grants exactly one rusted iron key","category":"confirmed-inventory","passed":true,"message":"Confirmed acquisition created one clean item.","maxHookMs":63}
+{"index":8,"total":10,"name":"confirmed take grants exactly one rusted iron key","category":"confirmed-inventory","passed":true,"message":"Confirmed acquisition created one clean item.","maxHookMs":17}
+{"index":9,"total":10,"name":"confirmed grab grants exactly one rusted iron key","category":"confirmed-inventory","passed":true,"message":"Confirmed acquisition created one clean item.","maxHookMs":3}

@@ -1,0 +1,269 @@
+[
+  {
+    "name": "Sandbox guard / no obvious Node browser network APIs in Library source",
+    "suite": "sandbox-guards",
+    "expectedSystem": "Runtime sandbox safety",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "The Library should not depend on Node/browser APIs that AI Dungeon may not expose.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "input",
+        "text": "/sheet",
+        "returnValue": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: AIDRPGbeta-final-playtest\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nAge: (unknown)\nSpecies: human\nTitles: none\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "sourceMatchesNone",
+        "expected": [
+          "\\brequire\\s*\\(",
+          "\\bprocess\\s*\\.",
+          "\\bfs\\s*\\.",
+          "\\bfetch\\s*\\(",
+          "XMLHttpRequest",
+          "localStorage",
+          "\\bdocument\\s*\\.",
+          "\\bwindow\\s*\\.",
+          "\\beval\\s*\\("
+        ],
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "validHookReturn",
+        "passed": true,
+        "actual": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: AIDRPGbeta-final-playtest\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nAge: (unknown)\nSpecies: human\nTitles: none\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "[AIDRPG /sheet]\nBuild Stage: AIDRPGbeta-final-playtest\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nAge: (unknown)\nSpecies: human\nTitles: none\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "input",
+            "text": "/sheet",
+            "durationMs": 4
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 4931
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "input",
+        "text": "/sheet",
+        "durationMs": 4
+      }
+    ],
+    "debugOutputs": [
+      {
+        "command": "/sheet",
+        "text": "[AIDRPG /sheet]\nBuild Stage: AIDRPGbeta-final-playtest\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nAge: (unknown)\nSpecies: human\nTitles: none\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+      }
+    ],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "[AIDRPG /sheet]\nBuild Stage: AIDRPGbeta-final-playtest\nCurrent Turn: 1\nDebug: off\n\nName: (unset)\nAge: (unknown)\nSpecies: human\nTitles: none\nLevel: 1\nXP: 0 / 100\n\nHP: 100 / 100\nMP: 20 / 20\nEP: 50 / 50\nATK: 5\nDEF: 5\nSPD: 5\nINT: 5\nLCK: 5\n\nPlayer Location Ref: (none)\nPlayer Scene Ref: (none)\nScene Name: (none)\nScene Type: unknown\nScene Parent Location: (none)\nScene Parent Ref: (none)\nVisible Traits: none\nOutfit Summary: (none)\nInjuries: none\nMutations: none\nActive Conditions: none\nPermanent Conditions: none\n"
+    }
+  },
+  {
+    "name": "Sandbox guard / repeated context calls remain under runtime and size budgets",
+    "suite": "sandbox-guards",
+    "expectedSystem": "ContextPacketSystem / runtime budget",
+    "description": "",
+    "whyItMatters": "A script can pass local logic tests but still fail in AI Dungeon if the platform API/runtime assumptions are wrong.",
+    "patchHint": "Patch only the platform-facing assumption or subsystem causing the compatibility failure.",
+    "severity": "high",
+    "maturity": "CURRENT_BLOCKER",
+    "intendedFunction": "Context building must remain bounded when history and story cards are crowded.",
+    "expectedOutcome": "Valid hook returns, no platform-only failures, bounded context/state, no bad Story Card API assumptions.",
+    "evaluationNotes": "",
+    "passed": true,
+    "steps": [
+      {
+        "hook": "output",
+        "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.",
+        "returnValue": {
+          "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure.",
+        "returnValue": {
+          "text": "Current truth:\nPriority: Cond poisoned | Recent Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke. | Actor Mira: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke; Mira: important_named_actor\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: poisoned | Injuries: none | Outfit: unspecified | Traits: Active: poisoned\nMajor actor memory: Mira; note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke\nMap: Dungeon Old Barrow: Barrow Sanctum > Sealed Sanctum | backtrack Sealed Sanctum > Barrow Sanctum | Map note: Old Barrow path Barrow Sanctum > Sealed Sanctum.\nRecent: Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.\nTime: Day 1 | 08:00\nScene: barrow sanctum | Type: room | Facts: smoke, poison\n\nContinue under heavy context pressure."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure again.",
+        "returnValue": {
+          "text": "Current truth:\nPriority: Cond poisoned | Recent Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke. | Actor Mira: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke; Mira: important_named_actor\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: poisoned | Injuries: none | Outfit: unspecified | Traits: Active: poisoned\nMajor actor memory: Mira; note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke\nMap: Dungeon Old Barrow: Barrow Sanctum > Sealed Sanctum | backtrack Sealed Sanctum > Barrow Sanctum | Map note: Old Barrow path Barrow Sanctum > Sealed Sanctum.\nRecent: Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.\nTime: Day 1 | 08:00\nScene: barrow sanctum | Type: room | Facts: smoke, poison\n\nContinue under heavy context pressure again."
+        }
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure a third time.",
+        "returnValue": {
+          "text": "Current truth:\nPriority: Cond poisoned | Recent Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke. | Actor Mira: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke; Mira: important_named_actor\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: poisoned | Injuries: none | Outfit: unspecified | Traits: Active: poisoned\nMajor actor memory: Mira; note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke\nMap: Dungeon Old Barrow: Barrow Sanctum > Sealed Sanctum | backtrack Sealed Sanctum > Barrow Sanctum | Map note: Old Barrow path Barrow Sanctum > Sealed Sanctum.\nRecent: Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.\nTime: Day 1 | 08:00\nScene: barrow sanctum | Type: room | Facts: smoke, poison\n\nContinue under heavy context pressure a third time."
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "contextUnderBudget",
+        "limit": 12000,
+        "passed": true,
+        "actual": 974
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 13761
+      },
+      {
+        "type": "storyCardCountAtMost",
+        "expected": 200,
+        "passed": true,
+        "actual": 90
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "output",
+            "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+            "durationMs": 91
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure.",
+            "durationMs": 3
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure again.",
+            "durationMs": 2
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure a third time.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "noRuntimeErrors",
+        "passed": true,
+        "actual": []
+      },
+      {
+        "type": "noStopTrue",
+        "passed": true,
+        "actual": {
+          "text": "Current truth:\nPriority: Cond poisoned | Recent Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke. | Actor Mira: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke; Mira: important_named_actor\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: poisoned | Injuries: none | Outfit: unspecified | Traits: Active: poisoned\nMajor actor memory: Mira; note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke\nMap: Dungeon Old Barrow: Barrow Sanctum > Sealed Sanctum | backtrack Sealed Sanctum > Barrow Sanctum | Map note: Old Barrow path Barrow Sanctum > Sealed Sanctum.\nRecent: Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.\nTime: Day 1 | 08:00\nScene: barrow sanctum | Type: room | Facts: smoke, poison\n\nContinue under heavy context pressure a third time."
+        }
+      },
+      {
+        "type": "maxHookRuntimeMs",
+        "expected": 1800,
+        "passed": true,
+        "actual": [
+          {
+            "hook": "output",
+            "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+            "durationMs": 91
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure.",
+            "durationMs": 3
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure again.",
+            "durationMs": 2
+          },
+          {
+            "hook": "context",
+            "text": "Continue under heavy context pressure a third time.",
+            "durationMs": 0
+          }
+        ],
+        "max": 1800
+      },
+      {
+        "type": "stateSizeUnderBytes",
+        "limit": 900000,
+        "passed": true,
+        "actual": 13761
+      }
+    ],
+    "errors": [],
+    "stateDiffs": [],
+    "hookDurations": [
+      {
+        "hook": "output",
+        "text": "You step into the barrow sanctum. Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smo",
+        "durationMs": 91
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure.",
+        "durationMs": 3
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure again.",
+        "durationMs": 2
+      },
+      {
+        "hook": "context",
+        "text": "Continue under heavy context pressure a third time.",
+        "durationMs": 0
+      }
+    ],
+    "debugOutputs": [],
+    "logs": [],
+    "storyCardOps": [],
+    "lastReturn": {
+      "text": "Current truth:\nPriority: Cond poisoned | Recent Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke. | Actor Mira: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke; Mira: important_named_actor\nPlayer: Lvl 1 | Age unknown | human | Titles: none | HP 100/100 | MP 20/20 | EP 50/50 | Cond: poisoned | Injuries: none | Outfit: unspecified | Traits: Active: poisoned\nMajor actor memory: Mira; note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke\nMap: Dungeon Old Barrow: Barrow Sanctum > Sealed Sanctum | backtrack Sealed Sanctum > Barrow Sanctum | Map note: Old Barrow path Barrow Sanctum > Sealed Sanctum.\nRecent: Actor note: Mira is wounded, the rusted iron key is in your hand, and the air smells of poison smoke.\nTime: Day 1 | 08:00\nScene: barrow sanctum | Type: room | Facts: smoke, poison\n\nContinue under heavy context pressure a third time."
+    }
+  }
+]

@@ -1,0 +1,69 @@
+{
+  "run_type": "UTM2 semantic selector aggregate from chunk files",
+  "adapter_version": "0.1",
+  "input_dir": "/mnt/data/utm2_semantic_calibration_v1",
+  "source_files": [
+    "semantic_shard_001_offset_0_limit_4.jsonl",
+    "semantic_shard_001_offset_4_limit_1.jsonl"
+  ],
+  "unique_test_ids": 5,
+  "total_rows": 5,
+  "counts": {
+    "pass": 3,
+    "fail": 2,
+    "partial": 0,
+    "hook_fail": 0,
+    "adapter_error": 0
+  },
+  "total_checks": 11,
+  "not_evaluated_checks": 0,
+  "maxHookMs": 281,
+  "by_category": {
+    "INV": {
+      "total": 5,
+      "pass": 3,
+      "fail": 2,
+      "partial": 0,
+      "hook_fail": 0,
+      "adapter_error": 0
+    }
+  },
+  "by_shard": {
+    "shard_001": {
+      "total": 5,
+      "pass": 3,
+      "fail": 2,
+      "partial": 0,
+      "hook_fail": 0,
+      "adapter_error": 0
+    }
+  },
+  "by_selector": {
+    "inventory.item_named": {
+      "total": 9,
+      "pass": 8,
+      "fail": 1,
+      "not_evaluated": 0,
+      "adapter_error": 0
+    },
+    "logs.error": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "not_evaluated": 0,
+      "adapter_error": 0
+    },
+    "actor_memory.actor_knows_event": {
+      "total": 1,
+      "pass": 0,
+      "fail": 1,
+      "not_evaluated": 0,
+      "adapter_error": 0
+    }
+  },
+  "caveats": [
+    "Rows are aggregated from whatever chunk files are present; if unique_test_ids < 1440, this is a partial run.",
+    "runtime.memory_mb is not_evaluated because Node mimic cannot measure AI Dungeon sandbox memory directly.",
+    "Adapter v0.1 uses state selectors and may reveal matrix expectation problems as well as script bugs."
+  ]
+}
