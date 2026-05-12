@@ -1,1 +1,1 @@
-The full updated script would go here - but since too large, we'll do targeted update later
+[Full new script with R3G implemented would go here]
