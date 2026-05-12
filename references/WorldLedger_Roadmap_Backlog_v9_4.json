@@ -1,0 +1,422 @@
+[
+  {
+    "build": "9.4B",
+    "priority": "P0",
+    "system": "Cards / World Graph",
+    "feature": "CardCandidateRegistry FSM + WorldGraphIndex",
+    "dependency": "9.3F",
+    "owner": "CardSystem + WorldGraphSystem",
+    "output": "candidate registry, graph edge index, card promotion gates",
+    "required_tests": "junk/door/road denied; named repeated actor/place eligible; concept/law candidate pending; no command/context/card text candidates"
+  },
+  {
+    "build": "9.4B",
+    "priority": "P0",
+    "system": "Cards / World Graph",
+    "feature": "Generated-card scoring, tombstones, provenance",
+    "dependency": "CardCandidateRegistry",
+    "owner": "GeneratedCardPolicy",
+    "output": "importance score, evidence hashes, status states, quarantine/tombstone tables",
+    "required_tests": "Are Empty stays denied; Old Man Gerrik accepted after dialogue; random guard no card; WorldLedger audit text no card"
+  },
+  {
+    "build": "9.4B",
+    "priority": "P0",
+    "system": "Cards / World Graph",
+    "feature": "Concept/law/faction/lore candidate categories",
+    "dependency": "CardCandidateRegistry",
+    "owner": "CardSystem + LoreConceptSystem",
+    "output": "safe concept cards for laws, institutions, named rituals, local customs",
+    "required_tests": "Law of Guest-Rights candidate; magic/generic law denied; named faction pending/eligible"
+  },
+  {
+    "build": "9.4B",
+    "priority": "P0",
+    "system": "Context/Cards",
+    "feature": "Card pressure and budget caps",
+    "dependency": "CardCandidateRegistry",
+    "owner": "ContextBudgeter + CardSync",
+    "output": "per-turn creates/updates, optional backlog, protected priority",
+    "required_tests": "long replay no timeout; no card spam; protected cards still update first"
+  },
+  {
+    "build": "9.4C",
+    "priority": "P0",
+    "system": "Combat Parser",
+    "feature": "Level phrase vs group-count disambiguation",
+    "dependency": "9.4B optional",
+    "owner": "CombatThreatSystem",
+    "output": "level field on threat profile; group counts only when plural/group syntax",
+    "required_tests": "level 25 inferno wolf = one threat level 25; thirteen goblins = group count 13"
+  },
+  {
+    "build": "9.4C",
+    "priority": "P0",
+    "system": "Resolvers",
+    "feature": "Canonical suffix stripping and duplicate resolver",
+    "dependency": "Current resolvers",
+    "owner": "Resolver/Sanitizer layer",
+    "output": "north wall == north wall project; quest/project/contract suffix normalization",
+    "required_tests": "north wall project one id; no duplicate Copper Lantern/lantern generic"
+  },
+  {
+    "build": "9.4C",
+    "priority": "P1",
+    "system": "Threat Schema",
+    "feature": "Threat profile stat-band placeholders",
+    "dependency": "level disambiguation",
+    "owner": "ThreatTierSystem",
+    "output": "threat level, tier, size, body, ecology, training, magic tags",
+    "required_tests": "dragon not scaled to level 1; normal rat low threat; ancient rat magical threat"
+  },
+  {
+    "build": "9.5A",
+    "priority": "P0",
+    "system": "Knowledge / Presence",
+    "feature": "Who-is-present and witness records",
+    "dependency": "WorldGraphIndex",
+    "owner": "KnowledgeWitnessSystem",
+    "output": "present actors, sight/hearing constraints, witnessed events",
+    "required_tests": "Mira sees theft -> private witness; no one sees theft -> hidden deed"
+  },
+  {
+    "build": "9.5A",
+    "priority": "P0",
+    "system": "Crime / Clues",
+    "feature": "Crime event and evidence records",
+    "dependency": "Witness records",
+    "owner": "InvestigationCaseSystem",
+    "output": "case id, suspect, victim, item, evidence, proof level",
+    "required_tests": "stolen idol hidden; guard finds idol -> suspicion/proof rises"
+  },
+  {
+    "build": "9.5B",
+    "priority": "P0",
+    "system": "Reputation",
+    "feature": "Subject reputation buckets",
+    "dependency": "Knowledge system",
+    "owner": "ReputationSystem",
+    "output": "public/private/faction/rumor/hidden reputation",
+    "required_tests": "rumor not proof; public warrant affects city faction"
+  },
+  {
+    "build": "9.5B",
+    "priority": "P1",
+    "system": "Rumors",
+    "feature": "Rumor propagation with distance/time/social channels",
+    "dependency": "WorldGraphIndex + Reputation",
+    "owner": "RumorPropagationSystem",
+    "output": "rumor scope, source, route, speed, confidence decay",
+    "required_tests": "rumor travels through tavern locally; remote village not instantly aware"
+  },
+  {
+    "build": "9.5C",
+    "priority": "P1",
+    "system": "Factions / Law",
+    "feature": "Faction law, authority, response escalation",
+    "dependency": "Reputation + crime",
+    "owner": "FactionLawSystem",
+    "output": "local law records, enforcement thresholds, fines/warrants/arrest risk",
+    "required_tests": "watch posts warrant; faction reputation persists"
+  },
+  {
+    "build": "9.6A",
+    "priority": "P0",
+    "system": "Contracts",
+    "feature": "Contract lifecycle distinct from quests",
+    "dependency": "WorldGraphIndex",
+    "owner": "ContractSystem",
+    "output": "parties, terms, obligations, payment, deadline, status",
+    "required_tests": "hire Bran 2 silver/day -> contract; promise not payment; breach status"
+  },
+  {
+    "build": "9.6A",
+    "priority": "P0",
+    "system": "Labor",
+    "feature": "Worker/employee records and assignment",
+    "dependency": "Contracts",
+    "owner": "LaborSystem",
+    "output": "employee id, role, skill, wage, availability, loyalty, task",
+    "required_tests": "Bran refuses unpaid work; Mira works on wall if contract/materials exist"
+  },
+  {
+    "build": "9.6B",
+    "priority": "P0",
+    "system": "Domain",
+    "feature": "DomainProjectSystem MVP",
+    "dependency": "Contracts/Labor",
+    "owner": "DomainProjectSystem",
+    "output": "project requirements, progress, workers, material ledger",
+    "required_tests": "25% progress consumes materials/time; no instant building"
+  },
+  {
+    "build": "9.6B",
+    "priority": "P1",
+    "system": "Economy",
+    "feature": "Services, shops, wages, debt, failed purchases",
+    "dependency": "Contracts/Inventory",
+    "owner": "EconomyTransactionSystem",
+    "output": "price quotes, debts, service contracts, wage payments",
+    "required_tests": "saber costs 40 gold no item; unpaid worker dispute logged"
+  },
+  {
+    "build": "9.6C",
+    "priority": "P1",
+    "system": "Domain Assets",
+    "feature": "Holdings, rooms, control, taxes/upkeep",
+    "dependency": "Domain projects",
+    "owner": "DomainAssetSystem",
+    "output": "building records, owner/control, upkeep/revenue evidence",
+    "required_tests": "north wall completed -> asset; taxes require authority/time"
+  },
+  {
+    "build": "9.7A",
+    "priority": "P0",
+    "system": "Race / Species",
+    "feature": "RaceTrait candidates from setup + Story Cards",
+    "dependency": "WorldGraphIndex",
+    "owner": "RaceTraitSystem",
+    "output": "trait candidates, confidence, source card refs",
+    "required_tests": "orc strength candidate; elf senses/magic affinity candidate; no invented huge stats"
+  },
+  {
+    "build": "9.7B",
+    "priority": "P0",
+    "system": "Body Formula",
+    "feature": "Race/body modifiers to HP/MP/EP, fatigue, injury",
+    "dependency": "Race traits",
+    "owner": "BodyFormulaSystem",
+    "output": "derived resource caps/pressure, recovery, constraints",
+    "required_tests": "orc build helps shove cart; small form affects weapon/equipment"
+  },
+  {
+    "build": "9.7C",
+    "priority": "P1",
+    "system": "Social Treatment",
+    "feature": "Race/body/social modifiers",
+    "dependency": "Race traits + reputation",
+    "owner": "SocialTreatmentSystem",
+    "output": "fear/prejudice/respect evidence, local attitudes",
+    "required_tests": "tusks frighten clerk; elven quarter treats orc differently"
+  },
+  {
+    "build": "9.8A",
+    "priority": "P0",
+    "system": "Party / Followers",
+    "feature": "Persistent companion/follower records",
+    "dependency": "WorldGraphIndex",
+    "owner": "PartyFollowerSystem",
+    "output": "member status, loyalty, role, present/elsewhere/dead",
+    "required_tests": "Mira joins party -> companion; generic guard helper not permanent"
+  },
+  {
+    "build": "9.8B",
+    "priority": "P0",
+    "system": "Summons",
+    "feature": "Summon lifecycle and control limits",
+    "dependency": "Party system",
+    "owner": "SummonSystem",
+    "output": "summon id, controller, duration, loyalty/control, capacity",
+    "required_tests": "fire wolf one minute -> temporary summon; no permanent card"
+  },
+  {
+    "build": "9.8C",
+    "priority": "P1",
+    "system": "Pets / Mounts / Vehicles",
+    "feature": "Controlled entity boundaries",
+    "dependency": "Summons/party",
+    "owner": "ControlledEntitySystem",
+    "output": "pet/mount/vehicle records, custody, condition, travel capability",
+    "required_tests": "horse bought/rented; wagon damaged; mount card only if persistent"
+  },
+  {
+    "build": "9.9A",
+    "priority": "P0",
+    "system": "Progression",
+    "feature": "XP economy and level-up application",
+    "dependency": "Threat/Race basic",
+    "owner": "ProgressionFormulaSystem",
+    "output": "XP lanes, level XP, level-up thresholds, stat growth",
+    "required_tests": "gain 20 XP increases level XP once; level up applies caps/stats"
+  },
+  {
+    "build": "9.9B",
+    "priority": "P0",
+    "system": "Stats",
+    "feature": "Core stat formulas + derived values",
+    "dependency": "Progression formula",
+    "owner": "StatFormulaSystem",
+    "output": "ATK/DEF/SPD/INT/LCK formulas and display",
+    "required_tests": "SPD affects chase; INT affects study/magic; DEF affects damage"
+  },
+  {
+    "build": "9.9C",
+    "priority": "P1",
+    "system": "Anti-farm",
+    "feature": "Training and reward budgets",
+    "dependency": "XP formula",
+    "owner": "XPBudgetSystem",
+    "output": "repetition decay, risk/contribution multipliers, domain budget",
+    "required_tests": "jumping repeatedly stops farming; hard fight rewards more"
+  },
+  {
+    "build": "9.9D",
+    "priority": "P1",
+    "system": "Ability Growth",
+    "feature": "Ability/skill/passive/talent growth costs",
+    "dependency": "Stats/XP",
+    "owner": "AbilityGrowthSystem",
+    "output": "mastery, costs, fatigue/env pressure, category transfer",
+    "required_tests": "Fireball attempt denied until evidence; Ember Ward stabilizes through training"
+  },
+  {
+    "build": "9.10A",
+    "priority": "P0",
+    "system": "Combat",
+    "feature": "Combat outcome event model",
+    "dependency": "Threat/profile/stats",
+    "owner": "CombatOutcomeSystem",
+    "output": "attack/defend/dodge/capture/downed/flee outcome records",
+    "required_tests": "dragon overwhelming; goblin injury resolved; partial success supported"
+  },
+  {
+    "build": "9.10B",
+    "priority": "P0",
+    "system": "Matchup",
+    "feature": "Matchup matrix and modifiers",
+    "dependency": "Stats + combat",
+    "owner": "MatchupSystem",
+    "output": "body/equipment/terrain/surprise/numbers/magic matchup weights",
+    "required_tests": "spear vs wolf; orc strength vs cramped room; surprise matters"
+  },
+  {
+    "build": "9.10C",
+    "priority": "P1",
+    "system": "Enemy Tiers",
+    "feature": "Creature tier and stat-band library",
+    "dependency": "World lore + threat schema",
+    "owner": "ThreatTierSystem",
+    "output": "normal/elite/boss/ancient/magical tags, stat bands",
+    "required_tests": "inferno wolf level 25 stronger than level 5 wolf"
+  },
+  {
+    "build": "9.10D",
+    "priority": "P1",
+    "system": "Combat Rewards",
+    "feature": "Risk-based reward resolver",
+    "dependency": "Combat outcome + XP",
+    "owner": "CombatRewardResolver",
+    "output": "danger/contribution/threat reward estimates",
+    "required_tests": "rat no huge XP; ancient magical rat can be high threat"
+  },
+  {
+    "build": "9.11A",
+    "priority": "P1",
+    "system": "Crafting",
+    "feature": "Recipes, materials, quality, repair",
+    "dependency": "Economy/domain",
+    "owner": "CraftingSystem",
+    "output": "recipe knowledge, material ledger, project quality, repair completion",
+    "required_tests": "learn recipe no item; craft after materials/time"
+  },
+  {
+    "build": "9.11B",
+    "priority": "P1",
+    "system": "Warfare",
+    "feature": "Force records and control claims",
+    "dependency": "Domain/faction/combat",
+    "owner": "WarfareSystem",
+    "output": "forces, casualties, control, morale, logistics evidence",
+    "required_tests": "army of 80 marches; 15 casualties; control is claim until proven"
+  },
+  {
+    "build": "9.11C",
+    "priority": "P2",
+    "system": "Absorption/Evolution",
+    "feature": "Bounded candidate threshold system",
+    "dependency": "Race/body/progression",
+    "owner": "EvolutionAbsorptionSystem",
+    "output": "candidate source, threshold evidence, denied/unstable/stable",
+    "required_tests": "absorb wolf essence -> candidate only; no free race overwrite"
+  },
+  {
+    "build": "9.12A",
+    "priority": "P0",
+    "system": "Lore / World Bible",
+    "feature": "Lore authority/import layer",
+    "dependency": "WorldGraphIndex",
+    "owner": "LoreAuthoritySystem",
+    "output": "revealed vs hidden lore, source card refs, regional triggers",
+    "required_tests": "god lore only when relevant/revealed; hidden lore not injected"
+  },
+  {
+    "build": "9.12B",
+    "priority": "P1",
+    "system": "Context",
+    "feature": "High/medium/small context priority pass",
+    "dependency": "WorldGraph + all systems",
+    "owner": "ContextBudgeter",
+    "output": "who present, location, danger, quests, reputation risk, active contracts",
+    "required_tests": "small mode shows immediate threat/reputation risk before lore"
+  },
+  {
+    "build": "9.12C",
+    "priority": "P1",
+    "system": "Commands",
+    "feature": "Command surface expansion and compact UI",
+    "dependency": "All systems",
+    "owner": "CommandRenderer",
+    "output": "/reputation /contracts /domain /party /summons /crime /worldgraph",
+    "required_tests": "all commands compact, read-only, under live limit"
+  },
+  {
+    "build": "9.13A",
+    "priority": "P1",
+    "system": "Migration",
+    "feature": "State migrations for new schemas",
+    "dependency": "All systems",
+    "owner": "StateManager/Migration",
+    "output": "versioned migrations and old-save cleanup",
+    "required_tests": "9.3F save upgrades without losing notes"
+  },
+  {
+    "build": "9.13B",
+    "priority": "P1",
+    "system": "Compaction",
+    "feature": "Long-run cleanup and quarantine",
+    "dependency": "All systems",
+    "owner": "CleanupManager/Quarantine",
+    "output": "archive old rumors, stale cards, old graph edges, diagnostics",
+    "required_tests": "1k-turn replay stays under budget"
+  },
+  {
+    "build": "9.13C",
+    "priority": "P2",
+    "system": "Safe Mode",
+    "feature": "Feature flags/degradation thresholds",
+    "dependency": "All systems",
+    "owner": "SafeModeController",
+    "output": "timeout/card conflict fallbacks",
+    "required_tests": "card API failures do not poison ledger; expensive work deferred"
+  },
+  {
+    "build": "10.0A",
+    "priority": "P0",
+    "system": "Release",
+    "feature": "Full old/regression/live scenario matrix",
+    "dependency": "All prior",
+    "owner": "AcceptanceSuite + ReleaseCheck",
+    "output": "expanded flat acceptance rows, no shrink, live replay set",
+    "required_tests": "fullacceptance/releasecheck pass; manual AI Dungeon playtest"
+  },
+  {
+    "build": "10.0B",
+    "priority": "P0",
+    "system": "Packaging",
+    "feature": "Install docs, tiny hooks, final identity-only promotion",
+    "dependency": "10.0A",
+    "owner": "Build packager",
+    "output": "Library file, Input/Context/Output tabs, migration notes",
+    "required_tests": "identity-only diff; no behavior changes"
+  }
+]

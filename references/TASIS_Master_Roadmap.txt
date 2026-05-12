@@ -1,0 +1,91 @@
+CORRECTED MASTER ROADMAP
+
+PHASE 1 — BROKEN FOUNDATION FIXES
+- race selection failure
+- incomplete race coverage
+- outdated race parsing
+- incomplete race baselines
+- missing variant / lineage enforcement
+- spirit / non-physical mana-life handling
+- EXP from trivial actions
+- missing meaningful effort filter
+- multiple EXP triggers / early-level overgrowth
+
+Goal:
+Fix character creation and early progression so the system stops producing incorrect results.
+
+--------------------------------------------------
+
+PHASE 2 — RACIAL COVERAGE AND PASSIVE ENFORCEMENT
+- passive system partially implemented
+- incomplete passive coverage
+- hybrid / lineage interaction weakness
+- full demi-human / variant / lineage passives
+- racial strengths and weaknesses enforced
+- environmental / body-logic racial influence cleaned up
+
+Goal:
+Ensure race is not just recognized, but actively affects gameplay.
+
+--------------------------------------------------
+
+PHASE 3 — EVENT-TRIGGER SAFETY FIXES
+- rest false positives from names
+- rest triggering too early
+- preserve natural sleep phrasing
+- eating timing safety
+- maintain strict player-authoritative spell/ability system
+
+Goal:
+Prevent systems from misfiring before introducing more complex logic.
+
+--------------------------------------------------
+
+PHASE 4 — PENDING-EVENT ARCHITECTURE
+- pending sleep intent
+- delayed sleep confirmation across turns
+- passive inventory updates from narration
+- passive currency updates
+- passive EXP from practice / strain / study
+- intent vs confirmed-outcome framework (limited scope)
+
+IMPORTANT:
+Do NOT introduce passive spell-casting systems.
+
+Goal:
+Introduce controlled passive progression and delayed event resolution.
+
+--------------------------------------------------
+
+PHASE 5 — WORLD CONSISTENCY AND PRESSURE VALIDATION
+- world pressure remains real
+- superior forces remain superior
+- unwinnable fights remain near-unwinnable
+- faction / training differences enforced
+- group combat pressure enforced
+- no artificial scaling to player level
+
+Goal:
+Ensure the world maintains difficulty and realism.
+
+--------------------------------------------------
+
+PHASE 6 — PERSISTENCE / INTEGRITY / SYNC
+- race baseline restacking protection
+- story card sync validation
+- save/load integrity
+- no duplicate application on repair
+- no accidental resets
+
+Goal:
+Ensure long-term system stability and consistency.
+
+--------------------------------------------------
+
+EXECUTION ORDER
+1. Phase 1 — foundation (race / spirit / EXP)
+2. Phase 2 — racial passives
+3. Phase 3 — trigger safety
+4. Phase 4 — pending-event systems
+5. Phase 5 — world pressure
+6. Phase 6 — persistence and integrity
